@@ -9,12 +9,13 @@
     --bg:#0b0f0d;--panel:#121814;--panel-2:#18211c;--line:#23302a;
     --txt:#eaf2ed;--muted:#8aa096;--green:#3ddc91;--red:#ff6b6b;--gold:#e8c468;--amber:#f5b740;--blue:#7da2ff;
     --accent:#3ddc91;--accent-ink:#04130c;--chip:#1d2722;
+    --shadow:0 1px 0 rgba(255,255,255,.02),0 10px 30px rgba(0,0,0,.4);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased;min-height:100vh}
-  /* LOGIN */
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased}
+  ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#2a3a32;border-radius:6px}
   .login-wrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 50% 30%,rgba(61,220,145,.06),transparent 60%)}
-  .login-card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:38px 32px;width:min(400px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .login-card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:38px 32px;width:min(400px,94vw);box-shadow:var(--shadow)}
   .login-logo{width:56px;height:56px;border-radius:15px;background:linear-gradient(140deg,#3ddc91,#1f9d6b);display:grid;place-items:center;font-weight:800;color:#04130c;font-size:26px;margin:0 auto 18px}
   .login-card h1{font-size:21px;text-align:center;margin-bottom:4px}
   .login-card .sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:26px}
@@ -26,171 +27,495 @@
   .login-btn:disabled{opacity:.6;cursor:wait}
   .login-err{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);color:#ffc9c9;border-radius:10px;padding:11px 14px;font-size:13px;margin-bottom:16px;display:none}
   .login-foot{text-align:center;font-size:11px;color:var(--muted);margin-top:22px}
-  /* HOME pós-login (provisória, etapa 1) */
-  .home{display:none;min-height:100vh;padding:40px 24px;max-width:680px;margin:0 auto}
-  .home.show{display:block}
-  .home-top{display:flex;align-items:center;gap:14px;margin-bottom:30px}
-  .home-logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(140deg,#3ddc91,#1f9d6b);display:grid;place-items:center;font-weight:800;color:#04130c;font-size:20px}
-  .home h2{font-size:20px}
-  .home .who{font-size:13px;color:var(--muted)}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:16px}
-  .card h3{font-size:15px;margin-bottom:12px}
-  .ok-row{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:14px;border-bottom:1px solid var(--line)}
-  .ok-row:last-child{border:none}
-  .ok-ic{color:var(--green);font-size:16px}
-  .btn{background:var(--green);color:var(--accent-ink);border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer}
-  .btn.ghost{background:var(--panel-2);color:var(--txt);border:1px solid var(--line)}
-  .pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 11px;border-radius:20px;background:rgba(61,220,145,.14);color:var(--green)}
-  .loja-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-  .loja-chip{font-size:12px;background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:5px 12px}
-  .muted{color:var(--muted);font-size:13px;line-height:1.5}
+  #app{display:none}
+  #app.show{display:flex;min-height:100vh}
+  .side{width:230px;background:var(--panel);border-right:1px solid var(--line);position:sticky;top:0;height:100vh;display:flex;flex-direction:column;flex-shrink:0;transition:width .18s}
+  .side.collapsed{width:62px}
+  .brand{display:flex;align-items:center;gap:11px;padding:18px 16px}
+  .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(140deg,#3ddc91,#1f9d6b);display:grid;place-items:center;font-weight:800;color:#04130c;font-size:17px;flex-shrink:0}
+  .brand b{font-size:16px;white-space:nowrap}.brand small{display:block;font-size:10px;color:var(--muted);letter-spacing:.5px}
+  .burger{margin-left:auto;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;color:var(--txt);cursor:pointer;font-size:17px;width:34px;height:34px;display:grid;place-items:center;flex-shrink:0}
+  .burger:hover{background:var(--line);color:var(--green)}
+  .side.collapsed .brand b,.side.collapsed .brand small,.side.collapsed .navtxt{display:none}
+  .side.collapsed .brand{justify-content:center;padding:18px 10px}.side.collapsed .logo{display:none}
+  .side.collapsed .burger{margin:0 auto;width:42px;height:42px}
+  nav{padding:8px 10px;flex:1;overflow-y:auto}
+  .seclabel{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:12px 12px 5px}
+  .side.collapsed .seclabel{display:none}
+  .nav{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:11px;color:var(--muted);cursor:pointer;font-size:13.5px;font-weight:550;white-space:nowrap;margin-bottom:2px;border:1px solid transparent;position:relative}
+  .nav:hover{background:var(--panel-2);color:var(--txt)}
+  .nav.active{background:linear-gradient(100deg,rgba(61,220,145,.16),rgba(61,220,145,.04));color:var(--green);border-color:rgba(61,220,145,.22)}
+  .nav .ic{width:19px;text-align:center;font-size:15px;flex-shrink:0}
+  .nav .soon{margin-left:auto;font-size:9px;background:var(--chip);color:var(--muted);padding:1px 6px;border-radius:8px;font-weight:700}
+  .side.collapsed .nav{justify-content:center;padding:11px}.side.collapsed .nav .soon{display:none}
+  .side.collapsed .nav:hover::after{content:attr(data-label);position:absolute;left:58px;background:#000;color:#fff;font-size:12px;font-weight:600;padding:6px 11px;border-radius:8px;white-space:nowrap;z-index:50;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  .sidefoot{padding:12px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+  .side.collapsed .sidefoot{display:none}
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .topbar{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;background:rgba(11,15,13,.9)}
+  .pagetitle{font-size:18px;font-weight:700}
+  .store{margin-left:auto;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--txt);max-width:230px}
+  .logout{background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--txt);cursor:pointer;font-size:12px;padding:7px 12px}
+  .logout:hover{border-color:var(--red);color:var(--red)}
+  .content{padding:24px;max-width:1280px;width:100%}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow)}
+  .grid{display:grid;gap:16px}.two{grid-template-columns:1fr 1fr}@media(max-width:980px){.two{grid-template-columns:1fr}}
+  .cardhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}.cardhead h3{font-size:15px;font-weight:700}
+  .tag{font-size:11px;color:var(--muted);background:var(--chip);padding:3px 10px;border-radius:20px}
+  .quickbar{background:linear-gradient(100deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:16px}
+  .quickrow{display:grid;gap:10px;align-items:end}
+  .quickrow.l1{grid-template-columns:200px 130px 1fr 150px;margin-bottom:10px}
+  .quickrow.l2{grid-template-columns:130px 1fr 1fr 150px}
+  @media(max-width:900px){.quickrow.l1,.quickrow.l2{grid-template-columns:1fr 1fr}}
+  .qlabel{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:5px;display:block}
+  .qin{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px 12px;color:var(--txt);font-size:13.5px;outline:none;height:42px}
+  .qin:focus{border-color:var(--green)}
+  .qin.calc{font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
+  .tipo-toggle{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;overflow:hidden;height:42px}
+  .tipo-toggle button{flex:1;background:none;border:none;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
+  .tipo-toggle button.des{background:rgba(255,107,107,.15);color:var(--red)}
+  .tipo-toggle button.rec{background:rgba(61,220,145,.15);color:var(--green)}
+  .tipo-toggle button.tra{background:rgba(125,162,255,.15);color:var(--blue)}
+  .addbtn{width:100%;height:42px;border:none;border-radius:9px;background:var(--green);color:var(--accent-ink);font-size:14px;font-weight:700;cursor:pointer}
+  .addbtn:disabled{opacity:.6;cursor:wait}
+  .miniadd{width:42px;height:42px;flex-shrink:0;border:1px solid var(--line);background:var(--panel-2);color:var(--green);border-radius:9px;font-size:18px;font-weight:700;cursor:pointer}
+  .hint{font-size:11px;color:var(--muted);margin-top:9px;display:flex;gap:14px;flex-wrap:wrap}
+  .kbd{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-family:monospace;font-size:10.5px}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .search{flex:1;min-width:200px;display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:10px 14px}
+  .search input{background:none;border:none;outline:none;color:var(--txt);font-size:13.5px;width:100%}
+  table{width:100%;border-collapse:collapse}
+  thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:11px 13px;border-bottom:1px solid var(--line);font-weight:700}
+  tbody td{padding:11px 13px;border-bottom:1px solid var(--line);font-size:13px}
+  tbody tr:hover{background:var(--panel-2)}
+  tbody tr.neutra{background:rgba(125,162,255,.06)}
+  .amt{font-variant-numeric:tabular-nums;font-weight:650;text-align:right}
+  .amt.green{color:var(--green)}.amt.red{color:var(--red)}.amt.blue{color:var(--blue)}
+  .catchip{font-size:11.5px;background:var(--chip);padding:3px 11px;border-radius:20px;border:1px solid var(--line)}
+  .catchip.neutra{border-color:var(--blue);color:var(--blue);background:rgba(125,162,255,.08)}
+  .contchip{font-size:11.5px;padding:3px 10px;border-radius:20px;border:1px solid var(--line);white-space:nowrap}
+  .contchip.emp{background:rgba(232,196,104,.1);color:var(--gold);border-color:rgba(232,196,104,.3)}
+  .contchip.func{background:rgba(125,162,255,.1);color:var(--blue);border-color:rgba(125,162,255,.3)}
+  .parc{font-size:10.5px;color:var(--gold);background:rgba(232,196,104,.1);padding:1px 7px;border-radius:10px;margin-left:6px;font-weight:700}
+  .mut{color:var(--muted)}
+  .delx{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;opacity:.5}.delx:hover{opacity:1;color:var(--red)}
+  .empty{text-align:center;padding:44px;color:var(--muted)}.empty .big{font-size:36px;margin-bottom:12px;opacity:.6}
+  .cfgrow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px}.cfgrow:last-child{border:none}
+  .grp{font-size:10.5px;padding:2px 9px;border-radius:20px;font-weight:700;text-transform:uppercase}
+  .grp.rec{background:rgba(61,220,145,.14);color:var(--green)}.grp.cmv{background:rgba(232,196,104,.14);color:var(--gold)}
+  .grp.imp{background:rgba(192,132,252,.14);color:#c084fc}.grp.fixo{background:rgba(125,162,255,.14);color:var(--blue)}
+  .grp.nop{background:rgba(255,107,107,.14);color:var(--red)}.grp.neutra{background:rgba(138,160,150,.18);color:var(--muted)}.grp.adef{background:rgba(245,183,64,.18);color:var(--amber)}
+  .btn{background:var(--green);color:var(--accent-ink);border:none;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer}
+  .btn.ghost{background:var(--panel);color:var(--txt);border:1px solid var(--line)}
+  .arqbtn{margin-left:12px;font-size:11.5px;color:var(--muted);cursor:pointer;padding:3px 9px;border-radius:20px;border:1px solid var(--line);white-space:nowrap}
+  .arqbtn:hover{color:var(--amber);border-color:var(--amber)}.arqbtn.ativar:hover{color:var(--green);border-color:var(--green)}
+  .note{background:rgba(125,162,255,.08);border:1px solid rgba(125,162,255,.2);border-radius:12px;padding:13px 15px;font-size:12.5px;color:#aec2ff;margin-bottom:16px;line-height:1.5}
+  .note.soon{background:rgba(245,183,64,.08);border-color:rgba(245,183,64,.25);color:#f5d98a}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:100}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;width:min(440px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .modal h3{font-size:16px;margin-bottom:8px}.modal p{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5}
+  .modal input,.modal select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:11px 13px;color:var(--txt);font-size:14px;outline:none;margin-bottom:14px}
+  .modal .qlabel{margin-bottom:5px}
+  .modal-btns{display:flex;gap:10px;justify-content:flex-end}
+  .err{color:var(--red);font-size:12px;margin-top:-8px;margin-bottom:12px}
+  .spin{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .loading{text-align:center;padding:50px;color:var(--muted)}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.4);color:#fff}
+  .toast.ok{background:var(--green);color:#04130c}.toast.erro{background:var(--red)}
 </style>
 </head>
 <body>
-  <!-- TELA DE LOGIN -->
   <div class="login-wrap" id="loginWrap">
     <div class="login-card">
       <div class="login-logo">R</div>
       <h1>Caixa Rocha</h1>
       <div class="sub">Sistema Financeiro · entre para continuar</div>
       <div class="login-err" id="loginErr"></div>
-      <div class="field">
-        <label>E-mail</label>
-        <input type="email" id="email" placeholder="seu@email.com" autocomplete="username" />
-      </div>
-      <div class="field">
-        <label>Senha</label>
-        <input type="password" id="senha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()" />
-      </div>
+      <div class="field"><label>E-mail</label><input type="email" id="email" placeholder="seu@email.com" autocomplete="username" /></div>
+      <div class="field"><label>Senha</label><input type="password" id="senha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()" /></div>
       <button class="login-btn" id="loginBtn" onclick="fazerLogin()">Entrar</button>
       <div class="login-foot">Grupo Rocha · acesso restrito</div>
     </div>
   </div>
 
-  <!-- HOME PROVISÓRIA (etapa 1: confirma que logou e conectou) -->
-  <div class="home" id="home">
-    <div class="home-top">
-      <div class="home-logo">R</div>
-      <div style="flex:1">
-        <h2>Conectado com sucesso!</h2>
-        <div class="who" id="whoami">—</div>
+  <div id="app">
+    <aside class="side" id="side">
+      <div class="brand"><div class="logo">R</div><b>Caixa Rocha<small>FINANCEIRO</small></b>
+        <button class="burger" id="burgerBtn" title="Fechar menu" onclick="toggleMenu()">‹</button></div>
+      <nav id="nav"></nav>
+      <div class="sidefoot" id="sidefoot">—</div>
+    </aside>
+    <div class="main">
+      <div class="topbar">
+        <span class="pagetitle" id="ptitle">Lançamentos</span>
+        <select class="store" id="store" onchange="trocarLoja()"></select>
+        <button class="logout" onclick="sair()">Sair</button>
       </div>
-      <button class="btn ghost" onclick="sair()">Sair</button>
-    </div>
-
-    <div class="card">
-      <h3>✅ Etapa 1 concluída — login funcionando</h3>
-      <div class="ok-row"><span class="ok-ic">✓</span> Você logou no Supabase de verdade</div>
-      <div class="ok-row"><span class="ok-ic">✓</span> Seu papel no sistema: <span class="pill" id="papel">—</span></div>
-      <div class="ok-row"><span class="ok-ic">✓</span> Conexão com o banco de dados ativa</div>
-    </div>
-
-    <div class="card">
-      <h3>🏪 Lojas no banco</h3>
-      <div class="muted">Lidas direto do Supabase agora (prova que está conectado):</div>
-      <div class="loja-list" id="lojas"><span class="muted">carregando...</span></div>
-    </div>
-
-    <div class="card">
-      <h3>Próxima etapa</h3>
-      <div class="muted">Login e conexão OK! No próximo passo a gente liga a tela de <b>Lançamentos</b> ao banco — aí você começa a lançar de verdade, salvando no Supabase. Me avisa que seguimos.</div>
+      <div class="content" id="content"><div class="loading"><span class="spin"></span> Carregando...</div></div>
     </div>
   </div>
+  <div id="modalRoot"></div>
 
-  <!-- Biblioteca do Supabase (carrega da CDN oficial) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script>
-    let sb = null;
-    let conectado = false;
+  let sb=null, conectado=false;
+  let USER=null, PERFIL={nome:'',papel:''};
+  let LOJAS=[], CATS=[], CONTATOS=[], CONTAS=[], LANC=[];
+  let lojaAtual=null;
+  let page='lanc', tipo='des', q='', busy=false;
 
-    // inicializa o cliente Supabase
-    function initSupabase(){
-      try{
-        if(typeof supabase === 'undefined'){
-          mostrarErro('A biblioteca do Supabase não carregou. Se você usa CCleaner Browser, ele pode estar bloqueando. Tente abrir pelo link do Vercel (hospedado), que costuma resolver.');
-          return false;
-        }
-        sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-        conectado = true;
-        return true;
-      }catch(e){
-        mostrarErro('Erro ao conectar: '+e.message);
-        return false;
-      }
-    }
+  const BRL=n=>(n<0?'-':'')+'R$ '+Math.abs(Number(n)).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
+  const ANO_FIXO=2026;
 
-    function mostrarErro(msg){
-      const el = document.getElementById('loginErr');
-      el.textContent = msg;
-      el.style.display = 'block';
-    }
+  function initSupabase(){
+    try{
+      if(typeof supabase==='undefined'){loginErro('A biblioteca não carregou. Abra pelo link do Vercel (hospedado).');return false;}
+      sb=supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      conectado=true;return true;
+    }catch(e){loginErro('Erro ao conectar: '+e.message);return false;}
+  }
+  function loginErro(msg){const el=document.getElementById('loginErr');el.textContent=msg;el.style.display='block';}
 
-    async function fazerLogin(){
-      const email = document.getElementById('email').value.trim();
-      const senha = document.getElementById('senha').value;
-      const btn = document.getElementById('loginBtn');
-      document.getElementById('loginErr').style.display = 'none';
+  async function fazerLogin(){
+    const email=document.getElementById('email').value.trim();
+    const senha=document.getElementById('senha').value;
+    const btn=document.getElementById('loginBtn');
+    document.getElementById('loginErr').style.display='none';
+    if(!email||!senha){loginErro('Preencha e-mail e senha.');return;}
+    if(!conectado&&!initSupabase())return;
+    btn.disabled=true;btn.textContent='Entrando...';
+    try{
+      const {data,error}=await sb.auth.signInWithPassword({email,password:senha});
+      if(error){loginErro('E-mail ou senha incorretos.');btn.disabled=false;btn.textContent='Entrar';return;}
+      await iniciarApp(data.user);
+    }catch(e){loginErro('Erro: '+e.message);btn.disabled=false;btn.textContent='Entrar';}
+  }
+  async function sair(){if(sb)await sb.auth.signOut();location.reload();}
 
-      if(!email || !senha){ mostrarErro('Preencha e-mail e senha.'); return; }
-      if(!conectado && !initSupabase()) return;
+  async function iniciarApp(user){
+    USER=user;
+    try{const {data}=await sb.from('perfis').select('nome,papel').eq('id',user.id).single();if(data)PERFIL=data;}catch(e){}
+    document.getElementById('loginWrap').style.display='none';
+    document.getElementById('app').classList.add('show');
+    document.getElementById('sidefoot').textContent=PERFIL.nome+' · '+PERFIL.papel;
+    await carregarBase();
+    renderNav();render();
+  }
+  async function carregarBase(){
+    const {data:lojas}=await sb.from('lojas').select('*').eq('arquivada',false).order('ordem');
+    LOJAS=lojas||[];
+    if(LOJAS.length && !lojaAtual)lojaAtual=LOJAS[0].id;
+    const {data:cats}=await sb.from('categorias').select('*').order('nome');CATS=cats||[];
+    const {data:cont}=await sb.from('contatos').select('*').order('nome');CONTATOS=cont||[];
+    await carregarContas();
+    document.getElementById('store').innerHTML=LOJAS.map(l=>`<option value="${l.id}" ${l.id===lojaAtual?'selected':''}>${l.nome}</option>`).join('');
+  }
+  async function carregarContas(){const {data}=await sb.from('contas').select('*').eq('loja_id',lojaAtual).eq('arquivada',false).order('nome');CONTAS=data||[];}
+  async function carregarLancamentos(){
+    const {data}=await sb.from('lancamentos').select('*, categorias(nome,grupo), contatos(nome,tipo), contas(nome)').eq('loja_id',lojaAtual).order('data',{ascending:false}).limit(500);
+    LANC=data||[];
+  }
+  async function trocarLoja(){
+    lojaAtual=parseInt(document.getElementById('store').value,10);
+    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
+    await carregarContas();render();
+  }
 
-      btn.disabled = true; btn.textContent = 'Entrando...';
-      try{
-        const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
-        if(error){
-          mostrarErro('E-mail ou senha incorretos.');
-          btn.disabled = false; btn.textContent = 'Entrar';
-          return;
-        }
-        await entrarNoSistema(data.user);
-      }catch(e){
-        mostrarErro('Erro ao entrar: '+e.message);
-        btn.disabled = false; btn.textContent = 'Entrar';
-      }
-    }
+  const MENU=[
+    ['__d','Dia a dia'],
+    ['lanc','Lançamentos','≣',true],['import','Importar extrato','⤓',false],
+    ['apagar','A pagar','🧾',false],['caixa','Fechamento de caixa','🧮',false],
+    ['__a','Análise'],
+    ['dre','DRE','📊',false],['fechamento','Fechamento do mês','🔐',false],
+    ['comparativo','Comparativo','📈',false],['relcontato','Por contato','👥',false],
+    ['__g','Gestão'],
+    ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
+    ['recorrentes','Recorrentes','🔁',false],['lixeira','Lixeira','🗑',false],['config','Configurações','⚙',false],
+  ];
+  const TITLES={lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',dre:'DRE — Resultado',fechamento:'Fechamento do mês',comparativo:'Comparativo',relcontato:'Relatório por contato',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações'};
+  function renderNav(){
+    document.getElementById('nav').innerHTML=MENU.map(it=>{
+      if(it[0].startsWith('__'))return `<div class="seclabel">${it[1]}</div>`;
+      const [id,l,ic,pronto]=it;
+      return `<div class="nav ${id===page?'active':''}" data-label="${l}" onclick="go('${id}')"><span class="ic">${ic}</span><span class="navtxt">${l}</span>${pronto?'':'<span class="soon">em breve</span>'}</div>`;
+    }).join('');
+  }
+  function go(p){page=p;q='';document.getElementById('ptitle').textContent=TITLES[p]||p;renderNav();render();}
+  function toggleMenu(){const s=document.getElementById('side');s.classList.toggle('collapsed');const c=s.classList.contains('collapsed');const b=document.getElementById('burgerBtn');b.title=c?'Abrir menu':'Fechar menu';b.innerHTML=c?'›':'‹';}
 
-    async function entrarNoSistema(user){
-      // busca o perfil (nome + papel)
-      let nome = user.email, papel = '—';
-      try{
-        const { data: perfil } = await sb.from('perfis').select('nome,papel').eq('id', user.id).single();
-        if(perfil){ nome = perfil.nome; papel = perfil.papel; }
-      }catch(e){ /* segue mesmo sem perfil */ }
+  function catsAtivas(){return CATS.filter(c=>!c.arquivada);}
+  function contatosAtivos(){return CONTATOS.filter(c=>!c.arquivado);}
+  function catsOptions(sel){
+    const ordem=['rec','cmv','imp','fixo','nop','adef'];let html='';
+    ordem.forEach(g=>{const it=catsAtivas().filter(c=>c.grupo===g);if(!it.length)return;
+      html+=`<optgroup label="${GRUPOS[g].nome}">`+it.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${c.nome}</option>`).join('')+'</optgroup>';});
+    return html;
+  }
+  function contatosOptions(sel){
+    const emp=contatosAtivos().filter(c=>c.tipo==='empresa');const fun=contatosAtivos().filter(c=>c.tipo==='funcionario');let h='';
+    if(emp.length)h+=`<optgroup label="Empresas">`+emp.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${c.nome}</option>`).join('')+'</optgroup>';
+    if(fun.length)h+=`<optgroup label="Funcionários">`+fun.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${c.nome}</option>`).join('')+'</optgroup>';
+    return h;
+  }
+  function podeEditar(){return ['dono','operador','lancador'].includes(PERFIL.papel);}
+  function toast(msg,tp){const t=document.createElement('div');t.className='toast '+(tp||'ok');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600);}
+  function calcInput(el,e){if(e.key==='Enter')return;if(!/[0-9]/.test(e.key)&&e.key!=='Backspace')return;e.preventDefault();let c=parseInt(el.dataset.cents||'0',10);if(e.key==='Backspace')c=Math.floor(c/10);else c=c*10+parseInt(e.key,10);if(c>9999999999)c=parseInt(el.dataset.cents||'0',10);el.dataset.cents=c;el.value=(c/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function maskData(el,e){if(e.key==='Enter'||e.key==='Tab'||e.ctrlKey||e.metaKey)return;if(e.key.length===1&&!/[0-9]/.test(e.key)){e.preventDefault();return;}if(e.key!=='Backspace'&&!/[0-9]/.test(e.key))return;e.preventDefault();let dm=el.dataset.dm||'';if(e.key==='Backspace')dm=dm.slice(0,-1);else if(dm.length<4)dm=dm+e.key;el.dataset.dm=dm;let out=dm;if(dm.length>2)out=dm.slice(0,2)+'/'+dm.slice(2);if(dm.length===4)out=dm.slice(0,2)+'/'+dm.slice(2)+'/'+ANO_FIXO;el.value=out;}
+  function dataParaISO(str){const m=str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);if(!m)return null;const d=+m[1],mes=+m[2],a=+m[3];if(mes<1||mes>12||d<1||d>31||a<2020||a>2035)return null;return `${a}-${m[2]}-${m[1]}`;}
+  function isoParaBR(iso){if(!iso)return '';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;}
 
-      document.getElementById('whoami').textContent = nome + ' · ' + user.email;
-      document.getElementById('papel').textContent = papel;
-      document.getElementById('loginWrap').style.display = 'none';
-      document.getElementById('home').classList.add('show');
+  function render(){
+    const V={lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos};
+    const fn=V[page];if(fn){fn();}else{viewEmBreve();}
+  }
+  function viewEmBreve(){
+    document.getElementById('content').innerHTML=`<div class="note soon">🚧 <b>${TITLES[page]||'Essa tela'}</b> ainda não está conectada ao banco. Vamos ligar numa próxima etapa! Por enquanto use <b>Lançamentos</b>, <b>Categorias</b> e <b>Contatos</b>, que já salvam de verdade.</div><div class="card empty"><div class="big">🚧</div>Em breve</div>`;
+  }
 
-      // prova de conexão: lê as lojas do banco
-      try{
-        const { data: lojas, error } = await sb.from('lojas').select('nome').order('ordem');
-        const box = document.getElementById('lojas');
-        if(error){ box.innerHTML = '<span class="muted">Erro ao ler lojas: '+error.message+'</span>'; return; }
-        box.innerHTML = lojas.map(l => '<span class="loja-chip">'+l.nome+'</span>').join('');
-      }catch(e){
-        document.getElementById('lojas').innerHTML = '<span class="muted">Erro: '+e.message+'</span>';
-      }
-    }
-
-    async function sair(){
-      if(sb) await sb.auth.signOut();
-      document.getElementById('home').classList.remove('show');
-      document.getElementById('loginWrap').style.display = 'grid';
-      document.getElementById('senha').value = '';
-      document.getElementById('loginBtn').disabled = false;
-      document.getElementById('loginBtn').textContent = 'Entrar';
-    }
-
-    // ao carregar, verifica se já tem sessão ativa (não precisa logar de novo)
-    window.addEventListener('load', async ()=>{
-      if(!initSupabase()) return;
-      try{
-        const { data } = await sb.auth.getSession();
-        if(data && data.session){ await entrarNoSistema(data.session.user); }
-      }catch(e){ /* sem sessão, mostra login */ }
+  async function viewLanc(){
+    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando lançamentos...</div>';
+    await carregarLancamentos();
+    const opts=catsOptions();const contaOpts=CONTAS.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+    const contatoOpts=contatosOptions();
+    const qn=q.replace(/[^0-9,]/g,'').replace(',','.');
+    const rows=LANC.filter(l=>{
+      const cat=(l.categorias&&l.categorias.nome)||'';const cont=(l.contatos&&l.contatos.nome)||'';
+      const txt=(l.descricao||'').toLowerCase().includes(q.toLowerCase())||cat.toLowerCase().includes(q.toLowerCase())||cont.toLowerCase().includes(q.toLowerCase());
+      const val=qn&&Math.abs(l.valor).toFixed(2).includes(qn);return txt||val;
     });
+    const tr=rows.map(l=>{
+      const cat=l.categorias||{};const cont=l.contatos||{};const neutra=cat.grupo==='neutra';
+      return `<tr class="${neutra?'neutra':''}">
+        <td class="mut">${isoParaBR(l.data).slice(0,5)}</td>
+        <td>${l.descricao}${l.parcela?`<span class="parc">${l.parcela}</span>`:''}${l.documento?`<div class="mut" style="font-size:11px;margin-top:2px">📄 ${l.documento}</div>`:''}</td>
+        <td><span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span></td>
+        <td>${cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.tipo==='funcionario'?'👤':'🏢'} ${cont.nome}</span>`:'<span class="mut">—</span>'}</td>
+        <td class="amt ${neutra?'blue':(l.valor>0?'green':'red')}">${l.valor>0?'+':'-'}${BRL(Math.abs(l.valor))}</td>
+        <td style="text-align:center;white-space:nowrap">${podeEditar()?`<button class="delx" onclick="abrirEditarLanc(${l.id})" title="Editar">✏️</button> <button class="delx" onclick="excluirLanc(${l.id})" title="Excluir">🗑</button>`:'<span class="mut" style="font-size:11px">—</span>'}</td>
+      </tr>`;
+    }).join('');
+    const formHTML=podeEditar()?`<div class="quickbar">
+      <div class="quickrow l1">
+        <div><span class="qlabel">Tipo</span><div class="tipo-toggle"><button id="tDes" class="${tipo==='des'?'des':''}" onclick="setTipo('des')">Despesa</button><button id="tRec" class="${tipo==='rec'?'rec':''}" onclick="setTipo('rec')">Receita</button><button id="tTra" class="${tipo==='tra'?'tra':''}" onclick="setTipo('tra')">Transf.</button></div></div>
+        <div><span class="qlabel">Data (dia/mês · ${ANO_FIXO})</span><input id="qData" class="qin" placeholder="dd/mm" data-dm="" onkeydown="maskData(this,event)" onfocus="this.select()"></div>
+        <div><span class="qlabel">Descrição</span><input id="qDesc" class="qin" placeholder="Ex: Fornecedor Essilor" onkeydown="if(event.key==='Enter')document.getElementById('qVal').focus()"></div>
+        <div><span class="qlabel">Valor</span><input id="qVal" class="qin calc" data-cents="0" placeholder="0,00" inputmode="numeric" onkeydown="calcInput(this,event)"></div>
+      </div>
+      <div class="quickrow l2">
+        <div><span class="qlabel">Parcela</span><div style="display:flex;align-items:center;gap:5px"><input id="qParcA" class="qin" placeholder="3" style="text-align:center;padding:10px 4px" inputmode="numeric" maxlength="2"><span style="color:var(--muted);font-weight:700">/</span><input id="qParcB" class="qin" placeholder="4" style="text-align:center;padding:10px 4px" inputmode="numeric" maxlength="2"></div></div>
+        <div><span class="qlabel">Categoria *</span><div style="display:flex;gap:5px"><select id="qCat" class="qin">${tipo==='tra'?(()=>{const t=catsAtivas().find(c=>c.grupo==='neutra');return t?`<option value="${t.id}">Transferência entre lojas</option>`:'<option value="">—</option>';})():'<option value="">Selecione...</option>'+opts}</select><button class="miniadd" onclick="abrirNovaCat()" title="Nova categoria">+</button></div></div>
+        <div><span class="qlabel">Contato *</span><div style="display:flex;gap:5px"><select id="qContato" class="qin"><option value="">Selecione...</option>${contatoOpts}</select><button class="miniadd" onclick="abrirNovoContato()" title="Novo contato">+</button></div></div>
+        <div><span class="qlabel">Conta</span><select id="qConta" class="qin">${contaOpts}</select></div>
+      </div>
+      <div class="quickrow" style="grid-template-columns:1fr 150px;margin-top:10px">
+        <div><span class="qlabel">Nº documento / Observação (opcional)</span><input id="qDoc" class="qin" placeholder="Ex: boleto 169097165"></div>
+        <button class="addbtn" id="btnLancar" onclick="salvarLanc()">+ Lançar</button>
+      </div>
+      <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho</span><span>👥 Categoria e contato obrigatórios</span></div>
+    </div>`:'<div class="note">👁️ Seu acesso é somente leitura (contador). Você pode ver e exportar, mas não lançar.</div>';
+    document.getElementById('content').innerHTML=formHTML+`
+      <div class="toolbar"><div class="search">🔍<input placeholder="Pesquisar por texto, contato ou valor..." value="${q}" oninput="q=this.value;render()"></div></div>
+      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Contato</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${tr}</tbody></table>${rows.length===0?'<div class="empty"><div class="big">📭</div>Nenhum lançamento ainda. Lance o primeiro acima!</div>':''}</div>`;
+  }
+  function setTipo(t){tipo=t;render();}
+
+  async function salvarLanc(){
+    if(busy)return;
+    const desc=document.getElementById('qDesc').value.trim();
+    const cents=parseInt(document.getElementById('qVal').dataset.cents||'0',10);
+    const catId=document.getElementById('qCat').value;
+    const contatoId=document.getElementById('qContato').value;
+    const pa=document.getElementById('qParcA').value,pb=document.getElementById('qParcB').value;
+    const parc=(pa&&pb)?`${pa}/${pb}`:null;
+    const dataStr=document.getElementById('qData').value;
+    const doc=document.getElementById('qDoc').value.trim();
+    const contaId=document.getElementById('qConta').value;
+    const isTra=tipo==='tra';
+    if(!desc){toast('Preencha a descrição','erro');return;}
+    if(!cents){toast('Preencha o valor','erro');return;}
+    const iso=dataParaISO(dataStr);
+    if(!iso){toast('Data inválida (use dia/mês)','erro');return;}
+    if(!catId){toast('Escolha a categoria','erro');return;}
+    if(!contatoId){toast('Escolha o contato','erro');return;}
+    const v=cents/100;
+    const tipoDb=isTra?'transferencia':(tipo==='rec'?'receita':'despesa');
+    const valor=(tipo==='rec')?v:-v;
+    busy=true;const btn=document.getElementById('btnLancar');if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+    const {error}=await sb.from('lancamentos').insert({
+      loja_id:lojaAtual,conta_id:contaId||null,data:iso,descricao:desc.toUpperCase(),
+      valor,tipo:tipoDb,categoria_id:catId,contato_id:contatoId,parcela:parc,
+      documento:doc||null,pago:true,origem:'manual',criado_por:USER.id
+    });
+    busy=false;
+    if(error){toast('Erro ao salvar: '+error.message,'erro');if(btn){btn.disabled=false;btn.textContent='+ Lançar';}return;}
+    toast('Lançamento salvo!','ok');await viewLanc();
+  }
+  async function excluirLanc(id){
+    if(!confirm('Excluir este lançamento? Ele vai para a lixeira.'))return;
+    const l=LANC.find(x=>x.id===id);
+    await sb.from('lixeira').insert({loja_id:lojaAtual,dados:l,excluido_por:USER.id});
+    const {error}=await sb.from('lancamentos').delete().eq('id',id);
+    if(error){toast('Erro ao excluir: '+error.message,'erro');return;}
+    toast('Excluído (foi pra lixeira)','ok');await viewLanc();
+  }
+  function abrirEditarLanc(id){
+    const l=LANC.find(x=>x.id===id);if(!l)return;
+    const opts=catsOptions(l.categoria_id);const contatoOpts=contatosOptions(l.contato_id);
+    const contaOpts=CONTAS.map(c=>`<option value="${c.id}" ${c.id===l.conta_id?'selected':''}>${c.nome}</option>`).join('');
+    const pa=l.parcela?l.parcela.split('/')[0]:'',pb=l.parcela?l.parcela.split('/')[1]:'';
+    const brd=isoParaBR(l.data);
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
+      <h3>✏️ Editar lançamento</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><span class="qlabel">Data</span><input id="edData" value="${brd}" data-dm="${brd.slice(0,2)+brd.slice(3,5)}" onkeydown="maskData(this,event)" onfocus="this.select()"></div>
+      <div><span class="qlabel">Parcela</span><div style="display:flex;align-items:center;gap:4px"><input id="edParcA" value="${pa}" placeholder="3" inputmode="numeric" maxlength="2" style="text-align:center"><span style="color:var(--muted)">/</span><input id="edParcB" value="${pb}" placeholder="4" inputmode="numeric" maxlength="2" style="text-align:center"></div></div></div>
+      <span class="qlabel">Descrição</span><input id="edDesc" value="${l.descricao}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><span class="qlabel">Valor</span><input id="edVal" class="calc" data-cents="${Math.round(Math.abs(l.valor)*100)}" value="${Math.abs(l.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}" inputmode="numeric" onkeydown="calcInput(this,event)"></div>
+      <div><span class="qlabel">Conta</span><select id="edConta">${contaOpts}</select></div></div>
+      <span class="qlabel">Nº documento</span><input id="edDoc" value="${l.documento||''}">
+      <span class="qlabel">Categoria *</span><select id="edCat">${opts}</select>
+      <span class="qlabel">Contato *</span><select id="edContato"><option value="">Selecione...</option>${contatoOpts}</select>
+      <div id="edErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarEditarLanc(${id})">Salvar</button></div>
+    </div></div>`;
+  }
+  async function salvarEditarLanc(id){
+    const l=LANC.find(x=>x.id===id);
+    const cat=document.getElementById('edCat').value;const contato=document.getElementById('edContato').value;
+    if(!cat||!contato){document.getElementById('edErr').innerHTML='<div class="err">Categoria e contato são obrigatórios.</div>';return;}
+    const cents=parseInt(document.getElementById('edVal').dataset.cents||'0',10);
+    const pa=document.getElementById('edParcA').value,pb=document.getElementById('edParcB').value;
+    const iso=dataParaISO(document.getElementById('edData').value)||l.data;
+    const {error}=await sb.from('lancamentos').update({
+      data:iso,descricao:document.getElementById('edDesc').value.toUpperCase(),
+      valor:(l.valor<0?-1:1)*(cents/100),categoria_id:cat,contato_id:contato,
+      conta_id:document.getElementById('edConta').value||null,
+      parcela:(pa&&pb)?`${pa}/${pb}`:null,documento:document.getElementById('edDoc').value||null
+    }).eq('id',id);
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    fecharModal();toast('Salvo!','ok');await viewLanc();
+  }
+
+  function abrirNovaCat(){
+    const grupos='<option value="adef">A definir (classifica depois)</option>'+Object.entries(GRUPOS).filter(([k])=>k!=='neutra'&&k!=='adef').map(([k,g])=>`<option value="${k}">${g.nome}</option>`).join('');
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
+      <h3>+ Nova categoria</h3><p>Se não souber o grupo do DRE, deixe "A definir".</p>
+      <span class="qlabel">Nome</span><input id="ncNome" placeholder="Ex: Frete" autofocus>
+      <span class="qlabel">Grupo no DRE</span><select id="ncGrupo">${grupos}</select><div id="ncErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarNovaCat()">Cadastrar</button></div></div></div>`;
+    setTimeout(()=>{const e=document.getElementById('ncNome');if(e)e.focus();},50);
+  }
+  async function salvarNovaCat(){
+    const nome=document.getElementById('ncNome').value.trim();const grupo=document.getElementById('ncGrupo').value;
+    if(!nome){document.getElementById('ncErr').innerHTML='<div class="err">Digite o nome.</div>';return;}
+    const {data,error}=await sb.from('categorias').insert({loja_id:null,nome,grupo}).select().single();
+    if(error){document.getElementById('ncErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
+    CATS.push(data);fecharModal();toast('Categoria criada!','ok');render();
+    setTimeout(()=>{const s=document.getElementById('qCat');if(s)s.value=data.id;},60);
+  }
+  function abrirNovoContato(){
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
+      <h3>+ Novo contato</h3><p>Empresa (fornecedor) ou funcionário.</p>
+      <span class="qlabel">Nome</span><input id="nctNome" placeholder="Ex: Ultra, ou Maria" autofocus>
+      <span class="qlabel">Tipo</span><select id="nctTipo"><option value="empresa">🏢 Empresa</option><option value="funcionario">👤 Funcionário</option></select><div id="nctErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarNovoContato()">Cadastrar</button></div></div></div>`;
+    setTimeout(()=>{const e=document.getElementById('nctNome');if(e)e.focus();},50);
+  }
+  async function salvarNovoContato(){
+    const nome=document.getElementById('nctNome').value.trim();const tipo=document.getElementById('nctTipo').value;
+    if(!nome){document.getElementById('nctErr').innerHTML='<div class="err">Digite o nome.</div>';return;}
+    const {data,error}=await sb.from('contatos').insert({loja_id:null,nome,tipo}).select().single();
+    if(error){document.getElementById('nctErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
+    CONTATOS.push(data);fecharModal();toast('Contato criado!','ok');render();
+    setTimeout(()=>{const s=document.getElementById('qContato');if(s)s.value=data.id;},60);
+  }
+
+  function viewCategorias(){
+    const aDef=catsAtivas().filter(c=>c.grupo==='adef');
+    const aviso=aDef.length?`<div class="note soon">⚠️ <b>${aDef.length} categoria(s) a classificar:</b> ${aDef.map(c=>c.nome).join(', ')}. Clique ✏️ pra definir o grupo.</div>`:'';
+    const ordem=['rec','cmv','imp','fixo','nop','adef'];
+    const grupos=ordem.map(g=>{
+      const it=catsAtivas().filter(c=>c.grupo===g);if(!it.length)return '';
+      const rows=it.map(c=>`<div class="cfgrow">${c.nome}<span class="grp ${g}" style="margin-left:auto">${GRUPOS[g].nome}</span>${podeEditar()?`<span class="arqbtn" onclick="editarCat(${c.id})">✏️ editar</span><span class="arqbtn" onclick="arquivarCat(${c.id})">📥 arquivar</span>`:''}</div>`).join('');
+      return `<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="grp ${g}">${GRUPOS[g].nome}</span><span class="mut" style="font-size:12px">${it.length}</span></div>${rows}</div>`;
+    }).join('');
+    const arq=CATS.filter(c=>c.arquivada).map(c=>`<div class="cfgrow" style="opacity:.6">${c.nome}<span class="grp ${c.grupo}" style="margin-left:auto">${GRUPOS[c.grupo].nome}</span><span class="arqbtn ativar" onclick="ativarCat(${c.id})">↩ reativar</span></div>`).join('');
+    document.getElementById('content').innerHTML=`<div class="note">🏷️ <b>Categorias</b> organizadas pelo grupo do DRE. Salva no banco de verdade.</div>${aviso}
+      ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>Nova categoria</h3></div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><input id="ncTela" class="qin" placeholder="Nome" style="max-width:240px"><select id="ngTela" class="qin" style="max-width:180px"><option value="adef">A definir</option><option value="rec">Receita</option><option value="cmv">CMV</option><option value="imp">Imposto</option><option value="fixo">Custo Fixo</option><option value="nop">Não Operacional</option></select><button class="btn" onclick="addCatTela()">+ Adicionar</button></div></div>`:''}
+      <div class="card" style="margin-bottom:16px">${grupos}</div>
+      ${arq?`<div class="card" style="border-color:rgba(138,160,150,.3)"><div class="cardhead"><h3>🗄️ Arquivadas</h3></div><div style="margin-top:8px">${arq}</div></div>`:''}`;
+  }
+  async function addCatTela(){
+    const nome=document.getElementById('ncTela').value.trim();const grupo=document.getElementById('ngTela').value;
+    if(!nome){toast('Digite o nome','erro');return;}
+    const {data,error}=await sb.from('categorias').insert({loja_id:null,nome,grupo}).select().single();
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    CATS.push(data);toast('Criada!','ok');render();
+  }
+  function editarCat(id){
+    const c=CATS.find(x=>x.id===id);
+    const grupos=Object.entries(GRUPOS).filter(([k])=>k!=='neutra').map(([k,g])=>`<option value="${k}" ${k===c.grupo?'selected':''}>${g.nome}</option>`).join('');
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
+      <h3>✏️ Editar categoria</h3><span class="qlabel">Nome</span><input id="ecNome" value="${c.nome}">
+      <span class="qlabel">Grupo no DRE</span><select id="ecGrupo">${grupos}</select><div id="ecErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarEditarCat(${id})">Salvar</button></div></div></div>`;
+  }
+  async function salvarEditarCat(id){
+    const nome=document.getElementById('ecNome').value.trim();const grupo=document.getElementById('ecGrupo').value;
+    if(!nome){document.getElementById('ecErr').innerHTML='<div class="err">Digite o nome.</div>';return;}
+    const {error}=await sb.from('categorias').update({nome,grupo}).eq('id',id);
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    const c=CATS.find(x=>x.id===id);c.nome=nome;c.grupo=grupo;fecharModal();toast('Salvo!','ok');render();
+  }
+  async function arquivarCat(id){await sb.from('categorias').update({arquivada:true}).eq('id',id);CATS.find(c=>c.id===id).arquivada=true;toast('Arquivada','ok');render();}
+  async function ativarCat(id){await sb.from('categorias').update({arquivada:false}).eq('id',id);CATS.find(c=>c.id===id).arquivada=false;toast('Reativada','ok');render();}
+
+  function viewCadContatos(){
+    const emp=contatosAtivos().filter(c=>c.tipo==='empresa').map(c=>`<div class="cfgrow"><span class="contchip emp">🏢 ${c.nome}</span>${podeEditar()?`<span class="arqbtn" style="margin-left:auto" onclick="editarContato(${c.id})">✏️ editar</span><span class="arqbtn" onclick="arquivarContato(${c.id})">📥 arquivar</span>`:''}</div>`).join('');
+    const fun=contatosAtivos().filter(c=>c.tipo==='funcionario').map(c=>`<div class="cfgrow"><span class="contchip func">👤 ${c.nome}</span>${podeEditar()?`<span class="arqbtn" style="margin-left:auto" onclick="editarContato(${c.id})">✏️ editar</span><span class="arqbtn" onclick="arquivarContato(${c.id})">📥 arquivar</span>`:''}</div>`).join('');
+    const arq=CONTATOS.filter(c=>c.arquivado).map(c=>`<div class="cfgrow" style="opacity:.6"><span class="contchip ${c.tipo==='funcionario'?'func':'emp'}">${c.tipo==='funcionario'?'👤':'🏢'} ${c.nome}</span><span class="arqbtn ativar" style="margin-left:auto" onclick="ativarContato(${c.id})">↩ reativar</span></div>`).join('');
+    document.getElementById('content').innerHTML=`<div class="note">👥 <b>Contatos</b> — empresas e funcionários. Salva no banco.</div>
+      ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>Novo contato</h3></div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><input id="nctTela" class="qin" placeholder="Nome" style="max-width:240px"><select id="ntTela" class="qin" style="max-width:180px"><option value="empresa">🏢 Empresa</option><option value="funcionario">👤 Funcionário</option></select><button class="btn" onclick="addContatoTela()">+ Adicionar</button></div></div>`:''}
+      <div class="grid two">
+        <div class="card"><div class="cardhead"><h3>🏢 Empresas</h3><span class="tag">${contatosAtivos().filter(c=>c.tipo==='empresa').length}</span></div><div style="margin-top:6px">${emp||'<p class="mut" style="font-size:13px">Nenhuma.</p>'}</div></div>
+        <div class="card"><div class="cardhead"><h3>👤 Funcionários</h3><span class="tag">${contatosAtivos().filter(c=>c.tipo==='funcionario').length}</span></div><div style="margin-top:6px">${fun||'<p class="mut" style="font-size:13px">Nenhum.</p>'}</div></div>
+      </div>
+      ${arq?`<div class="card" style="margin-top:16px;border-color:rgba(138,160,150,.3)"><div class="cardhead"><h3>🗄️ Arquivados</h3></div><div style="margin-top:8px">${arq}</div></div>`:''}`;
+  }
+  async function addContatoTela(){
+    const nome=document.getElementById('nctTela').value.trim();const tipo=document.getElementById('ntTela').value;
+    if(!nome){toast('Digite o nome','erro');return;}
+    const {data,error}=await sb.from('contatos').insert({loja_id:null,nome,tipo}).select().single();
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    CONTATOS.push(data);toast('Criado!','ok');render();
+  }
+  function editarContato(id){
+    const c=CONTATOS.find(x=>x.id===id);
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
+      <h3>✏️ Editar contato</h3><span class="qlabel">Nome</span><input id="ectNome" value="${c.nome}">
+      <span class="qlabel">Tipo</span><select id="ectTipo"><option value="empresa" ${c.tipo==='empresa'?'selected':''}>🏢 Empresa</option><option value="funcionario" ${c.tipo==='funcionario'?'selected':''}>👤 Funcionário</option></select><div id="ectErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarEditarContato(${id})">Salvar</button></div></div></div>`;
+  }
+  async function salvarEditarContato(id){
+    const nome=document.getElementById('ectNome').value.trim();const tipo=document.getElementById('ectTipo').value;
+    if(!nome){document.getElementById('ectErr').innerHTML='<div class="err">Digite o nome.</div>';return;}
+    const {error}=await sb.from('contatos').update({nome,tipo}).eq('id',id);
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    const c=CONTATOS.find(x=>x.id===id);c.nome=nome;c.tipo=tipo;fecharModal();toast('Salvo!','ok');render();
+  }
+  async function arquivarContato(id){await sb.from('contatos').update({arquivado:true}).eq('id',id);CONTATOS.find(c=>c.id===id).arquivado=true;toast('Arquivado','ok');render();}
+  async function ativarContato(id){await sb.from('contatos').update({arquivado:false}).eq('id',id);CONTATOS.find(c=>c.id===id).arquivado=false;toast('Reativado','ok');render();}
+
+  function fecharModal(){document.getElementById('modalRoot').innerHTML='';}
+
+  window.addEventListener('load',async()=>{
+    if(!initSupabase())return;
+    try{const {data}=await sb.auth.getSession();if(data&&data.session){await iniciarApp(data.session.user);}}catch(e){}
+  });
   </script>
 </body>
 </html>
