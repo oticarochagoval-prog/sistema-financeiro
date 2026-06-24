@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Caixa Rocha — Financeiro</title>
+<style>
+  :root{
+    --bg:#0b0f0d;--panel:#121814;--panel-2:#18211c;--line:#23302a;
+    --txt:#eaf2ed;--muted:#8aa096;--green:#3ddc91;--red:#ff6b6b;--gold:#e8c468;--amber:#f5b740;--blue:#7da2ff;
+    --accent:#3ddc91;--accent-ink:#04130c;--chip:#1d2722;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased;min-height:100vh}
+  /* LOGIN */
+  .login-wrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 50% 30%,rgba(61,220,145,.06),transparent 60%)}
+  .login-card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:38px 32px;width:min(400px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .login-logo{width:56px;height:56px;border-radius:15px;background:linear-gradient(140deg,#3ddc91,#1f9d6b);display:grid;place-items:center;font-weight:800;color:#04130c;font-size:26px;margin:0 auto 18px}
+  .login-card h1{font-size:21px;text-align:center;margin-bottom:4px}
+  .login-card .sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:26px}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:7px}
+  .field input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:13px 15px;color:var(--txt);font-size:15px;outline:none}
+  .field input:focus{border-color:var(--green)}
+  .login-btn{width:100%;background:var(--green);color:var(--accent-ink);border:none;border-radius:11px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px}
+  .login-btn:disabled{opacity:.6;cursor:wait}
+  .login-err{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);color:#ffc9c9;border-radius:10px;padding:11px 14px;font-size:13px;margin-bottom:16px;display:none}
+  .login-foot{text-align:center;font-size:11px;color:var(--muted);margin-top:22px}
+  /* HOME pós-login (provisória, etapa 1) */
+  .home{display:none;min-height:100vh;padding:40px 24px;max-width:680px;margin:0 auto}
+  .home.show{display:block}
+  .home-top{display:flex;align-items:center;gap:14px;margin-bottom:30px}
+  .home-logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(140deg,#3ddc91,#1f9d6b);display:grid;place-items:center;font-weight:800;color:#04130c;font-size:20px}
+  .home h2{font-size:20px}
+  .home .who{font-size:13px;color:var(--muted)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:16px}
+  .card h3{font-size:15px;margin-bottom:12px}
+  .ok-row{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:14px;border-bottom:1px solid var(--line)}
+  .ok-row:last-child{border:none}
+  .ok-ic{color:var(--green);font-size:16px}
+  .btn{background:var(--green);color:var(--accent-ink);border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer}
+  .btn.ghost{background:var(--panel-2);color:var(--txt);border:1px solid var(--line)}
+  .pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 11px;border-radius:20px;background:rgba(61,220,145,.14);color:var(--green)}
+  .loja-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .loja-chip{font-size:12px;background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:5px 12px}
+  .muted{color:var(--muted);font-size:13px;line-height:1.5}
+</style>
+</head>
+<body>
+  <!-- TELA DE LOGIN -->
+  <div class="login-wrap" id="loginWrap">
+    <div class="login-card">
+      <div class="login-logo">R</div>
+      <h1>Caixa Rocha</h1>
+      <div class="sub">Sistema Financeiro · entre para continuar</div>
+      <div class="login-err" id="loginErr"></div>
+      <div class="field">
+        <label>E-mail</label>
+        <input type="email" id="email" placeholder="seu@email.com" autocomplete="username" />
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input type="password" id="senha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()" />
+      </div>
+      <button class="login-btn" id="loginBtn" onclick="fazerLogin()">Entrar</button>
+      <div class="login-foot">Grupo Rocha · acesso restrito</div>
+    </div>
+  </div>
+
+  <!-- HOME PROVISÓRIA (etapa 1: confirma que logou e conectou) -->
+  <div class="home" id="home">
+    <div class="home-top">
+      <div class="home-logo">R</div>
+      <div style="flex:1">
+        <h2>Conectado com sucesso!</h2>
+        <div class="who" id="whoami">—</div>
+      </div>
+      <button class="btn ghost" onclick="sair()">Sair</button>
+    </div>
+
+    <div class="card">
+      <h3>✅ Etapa 1 concluída — login funcionando</h3>
+      <div class="ok-row"><span class="ok-ic">✓</span> Você logou no Supabase de verdade</div>
+      <div class="ok-row"><span class="ok-ic">✓</span> Seu papel no sistema: <span class="pill" id="papel">—</span></div>
+      <div class="ok-row"><span class="ok-ic">✓</span> Conexão com o banco de dados ativa</div>
+    </div>
+
+    <div class="card">
+      <h3>🏪 Lojas no banco</h3>
+      <div class="muted">Lidas direto do Supabase agora (prova que está conectado):</div>
+      <div class="loja-list" id="lojas"><span class="muted">carregando...</span></div>
+    </div>
+
+    <div class="card">
+      <h3>Próxima etapa</h3>
+      <div class="muted">Login e conexão OK! No próximo passo a gente liga a tela de <b>Lançamentos</b> ao banco — aí você começa a lançar de verdade, salvando no Supabase. Me avisa que seguimos.</div>
+    </div>
+  </div>
+
+  <!-- Biblioteca do Supabase (carrega da CDN oficial) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script>
+    let sb = null;
+    let conectado = false;
+
+    // inicializa o cliente Supabase
+    function initSupabase(){
+      try{
+        if(typeof supabase === 'undefined'){
+          mostrarErro('A biblioteca do Supabase não carregou. Se você usa CCleaner Browser, ele pode estar bloqueando. Tente abrir pelo link do Vercel (hospedado), que costuma resolver.');
+          return false;
+        }
+        sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+        conectado = true;
+        return true;
+      }catch(e){
+        mostrarErro('Erro ao conectar: '+e.message);
+        return false;
+      }
+    }
+
+    function mostrarErro(msg){
+      const el = document.getElementById('loginErr');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    async function fazerLogin(){
+      const email = document.getElementById('email').value.trim();
+      const senha = document.getElementById('senha').value;
+      const btn = document.getElementById('loginBtn');
+      document.getElementById('loginErr').style.display = 'none';
+
+      if(!email || !senha){ mostrarErro('Preencha e-mail e senha.'); return; }
+      if(!conectado && !initSupabase()) return;
+
+      btn.disabled = true; btn.textContent = 'Entrando...';
+      try{
+        const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
+        if(error){
+          mostrarErro('E-mail ou senha incorretos.');
+          btn.disabled = false; btn.textContent = 'Entrar';
+          return;
+        }
+        await entrarNoSistema(data.user);
+      }catch(e){
+        mostrarErro('Erro ao entrar: '+e.message);
+        btn.disabled = false; btn.textContent = 'Entrar';
+      }
+    }
+
+    async function entrarNoSistema(user){
+      // busca o perfil (nome + papel)
+      let nome = user.email, papel = '—';
+      try{
+        const { data: perfil } = await sb.from('perfis').select('nome,papel').eq('id', user.id).single();
+        if(perfil){ nome = perfil.nome; papel = perfil.papel; }
+      }catch(e){ /* segue mesmo sem perfil */ }
+
+      document.getElementById('whoami').textContent = nome + ' · ' + user.email;
+      document.getElementById('papel').textContent = papel;
+      document.getElementById('loginWrap').style.display = 'none';
+      document.getElementById('home').classList.add('show');
+
+      // prova de conexão: lê as lojas do banco
+      try{
+        const { data: lojas, error } = await sb.from('lojas').select('nome').order('ordem');
+        const box = document.getElementById('lojas');
+        if(error){ box.innerHTML = '<span class="muted">Erro ao ler lojas: '+error.message+'</span>'; return; }
+        box.innerHTML = lojas.map(l => '<span class="loja-chip">'+l.nome+'</span>').join('');
+      }catch(e){
+        document.getElementById('lojas').innerHTML = '<span class="muted">Erro: '+e.message+'</span>';
+      }
+    }
+
+    async function sair(){
+      if(sb) await sb.auth.signOut();
+      document.getElementById('home').classList.remove('show');
+      document.getElementById('loginWrap').style.display = 'grid';
+      document.getElementById('senha').value = '';
+      document.getElementById('loginBtn').disabled = false;
+      document.getElementById('loginBtn').textContent = 'Entrar';
+    }
+
+    // ao carregar, verifica se já tem sessão ativa (não precisa logar de novo)
+    window.addEventListener('load', async ()=>{
+      if(!initSupabase()) return;
+      try{
+        const { data } = await sb.auth.getSession();
+        if(data && data.session){ await entrarNoSistema(data.session.user); }
+      }catch(e){ /* sem sessão, mostra login */ }
+    });
+  </script>
+</body>
+</html>
