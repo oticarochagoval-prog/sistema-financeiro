@@ -433,10 +433,10 @@
       <span class="qlabel">Categoria *</span><div style="display:flex;gap:6px"><select id="edCat" style="margin-bottom:0">${opts}</select><button class="miniadd" onclick="abrirNovaCatEdit()" title="Nova categoria" style="margin-bottom:14px">+</button></div>
       <span class="qlabel">Contato *</span><div style="display:flex;gap:6px"><select id="edContato" style="margin-bottom:0"><option value="">Selecione...</option>${contatoOpts}</select><button class="miniadd" onclick="abrirNovoContatoEdit()" title="Novo contato" style="margin-bottom:14px">+</button></div>
       <div id="edErr"></div>
-      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarEditarLanc(${id})">Salvar</button></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" style="background:var(--blue);color:#001" onclick="salvarEditarLanc(${id},true)">Salvar e próximo →</button><button class="btn" onclick="salvarEditarLanc(${id})">Salvar</button></div>
     </div></div>`;
   }
-  async function salvarEditarLanc(id){
+  async function salvarEditarLanc(id,proximo){
     const l=LANC.find(x=>x.id===id);
     const cat=document.getElementById('edCat').value;const contato=document.getElementById('edContato').value;
     if(!cat||!contato){document.getElementById('edErr').innerHTML='<div class="err">Categoria e contato são obrigatórios.</div>';return;}
@@ -450,7 +450,23 @@
       parcela:(pa&&pb)?`${pa}/${pb}`:null,documento:document.getElementById('edDoc').value||null
     }).eq('id',id);
     if(error){toast('Erro: '+error.message,'erro');return;}
-    fecharModal();toast('Salvo!','ok');await viewLanc();
+    // atualiza o lançamento na memória pra não precisar recarregar tudo
+    Object.assign(l,{data:iso,descricao:document.getElementById('edDesc').value.toUpperCase(),valor:(l.valor<0?-1:1)*(cents/100),categoria_id:cat,contato_id:contato});
+    const catObj=CATS.find(c=>c.id==cat);if(catObj)l.categorias={nome:catObj.nome,grupo:catObj.grupo};
+    const contObj=CONTATOS.find(c=>c.id==contato);if(contObj)l.contatos={nome:contObj.nome,tipo:contObj.tipo};
+    if(proximo){
+      // acha o próximo lançamento na ordem atual da tela (mesma ordem da lista)
+      const idx=LANC.findIndex(x=>x.id===id);
+      const prox=LANC[idx+1];
+      if(prox){toast('Salvo! Próximo →','ok');abrirEditarLanc(prox.id);
+        // atualiza a tabela atrás do modal
+        filtrarLanc(q);
+        return;}
+      else {toast('Salvo! Era o último.','ok');fecharModal();await viewLanc();return;}
+    }
+    fecharModal();toast('Salvo!','ok');
+    // atualiza só a tabela (mais rápido que recarregar tudo)
+    filtrarLanc(q);
   }
 
   function abrirNovaCat(){
