@@ -813,6 +813,8 @@
     const btn=document.getElementById('btnConfImport');if(btn){btn.disabled=true;btn.textContent='Lançando...';}
     const catCartao=catsAtivas().find(c=>c.nome==='Cartão');
     const catTransf=catsAtivas().find(c=>c.grupo==='neutra');
+    // extrato é sempre do Sicoob — pega a conta Sicoob da loja
+    const contaSicoob=CONTAS.find(c=>/sicoob/i.test(c.nome))||CONTAS[0];
     const registros=[];
     let semContato=0;
     IMPORT.forEach(r=>{
@@ -821,7 +823,7 @@
       if(r.amt>0){catId=catCartao?catCartao.id:r.catId;tipoDb='receita';}
       else {catId=r.catId||null;tipoDb='despesa';}
       registros.push({
-        loja_id:lojaAtual,data:r.iso,descricao:(r.desc||'').toUpperCase().slice(0,200),
+        loja_id:lojaAtual,conta_id:contaSicoob?contaSicoob.id:null,data:r.iso,descricao:(r.desc||'').toUpperCase().slice(0,200),
         valor:r.amt,tipo:tipoDb,categoria_id:catId||null,contato_id:contatoId,
         pago:true,origem:'ofx',fitid:r.fitid||null,criado_por:USER.id
       });
