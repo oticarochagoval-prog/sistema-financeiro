@@ -430,8 +430,8 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><span class="qlabel">Valor</span><input id="edVal" class="calc" data-cents="${Math.round(Math.abs(l.valor)*100)}" value="${Math.abs(l.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}" inputmode="numeric" onkeydown="calcInput(this,event)"></div>
       <div><span class="qlabel">Conta</span><select id="edConta">${contaOpts}</select></div></div>
       <span class="qlabel">Nº documento</span><input id="edDoc" value="${l.documento||''}">
-      <span class="qlabel">Categoria *</span><select id="edCat">${opts}</select>
-      <span class="qlabel">Contato *</span><select id="edContato"><option value="">Selecione...</option>${contatoOpts}</select>
+      <span class="qlabel">Categoria *</span><div style="display:flex;gap:6px"><select id="edCat" style="margin-bottom:0">${opts}</select><button class="miniadd" onclick="abrirNovaCatEdit()" title="Nova categoria" style="margin-bottom:14px">+</button></div>
+      <span class="qlabel">Contato *</span><div style="display:flex;gap:6px"><select id="edContato" style="margin-bottom:0"><option value="">Selecione...</option>${contatoOpts}</select><button class="miniadd" onclick="abrirNovoContatoEdit()" title="Novo contato" style="margin-bottom:14px">+</button></div>
       <div id="edErr"></div>
       <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarEditarLanc(${id})">Salvar</button></div>
     </div></div>`;
@@ -485,6 +485,31 @@
     if(error){document.getElementById('nctErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
     CONTATOS.push(data);fecharModal();toast('Contato criado!','ok');render();
     setTimeout(()=>{const s=document.getElementById('qContato');if(s)s.value=data.id;},60);
+  }
+
+  // cadastro rápido DENTRO do editar lançamento (sem fechar a janela)
+  async function abrirNovaCatEdit(){
+    const nome=prompt('Nome da nova categoria:');
+    if(!nome||!nome.trim())return;
+    const grupo=prompt('Grupo no DRE? Digite: rec (Receita), cmv (CMV), imp (Imposto), fixo (Custo Fixo), nop (Não Op.) ou deixe vazio para "A definir"','adef')||'adef';
+    const g=['rec','cmv','imp','fixo','nop'].includes(grupo)?grupo:'adef';
+    const {data,error}=await sb.from('categorias').insert({loja_id:null,nome:nome.trim(),grupo:g}).select().single();
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    CATS.push(data);
+    // atualiza o select do editar mantendo a janela aberta
+    const sel=document.getElementById('edCat');if(sel){sel.innerHTML=catsOptions(data.id);}
+    toast('Categoria criada e selecionada!','ok');
+  }
+  async function abrirNovoContatoEdit(){
+    const nome=prompt('Nome do novo contato:');
+    if(!nome||!nome.trim())return;
+    const tipoR=prompt('É empresa ou funcionário? Digite: e (empresa) ou f (funcionário)','e')||'e';
+    const tipo=tipoR.toLowerCase().startsWith('f')?'funcionario':'empresa';
+    const {data,error}=await sb.from('contatos').insert({loja_id:null,nome:nome.trim(),tipo}).select().single();
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    CONTATOS.push(data);
+    const sel=document.getElementById('edContato');if(sel){sel.innerHTML='<option value="">Selecione...</option>'+contatosOptions(data.id);}
+    toast('Contato criado e selecionado!','ok');
   }
 
   function viewCategorias(){
@@ -854,42 +879,65 @@
     const receitas=Object.entries(receitasCat).map(([nome,valor])=>({nome,valor})).sort((a,b)=>b.valor-a.valor);
     const despesas=Object.entries(despesasCat).map(([nome,valor])=>({nome,valor})).sort((a,b)=>b.valor-a.valor);
     const resultMes=entradaMes-saidaMes;
+    // DRE do mês (por grupo)
+    const gr={rec:0,cmv:0,imp:0,fixo:0,nop:0};
+    LANC_ANO.forEach(l=>{
+      const m=parseInt(l.data.split('-')[1],10)-1;if(m!==mesSel)return;
+      const g=l.categorias&&l.categorias.grupo;if(!g||g==='neutra'||g==='adef')return;
+      if(gr[g]!==undefined)gr[g]+=Math.abs(Number(l.valor));
+    });
+    const margem=gr.rec-gr.cmv;const resultOp=margem-gr.imp-gr.fixo;const resultFinal=resultOp-gr.nop;
     // contas a pagar (em aberto) por categoria
     const {data:apagar}=await sb.from('lancamentos').select('valor, categorias(nome)').eq('loja_id',lojaAtual).eq('pago',false);
     const apagarCat={};let totalApagar=0;
     (apagar||[]).forEach(l=>{const n=(l.categorias&&l.categorias.nome)||'Sem categoria';const v=Math.abs(Number(l.valor));apagarCat[n]=(apagarCat[n]||0)+v;totalApagar+=v;});
     const apagarLista=Object.entries(apagarCat).map(([nome,valor])=>({nome,valor})).sort((a,b)=>b.valor-a.valor);
+    const mesNome=MESES_NOME[mesSel];
 
     const seletor=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 14px">
         <button class="burger" style="width:32px;height:32px" onclick="navMes(-1)">‹</button>
-        <span style="font-weight:700;font-size:14px;min-width:130px;text-align:center">${MESES_NOME[mesSel]} ${ANO_FIXO}</span>
+        <span style="font-weight:700;font-size:14px;min-width:130px;text-align:center">${mesNome} ${ANO_FIXO}</span>
         <button class="burger" style="width:32px;height:32px" onclick="navMes(1)">›</button>
       </div>
       <span class="mut" style="font-size:13px">${lojaNome}</span></div>`;
     const card=(label,valor,cor,sub)=>`<div class="card"><div class="mut" style="font-size:12px;font-weight:600">${label}</div><div style="font-size:22px;font-weight:800;color:${cor};margin-top:6px;font-variant-numeric:tabular-nums">${BRL(valor)}</div>${sub?`<div class="mut" style="font-size:11px;margin-top:3px">${sub}</div>`:''}</div>`;
+    // quadro DRE resumido
+    const linhaDRE=(nome,valor,op,forte)=>`<div class="cfgrow" style="${forte?'border-top:1px solid var(--line)':''}">${op?`<span class="mut" style="width:16px;display:inline-block">${op}</span>`:'<span style="width:16px;display:inline-block"></span>'}${nome}<b style="margin-left:auto;${valor<0?'color:var(--red)':''};${forte?'font-size:14px':''}">${BRL(valor)}</b></div>`;
+    const dreCard=`<div class="card"><div class="cardhead"><h3 style="font-size:14px">📊 DRE — ${mesNome}</h3></div>
+      <div style="margin-top:6px">
+        ${linhaDRE('Receita',gr.rec,'')}
+        ${linhaDRE('Custo Mercadoria (CMV)',-gr.cmv,'−')}
+        ${linhaDRE('Margem de Contribuição',margem,'=',true)}
+        ${linhaDRE('Imposto',-gr.imp,'−')}
+        ${linhaDRE('Custo Fixo',-gr.fixo,'−')}
+        ${linhaDRE('Resultado Operacional',resultOp,'=',true)}
+        ${linhaDRE('Não Operacional',-gr.nop,'−')}
+        ${linhaDRE('Resultado Final',resultFinal,'=',true)}
+      </div>
+      <div class="mut" style="font-size:11px;text-align:center;margin-top:8px">referente a ${mesNome} ${ANO_FIXO}</div></div>`;
+    // quadro Fechamento resumido
+    const fechCard=`<div class="card"><div class="cardhead"><h3 style="font-size:14px">🔐 Fechamento — ${mesNome}</h3></div>
+      <div style="margin-top:6px">
+        <div class="cfgrow">Entradas (recebido)<b style="margin-left:auto;color:var(--green)">${BRL(entradaMes)}</b></div>
+        <div class="cfgrow">Saídas (pago)<b style="margin-left:auto;color:var(--red)">-${BRL(saidaMes)}</b></div>
+        <div class="cfgrow" style="border-top:2px solid var(--line)"><b>Resultado do mês</b><b style="margin-left:auto;color:${resultMes>=0?'var(--green)':'var(--red)'};font-size:16px">${BRL(resultMes)}</b></div>
+      </div>
+      <div class="mut" style="font-size:11px;text-align:center;margin-top:8px">referente a ${mesNome} ${ANO_FIXO}</div></div>`;
 
     document.getElementById('content').innerHTML=`${seletor}
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:16px">
-        ${card('Entradas do mês',entradaMes,'var(--green)','recebido em '+MESES_NOME[mesSel])}
-        ${card('Saídas do mês',saidaMes,'var(--red)','pago em '+MESES_NOME[mesSel])}
+        ${card('Saídas do mês',saidaMes,'var(--red)','pago em '+mesNome)}
+        ${card('Entradas do mês',entradaMes,'var(--green)','recebido em '+mesNome)}
         ${card('Resultado do mês',resultMes,resultMes>=0?'var(--green)':'var(--red)','entradas − saídas')}
         ${card('A pagar (aberto)',totalApagar,'var(--amber)','boletos não pagos')}
       </div>
       <div class="grid two">
-        ${graficoCard('💰 Receitas / Entradas',receitas,entradaMes,'var(--green)')}
-        ${graficoCard('💸 Despesas pagas',despesas,saidaMes,'var(--red)')}
-        ${graficoCard('🧾 Contas a pagar (aberto)',apagarLista,totalApagar,'var(--amber)')}
-        <div class="card"><div class="cardhead"><h3 style="font-size:14px">Atalhos & análises</h3></div>
-          <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px">
-            <button class="btn" onclick="go('import')">⤓ Importar extrato</button>
-            <button class="btn ghost" onclick="go('lanc')">≣ Lançamentos</button>
-            <button class="btn ghost" onclick="go('apagar')">🧾 A pagar</button>
-            <button class="btn ghost" onclick="go('dre')">📊 DRE</button>
-            <button class="btn ghost" onclick="go('fechamento')">🔐 Fechamento</button>
-          </div>
-          <div class="mut" style="font-size:12px;margin-top:14px;line-height:1.6">Use as setas ‹ › lá em cima pra ver outros meses. Os gráficos mostram só o mês selecionado. Para o resultado oficial (lucro), veja o DRE.</div>
-        </div>
+        ${graficoCard('💸 Despesas pagas',despesas,saidaMes,'var(--red)',mesNome)}
+        ${graficoCard('💰 Receitas / Entradas',receitas,entradaMes,'var(--green)',mesNome)}
+        ${graficoCard('🧾 Contas a pagar (aberto)',apagarLista,totalApagar,'var(--amber)','')}
+        ${dreCard}
+        ${fechCard}
       </div>`;
   }
 
@@ -927,13 +975,14 @@
         <b style="font-variant-numeric:tabular-nums">${BRL(it.valor)}</b></div>`;
     }).join('');
   }
-  function graficoCard(titulo,itens,total,corTotal){
+  function graficoCard(titulo,itens,total,corTotal,refMes){
     return `<div class="card"><div class="cardhead"><h3 style="font-size:14px">${titulo}</h3></div>
       <div style="display:flex;flex-direction:column;align-items:center;margin-top:6px">
         ${donut(itens,total)}
         <div style="width:100%;margin-top:10px">${legenda(itens,total)||'<div class="mut" style="font-size:13px;padding:16px 0;text-align:center">Sem dados neste mês</div>'}</div>
       </div>
-      <div style="display:flex;justify-content:space-between;border-top:2px solid var(--line);margin-top:10px;padding-top:10px"><b>Total</b><b style="color:${corTotal};font-size:15px">${BRL(total)}</b></div></div>`;
+      <div style="display:flex;justify-content:space-between;border-top:2px solid var(--line);margin-top:10px;padding-top:10px"><b>Total</b><b style="color:${corTotal};font-size:15px">${BRL(total)}</b></div>
+      ${refMes?`<div class="mut" style="font-size:11px;text-align:center;margin-top:6px">referente a ${refMes} ${ANO_FIXO}</div>`:''}</div>`;
   }
 
   window.addEventListener('load',async()=>{
