@@ -431,10 +431,13 @@
     const brd=isoParaBR(l.data);
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
       <h3>✏️ Editar lançamento</h3>
+      ${l.valor>0
+        ?'<div style="background:rgba(61,220,145,.15);border:1px solid rgba(61,220,145,.4);color:var(--green);border-radius:9px;padding:8px 12px;font-weight:700;font-size:13px;margin-bottom:14px;text-align:center">🟢 ENTRADA — recebimento de dinheiro</div>'
+        :'<div style="background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.4);color:var(--red);border-radius:9px;padding:8px 12px;font-weight:700;font-size:13px;margin-bottom:14px;text-align:center">🔴 SAÍDA — pagamento</div>'}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><span class="qlabel">Data</span><input id="edData" value="${brd}" data-dm="${brd.slice(0,2)+brd.slice(3,5)}" onkeydown="maskData(this,event)" onfocus="this.select()"></div>
       <div><span class="qlabel">Parcela</span><div style="display:flex;align-items:center;gap:4px"><input id="edParcA" value="${pa}" placeholder="3" inputmode="numeric" maxlength="2" style="text-align:center"><span style="color:var(--muted)">/</span><input id="edParcB" value="${pb}" placeholder="4" inputmode="numeric" maxlength="2" style="text-align:center"></div></div></div>
       <span class="qlabel">Descrição</span><input id="edDesc" class="maiusc" value="${l.descricao}">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><span class="qlabel">Valor</span><input id="edVal" class="calc" data-cents="${Math.round(Math.abs(l.valor)*100)}" value="${Math.abs(l.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}" inputmode="numeric" onkeydown="calcInput(this,event)"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><span class="qlabel">Valor ${l.valor>0?'<span style="color:var(--green)">(entrada +)</span>':'<span style="color:var(--red)">(saída −)</span>'}</span><input id="edVal" class="calc" data-cents="${Math.round(Math.abs(l.valor)*100)}" value="${Math.abs(l.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}" inputmode="numeric" onkeydown="calcInput(this,event)" style="color:${l.valor>0?'var(--green)':'var(--red)'};font-weight:700;border-color:${l.valor>0?'rgba(61,220,145,.4)':'rgba(255,107,107,.4)'}"></div>
       <div><span class="qlabel">Conta</span><select id="edConta">${contaOpts}</select></div></div>
       <span class="qlabel">Nº documento</span><input id="edDoc" class="maiusc" value="${l.documento||''}">
       <span class="qlabel">Categoria *</span><div style="display:flex;gap:6px"><select id="edCat" style="margin-bottom:0">${opts}</select><button class="miniadd" onclick="abrirNovaCatEdit()" title="Nova categoria" style="margin-bottom:14px">+</button></div>
