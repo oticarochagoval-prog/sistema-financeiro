@@ -221,7 +221,7 @@
   }
   let LANC_ANO=[];
   async function carregarLancAno(){
-    const {data}=await sb.from('lancamentos').select('data,valor,categorias(grupo)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').limit(5000);
+    const {data}=await sb.from('lancamentos').select('data,valor,categorias(nome,grupo)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').limit(5000);
     LANC_ANO=data||[];
   }
   async function trocarLoja(){
@@ -876,18 +876,21 @@
         ${card('Resultado do mês',resultMes,resultMes>=0?'var(--green)':'var(--red)','entradas − saídas')}
         ${card('A pagar (aberto)',totalApagar,'var(--amber)','boletos não pagos')}
       </div>
-      ${graficoCard('💰 Receitas / Entradas — '+MESES_NOME[mesSel],receitas,entradaMes,'var(--green)')}
-      <div style="height:16px"></div>
-      ${graficoCard('💸 Despesas pagas por categoria — '+MESES_NOME[mesSel],despesas,saidaMes,'var(--red)')}
-      <div style="height:16px"></div>
-      ${graficoCard('🧾 Contas a pagar (em aberto)',apagarLista,totalApagar,'var(--amber)')}
-      <div class="card" style="margin-top:16px"><div class="cardhead"><h3>Atalhos</h3></div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
-          <button class="btn" onclick="go('import')">⤓ Importar extrato</button>
-          <button class="btn ghost" onclick="go('lanc')">≣ Lançamentos</button>
-          <button class="btn ghost" onclick="go('dre')">📊 DRE</button>
-          <button class="btn ghost" onclick="go('apagar')">🧾 A pagar</button>
-        </div></div>`;
+      <div class="grid two">
+        ${graficoCard('💰 Receitas / Entradas',receitas,entradaMes,'var(--green)')}
+        ${graficoCard('💸 Despesas pagas',despesas,saidaMes,'var(--red)')}
+        ${graficoCard('🧾 Contas a pagar (aberto)',apagarLista,totalApagar,'var(--amber)')}
+        <div class="card"><div class="cardhead"><h3 style="font-size:14px">Atalhos & análises</h3></div>
+          <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px">
+            <button class="btn" onclick="go('import')">⤓ Importar extrato</button>
+            <button class="btn ghost" onclick="go('lanc')">≣ Lançamentos</button>
+            <button class="btn ghost" onclick="go('apagar')">🧾 A pagar</button>
+            <button class="btn ghost" onclick="go('dre')">📊 DRE</button>
+            <button class="btn ghost" onclick="go('fechamento')">🔐 Fechamento</button>
+          </div>
+          <div class="mut" style="font-size:12px;margin-top:14px;line-height:1.6">Use as setas ‹ › lá em cima pra ver outros meses. Os gráficos mostram só o mês selecionado. Para o resultado oficial (lucro), veja o DRE.</div>
+        </div>
+      </div>`;
   }
 
   function fecharModal(){document.getElementById('modalRoot').innerHTML='';}
@@ -925,12 +928,12 @@
     }).join('');
   }
   function graficoCard(titulo,itens,total,corTotal){
-    return `<div class="card"><div class="cardhead"><h3>${titulo}</h3></div>
-      <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:8px">
+    return `<div class="card"><div class="cardhead"><h3 style="font-size:14px">${titulo}</h3></div>
+      <div style="display:flex;flex-direction:column;align-items:center;margin-top:6px">
         ${donut(itens,total)}
-        <div style="flex:1;min-width:230px">${legenda(itens,total)||'<div class="mut" style="font-size:13px;padding:20px 0">Sem dados neste mês</div>'}</div>
+        <div style="width:100%;margin-top:10px">${legenda(itens,total)||'<div class="mut" style="font-size:13px;padding:16px 0;text-align:center">Sem dados neste mês</div>'}</div>
       </div>
-      <div style="display:flex;justify-content:space-between;border-top:2px solid var(--line);margin-top:10px;padding-top:10px"><b>Total</b><b style="color:${corTotal};font-size:16px">${BRL(total)}</b></div></div>`;
+      <div style="display:flex;justify-content:space-between;border-top:2px solid var(--line);margin-top:10px;padding-top:10px"><b>Total</b><b style="color:${corTotal};font-size:15px">${BRL(total)}</b></div></div>`;
   }
 
   window.addEventListener('load',async()=>{
