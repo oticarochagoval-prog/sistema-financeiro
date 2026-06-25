@@ -235,13 +235,13 @@
   const MENU=[
     ['__d','Dia a dia'],
     ['visao','Dashboard','◫',true],['lanc','Lançamentos','≣',true],['import','Importar extrato','⤓',true],
-    ['apagar','A pagar','🧾',true],['caixa','Fechamento de caixa','🧮',false],
+    ['apagar','A pagar','🧾',true],['caixa','Fechamento de caixa','🧮',true],
     ['__a','Análise'],
     ['dre','DRE','📊',true],['fechamento','Fechamento do mês','🔐',true],
-    ['comparativo','Comparativo','📈',false],['relcontato','Por contato','👥',false],
+    ['comparativo','Comparativo','📈',true],['relcontato','Por contato','👥',true],
     ['__g','Gestão'],
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
-    ['recorrentes','Recorrentes','🔁',false],['lixeira','Lixeira','🗑',false],['config','Configurações','⚙',false],
+    ['recorrentes','Recorrentes','🔁',true],['lixeira','Lixeira','🗑',true],['config','Configurações','⚙',true],
   ];
   const TITLES={visao:'Dashboard',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',dre:'DRE — Resultado',fechamento:'Fechamento do mês',comparativo:'Comparativo',relcontato:'Relatório por contato',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações'};
   function renderNav(){
@@ -281,7 +281,7 @@
   function isoParaBR(iso){if(!iso)return '';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;}
 
   function render(){
-    const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,import:viewImport,apagar:viewApagar};
+    const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,caixa:viewCaixa,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig};
     const fn=V[page];if(fn){fn();}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -967,6 +967,153 @@
         ${fechCard}
       </div>`;
   }
+
+  // ---- POR CONTATO (relatório) ----
+  async function viewRelContato(){
+    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
+    await carregarLancAno();
+    // soma por contato no ano (ou mês selecionado)
+    const porContato={};
+    LANC_ANO.forEach(l=>{
+      const m=parseInt(l.data.split('-')[1],10)-1;if(m!==mesSel)return;
+      const nome=(l.contatos&&l.contatos.nome)||'(sem contato)';
+      const tipo=(l.contatos&&l.contatos.tipo)||'';
+      const v=Number(l.valor);
+      if(!porContato[nome])porContato[nome]={nome,tipo,entrada:0,saida:0};
+      if(v>0)porContato[nome].entrada+=v;else porContato[nome].saida+=Math.abs(v);
+    });
+    const lista=Object.values(porContato).sort((a,b)=>(b.saida+b.entrada)-(a.saida+a.entrada));
+    const seletor=`<div style="display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 14px;width:fit-content;margin-bottom:16px">
+      <button class="burger" style="width:32px;height:32px" onclick="navMes(-1)">‹</button>
+      <span style="font-weight:700;font-size:14px;min-width:130px;text-align:center">${MESES_NOME[mesSel]} ${ANO_FIXO}</span>
+      <button class="burger" style="width:32px;height:32px" onclick="navMes(1)">›</button></div>`;
+    if(lista.length===0){document.getElementById('content').innerHTML=seletor+'<div class="card empty"><div class="big">👥</div>Nenhum lançamento neste mês</div>';return;}
+    const rows=lista.map(c=>`<tr><td>${c.tipo?`<span class="contchip ${c.tipo==='funcionario'?'func':'emp'}">${c.tipo==='funcionario'?'👤':'🏢'} ${c.nome}</span>`:c.nome}</td><td class="amt green">${c.entrada>0?'+'+BRL(c.entrada):'—'}</td><td class="amt red">${c.saida>0?'-'+BRL(c.saida):'—'}</td><td class="amt"><b>${BRL(c.entrada-c.saida)}</b></td></tr>`).join('');
+    document.getElementById('content').innerHTML=seletor+`<div class="note">👥 Quanto entrou e saiu por contato em ${MESES_NOME[mesSel]}. Útil pra ver quanto cada funcionário ganhou ou quanto pagou a cada fornecedor.</div>
+      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Contato</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Saldo</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+
+  // ---- COMPARATIVO mês a mês ----
+  async function viewComparativo(){
+    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Calculando...</div>';
+    await carregarLancAno();
+    const meses=Array.from({length:12},()=>({entrada:0,saida:0}));
+    LANC_ANO.forEach(l=>{
+      const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;
+      const m=parseInt(l.data.split('-')[1],10)-1;const v=Number(l.valor);
+      if(v>0)meses[m].entrada+=v;else meses[m].saida+=Math.abs(v);
+    });
+    const comDados=[];meses.forEach((m,i)=>{if(m.entrada||m.saida)comDados.push(i);});
+    if(comDados.length===0){document.getElementById('content').innerHTML='<div class="note">📈 <b>Comparativo</b> — entradas, saídas e resultado de cada mês, lado a lado.</div><div class="card empty"><div class="big">📈</div>Sem dados ainda. Conforme você lança, os meses aparecem aqui.</div>';return;}
+    const maxVal=Math.max(...comDados.map(i=>Math.max(meses[i].entrada,meses[i].saida)));
+    const rows=comDados.map(i=>{
+      const m=meses[i];const res=m.entrada-m.saida;
+      const barE=maxVal>0?(m.entrada/maxVal*100):0;const barS=maxVal>0?(m.saida/maxVal*100):0;
+      return `<tr><td><b>${MESES_NOME[i]}</b></td>
+        <td style="width:200px"><div style="background:rgba(61,220,145,.15);border-radius:4px;height:18px;width:${barE}%;min-width:2px"></div></td>
+        <td class="amt green">${BRL(m.entrada)}</td>
+        <td style="width:200px"><div style="background:rgba(255,107,107,.15);border-radius:4px;height:18px;width:${barS}%;min-width:2px"></div></td>
+        <td class="amt red">-${BRL(m.saida)}</td>
+        <td class="amt"><b style="color:${res>=0?'var(--green)':'var(--red)'}">${BRL(res)}</b></td></tr>`;
+    }).join('');
+    document.getElementById('content').innerHTML=`<div class="note">📈 <b>Comparativo ${ANO_FIXO}</b> — entradas (verde) e saídas (vermelho) de cada mês, com o resultado.</div>
+      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Mês</th><th>Entradas</th><th style="text-align:right">Total</th><th>Saídas</th><th style="text-align:right">Total</th><th style="text-align:right">Resultado</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+
+  // ---- FECHAMENTO DE CAIXA (diário) ----
+  async function viewCaixa(){
+    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
+    await carregarLancamentos();
+    // agrupa por dia
+    const dias={};
+    LANC.forEach(l=>{
+      const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;
+      if(!dias[l.data])dias[l.data]={data:l.data,entrada:0,saida:0,qtd:0};
+      const v=Number(l.valor);if(v>0)dias[l.data].entrada+=v;else dias[l.data].saida+=Math.abs(v);
+      dias[l.data].qtd++;
+    });
+    const lista=Object.values(dias).sort((a,b)=>a.data.localeCompare(b.data));
+    if(lista.length===0){document.getElementById('content').innerHTML='<div class="note">🧮 <b>Fechamento de caixa</b> — resumo de cada dia: o que entrou, o que saiu e o resultado do dia.</div><div class="card empty"><div class="big">🧮</div>Nenhum lançamento ainda</div>';return;}
+    const rows=lista.map(d=>{const res=d.entrada-d.saida;return `<tr style="cursor:pointer" onclick="go('lanc');setTimeout(()=>{filtroDia='${d.data}';render();},100)"><td><b>${isoParaBR(d.data)}</b></td><td class="mut">${d.qtd} lançamento(s)</td><td class="amt green">${BRL(d.entrada)}</td><td class="amt red">-${BRL(d.saida)}</td><td class="amt"><b style="color:${res>=0?'var(--green)':'var(--red)'}">${BRL(res)}</b></td></tr>`;}).join('');
+    document.getElementById('content').innerHTML=`<div class="note">🧮 <b>Fechamento de caixa</b> — cada dia com entradas, saídas e resultado. Clique num dia pra ver os lançamentos dele.</div>
+      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Dia</th><th></th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Resultado</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+
+  // ---- RECORRENTES ----
+  async function viewRecorrentes(){
+    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
+    const {data}=await sb.from('recorrentes').select('*, categorias(nome), contatos(nome)').eq('loja_id',lojaAtual).order('dia_vencimento');
+    const recs=data||[];
+    const rows=recs.map(r=>`<div class="cfgrow"><b>${r.descricao}</b> <span class="catchip" style="margin-left:8px">${r.categorias?.nome||'—'}</span><span class="mut" style="margin-left:8px">dia ${r.dia_vencimento||'—'}</span><b style="margin-left:auto;color:var(--red)">${BRL(r.valor)}</b><span class="arqbtn" onclick="excluirRecorrente(${r.id})">🗑 remover</span></div>`).join('');
+    document.getElementById('content').innerHTML=`<div class="note">🔁 <b>Lançamentos recorrentes</b> — contas que se repetem todo mês (aluguel, folha, internet). Cadastre aqui pra não esquecer; depois você lança/confirma cada mês.</div>
+      ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>Novo recorrente</h3></div>
+        <div style="display:grid;grid-template-columns:1fr 130px 90px auto;gap:8px;margin-top:10px;align-items:end">
+          <div><span class="qlabel">Descrição</span><input id="recDesc" class="qin maiusc" placeholder="Ex: ALUGUEL LOJA"></div>
+          <div><span class="qlabel">Valor</span><input id="recVal" class="qin calc" data-cents="0" placeholder="0,00" inputmode="numeric" onkeydown="calcInput(this,event)"></div>
+          <div><span class="qlabel">Dia</span><input id="recDia" class="qin" placeholder="10" inputmode="numeric" maxlength="2" style="text-align:center"></div>
+          <button class="btn" onclick="addRecorrente()">+ Add</button>
+        </div>
+        <div style="margin-top:8px"><span class="qlabel">Categoria</span><select id="recCat" class="qin" style="max-width:260px">${catsOptions()}</select></div></div>`:''}
+      <div class="card">${rows||'<p class="mut" style="font-size:13px">Nenhum recorrente cadastrado.</p>'}</div>`;
+  }
+  async function addRecorrente(){
+    const desc=document.getElementById('recDesc').value.trim().toUpperCase();
+    const cents=parseInt(document.getElementById('recVal').dataset.cents||'0',10);
+    const dia=parseInt(document.getElementById('recDia').value,10)||null;
+    const catId=document.getElementById('recCat').value||null;
+    if(!desc||!cents){toast('Preencha descrição e valor','erro');return;}
+    const {error}=await sb.from('recorrentes').insert({loja_id:lojaAtual,descricao:desc,valor:-(cents/100),categoria_id:catId,dia_vencimento:dia});
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    toast('Recorrente cadastrado!','ok');viewRecorrentes();
+  }
+  async function excluirRecorrente(id){if(!confirm('Remover este recorrente?'))return;await sb.from('recorrentes').delete().eq('id',id);toast('Removido','ok');viewRecorrentes();}
+
+  // ---- LIXEIRA ----
+  async function viewLixeira(){
+    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
+    const {data}=await sb.from('lixeira').select('*').eq('loja_id',lojaAtual).order('excluido_em',{ascending:false}).limit(200);
+    const itens=data||[];
+    if(itens.length===0){document.getElementById('content').innerHTML='<div class="note">🗑 <b>Lixeira</b> — lançamentos excluídos ficam aqui. Nada some de vez; você pode restaurar.</div><div class="card empty"><div class="big">🗑</div>Lixeira vazia</div>';return;}
+    const rows=itens.map(it=>{const l=it.dados||{};return `<tr><td class="mut">${l.data?isoParaBR(l.data):'—'}</td><td>${l.descricao||'—'}</td><td class="amt ${l.valor>0?'green':'red'}">${l.valor>0?'+':'-'}${BRL(Math.abs(l.valor||0))}</td><td><button class="btn ghost" style="padding:6px 12px" onclick="restaurarLix(${it.id})">↩ Restaurar</button></td></tr>`;}).join('');
+    document.getElementById('content').innerHTML=`<div class="note">🗑 <b>Lixeira</b> — ${itens.length} lançamento(s) excluído(s). Clique em restaurar pra trazer de volta.</div>
+      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  async function restaurarLix(lixId){
+    const {data:lix}=await sb.from('lixeira').select('*').eq('id',lixId).single();
+    if(!lix){toast('Não encontrado','erro');return;}
+    const l=lix.dados;
+    // remove campos que o banco gera sozinho
+    delete l.id;delete l.criado_em;delete l.categorias;delete l.contatos;delete l.contas;
+    const {error}=await sb.from('lancamentos').insert(l);
+    if(error){toast('Erro ao restaurar: '+error.message,'erro');return;}
+    await sb.from('lixeira').delete().eq('id',lixId);
+    toast('Restaurado!','ok');viewLixeira();
+  }
+
+  // ---- CONFIGURAÇÕES ----
+  async function viewConfig(){
+    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
+    await carregarContas();
+    const contas=CONTAS.map(c=>`<div class="cfgrow">🏦 ${c.nome}<span class="arqbtn" style="margin-left:auto" onclick="arquivarConta(${c.id})">📥 arquivar</span></div>`).join('');
+    document.getElementById('content').innerHTML=`<div class="note">⚙ <b>Configurações</b> — contas/bancos da loja e informações do sistema.</div>
+      ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>🏦 Contas / Bancos — ${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</h3></div>
+        <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap"><input id="newConta" class="qin maiusc" placeholder="Nome da conta (ex: SICOOB)" style="max-width:240px"><button class="btn" onclick="addConta()">+ Adicionar conta</button></div>
+        ${contas||'<p class="mut" style="font-size:13px">Nenhuma conta.</p>'}</div>`:''}
+      <div class="card"><div class="cardhead"><h3>🔒 Segurança</h3></div>
+        <div class="cfgrow">Senha para excluir lançamento<b style="margin-left:auto">1234</b></div>
+        <div class="cfgrow">Seu acesso<b style="margin-left:auto">${PERFIL.nome} · ${PERFIL.papel}</b></div>
+      </div>
+      <div class="card" style="margin-top:16px"><div class="cardhead"><h3>ℹ️ Sobre</h3></div>
+        <p class="mut" style="font-size:13px;line-height:1.7;margin-top:6px">Sistema Financeiro do Grupo Rocha. Os dados ficam salvos com segurança no banco (Supabase). Cada loja tem seus lançamentos; categorias e contatos são compartilhados entre as lojas.</p></div>`;
+  }
+  async function addConta(){
+    const nome=document.getElementById('newConta').value.trim().toUpperCase();
+    if(!nome){toast('Digite o nome da conta','erro');return;}
+    const {error}=await sb.from('contas').insert({loja_id:lojaAtual,nome});
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    toast('Conta adicionada!','ok');viewConfig();
+  }
+  async function arquivarConta(id){await sb.from('contas').update({arquivada:true}).eq('id',id);toast('Conta arquivada','ok');viewConfig();}
 
   function fecharModal(){document.getElementById('modalRoot').innerHTML='';}
 
