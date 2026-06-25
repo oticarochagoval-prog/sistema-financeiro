@@ -69,6 +69,8 @@
   @media(max-width:900px){.quickrow.l1,.quickrow.l2{grid-template-columns:1fr 1fr}}
   .qlabel{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:5px;display:block}
   .qin{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px 12px;color:var(--txt);font-size:13.5px;outline:none;height:42px}
+  .maiusc{text-transform:uppercase}
+  .modal input.maiusc{text-transform:uppercase}
   .qin:focus{border-color:var(--green)}
   .qin.calc{font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
   .tipo-toggle{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;overflow:hidden;height:42px}
@@ -302,7 +304,7 @@
       <div class="quickrow l1">
         <div><span class="qlabel">Tipo</span><div class="tipo-toggle"><button id="tDes" class="${tipo==='des'?'des':''}" onclick="setTipo('des')">Despesa</button><button id="tRec" class="${tipo==='rec'?'rec':''}" onclick="setTipo('rec')">Receita</button><button id="tTra" class="${tipo==='tra'?'tra':''}" onclick="setTipo('tra')">Transf.</button></div></div>
         <div><span class="qlabel">Data (dia/mês · ${ANO_FIXO})</span><input id="qData" class="qin" placeholder="dd/mm" data-dm="" onkeydown="maskData(this,event)" onfocus="this.select()"></div>
-        <div><span class="qlabel">Descrição</span><input id="qDesc" class="qin" placeholder="Ex: Fornecedor Essilor" onkeydown="if(event.key==='Enter')document.getElementById('qVal').focus()"></div>
+        <div><span class="qlabel">Descrição</span><input id="qDesc" class="qin maiusc" placeholder="Ex: Fornecedor Essilor" onkeydown="if(event.key==='Enter')document.getElementById('qVal').focus()"></div>
         <div><span class="qlabel">Valor</span><input id="qVal" class="qin calc" data-cents="0" placeholder="0,00" inputmode="numeric" onkeydown="calcInput(this,event)"></div>
       </div>
       <div class="quickrow l2">
@@ -312,7 +314,7 @@
         <div><span class="qlabel">Conta</span><select id="qConta" class="qin">${contaOpts}</select></div>
       </div>
       <div class="quickrow" style="grid-template-columns:1fr 150px;margin-top:10px">
-        <div><span class="qlabel">Nº documento / Observação (opcional)</span><input id="qDoc" class="qin" placeholder="Ex: boleto 169097165"></div>
+        <div><span class="qlabel">Nº documento / Observação (opcional)</span><input id="qDoc" class="qin maiusc" placeholder="Ex: boleto 169097165"></div>
         <button class="addbtn" id="btnLancar" onclick="salvarLanc()">+ Lançar</button>
       </div>
       <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho</span><span>👥 Categoria e contato obrigatórios</span></div>
@@ -426,17 +428,17 @@
       <h3>✏️ Editar lançamento</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><span class="qlabel">Data</span><input id="edData" value="${brd}" data-dm="${brd.slice(0,2)+brd.slice(3,5)}" onkeydown="maskData(this,event)" onfocus="this.select()"></div>
       <div><span class="qlabel">Parcela</span><div style="display:flex;align-items:center;gap:4px"><input id="edParcA" value="${pa}" placeholder="3" inputmode="numeric" maxlength="2" style="text-align:center"><span style="color:var(--muted)">/</span><input id="edParcB" value="${pb}" placeholder="4" inputmode="numeric" maxlength="2" style="text-align:center"></div></div></div>
-      <span class="qlabel">Descrição</span><input id="edDesc" value="${l.descricao}">
+      <span class="qlabel">Descrição</span><input id="edDesc" class="maiusc" value="${l.descricao}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><span class="qlabel">Valor</span><input id="edVal" class="calc" data-cents="${Math.round(Math.abs(l.valor)*100)}" value="${Math.abs(l.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}" inputmode="numeric" onkeydown="calcInput(this,event)"></div>
       <div><span class="qlabel">Conta</span><select id="edConta">${contaOpts}</select></div></div>
-      <span class="qlabel">Nº documento</span><input id="edDoc" value="${l.documento||''}">
+      <span class="qlabel">Nº documento</span><input id="edDoc" class="maiusc" value="${l.documento||''}">
       <span class="qlabel">Categoria *</span><div style="display:flex;gap:6px"><select id="edCat" style="margin-bottom:0">${opts}</select><button class="miniadd" onclick="abrirNovaCatEdit()" title="Nova categoria" style="margin-bottom:14px">+</button></div>
       <span class="qlabel">Contato *</span><div style="display:flex;gap:6px"><select id="edContato" style="margin-bottom:0"><option value="">Selecione...</option>${contatoOpts}</select><button class="miniadd" onclick="abrirNovoContatoEdit()" title="Novo contato" style="margin-bottom:14px">+</button></div>
       <div id="edErr"></div>
-      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" style="background:var(--blue);color:#001" onclick="salvarEditarLanc(${id},true)">Salvar e próximo →</button><button class="btn" onclick="salvarEditarLanc(${id})">Salvar</button></div>
+      <div class="modal-btns" style="flex-wrap:wrap"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn ghost" onclick="salvarEditarLanc(${id},false,true)" title="Salva e volta ao anterior">← Anterior</button><button class="btn" style="background:var(--blue);color:#001" onclick="salvarEditarLanc(${id},true)">Salvar e próximo →</button><button class="btn" onclick="salvarEditarLanc(${id})">Salvar</button></div>
     </div></div>`;
   }
-  async function salvarEditarLanc(id,proximo){
+  async function salvarEditarLanc(id,proximo,anterior){
     const l=LANC.find(x=>x.id===id);
     const cat=document.getElementById('edCat').value;const contato=document.getElementById('edContato').value;
     if(!cat||!contato){document.getElementById('edErr').innerHTML='<div class="err">Categoria e contato são obrigatórios.</div>';return;}
@@ -450,30 +452,28 @@
       parcela:(pa&&pb)?`${pa}/${pb}`:null,documento:document.getElementById('edDoc').value||null
     }).eq('id',id);
     if(error){toast('Erro: '+error.message,'erro');return;}
-    // atualiza o lançamento na memória pra não precisar recarregar tudo
     Object.assign(l,{data:iso,descricao:document.getElementById('edDesc').value.toUpperCase(),valor:(l.valor<0?-1:1)*(cents/100),categoria_id:cat,contato_id:contato});
     const catObj=CATS.find(c=>c.id==cat);if(catObj)l.categorias={nome:catObj.nome,grupo:catObj.grupo};
     const contObj=CONTATOS.find(c=>c.id==contato);if(contObj)l.contatos={nome:contObj.nome,tipo:contObj.tipo};
+    const idx=LANC.findIndex(x=>x.id===id);
+    if(anterior){
+      const ant=LANC[idx-1];
+      if(ant){toast('Salvo! ← Anterior','ok');filtrarLanc(q);abrirEditarLanc(ant.id);return;}
+      else {toast('Salvo! Era o primeiro.','ok');fecharModal();filtrarLanc(q);return;}
+    }
     if(proximo){
-      // acha o próximo lançamento na ordem atual da tela (mesma ordem da lista)
-      const idx=LANC.findIndex(x=>x.id===id);
       const prox=LANC[idx+1];
-      if(prox){toast('Salvo! Próximo →','ok');abrirEditarLanc(prox.id);
-        // atualiza a tabela atrás do modal
-        filtrarLanc(q);
-        return;}
+      if(prox){toast('Salvo! Próximo →','ok');filtrarLanc(q);abrirEditarLanc(prox.id);return;}
       else {toast('Salvo! Era o último.','ok');fecharModal();await viewLanc();return;}
     }
-    fecharModal();toast('Salvo!','ok');
-    // atualiza só a tabela (mais rápido que recarregar tudo)
-    filtrarLanc(q);
+    fecharModal();toast('Salvo!','ok');filtrarLanc(q);
   }
 
   function abrirNovaCat(){
     const grupos='<option value="adef">A definir (classifica depois)</option>'+Object.entries(GRUPOS).filter(([k])=>k!=='neutra'&&k!=='adef').map(([k,g])=>`<option value="${k}">${g.nome}</option>`).join('');
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
       <h3>+ Nova categoria</h3><p>Se não souber o grupo do DRE, deixe "A definir".</p>
-      <span class="qlabel">Nome</span><input id="ncNome" placeholder="Ex: Frete" autofocus>
+      <span class="qlabel">Nome</span><input id="ncNome" class="maiusc" placeholder="Ex: Frete" autofocus>
       <span class="qlabel">Grupo no DRE</span><select id="ncGrupo">${grupos}</select><div id="ncErr"></div>
       <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarNovaCat()">Cadastrar</button></div></div></div>`;
     setTimeout(()=>{const e=document.getElementById('ncNome');if(e)e.focus();},50);
@@ -489,7 +489,7 @@
   function abrirNovoContato(){
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
       <h3>+ Novo contato</h3><p>Empresa (fornecedor) ou funcionário.</p>
-      <span class="qlabel">Nome</span><input id="nctNome" placeholder="Ex: Ultra, ou Maria" autofocus>
+      <span class="qlabel">Nome</span><input id="nctNome" class="maiusc" placeholder="Ex: Ultra, ou Maria" autofocus>
       <span class="qlabel">Tipo</span><select id="nctTipo"><option value="empresa">🏢 Empresa</option><option value="funcionario">👤 Funcionário</option></select><div id="nctErr"></div>
       <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarNovoContato()">Cadastrar</button></div></div></div>`;
     setTimeout(()=>{const e=document.getElementById('nctNome');if(e)e.focus();},50);
@@ -540,7 +540,7 @@
     const arq=CATS.filter(c=>c.arquivada).map(c=>`<div class="cfgrow" style="opacity:.6">${c.nome}<span class="grp ${c.grupo}" style="margin-left:auto">${GRUPOS[c.grupo].nome}</span><span class="arqbtn ativar" onclick="ativarCat(${c.id})">↩ reativar</span></div>`).join('');
     document.getElementById('content').innerHTML=`<div class="note">🏷️ <b>Categorias</b> organizadas pelo grupo do DRE. Salva no banco de verdade.</div>${aviso}
       ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>Nova categoria</h3></div>
-        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><input id="ncTela" class="qin" placeholder="Nome" style="max-width:240px"><select id="ngTela" class="qin" style="max-width:180px"><option value="adef">A definir</option><option value="rec">Receita</option><option value="cmv">CMV</option><option value="imp">Imposto</option><option value="fixo">Custo Fixo</option><option value="nop">Não Operacional</option></select><button class="btn" onclick="addCatTela()">+ Adicionar</button></div></div>`:''}
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><input id="ncTela" class="qin maiusc" placeholder="Nome" style="max-width:240px"><select id="ngTela" class="qin" style="max-width:180px"><option value="adef">A definir</option><option value="rec">Receita</option><option value="cmv">CMV</option><option value="imp">Imposto</option><option value="fixo">Custo Fixo</option><option value="nop">Não Operacional</option></select><button class="btn" onclick="addCatTela()">+ Adicionar</button></div></div>`:''}
       <div class="card" style="margin-bottom:16px">${grupos}</div>
       ${arq?`<div class="card" style="border-color:rgba(138,160,150,.3)"><div class="cardhead"><h3>🗄️ Arquivadas</h3></div><div style="margin-top:8px">${arq}</div></div>`:''}`;
   }
@@ -575,7 +575,7 @@
     const arq=CONTATOS.filter(c=>c.arquivado).map(c=>`<div class="cfgrow" style="opacity:.6"><span class="contchip ${c.tipo==='funcionario'?'func':'emp'}">${c.tipo==='funcionario'?'👤':'🏢'} ${c.nome}</span><span class="arqbtn ativar" style="margin-left:auto" onclick="ativarContato(${c.id})">↩ reativar</span></div>`).join('');
     document.getElementById('content').innerHTML=`<div class="note">👥 <b>Contatos</b> — empresas e funcionários. Salva no banco.</div>
       ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>Novo contato</h3></div>
-        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><input id="nctTela" class="qin" placeholder="Nome" style="max-width:240px"><select id="ntTela" class="qin" style="max-width:180px"><option value="empresa">🏢 Empresa</option><option value="funcionario">👤 Funcionário</option></select><button class="btn" onclick="addContatoTela()">+ Adicionar</button></div></div>`:''}
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><input id="nctTela" class="qin maiusc" placeholder="Nome" style="max-width:240px"><select id="ntTela" class="qin" style="max-width:180px"><option value="empresa">🏢 Empresa</option><option value="funcionario">👤 Funcionário</option></select><button class="btn" onclick="addContatoTela()">+ Adicionar</button></div></div>`:''}
       <div class="grid two">
         <div class="card"><div class="cardhead"><h3>🏢 Empresas</h3><span class="tag">${contatosAtivos().filter(c=>c.tipo==='empresa').length}</span></div><div style="margin-top:6px">${emp||'<p class="mut" style="font-size:13px">Nenhuma.</p>'}</div></div>
         <div class="card"><div class="cardhead"><h3>👤 Funcionários</h3><span class="tag">${contatosAtivos().filter(c=>c.tipo==='funcionario').length}</span></div><div style="margin-top:6px">${fun||'<p class="mut" style="font-size:13px">Nenhum.</p>'}</div></div>
@@ -1002,6 +1002,15 @@
       <div style="display:flex;justify-content:space-between;border-top:2px solid var(--line);margin-top:10px;padding-top:10px"><b>Total</b><b style="color:${corTotal};font-size:15px">${BRL(total)}</b></div>
       ${refMes?`<div class="mut" style="font-size:11px;text-align:center;margin-top:6px">referente a ${refMes} ${ANO_FIXO}</div>`:''}</div>`;
   }
+
+  // maiúsculo automático em qualquer campo com classe "maiusc"
+  document.addEventListener('input',function(e){
+    const el=e.target;
+    if(el&&el.classList&&el.classList.contains('maiusc')&&el.type!=='date'){
+      const pos=el.selectionStart;const up=el.value.toUpperCase();
+      if(el.value!==up){el.value=up;try{el.setSelectionRange(pos,pos);}catch(_){}}
+    }
+  });
 
   window.addEventListener('load',async()=>{
     if(!initSupabase())return;
