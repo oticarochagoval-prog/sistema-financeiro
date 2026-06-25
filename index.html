@@ -165,6 +165,7 @@
   let LOJAS=[], CATS=[], CONTATOS=[], CONTAS=[], LANC=[];
   let lojaAtual=null;
   let page='visao', tipo='des', q='', busy=false;
+  let filtroDia=''; // '' = todos os dias; senão 'YYYY-MM-DD'
 
   const BRL=n=>(n<0?'-':'')+'R$ '+Math.abs(Number(n)).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
@@ -215,7 +216,7 @@
   }
   async function carregarContas(){const {data}=await sb.from('contas').select('*').eq('loja_id',lojaAtual).eq('arquivada',false).order('nome');CONTAS=data||[];}
   async function carregarLancamentos(){
-    const {data}=await sb.from('lancamentos').select('*, categorias(nome,grupo), contatos(nome,tipo), contas(nome)').eq('loja_id',lojaAtual).order('data',{ascending:false}).limit(500);
+    const {data}=await sb.from('lancamentos').select('*, categorias(nome,grupo), contatos(nome,tipo), contas(nome)').eq('loja_id',lojaAtual).order('data',{ascending:true}).limit(2000);
     LANC=data||[];
   }
   let LANC_ANO=[];
@@ -289,10 +290,14 @@
     const contatoOpts=contatosOptions();
     const qn=q.replace(/[^0-9,]/g,'').replace(',','.');
     const rows=LANC.filter(l=>{
+      if(filtroDia && l.data!==filtroDia)return false;
+      if(!q)return true;
       const cat=(l.categorias&&l.categorias.nome)||'';const cont=(l.contatos&&l.contatos.nome)||'';
       const txt=(l.descricao||'').toLowerCase().includes(q.toLowerCase())||cat.toLowerCase().includes(q.toLowerCase())||cont.toLowerCase().includes(q.toLowerCase());
       const val=qn&&Math.abs(l.valor).toFixed(2).includes(qn);return txt||val;
     });
+    // soma dos lançamentos visíveis (entradas e saídas)
+    let somaE=0,somaS=0;rows.forEach(l=>{if(l.valor>0)somaE+=Number(l.valor);else somaS+=Math.abs(Number(l.valor));});
     const tr=rows.map(l=>{
       const cat=l.categorias||{};const cont=l.contatos||{};const neutra=cat.grupo==='neutra';
       return `<tr class="${neutra?'neutra':''}">
@@ -323,9 +328,31 @@
       </div>
       <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho</span><span>👥 Categoria e contato obrigatórios</span></div>
     </div>`:'<div class="note">👁️ Seu acesso é somente leitura (contador). Você pode ver e exportar, mas não lançar.</div>';
+    const diaLabel=filtroDia?isoParaBR(filtroDia):'Todos os dias';
     document.getElementById('content').innerHTML=formHTML+`
-      <div class="toolbar"><div class="search">🔍<input placeholder="Pesquisar por texto, contato ou valor..." value="${q}" oninput="q=this.value;render()"></div></div>
-      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Contato</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${tr}</tbody></table>${rows.length===0?'<div class="empty"><div class="big">📭</div>Nenhum lançamento ainda. Lance o primeiro acima!</div>':''}</div>`;
+      <div class="toolbar">
+        <div class="search">🔍<input placeholder="Buscar por texto, contato ou valor..." value="${q}" oninput="q=this.value;render()"></div>
+        <div style="display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:6px 10px">
+          <button class="burger" style="width:30px;height:30px" title="Dia anterior" onclick="navDia(-1)">‹</button>
+          <span style="font-weight:700;font-size:13px;min-width:96px;text-align:center">${diaLabel}</span>
+          <button class="burger" style="width:30px;height:30px" title="Próximo dia" onclick="navDia(1)">›</button>
+          <input type="date" value="${filtroDia||''}" onchange="filtroDia=this.value;render()" style="background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:5px 8px;font-size:12px" title="Escolher dia">
+          ${filtroDia?`<button class="arqbtn" onclick="filtroDia='';render()">✕ todos</button>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12.5px;flex-wrap:wrap">
+        <span class="mut">${rows.length} lançamento(s)</span>
+        <span style="color:var(--green)">Entradas: ${BRL(somaE)}</span>
+        <span style="color:var(--red)">Saídas: ${BRL(somaS)}</span>
+        <span style="font-weight:700">Saldo: ${BRL(somaE-somaS)}</span>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Contato</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${tr}</tbody></table>${rows.length===0?'<div class="empty"><div class="big">📭</div>Nenhum lançamento'+(filtroDia?' nesse dia.':' ainda. Lance o primeiro acima!')+'</div>':''}</div>`;
+  }
+  function navDia(d){
+    // se não tem dia filtrado, começa do primeiro lançamento
+    if(!filtroDia){if(LANC.length){filtroDia=LANC[0].data;}return render();}
+    const dt=new Date(filtroDia+'T12:00:00');dt.setDate(dt.getDate()+d);
+    filtroDia=dt.toISOString().slice(0,10);render();
   }
   function setTipo(t){tipo=t;render();}
 
