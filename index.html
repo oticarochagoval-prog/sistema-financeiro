@@ -306,6 +306,7 @@
     // soma dos lançamentos visíveis (entradas e saídas)
     let somaE=0,somaS=0;rows.forEach(l=>{if(l.valor>0)somaE+=Number(l.valor);else somaS+=Math.abs(Number(l.valor));});
     const formHTML=podeEditar()?`<div class="quickbar">
+      <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:12px;display:flex;align-items:center;gap:7px">➕ NOVO LANÇAMENTO</div>
       <div class="quickrow l1">
         <div><span class="qlabel">Tipo</span><div class="tipo-toggle"><button id="tDes" class="${tipo==='des'?'des':''}" onclick="setTipo('des')">Despesa</button><button id="tRec" class="${tipo==='rec'?'rec':''}" onclick="setTipo('rec')">Receita</button><button id="tTra" class="${tipo==='tra'?'tra':''}" onclick="setTipo('tra')">Transf.</button></div></div>
         <div><span class="qlabel">Data (dia/mês · ${ANO_FIXO})</span><input id="qData" class="qin" placeholder="dd/mm" data-dm="" onkeydown="maskData(this,event)" onfocus="this.select()"></div>
@@ -326,7 +327,8 @@
     </div>`:'<div class="note">👁️ Seu acesso é somente leitura (contador). Você pode ver e exportar, mas não lançar.</div>';
     const diaLabel=filtroDia?isoParaBR(filtroDia):'Todos os dias';
     document.getElementById('content').innerHTML=formHTML+`
-      <div class="toolbar">
+      <div style="font-size:13px;font-weight:700;color:var(--txt);margin:22px 0 12px;display:flex;align-items:center;gap:7px;border-top:1px solid var(--line);padding-top:18px">🔍 LANÇAMENTOS CADASTRADOS <span class="mut" style="font-weight:400;font-size:12px">— consultar e editar</span></div>
+      <div class="toolbar" style="position:sticky;top:64px;z-index:15;background:var(--bg);padding:8px 0">
         <div class="search">🔍<input id="buscaLanc" placeholder="Buscar por texto, contato ou valor..." value="${q}" oninput="filtrarLanc(this.value)"></div>
         <div style="display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:6px 10px">
           <button class="burger" style="width:30px;height:30px" title="Dia anterior" onclick="navDia(-1)">‹</button>
@@ -1094,17 +1096,40 @@
   async function viewConfig(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
     await carregarContas();
-    const contas=CONTAS.map(c=>`<div class="cfgrow">🏦 ${c.nome}<span class="arqbtn" style="margin-left:auto" onclick="arquivarConta(${c.id})">📥 arquivar</span></div>`).join('');
-    document.getElementById('content').innerHTML=`<div class="note">⚙ <b>Configurações</b> — contas/bancos da loja e informações do sistema.</div>
-      ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>🏦 Contas / Bancos — ${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</h3></div>
-        <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap"><input id="newConta" class="qin maiusc" placeholder="Nome da conta (ex: SICOOB)" style="max-width:240px"><button class="btn" onclick="addConta()">+ Adicionar conta</button></div>
-        ${contas||'<p class="mut" style="font-size:13px">Nenhuma conta.</p>'}</div>`:''}
-      <div class="card"><div class="cardhead"><h3>🔒 Segurança</h3></div>
+    // calcula o saldo atual de cada conta (saldo inicial + entradas - saídas dos lançamentos dessa conta)
+    const {data:lancs}=await sb.from('lancamentos').select('valor,conta_id,categorias(grupo)').eq('loja_id',lojaAtual);
+    const movPorConta={};
+    (lancs||[]).forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;if(!l.conta_id)return;movPorConta[l.conta_id]=(movPorConta[l.conta_id]||0)+Number(l.valor);});
+    const contas=CONTAS.map(c=>{
+      const ini=Number(c.saldo_inicial_banco||0);
+      const atual=ini+(movPorConta[c.id]||0);
+      return `<div class="card" style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <b style="font-size:14px">🏦 ${c.nome}</b>
+        <span class="arqbtn" style="margin-left:auto" onclick="arquivarConta(${c.id})">📥 arquivar</span></div>
+        <div style="display:flex;gap:20px;margin-top:10px;flex-wrap:wrap;align-items:end">
+          <div><span class="qlabel">Saldo inicial (o que tinha ao começar)</span><input class="qin calc" data-cents="${Math.round(ini*100)}" value="${ini.toLocaleString('pt-BR',{minimumFractionDigits:2})}" inputmode="numeric" onkeydown="calcInput(this,event)" id="saldoIni${c.id}" style="max-width:180px"></div>
+          <button class="btn" onclick="salvarSaldoInicial(${c.id})">Salvar saldo</button>
+          <div style="margin-left:auto;text-align:right"><span class="qlabel">Saldo atual (calculado)</span><div style="font-size:20px;font-weight:800;color:${atual>=0?'var(--green)':'var(--red)'};font-variant-numeric:tabular-nums">${BRL(atual)}</div></div>
+        </div></div>`;
+    }).join('');
+    document.getElementById('content').innerHTML=`<div class="note">⚙ <b>Configurações</b> — contas/bancos com saldo. O <b>saldo atual</b> é calculado sozinho: saldo inicial + entradas − saídas. Assim bate com o app do banco.</div>
+      ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>➕ Nova conta</h3></div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><input id="newConta" class="qin maiusc" placeholder="Nome da conta (ex: SICOOB)" style="max-width:240px"><button class="btn" onclick="addConta()">+ Adicionar conta</button></div></div>
+      <h3 style="font-size:14px;margin:18px 0 10px">🏦 Contas de ${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</h3>
+      ${contas||'<p class="mut" style="font-size:13px">Nenhuma conta.</p>'}`:''}
+      <div class="card" style="margin-top:16px"><div class="cardhead"><h3>🔒 Segurança</h3></div>
         <div class="cfgrow">Senha para excluir lançamento<b style="margin-left:auto">1234</b></div>
         <div class="cfgrow">Seu acesso<b style="margin-left:auto">${PERFIL.nome} · ${PERFIL.papel}</b></div>
       </div>
       <div class="card" style="margin-top:16px"><div class="cardhead"><h3>ℹ️ Sobre</h3></div>
-        <p class="mut" style="font-size:13px;line-height:1.7;margin-top:6px">Sistema Financeiro do Grupo Rocha. Os dados ficam salvos com segurança no banco (Supabase). Cada loja tem seus lançamentos; categorias e contatos são compartilhados entre as lojas.</p></div>`;
+        <p class="mut" style="font-size:13px;line-height:1.7;margin-top:6px">Sistema Financeiro do Grupo Rocha. Dados salvos com segurança no banco. Cada loja tem seus lançamentos; categorias e contatos são compartilhados.</p></div>`;
+  }
+  async function salvarSaldoInicial(id){
+    const cents=parseInt(document.getElementById('saldoIni'+id).dataset.cents||'0',10);
+    const {error}=await sb.from('contas').update({saldo_inicial_banco:cents/100}).eq('id',id);
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    const c=CONTAS.find(x=>x.id===id);if(c)c.saldo_inicial_banco=cents/100;
+    toast('Saldo inicial salvo!','ok');viewConfig();
   }
   async function addConta(){
     const nome=document.getElementById('newConta').value.trim().toUpperCase();
