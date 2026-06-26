@@ -73,6 +73,9 @@
   .inlinesel{background:var(--bg);border:1px solid var(--line);border-radius:7px;color:var(--txt);padding:4px 6px;cursor:pointer}
   .inlinesel:hover{border-color:var(--green)}
   .inlinesel.falta{border-color:var(--red);background:rgba(255,107,107,.08)}
+  .inlinedesc{width:100%;min-width:130px;background:transparent;border:1px solid transparent;border-radius:7px;color:var(--txt);padding:5px 7px;font-size:13px;font-family:inherit;outline:none}
+  .inlinedesc:hover{border-color:var(--line)}
+  .inlinedesc:focus{border-color:var(--green);background:var(--bg)}
   .modal input.maiusc{text-transform:uppercase}
   .qin:focus{border-color:var(--green)}
   .qin.calc{font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
@@ -358,7 +361,7 @@
       const selConta=editavel?`<select class="qin inlinesel" style="height:32px;font-size:12px;min-width:90px" onchange="mudarCampoLanc(${l.id},'conta_id',this.value)"><option value="">conta</option>${CONTAS.filter(c=>!/caixinha/i.test(c.nome)).map(c=>`<option value="${c.id}" ${c.id===l.conta_id?'selected':''}>${c.nome}</option>`).join('')}</select>`:(l.contas?.nome||'—');
       return `<tr class="${neutra?'neutra':''}">
         <td class="mut" style="white-space:nowrap">${isoParaBR(l.data).slice(0,5)}</td>
-        <td style="min-width:140px">${l.descricao}${l.parcela?`<span class="parc">${l.parcela}</span>`:''}</td>
+        <td style="min-width:140px">${editavel?`<input class="inlinedesc maiusc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" onchange="mudarDescLanc(${l.id},this.value)" title="Clique pra editar">`:l.descricao}${l.parcela?`<span class="parc">${l.parcela}</span>`:''}</td>
         <td>${selCat}</td>
         <td>${selCont}</td>
         <td>${selConta}</td>
@@ -373,6 +376,14 @@
         <span style="font-weight:700">Saldo: ${BRL(somaE-somaS)}</span>
       </div>
       <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Contato</th><th>Conta</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${tr}</tbody></table>${rows.length===0?'<div class="empty"><div class="big">📭</div>Nenhum lançamento'+(filtroDia?' nesse dia.':' ainda. Lance o primeiro acima!')+'</div>':''}</div>`;
+  }
+  // muda a descrição direto na linha
+  async function mudarDescLanc(id,valor){
+    const l=LANC.find(x=>x.id===id);if(!l)return;
+    const desc=(valor||'').toUpperCase();
+    const {error}=await sb.from('lancamentos').update({descricao:desc}).eq('id',id);
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    l.descricao=desc;toast('Descrição salva!','ok');
   }
   // muda um campo direto na linha e salva no banco
   async function mudarCampoLanc(id,campo,valor){
