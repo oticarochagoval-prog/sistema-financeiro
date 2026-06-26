@@ -235,7 +235,7 @@
   const MENU=[
     ['__d','Dia a dia'],
     ['visao','Dashboard','◫',true],['lanc','Lançamentos','≣',true],['import','Importar extrato','⤓',true],
-    ['apagar','A pagar','🧾',true],['caixa','Fechamento de caixa','🧮',true],
+    ['apagar','A pagar','🧾',true],['caixa','Fechamento de caixa','🧮',true],['caixinha','Caixinha (dinheiro)','💵',true],
     ['__a','Análise'],
     ['dre','DRE','📊',true],['fechamento','Fechamento do mês','🔐',true],
     ['comparativo','Comparativo','📈',true],['relcontato','Por contato','👥',true],
@@ -243,7 +243,7 @@
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
     ['recorrentes','Recorrentes','🔁',true],['lixeira','Lixeira','🗑',true],['config','Configurações','⚙',true],
   ];
-  const TITLES={visao:'Dashboard',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',dre:'DRE — Resultado',fechamento:'Fechamento do mês',comparativo:'Comparativo',relcontato:'Relatório por contato',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações'};
+  const TITLES={visao:'Dashboard',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',caixinha:'Caixinha (dinheiro)',dre:'DRE — Resultado',fechamento:'Fechamento do mês',comparativo:'Comparativo',relcontato:'Relatório por contato',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações'};
   function renderNav(){
     document.getElementById('nav').innerHTML=MENU.map(it=>{
       if(it[0].startsWith('__'))return `<div class="seclabel">${it[1]}</div>`;
@@ -281,7 +281,7 @@
   function isoParaBR(iso){if(!iso)return '';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;}
 
   function render(){
-    const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,caixa:viewCaixa,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig};
+    const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig};
     const fn=V[page];if(fn){fn();}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -1152,6 +1152,78 @@
     toast('Conta adicionada!','ok');viewConfig();
   }
   async function arquivarConta(id){await sb.from('contas').update({arquivada:true}).eq('id',id);toast('Conta arquivada','ok');viewConfig();}
+
+  // ---- CAIXINHA (dinheiro físico) ----
+  async function viewCaixinha(){
+    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando caixinha...</div>';
+    await carregarContas();
+    const contaCx=CONTAS.find(c=>/caixinha/i.test(c.nome));
+    if(!contaCx){document.getElementById('content').innerHTML='<div class="note soon">⚠️ Esta loja não tem uma conta "Caixinha". Vá em Configurações e crie uma conta chamada CAIXINHA.</div>';return;}
+    // lançamentos da caixinha
+    const {data}=await sb.from('lancamentos').select('*, categorias(nome,grupo), contatos(nome)').eq('loja_id',lojaAtual).eq('conta_id',contaCx.id).order('data',{ascending:false}).limit(300);
+    const lancs=data||[];
+    const ini=Number(contaCx.saldo_inicial_banco||0);
+    let mov=0;lancs.forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;mov+=Number(l.valor);});
+    const saldoAtual=ini+mov;
+    const rows=lancs.map(l=>`<tr><td class="mut">${isoParaBR(l.data).slice(0,5)}</td><td>${l.descricao}</td><td><span class="catchip">${l.categorias?.nome||'—'}</span></td><td class="amt ${l.valor>0?'green':'red'}">${l.valor>0?'+':'-'}${BRL(Math.abs(l.valor))}</td><td style="text-align:center">${podeEditar()?`<button class="delx" onclick="abrirEditarLanc(${l.id})">✏️</button> <button class="delx" onclick="excluirLanc(${l.id})">🗑</button>`:''}</td></tr>`).join('');
+    document.getElementById('content').innerHTML=`<div class="note">💵 <b>Caixinha</b> — o dinheiro físico da loja. As <b>entradas</b> em dinheiro você não lança (a Linx já conta). Aqui você registra as <b>saídas</b> (o que pagou com a caixinha) e o saldo vai descontando.</div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;margin-bottom:16px">
+        <div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">SALDO ATUAL DA CAIXINHA</div><div style="font-size:30px;font-weight:800;color:${saldoAtual>=0?'var(--green)':'var(--red)'};margin-top:8px;font-variant-numeric:tabular-nums">${BRL(saldoAtual)}</div><div class="mut" style="font-size:11px;margin-top:4px">começou com ${BRL(ini)}</div></div>
+        <div class="card"><div class="cardhead"><h3 style="font-size:14px">Ações</h3></div>
+          <div style="display:flex;flex-direction:column;gap:9px;margin-top:10px">
+            ${podeEditar()?'<button class="btn" onclick="abrirSaidaCaixinha()">− Lançar saída da caixinha</button>':''}
+            ${podeEditar()?'<button class="btn ghost" onclick="abrirAjusteSaldo()">⚖️ Ajustar saldo (conferência)</button>':''}
+          </div>
+          <div class="mut" style="font-size:11px;margin-top:10px;line-height:1.5">Contou o dinheiro e não bateu? Use "Ajustar saldo" pra corrigir.</div></div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${rows}</tbody></table>${lancs.length===0?'<div class="empty"><div class="big">💵</div>Nenhuma movimentação na caixinha ainda</div>':''}</div>`;
+  }
+  function abrirSaidaCaixinha(){
+    const opts=catsOptions();
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
+      <h3>− Saída da caixinha</h3><p>Algo que você pagou com o dinheiro físico da loja.</p>
+      <span class="qlabel">Data</span><input id="cxData" placeholder="dd/mm" data-dm="" onkeydown="maskData(this,event)" onfocus="this.select()">
+      <span class="qlabel">Descrição</span><input id="cxDesc" class="maiusc" placeholder="Ex: ALMOÇO EQUIPE">
+      <span class="qlabel">Valor</span><input id="cxVal" class="calc" data-cents="0" placeholder="0,00" inputmode="numeric" onkeydown="calcInput(this,event)">
+      <span class="qlabel">Categoria</span><select id="cxCat"><option value="">Selecione...</option>${opts}</select>
+      <div id="cxErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarSaidaCaixinha()">Lançar saída</button></div></div></div>`;
+  }
+  async function salvarSaidaCaixinha(){
+    const contaCx=CONTAS.find(c=>/caixinha/i.test(c.nome));
+    const desc=document.getElementById('cxDesc').value.trim().toUpperCase();
+    const cents=parseInt(document.getElementById('cxVal').dataset.cents||'0',10);
+    const cat=document.getElementById('cxCat').value||null;
+    const iso=dataParaISO(document.getElementById('cxData').value);
+    if(!desc||!cents){document.getElementById('cxErr').innerHTML='<div class="err">Preencha descrição e valor.</div>';return;}
+    if(!iso){document.getElementById('cxErr').innerHTML='<div class="err">Data inválida.</div>';return;}
+    const {error}=await sb.from('lancamentos').insert({loja_id:lojaAtual,conta_id:contaCx.id,data:iso,descricao:desc,valor:-(cents/100),tipo:'despesa',categoria_id:cat,pago:true,origem:'manual',criado_por:USER.id});
+    if(error){document.getElementById('cxErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
+    fecharModal();toast('Saída lançada!','ok');viewCaixinha();
+  }
+  function abrirAjusteSaldo(){
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
+      <h3>⚖️ Ajustar saldo da caixinha</h3><p>Conte o dinheiro físico e digite quanto tem de verdade. O sistema cria um ajuste pra bater o saldo.</p>
+      <span class="qlabel">Quanto tem na caixinha agora (contado)</span><input id="ajVal" class="calc" data-cents="0" placeholder="0,00" inputmode="numeric" onkeydown="calcInput(this,event)">
+      <div id="ajErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarAjusteSaldo()">Ajustar</button></div></div></div>`;
+  }
+  async function salvarAjusteSaldo(){
+    const contaCx=CONTAS.find(c=>/caixinha/i.test(c.nome));
+    const novoCents=parseInt(document.getElementById('ajVal').dataset.cents||'0',10);
+    const novoSaldo=novoCents/100;
+    // calcula saldo atual
+    const {data}=await sb.from('lancamentos').select('valor,categorias(grupo)').eq('loja_id',lojaAtual).eq('conta_id',contaCx.id);
+    const ini=Number(contaCx.saldo_inicial_banco||0);
+    let mov=0;(data||[]).forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;mov+=Number(l.valor);});
+    const saldoAtual=ini+mov;
+    const diferenca=novoSaldo-saldoAtual;
+    if(Math.abs(diferenca)<0.01){fecharModal();toast('Saldo já está certo!','ok');return;}
+    const hoje=new Date().toISOString().slice(0,10);
+    const {error}=await sb.from('lancamentos').insert({loja_id:lojaAtual,conta_id:contaCx.id,data:hoje,descricao:'AJUSTE DE SALDO DA CAIXINHA',valor:diferenca,tipo:diferenca>0?'receita':'despesa',pago:true,origem:'manual',criado_por:USER.id});
+    if(error){document.getElementById('ajErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
+    fecharModal();toast('Saldo ajustado!','ok');viewCaixinha();
+  }
 
   function fecharModal(){document.getElementById('modalRoot').innerHTML='';}
 
