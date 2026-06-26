@@ -296,7 +296,7 @@
   async function viewLanc(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando lançamentos...</div>';
     await carregarLancamentos();
-    const opts=catsOptions();const contaOpts=CONTAS.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+    const opts=catsOptions();const contaOpts=CONTAS.filter(c=>!/caixinha/i.test(c.nome)).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
     const contatoOpts=contatosOptions();
     const qn=q.replace(/[^0-9,]/g,'').replace(',','.');
     const rows=LANC.filter(l=>{
@@ -355,7 +355,7 @@
       const faltaContato=saida&&!l.contato_id;
       const selCont=editavel?`<select class="qin inlinesel ${faltaContato?'falta':''}" style="height:32px;font-size:12px;min-width:120px" onchange="mudarCampoLanc(${l.id},'contato_id',this.value)"><option value="">${saida?'⚠ contato':'— contato'}</option>${contatosOptions(l.contato_id)}</select>`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—');
       // seletor de conta inline
-      const selConta=editavel?`<select class="qin inlinesel" style="height:32px;font-size:12px;min-width:90px" onchange="mudarCampoLanc(${l.id},'conta_id',this.value)"><option value="">conta</option>${CONTAS.map(c=>`<option value="${c.id}" ${c.id===l.conta_id?'selected':''}>${c.nome}</option>`).join('')}</select>`:(l.contas?.nome||'—');
+      const selConta=editavel?`<select class="qin inlinesel" style="height:32px;font-size:12px;min-width:90px" onchange="mudarCampoLanc(${l.id},'conta_id',this.value)"><option value="">conta</option>${CONTAS.filter(c=>!/caixinha/i.test(c.nome)).map(c=>`<option value="${c.id}" ${c.id===l.conta_id?'selected':''}>${c.nome}</option>`).join('')}</select>`:(l.contas?.nome||'—');
       return `<tr class="${neutra?'neutra':''}">
         <td class="mut" style="white-space:nowrap">${isoParaBR(l.data).slice(0,5)}</td>
         <td style="min-width:140px">${l.descricao}${l.parcela?`<span class="parc">${l.parcela}</span>`:''}</td>
@@ -867,7 +867,7 @@
     const catCartao=catsAtivas().find(c=>c.nome==='Cartão');
     const catTransf=catsAtivas().find(c=>c.grupo==='neutra');
     // extrato é sempre do Sicoob — pega a conta Sicoob da loja
-    const contaSicoob=CONTAS.find(c=>/sicoob/i.test(c.nome))||CONTAS[0];
+    const contaSicoob=CONTAS.find(c=>/sicoob/i.test(c.nome))||CONTAS.find(c=>!/caixinha/i.test(c.nome))||null;
     const registros=[];
     let semContato=0;
     IMPORT.forEach(r=>{
