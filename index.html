@@ -334,7 +334,7 @@
       <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho</span><span>👥 Categoria e contato obrigatórios</span></div>
     </div>`:'<div class="note">👁️ Seu acesso é somente leitura (contador). Você pode ver e exportar, mas não lançar.</div>';
     const diaLabel=filtroDia?isoParaBR(filtroDia):'Todos os dias';
-    document.getElementById('content').innerHTML=formHTML+`
+    document.getElementById('content').innerHTML='<div id="ultimaImportLanc"></div>'+formHTML+`
       <div style="font-size:13px;font-weight:700;color:var(--txt);margin:22px 0 12px;display:flex;align-items:center;gap:7px;border-top:1px solid var(--line);padding-top:18px">🔍 LANÇAMENTOS CADASTRADOS <span class="mut" style="font-weight:400;font-size:12px">— consultar e editar</span></div>
       <div class="toolbar" style="position:sticky;top:64px;z-index:15;background:var(--bg);padding:8px 0">
         <div class="search">🔍<input id="buscaLanc" placeholder="Buscar por texto, contato ou valor..." value="${q}" oninput="filtrarLanc(this.value)"></div>
@@ -347,6 +347,7 @@
         </div>
       </div>
       <div id="lancResultado">${htmlResultadoLanc(rows,somaE,somaS)}</div>`;
+    mostrarUltimasImportacoes('ultimaImportLanc',true);
   }
   // gera só os totais + tabela (usado pela busca sem redesenhar a barra)
   function htmlResultadoLanc(rows,somaE,somaS){
@@ -790,9 +791,31 @@
     return trans;
   }
 
+  async function mostrarUltimasImportacoes(boxId,compact){
+    boxId=boxId||'ultimaImport';
+    const box=document.getElementById(boxId);if(!box)return;
+    let data=null;
+    try{const r=await sb.from('importacoes').select('*').eq('loja_id',lojaAtual);data=r.data;}catch(e){return;}
+    if(!data||data.length===0){box.innerHTML=compact?'':`<div class="note" style="margin-top:12px">Nenhuma importação registrada para esta loja ainda.</div>`;return;}
+    data.sort((a,b)=>{const ka=(a.id!=null?a.id:(a.periodo_ate||''));const kb=(b.id!=null?b.id:(b.periodo_ate||''));return ka<kb?1:ka>kb?-1:0;});
+    const br=iso=>iso?String(iso).slice(0,10).split('-').reverse().join('/'):'—';
+    const u=data[0];
+    const nomeLoja=LOJAS.find(l=>l.id===lojaAtual)?.nome||'';
+    if(compact){box.innerHTML=`<div style="margin-bottom:14px;background:rgba(245,183,64,.1);border:1px solid var(--amber);border-left:4px solid var(--amber);border-radius:10px;padding:9px 14px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="color:var(--amber);font-weight:700">📆 Última importação · ${nomeLoja}:</span> <b>${br(u.periodo_de)} a ${br(u.periodo_ate)}</b> <span class="mut">· ${u.qtd_lancamentos||0} lançamento(s)</span></div>`;return;}
+    const anteriores=data.slice(1,6).map(x=>`<div class="mut" style="font-size:12px;margin-top:3px">${br(x.periodo_de)} a ${br(x.periodo_ate)} · ${x.qtd_lancamentos||0} lançamento(s)</div>`).join('');
+    box.innerHTML=`
+      <div style="margin-top:12px;background:rgba(245,183,64,.1);border:1px solid var(--amber);border-left:4px solid var(--amber);border-radius:12px;padding:14px 16px">
+        <div style="font-size:11px;color:var(--amber);font-weight:700;text-transform:uppercase;letter-spacing:.06em">📆 Última importação · ${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</div>
+        <div style="font-size:19px;font-weight:700;margin-top:5px">${br(u.periodo_de)} a ${br(u.periodo_ate)}</div>
+        <div class="mut" style="font-size:12.5px;margin-top:3px">${u.qtd_lancamentos||0} lançamento(s)${u.observacao?' · '+u.observacao:''}</div>
+        ${anteriores?`<div style="margin-top:11px;border-top:1px solid var(--line);padding-top:9px"><div class="mut" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Importações anteriores</div>${anteriores}</div>`:''}
+      </div>`;
+  }
+
   function viewImport(){
     if(IMPORT.length===0){
       document.getElementById('content').innerHTML=`<div class="note">⤓ <b>Importar extrato OFX do Sicoob</b> — lê o arquivo, preenche data/descrição/valor, adivinha categoria e contato, separa transferências entre lojas e marca o que é cartão (conta) ou depósito (ignora, a Linx já contou). Você confere antes de lançar.</div>
+      <div id="ultimaImport"></div>
       <div class="card"><div class="cardhead"><h3>Selecionar arquivo .OFX</h3><span class="tag">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</span></div>
         <div style="border:1.5px dashed #38465a;border-radius:14px;padding:34px;text-align:center;margin-top:12px">
           <div style="font-size:30px;margin-bottom:10px">⤓</div>
@@ -800,6 +823,7 @@
           <button class="btn" onclick="document.getElementById('ofxFile').click()">Escolher arquivo OFX</button>
           <div class="mut" style="margin-top:10px;font-size:12px">Baixe o extrato do Sicoob em OFX e selecione aqui</div>
         </div></div>`;
+      mostrarUltimasImportacoes();
       return;
     }
     // tabela de conferência
