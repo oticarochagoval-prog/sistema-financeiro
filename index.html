@@ -1013,7 +1013,8 @@
       <span class="mut" style="font-size:13px">${lojaNome}</span></div>`;
     const card=(label,valor,cor,sub)=>`<div class="card"><div class="mut" style="font-size:12px;font-weight:600">${label}</div><div style="font-size:22px;font-weight:800;color:${cor};margin-top:6px;font-variant-numeric:tabular-nums">${BRL(valor)}</div>${sub?`<div class="mut" style="font-size:11px;margin-top:3px">${sub}</div>`:''}</div>`;
     // quadro DRE resumido
-    const linhaDRE=(nome,valor,op,forte)=>`<div class="cfgrow" style="${forte?'border-top:1px solid var(--line)':''}">${op?`<span class="mut" style="width:16px;display:inline-block">${op}</span>`:'<span style="width:16px;display:inline-block"></span>'}${nome}<b style="margin-left:auto;${valor<0?'color:var(--red)':''};${forte?'font-size:14px':''}">${BRL(valor)}</b></div>`;
+    const pctDRE=(v)=>gr.rec?`<span class="mut" style="font-size:10.5px;margin-left:5px">${(Math.abs(v)/gr.rec*100).toFixed(1).replace('.',',')}%</span>`:'';
+    const linhaDRE=(nome,valor,op,forte)=>`<div class="cfgrow" style="${forte?'border-top:1px solid var(--line)':''}">${op?`<span class="mut" style="width:16px;display:inline-block">${op}</span>`:'<span style="width:16px;display:inline-block"></span>'}${nome}<span style="margin-left:auto;white-space:nowrap"><b style="${valor<0?'color:var(--red)':''};${forte?'font-size:14px':''}">${BRL(valor)}</b>${pctDRE(valor)}</span></div>`;
     const dreCard=`<div class="card"><div class="cardhead"><h3 style="font-size:14px">📊 DRE — ${mesNome}</h3></div>
       <div style="margin-top:6px">
         ${linhaDRE('Receita',gr.rec,'')}
