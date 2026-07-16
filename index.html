@@ -710,9 +710,9 @@
   async function saldosCalculados(){
     await carregarContas();
     const {data:lancs}=await sb.from('lancamentos').select('valor,conta_id,categorias(grupo)').eq('loja_id',lojaAtual);
-    const mov={};
-    (lancs||[]).forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;if(!l.conta_id)return;mov[l.conta_id]=(mov[l.conta_id]||0)+Number(l.valor);});
-    return CONTAS.filter(c=>!/caixinha/i.test(c.nome)).map(c=>({id:c.id,nome:c.nome,calc:Number(c.saldo_inicial_banco||0)+(mov[c.id]||0)}));
+    const ent={},sai={};
+    (lancs||[]).forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;if(!l.conta_id)return;const v=Number(l.valor);if(v>=0)ent[l.conta_id]=(ent[l.conta_id]||0)+v;else sai[l.conta_id]=(sai[l.conta_id]||0)+Math.abs(v);});
+    return CONTAS.filter(c=>!/caixinha/i.test(c.nome)).map(c=>{const ini=Number(c.saldo_inicial_banco||0);const e=ent[c.id]||0,x=sai[c.id]||0;return {id:c.id,nome:c.nome,ini,ent:e,sai:x,calc:ini+e-x};});
   }
   function atualizaConciliacao(id){
     const inp=document.getElementById('conc'+id);const out=document.getElementById('difConc'+id);if(!inp||!out)return;
@@ -747,7 +747,7 @@
       </div>
       <div class="card"><div class="cardhead"><h3>🧮 Conciliação de caixa</h3></div>
         <p class="mut" style="font-size:12.5px;line-height:1.5;margin-top:6px">Abra o app do Sicoob, veja o saldo de hoje e digite abaixo. O sistema compara com o que ele calculou. (É o saldo total atual da conta — não muda com o mês selecionado.)</p>
-        ${saldosConc.length?saldosConc.map(s=>{const calcCents=Math.round(s.calc*100);return `<div style="padding:11px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:13.5px">🏦 ${s.nome}</b><span class="mut" style="font-size:12.5px">Sistema calculou: <b style="color:var(--txt)">${BRL(s.calc)}</b></span></div><div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap"><span class="qlabel" style="margin:0">Saldo real no banco:</span><input id="conc${s.id}" class="qin calc" data-cents="0" data-calc="${calcCents}" value="" placeholder="0,00" inputmode="numeric" style="max-width:150px" onkeydown="calcInput(this,event);atualizaConciliacao(${s.id})"></div><div id="difConc${s.id}" style="margin-top:7px;font-size:13px"><span class="mut">digite o saldo que aparece no app do banco</span></div></div>`;}).join(''):'<p class="mut" style="font-size:13px;margin-top:10px">Nenhuma conta de banco cadastrada. Vá em <b>Configurações</b> e cadastre a conta e o saldo inicial.</p>'}
+        ${saldosConc.length?saldosConc.map(s=>{const calcCents=Math.round(s.calc*100);return `<div style="padding:11px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:13.5px">🏦 ${s.nome}</b><span class="mut" style="font-size:12.5px">Sistema calculou: <b style="color:var(--txt)">${BRL(s.calc)}</b></span></div><div class="mut" style="font-size:11.5px;margin-top:3px">Começou com <b style="color:${s.ini<0?'var(--red)':'var(--txt)'}">${BRL(s.ini)}</b> · entradas <b style="color:var(--green)">+${BRL(s.ent)}</b> · saídas <b style="color:var(--red)">−${BRL(s.sai)}</b></div><div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap"><span class="qlabel" style="margin:0">Saldo real no banco:</span><input id="conc${s.id}" class="qin calc" data-cents="0" data-calc="${calcCents}" value="" placeholder="0,00" inputmode="numeric" style="max-width:150px" onkeydown="calcInput(this,event);atualizaConciliacao(${s.id})"></div><div id="difConc${s.id}" style="margin-top:7px;font-size:13px"><span class="mut">digite o saldo que aparece no app do banco</span></div></div>`;}).join(''):'<p class="mut" style="font-size:13px;margin-top:10px">Nenhuma conta de banco cadastrada. Vá em <b>Configurações</b> e cadastre a conta e o saldo inicial.</p>'}
       </div>
     </div>`;
   }
@@ -1246,7 +1246,7 @@
     const ini=Number(contaCx.saldo_inicial_banco||0);
     let mov=0;lancs.forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;mov+=Number(l.valor);});
     const saldoAtual=ini+mov;
-    const rows=lancs.map(l=>`<tr><td class="mut">${isoParaBR(l.data).slice(0,5)}</td><td>${l.descricao}</td><td><span class="catchip">${l.categorias?.nome||'—'}</span></td><td class="amt ${l.valor>0?'green':'red'}">${l.valor>0?'+':'-'}${BRL(Math.abs(l.valor))}</td><td style="text-align:center">${podeEditar()?`<button class="delx" onclick="abrirEditarLanc(${l.id})">✏️</button> <button class="delx" onclick="excluirLanc(${l.id})">🗑</button>`:''}</td></tr>`).join('');
+    const rows=lancs.map(l=>{const ajuste=/^AJUSTE DE SALDO/i.test(l.descricao||'');return `<tr style="${ajuste?'background:rgba(245,183,64,.07)':''}"><td class="mut">${isoParaBR(l.data).slice(0,5)}</td><td>${ajuste?'<span class="catchip" style="border-color:var(--amber);color:var(--amber)">⚖️ ajuste</span> ':''}${l.descricao}</td><td><span class="catchip">${l.categorias?.nome||'—'}</span></td><td class="amt ${l.valor>0?'green':'red'}">${l.valor>0?'+':'-'}${BRL(Math.abs(l.valor))}</td><td style="text-align:center">${podeEditar()?`<button class="delx" onclick="abrirEditarLanc(${l.id})">✏️</button> <button class="delx" onclick="excluirLanc(${l.id})">🗑</button>`:''}</td></tr>`;}).join('');
     document.getElementById('content').innerHTML=`<div class="note">💵 <b>Caixinha</b> — o dinheiro físico da loja. As <b>entradas</b> em dinheiro você não lança (a Linx já conta). Aqui você registra as <b>saídas</b> (o que pagou com a caixinha) e o saldo vai descontando.</div>
       <div class="grid" style="grid-template-columns:1fr 1fr;margin-bottom:16px">
         <div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">SALDO ATUAL DA CAIXINHA</div><div style="font-size:30px;font-weight:800;color:${saldoAtual>=0?'var(--green)':'var(--red)'};margin-top:8px;font-variant-numeric:tabular-nums">${BRL(saldoAtual)}</div><div class="mut" style="font-size:11px;margin-top:4px">começou com ${BRL(ini)}</div></div>
@@ -1284,8 +1284,9 @@
   }
   function abrirAjusteSaldo(){
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
-      <h3>⚖️ Ajustar saldo da caixinha</h3><p>Conte o dinheiro físico e digite quanto tem de verdade. O sistema cria um ajuste pra bater o saldo.</p>
+      <h3>⚖️ Ajustar saldo da caixinha</h3><p>Conte o dinheiro físico e digite quanto tem de verdade. Por ser dinheiro, todo ajuste fica registrado com quem fez e o motivo.</p>
       <span class="qlabel">Quanto tem na caixinha agora (contado)</span><input id="ajVal" class="calc" data-cents="0" placeholder="0,00" inputmode="numeric" onkeydown="calcInput(this,event)">
+      <span class="qlabel" style="margin-top:12px">Motivo do ajuste (obrigatório)</span><input id="ajMotivo" class="maiusc" placeholder="Ex: SOBROU TROCO / FALTOU DINHEIRO / ERRO DE LANÇAMENTO">
       <div id="ajErr"></div>
       <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarAjusteSaldo()">Ajustar</button></div></div></div>`;
   }
@@ -1300,8 +1301,12 @@
     const saldoAtual=ini+mov;
     const diferenca=novoSaldo-saldoAtual;
     if(Math.abs(diferenca)<0.01){fecharModal();toast('Saldo já está certo!','ok');return;}
+    const motivo=(document.getElementById('ajMotivo').value||'').trim();
+    if(!motivo){document.getElementById('ajErr').innerHTML='<div class="err">Escreva o motivo do ajuste (obrigatório por ser dinheiro).</div>';return;}
     const hoje=new Date().toISOString().slice(0,10);
-    const {error}=await sb.from('lancamentos').insert({loja_id:lojaAtual,conta_id:contaCx.id,data:hoje,descricao:'AJUSTE DE SALDO DA CAIXINHA',valor:diferenca,tipo:diferenca>0?'receita':'despesa',pago:true,origem:'manual',criado_por:USER.id});
+    const quem=(PERFIL&&PERFIL.nome?PERFIL.nome:'—').toUpperCase();
+    const desc=`AJUSTE DE SALDO · ${motivo.toUpperCase()} · POR ${quem}`;
+    const {error}=await sb.from('lancamentos').insert({loja_id:lojaAtual,conta_id:contaCx.id,data:hoje,descricao:desc,valor:diferenca,tipo:diferenca>0?'receita':'despesa',pago:true,origem:'manual',criado_por:USER.id});
     if(error){document.getElementById('ajErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
     fecharModal();toast('Saldo ajustado!','ok');viewCaixinha();
   }
