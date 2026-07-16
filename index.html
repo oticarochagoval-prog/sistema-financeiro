@@ -707,9 +707,28 @@
     <span style="font-weight:700;font-size:14px;min-width:130px;text-align:center">${MESES_NOME[mesSel]} ${ANO_FIXO}</span>
     <button class="burger" style="width:32px;height:32px" onclick="navMes(1)">›</button></div>`;}
   function navMes(d){mesSel+=d;if(mesSel<0)mesSel=0;if(mesSel>11)mesSel=11;render();}
+  async function saldosCalculados(){
+    await carregarContas();
+    const {data:lancs}=await sb.from('lancamentos').select('valor,conta_id,categorias(grupo)').eq('loja_id',lojaAtual);
+    const mov={};
+    (lancs||[]).forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;if(!l.conta_id)return;mov[l.conta_id]=(mov[l.conta_id]||0)+Number(l.valor);});
+    return CONTAS.filter(c=>!/caixinha/i.test(c.nome)).map(c=>({id:c.id,nome:c.nome,calc:Number(c.saldo_inicial_banco||0)+(mov[c.id]||0)}));
+  }
+  function atualizaConciliacao(id){
+    const inp=document.getElementById('conc'+id);const out=document.getElementById('difConc'+id);if(!inp||!out)return;
+    const real=parseInt(inp.dataset.cents||'0',10);
+    if(!real){out.innerHTML='<span class="mut">digite o saldo que aparece no app do banco</span>';return;}
+    const calc=parseInt(inp.dataset.calc||'0',10);
+    const dif=real-calc;
+    if(Math.abs(dif)<1){out.innerHTML='<span style="color:var(--green);font-weight:700">✅ Bateu certinho! O sistema está igual ao banco.</span>';}
+    else if(dif>0){out.innerHTML=`<span style="color:var(--amber);font-weight:700">⚠️ Sobrando ${BRL(dif/100)}</span> <span class="mut">— o banco tem mais que o sistema. Pode faltar lançar alguma entrada.</span>`;}
+    else {out.innerHTML=`<span style="color:var(--red);font-weight:700">🚨 Faltando ${BRL(Math.abs(dif)/100)}</span> <span class="mut">— o banco tem menos que o sistema. Pode faltar lançar alguma saída.</span>`;}
+  }
+
   async function viewFechamento(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
     await carregarLancAno();
+    const saldosConc=await saldosCalculados();
     // calcula entradas e saídas do mês selecionado (ignora neutras)
     let entradas=0,saidas=0;
     LANC_ANO.forEach(l=>{
@@ -718,7 +737,7 @@
       const v=Number(l.valor);if(v>0)entradas+=v;else saidas+=Math.abs(v);
     });
     const resultado=entradas-saidas;
-    document.getElementById('content').innerHTML=`<div class="note">🔐 <b>Fechamento do mês</b> — confere o que entrou, o que saiu e o resultado do mês, a partir dos seus lançamentos. (A conciliação completa com saldo do banco a gente refina depois.)</div>
+    document.getElementById('content').innerHTML=`<div class="note">🔐 <b>Fechamento do mês</b> — confere o que entrou, o que saiu e o resultado do mês. Ao lado, a <b>conciliação</b> compara o saldo calculado com o saldo real do banco.</div>
     ${seletorMes()}
     <div class="grid two">
       <div class="card"><div class="cardhead"><h3>Resumo de ${MESES_NOME[mesSel]}</h3></div>
@@ -726,8 +745,9 @@
         <div class="cfgrow">Saídas (pago)<b style="margin-left:auto;color:var(--red)">-${BRL(saidas)}</b></div>
         <div class="cfgrow" style="border-top:2px solid var(--line)"><b>Resultado do mês</b><b style="margin-left:auto;color:${resultado>=0?'var(--green)':'var(--red)'};font-size:17px">${BRL(resultado)}</b></div>
       </div>
-      <div class="card"><div class="cardhead"><h3>Conciliação de caixa</h3><span class="tag">em breve</span></div>
-        <p class="mut" style="font-size:13px;line-height:1.6;margin-top:8px">A conciliação completa — aquela do "faltando 🚨 / sobrando ✅" comparando com o saldo real do banco — a gente liga numa próxima etapa, junto com os saldos iniciais de cada loja. Por enquanto, o resumo ao lado já mostra o resultado real do mês.</p>
+      <div class="card"><div class="cardhead"><h3>🧮 Conciliação de caixa</h3></div>
+        <p class="mut" style="font-size:12.5px;line-height:1.5;margin-top:6px">Abra o app do Sicoob, veja o saldo de hoje e digite abaixo. O sistema compara com o que ele calculou. (É o saldo total atual da conta — não muda com o mês selecionado.)</p>
+        ${saldosConc.length?saldosConc.map(s=>{const calcCents=Math.round(s.calc*100);return `<div style="padding:11px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:13.5px">🏦 ${s.nome}</b><span class="mut" style="font-size:12.5px">Sistema calculou: <b style="color:var(--txt)">${BRL(s.calc)}</b></span></div><div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap"><span class="qlabel" style="margin:0">Saldo real no banco:</span><input id="conc${s.id}" class="qin calc" data-cents="0" data-calc="${calcCents}" value="" placeholder="0,00" inputmode="numeric" style="max-width:150px" onkeydown="calcInput(this,event);atualizaConciliacao(${s.id})"></div><div id="difConc${s.id}" style="margin-top:7px;font-size:13px"><span class="mut">digite o saldo que aparece no app do banco</span></div></div>`;}).join(''):'<p class="mut" style="font-size:13px;margin-top:10px">Nenhuma conta de banco cadastrada. Vá em <b>Configurações</b> e cadastre a conta e o saldo inicial.</p>'}
       </div>
     </div>`;
   }
