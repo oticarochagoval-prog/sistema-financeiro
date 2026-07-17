@@ -356,10 +356,10 @@
       const cat=l.categorias||{};const cont=l.contatos||{};const neutra=cat.grupo==='neutra';
       const saida=l.valor<0;
       // seletor de categoria inline
-      const selCat=editavel?`<select class="qin inlinesel" style="height:32px;font-size:12px;min-width:130px" onchange="mudarCampoLanc(${l.id},'categoria_id',this.value)"><option value="">⚠ categoria</option>${catsOptions(l.categoria_id)}</select>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`;
+      const selCat=editavel?`<div style="display:flex;gap:3px;align-items:center"><select class="qin inlinesel" style="height:32px;font-size:12px;min-width:120px" onchange="mudarCampoLanc(${l.id},'categoria_id',this.value)"><option value="">⚠ categoria</option>${catsOptions(l.categoria_id)}</select><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`;
       // seletor de contato inline (vermelho se saída sem contato)
       const faltaContato=saida&&!l.contato_id;
-      const selCont=editavel?`<select class="qin inlinesel ${faltaContato?'falta':''}" style="height:32px;font-size:12px;min-width:120px" onchange="mudarCampoLanc(${l.id},'contato_id',this.value)"><option value="">${saida?'⚠ contato':'— contato'}</option>${contatosOptions(l.contato_id)}</select>`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—');
+      const selCont=editavel?`<div style="display:flex;gap:3px;align-items:center"><select class="qin inlinesel ${faltaContato?'falta':''}" style="height:32px;font-size:12px;min-width:110px" onchange="mudarCampoLanc(${l.id},'contato_id',this.value)"><option value="">${saida?'⚠ contato':'— contato'}</option>${contatosOptions(l.contato_id)}</select><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—');
       // seletor de conta inline
       const selConta=editavel?`<select class="qin inlinesel" style="height:32px;font-size:12px;min-width:90px" onchange="mudarCampoLanc(${l.id},'conta_id',this.value)"><option value="">conta</option>${CONTAS.filter(c=>!/caixinha/i.test(c.nome)).map(c=>`<option value="${c.id}" ${c.id===l.conta_id?'selected':''}>${c.nome}</option>`).join('')}</select>`:(l.contas?.nome||'—');
       return `<tr class="${neutra?'neutra':''}">
@@ -384,16 +384,18 @@
   async function mudarDescLanc(id,valor){
     const l=LANC.find(x=>x.id===id);if(!l)return;
     const desc=(valor||'').toUpperCase();
-    const {error}=await sb.from('lancamentos').update({descricao:desc}).eq('id',id);
-    if(error){toast('Erro: '+error.message,'erro');return;}
+    const {data,error}=await sb.from('lancamentos').update({descricao:desc}).eq('id',id).select();
+    if(error){toast('Erro ao salvar: '+error.message,'erro');return;}
+    if(!data||data.length===0){toast('⚠️ NÃO salvou! Sem permissão para editar este lançamento.','erro');return;}
     l.descricao=desc;toast('Descrição salva!','ok');
   }
   // muda um campo direto na linha e salva no banco
   async function mudarCampoLanc(id,campo,valor){
     const l=LANC.find(x=>x.id===id);if(!l)return;
     const val=valor||null;
-    const {error}=await sb.from('lancamentos').update({[campo]:val}).eq('id',id);
-    if(error){toast('Erro: '+error.message,'erro');return;}
+    const {data,error}=await sb.from('lancamentos').update({[campo]:val}).eq('id',id).select();
+    if(error){toast('Erro ao salvar: '+error.message,'erro');return;}
+    if(!data||data.length===0){toast('⚠️ NÃO salvou! Sem permissão para editar este lançamento.','erro');return;}
     l[campo]=val;
     // atualiza os dados aninhados pra refletir
     if(campo==='categoria_id'){const c=CATS.find(x=>x.id==val);l.categorias=c?{nome:c.nome,grupo:c.grupo}:null;}
@@ -520,7 +522,9 @@
     fecharModal();toast('Salvo!','ok');filtrarLanc(q);
   }
 
-  function abrirNovaCat(){
+  let novoCatLanc=null,novoContatoLanc=null;
+  function abrirNovaCat(lancId){
+    novoCatLanc=(typeof lancId==='number')?lancId:null;
     const grupos='<option value="adef">A definir (classifica depois)</option>'+Object.entries(GRUPOS).filter(([k])=>k!=='neutra'&&k!=='adef').map(([k,g])=>`<option value="${k}">${g.nome}</option>`).join('');
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
       <h3>+ Nova categoria</h3><p>Se não souber o grupo do DRE, deixe "A definir".</p>
@@ -534,10 +538,13 @@
     if(!nome){document.getElementById('ncErr').innerHTML='<div class="err">Digite o nome.</div>';return;}
     const {data,error}=await sb.from('categorias').insert({loja_id:null,nome,grupo}).select().single();
     if(error){document.getElementById('ncErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
-    CATS.push(data);fecharModal();toast('Categoria criada!','ok');render();
+    CATS.push(data);
+    if(novoCatLanc){const lid=novoCatLanc;novoCatLanc=null;fecharModal();toast('Categoria criada e aplicada!','ok');await mudarCampoLanc(lid,'categoria_id',data.id);render();return;}
+    fecharModal();toast('Categoria criada!','ok');render();
     setTimeout(()=>{const s=document.getElementById('qCat');if(s)s.value=data.id;},60);
   }
-  function abrirNovoContato(){
+  function abrirNovoContato(lancId){
+    novoContatoLanc=(typeof lancId==='number')?lancId:null;
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
       <h3>+ Novo contato</h3><p>Empresa (fornecedor) ou funcionário.</p>
       <span class="qlabel">Nome</span><input id="nctNome" class="maiusc" placeholder="Ex: Ultra, ou Maria" autofocus>
@@ -550,7 +557,9 @@
     if(!nome){document.getElementById('nctErr').innerHTML='<div class="err">Digite o nome.</div>';return;}
     const {data,error}=await sb.from('contatos').insert({loja_id:null,nome,tipo}).select().single();
     if(error){document.getElementById('nctErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
-    CONTATOS.push(data);fecharModal();toast('Contato criado!','ok');render();
+    CONTATOS.push(data);
+    if(novoContatoLanc){const lid=novoContatoLanc;novoContatoLanc=null;fecharModal();toast('Contato criado e aplicado!','ok');await mudarCampoLanc(lid,'contato_id',data.id);render();return;}
+    fecharModal();toast('Contato criado!','ok');render();
     setTimeout(()=>{const s=document.getElementById('qContato');if(s)s.value=data.id;},60);
   }
 
