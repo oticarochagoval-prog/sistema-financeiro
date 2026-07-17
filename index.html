@@ -522,9 +522,11 @@
     fecharModal();toast('Salvo!','ok');filtrarLanc(q);
   }
 
-  let novoCatLanc=null,novoContatoLanc=null;
+  let novoCatLanc=null,novoContatoLanc=null,novoCatImport=null,novoContatoImport=null;
+  function abrirNovaCatImport(i){abrirNovaCat();novoCatImport=i;}
+  function abrirNovoContatoImport(i){abrirNovoContato();novoContatoImport=i;}
   function abrirNovaCat(lancId){
-    novoCatLanc=(typeof lancId==='number')?lancId:null;
+    novoCatLanc=(typeof lancId==='number')?lancId:null;novoCatImport=null;
     const grupos='<option value="adef">A definir (classifica depois)</option>'+Object.entries(GRUPOS).filter(([k])=>k!=='neutra'&&k!=='adef').map(([k,g])=>`<option value="${k}">${g.nome}</option>`).join('');
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
       <h3>+ Nova categoria</h3><p>Se não souber o grupo do DRE, deixe "A definir".</p>
@@ -539,12 +541,13 @@
     const {data,error}=await sb.from('categorias').insert({loja_id:null,nome,grupo}).select().single();
     if(error){document.getElementById('ncErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
     CATS.push(data);
+    if(novoCatImport!=null){const idx=novoCatImport;novoCatImport=null;IMPORT[idx].catId=data.id;fecharModal();toast('Categoria criada e aplicada!','ok');render();return;}
     if(novoCatLanc){const lid=novoCatLanc;novoCatLanc=null;fecharModal();toast('Categoria criada e aplicada!','ok');await mudarCampoLanc(lid,'categoria_id',data.id);render();return;}
     fecharModal();toast('Categoria criada!','ok');render();
     setTimeout(()=>{const s=document.getElementById('qCat');if(s)s.value=data.id;},60);
   }
   function abrirNovoContato(lancId){
-    novoContatoLanc=(typeof lancId==='number')?lancId:null;
+    novoContatoLanc=(typeof lancId==='number')?lancId:null;novoContatoImport=null;
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
       <h3>+ Novo contato</h3><p>Empresa (fornecedor) ou funcionário.</p>
       <span class="qlabel">Nome</span><input id="nctNome" class="maiusc" placeholder="Ex: Ultra, ou Maria" autofocus>
@@ -558,6 +561,7 @@
     const {data,error}=await sb.from('contatos').insert({loja_id:null,nome,tipo}).select().single();
     if(error){document.getElementById('nctErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
     CONTATOS.push(data);
+    if(novoContatoImport!=null){const idx=novoContatoImport;novoContatoImport=null;IMPORT[idx].contatoId=data.id;fecharModal();toast('Contato criado e aplicado!','ok');render();return;}
     if(novoContatoLanc){const lid=novoContatoLanc;novoContatoLanc=null;fecharModal();toast('Contato criado e aplicado!','ok');await mudarCampoLanc(lid,'contato_id',data.id);render();return;}
     fecharModal();toast('Contato criado!','ok');render();
     setTimeout(()=>{const s=document.getElementById('qContato');if(s)s.value=data.id;},60);
@@ -859,11 +863,11 @@
       if(r.amt>0 && r.destino){
         const labels={conta:'✅ entra (cartão)',ignora:'⏭️ ignorar (Linx conta)'};
         const next={conta:'ignora',ignora:'conta'};
-        return `<tr style="${r.destino==='ignora'?'opacity:.45':''}"><td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td><td>${r.desc}</td><td><span class="arqbtn" onclick="cicloDestino(${i},'${next[r.destino]}')" style="cursor:pointer">${labels[r.destino]}</span></td><td><span class="catchip">recebimento</span></td><td class="amt green">+${BRL(r.amt)}</td></tr>`;
+        return `<tr style="${r.destino==='ignora'?'opacity:.45':''}"><td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td><td>${r.desc}</td><td><span class="arqbtn" onclick="cicloDestino(${i},'${next[r.destino]}')" style="cursor:pointer">${labels[r.destino]}</span></td><td><span class="mut" style="font-size:11px">recebimento</span></td><td class="amt green">+${BRL(r.amt)}</td></tr>`;
       }
       const opts=catsOptions(r.catId);
       const destaque=r.corrigir?'style="background:rgba(245,183,64,.08)"':'';
-      return `<tr ${destaque}><td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td><td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">conferir</span>':''}</td><td><select class="qin" style="height:34px;font-size:12px" onchange="IMPORT[${i}].catId=this.value">${'<option value="">⚠ classificar</option>'+opts}</select></td><td>${r.contatoId?'<span class="catchip">'+(CONTATOS.find(c=>c.id==r.contatoId)?.nome||'')+'</span>':'<span class="mut">—</span>'}</td><td class="amt red">-${BRL(Math.abs(r.amt))}</td></tr>`;
+      return `<tr ${destaque}><td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td><td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">conferir</span>':''}</td><td><div style="display:flex;gap:3px;align-items:center"><select class="qin" style="height:34px;font-size:12px;min-width:120px" onchange="IMPORT[${i}].catId=this.value">${'<option value="">⚠ classificar</option>'+opts}</select><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button></div></td><td><div style="display:flex;gap:3px;align-items:center"><select class="qin" style="height:34px;font-size:12px;min-width:110px" onchange="IMPORT[${i}].contatoId=this.value||null"><option value="">— contato</option>${contatosOptions(r.contatoId)}</select><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td><td class="amt red">-${BRL(Math.abs(r.amt))}</td></tr>`;
     }).join('');
     const naoClass=IMPORT.filter(r=>r.amt<0&&!r.catId).length;
     const periodoTxt=(importPeriodo.de&&importPeriodo.ate)?`📅 Extrato de <b>${importPeriodo.de}</b> a <b>${importPeriodo.ate}</b>`:'';
@@ -873,7 +877,7 @@
         <div style="flex:1;min-width:220px"><span class="qlabel">Observação desta importação (opcional)</span><input class="qin" placeholder="Ex: Extrato Sicoob conta principal — junho" value="${importObs}" oninput="importObs=this.value"></div>
         <div class="tag" style="align-self:flex-end">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</div>
       </div>
-      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria / Destino</th><th>Tipo</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria / Destino</th><th>Contato</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows}</tbody></table></div>
       <div class="card" style="margin-top:16px;text-align:center;background:linear-gradient(100deg,var(--panel),var(--panel-2))">
         <div class="mut" style="font-size:12.5px;margin-bottom:12px">👆 Passou o olho em tudo? Confira as categorias e os recebimentos acima. Quando estiver tudo certo, lance:</div>
         <button class="btn" id="btnConfImport" onclick="confirmarImport()" style="font-size:15px;padding:13px 32px">✓ Confirmar e lançar ${IMPORT.length-ignoraN} lançamentos</button>
