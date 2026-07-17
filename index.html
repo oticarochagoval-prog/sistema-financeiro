@@ -73,6 +73,19 @@
   .inlinesel{background:var(--bg);border:1px solid var(--line);border-radius:7px;color:var(--txt);padding:4px 6px;cursor:pointer}
   .inlinesel:hover{border-color:var(--green)}
   .inlinesel.falta{border-color:var(--red);background:rgba(255,107,107,.08)}
+  .combo{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;height:32px;background:var(--bg);border:1px solid var(--line);border-radius:7px;color:var(--txt);padding:4px 9px;font-size:12px;cursor:pointer;white-space:nowrap;overflow:hidden}
+  .combo:hover{border-color:var(--green)}
+  .combo.falta{border-color:var(--red);background:rgba(255,107,107,.08)}
+  .combo>span:first-child{overflow:hidden;text-overflow:ellipsis}
+  .combo .arw{color:var(--muted);font-size:10px;flex-shrink:0}
+  .combopanel{position:fixed;z-index:400;background:var(--panel-2);border:1px solid var(--line);border-radius:11px;box-shadow:0 12px 34px rgba(0,0,0,.55);width:270px;max-height:320px;display:flex;flex-direction:column;overflow:hidden}
+  .combopanel #comboSearch{background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:9px 11px;font-size:13px;margin:9px;outline:none}
+  .combopanel #comboSearch:focus{border-color:var(--green)}
+  .combolist{overflow-y:auto;padding:0 7px 9px}
+  .comboitem{padding:9px 11px;border-radius:7px;font-size:13px;cursor:pointer;color:var(--txt)}
+  .comboitem:hover{background:var(--line)}
+  .comboitem.clear{color:var(--muted);font-size:12px}
+  .comboitem .csub{color:var(--muted);font-size:11px}
   select option,select optgroup{background:var(--panel-2);color:var(--txt)}
   select optgroup{font-weight:700;color:var(--muted)}
   .inlinedesc{width:100%;min-width:130px;background:transparent;border:1px solid transparent;border-radius:7px;color:var(--txt);padding:5px 7px;font-size:13px;font-family:inherit;outline:none}
@@ -276,6 +289,43 @@
     if(fun.length)h+=`<optgroup label="Funcionários">`+fun.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${c.nome}</option>`).join('')+'</optgroup>';
     return h;
   }
+  // ---- combobox com busca (categoria/contato) ----
+  let _comboApply=null,_comboItems=null,_comboFirst=null;
+  function fecharCombo(){const p=document.getElementById('comboPanel');if(p)p.remove();document.removeEventListener('mousedown',_comboOutside,true);}
+  function _comboOutside(e){const p=document.getElementById('comboPanel');if(p&&!p.contains(e.target))fecharCombo();}
+  function _comboItemsCat(){return catsAtivas().slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(c=>({id:String(c.id),nome:c.nome,sub:(GRUPOS[c.grupo]?GRUPOS[c.grupo].nome:'')}));}
+  function _comboItemsCont(){return contatosAtivos().slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(c=>({id:String(c.id),nome:c.nome,sub:(c.tipo==='funcionario'?'👤':'🏢')}));}
+  function _abrirCombo(el,items,apply){
+    fecharCombo();_comboItems=items;_comboApply=apply;
+    const r=el.getBoundingClientRect();
+    const panel=document.createElement('div');panel.className='combopanel';panel.id='comboPanel';
+    panel.innerHTML='<input id="comboSearch" placeholder="Digite para buscar..." autocomplete="off"><div class="combolist" id="comboList"></div>';
+    document.body.appendChild(panel);
+    let left=r.left;const pw=270;if(left+pw>window.innerWidth-8)left=window.innerWidth-pw-8;if(left<8)left=8;
+    let top=r.bottom+4;if(top+320>window.innerHeight)top=Math.max(8,r.top-324);
+    panel.style.left=left+'px';panel.style.top=top+'px';
+    const si=document.getElementById('comboSearch');
+    si.addEventListener('input',()=>_comboRender(si.value));
+    si.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharCombo();}else if(e.key==='Enter'){e.preventDefault();if(_comboFirst!==null)_comboPick(_comboFirst);}});
+    _comboRender('');
+    setTimeout(()=>si.focus(),20);
+    setTimeout(()=>document.addEventListener('mousedown',_comboOutside,true),0);
+  }
+  function _comboRender(q){
+    const list=document.getElementById('comboList');if(!list)return;
+    const qq=(q||'').toLowerCase().trim();
+    const f=_comboItems.filter(it=>(it.nome||'').toLowerCase().includes(qq));
+    _comboFirst=f.length?f[0].id:null;
+    let html='<div class="comboitem clear" onclick="_comboPick(\'\')">— limpar</div>';
+    html+=f.map(it=>`<div class="comboitem" onclick="_comboPick('${it.id}')">${it.nome}${it.sub?`<span class="csub"> · ${it.sub}</span>`:''}</div>`).join('');
+    if(!f.length)html+='<div class="comboitem" style="color:var(--muted);cursor:default">nada encontrado</div>';
+    list.innerHTML=html;
+  }
+  function _comboPick(id){const fn=_comboApply;fecharCombo();if(fn)fn(id||null);}
+  function abrirComboCatLanc(el,id){_abrirCombo(el,_comboItemsCat(),async v=>{await mudarCampoLanc(id,'categoria_id',v);_keepY=window.scrollY;render();});}
+  function abrirComboContLanc(el,id){_abrirCombo(el,_comboItemsCont(),async v=>{await mudarCampoLanc(id,'contato_id',v);_keepY=window.scrollY;render();});}
+  function abrirComboCatImport(el,i){_abrirCombo(el,_comboItemsCat(),v=>{IMPORT[i].catId=v||'';_keepY=window.scrollY;render();});}
+  function abrirComboContImport(el,i){_abrirCombo(el,_comboItemsCont(),v=>{IMPORT[i].contatoId=v||null;_keepY=window.scrollY;render();});}
   function podeEditar(){return ['dono','operador','lancador'].includes(PERFIL.papel);}
   // contato só é obrigatório quando a categoria for "Funcionários"
   function categoriaExigeContato(catId){
@@ -293,7 +343,7 @@
     const fn=V[page];if(fn){fn();}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  let mesSel=new Date().getMonth();
+  let mesSel=new Date().getMonth();let _keepY=null;
   function viewEmBreve(){
     document.getElementById('content').innerHTML=`<div class="note soon">🚧 <b>${TITLES[page]||'Essa tela'}</b> ainda não está conectada ao banco. Vamos ligar numa próxima etapa! Por enquanto use <b>Lançamentos</b>, <b>Categorias</b> e <b>Contatos</b>, que já salvam de verdade.</div><div class="card empty"><div class="big">🚧</div>Em breve</div>`;
   }
@@ -348,6 +398,7 @@
       </div>
       <div id="lancResultado">${htmlResultadoLanc(rows,somaE,somaS)}</div>`;
     mostrarUltimasImportacoes('ultimaImportLanc',true);
+    if(_keepY!=null){const y=_keepY;_keepY=null;requestAnimationFrame(()=>window.scrollTo(0,y));}
   }
   // gera só os totais + tabela (usado pela busca sem redesenhar a barra)
   function htmlResultadoLanc(rows,somaE,somaS){
@@ -356,10 +407,10 @@
       const cat=l.categorias||{};const cont=l.contatos||{};const neutra=cat.grupo==='neutra';
       const saida=l.valor<0;
       // seletor de categoria inline
-      const selCat=editavel?`<div style="display:flex;gap:3px;align-items:center"><select class="qin inlinesel" style="height:32px;font-size:12px;min-width:120px" onchange="mudarCampoLanc(${l.id},'categoria_id',this.value)"><option value="">⚠ categoria</option>${catsOptions(l.categoria_id)}</select><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`;
+      const selCat=editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatLanc(this,${l.id})"><span>${cat.nome||'⚠ categoria'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`;
       // seletor de contato inline (vermelho se saída sem contato)
       const faltaContato=saida&&!l.contato_id;
-      const selCont=editavel?`<div style="display:flex;gap:3px;align-items:center"><select class="qin inlinesel ${faltaContato?'falta':''}" style="height:32px;font-size:12px;min-width:110px" onchange="mudarCampoLanc(${l.id},'contato_id',this.value)"><option value="">${saida?'⚠ contato':'— contato'}</option>${contatosOptions(l.contato_id)}</select><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—');
+      const selCont=editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(saida?'⚠ contato':'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—');
       // seletor de conta inline
       const selConta=editavel?`<select class="qin inlinesel" style="height:32px;font-size:12px;min-width:90px" onchange="mudarCampoLanc(${l.id},'conta_id',this.value)"><option value="">conta</option>${CONTAS.filter(c=>!/caixinha/i.test(c.nome)).map(c=>`<option value="${c.id}" ${c.id===l.conta_id?'selected':''}>${c.nome}</option>`).join('')}</select>`:(l.contas?.nome||'—');
       return `<tr class="${neutra?'neutra':''}">
@@ -465,7 +516,7 @@
     await sb.from('lixeira').insert({loja_id:lojaAtual,dados:l,excluido_por:USER.id});
     const {error}=await sb.from('lancamentos').delete().eq('id',id);
     if(error){toast('Erro ao excluir: '+error.message,'erro');return;}
-    toast('Excluído (foi pra lixeira)','ok');await viewLanc();
+    _keepY=window.scrollY;toast('Excluído (foi pra lixeira)','ok');await viewLanc();
   }
   function abrirEditarLanc(id){
     const l=LANC.find(x=>x.id===id);if(!l)return;
@@ -541,8 +592,8 @@
     const {data,error}=await sb.from('categorias').insert({loja_id:null,nome,grupo}).select().single();
     if(error){document.getElementById('ncErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
     CATS.push(data);
-    if(novoCatImport!=null){const idx=novoCatImport;novoCatImport=null;IMPORT[idx].catId=data.id;fecharModal();toast('Categoria criada e aplicada!','ok');render();return;}
-    if(novoCatLanc){const lid=novoCatLanc;novoCatLanc=null;fecharModal();toast('Categoria criada e aplicada!','ok');await mudarCampoLanc(lid,'categoria_id',data.id);render();return;}
+    if(novoCatImport!=null){const idx=novoCatImport;novoCatImport=null;IMPORT[idx].catId=data.id;fecharModal();toast('Categoria criada e aplicada!','ok');_keepY=window.scrollY;render();return;}
+    if(novoCatLanc){const lid=novoCatLanc;novoCatLanc=null;fecharModal();toast('Categoria criada e aplicada!','ok');await mudarCampoLanc(lid,'categoria_id',data.id);_keepY=window.scrollY;render();return;}
     fecharModal();toast('Categoria criada!','ok');render();
     setTimeout(()=>{const s=document.getElementById('qCat');if(s)s.value=data.id;},60);
   }
@@ -561,8 +612,8 @@
     const {data,error}=await sb.from('contatos').insert({loja_id:null,nome,tipo}).select().single();
     if(error){document.getElementById('nctErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
     CONTATOS.push(data);
-    if(novoContatoImport!=null){const idx=novoContatoImport;novoContatoImport=null;IMPORT[idx].contatoId=data.id;fecharModal();toast('Contato criado e aplicado!','ok');render();return;}
-    if(novoContatoLanc){const lid=novoContatoLanc;novoContatoLanc=null;fecharModal();toast('Contato criado e aplicado!','ok');await mudarCampoLanc(lid,'contato_id',data.id);render();return;}
+    if(novoContatoImport!=null){const idx=novoContatoImport;novoContatoImport=null;IMPORT[idx].contatoId=data.id;fecharModal();toast('Contato criado e aplicado!','ok');_keepY=window.scrollY;render();return;}
+    if(novoContatoLanc){const lid=novoContatoLanc;novoContatoLanc=null;fecharModal();toast('Contato criado e aplicado!','ok');await mudarCampoLanc(lid,'contato_id',data.id);_keepY=window.scrollY;render();return;}
     fecharModal();toast('Contato criado!','ok');render();
     setTimeout(()=>{const s=document.getElementById('qContato');if(s)s.value=data.id;},60);
   }
@@ -867,7 +918,7 @@
       }
       const opts=catsOptions(r.catId);
       const destaque=r.corrigir?'style="background:rgba(245,183,64,.08)"':'';
-      return `<tr ${destaque}><td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td><td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">conferir</span>':''}</td><td><div style="display:flex;gap:3px;align-items:center"><select class="qin" style="height:34px;font-size:12px;min-width:120px" onchange="IMPORT[${i}].catId=this.value">${'<option value="">⚠ classificar</option>'+opts}</select><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button></div></td><td><div style="display:flex;gap:3px;align-items:center"><select class="qin" style="height:34px;font-size:12px;min-width:110px" onchange="IMPORT[${i}].contatoId=this.value||null"><option value="">— contato</option>${contatosOptions(r.contatoId)}</select><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td><td class="amt red">-${BRL(Math.abs(r.amt))}</td></tr>`;
+      return `<tr ${destaque}><td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td><td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">conferir</span>':''}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button></div></td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||'— contato'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td><td class="amt red">-${BRL(Math.abs(r.amt))}</td></tr>`;
     }).join('');
     const naoClass=IMPORT.filter(r=>r.amt<0&&!r.catId).length;
     const periodoTxt=(importPeriodo.de&&importPeriodo.ate)?`📅 Extrato de <b>${importPeriodo.de}</b> a <b>${importPeriodo.ate}</b>`:'';
@@ -883,8 +934,9 @@
         <button class="btn" id="btnConfImport" onclick="confirmarImport()" style="font-size:15px;padding:13px 32px">✓ Confirmar e lançar ${IMPORT.length-ignoraN} lançamentos</button>
         <button class="btn ghost" onclick="IMPORT=[];importObs='';render()" style="margin-left:10px">Cancelar</button>
       </div>`;
+    if(_keepY!=null){const y=_keepY;_keepY=null;requestAnimationFrame(()=>window.scrollTo(0,y));}
   }
-  function cicloDestino(i,next){IMPORT[i].destino=next;render();}
+  function cicloDestino(i,next){_keepY=window.scrollY;IMPORT[i].destino=next;render();}
 
   function lerArquivoOFX(input){
     const file=input.files[0];if(!file)return;
