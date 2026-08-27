@@ -355,6 +355,8 @@
     const contatoOpts=contatosOptions();
     const qn=q.replace(/[^0-9,]/g,'').replace(',','.');
     const rows=LANC.filter(l=>{
+      const m=parseInt(l.data.split('-')[1],10)-1;
+      if(m!==mesSel)return false;
       if(filtroDia && l.data!==filtroDia)return false;
       if(!q)return true;
       const cat=(l.categorias&&l.categorias.nome)||'';const cont=(l.contatos&&l.contatos.nome)||'';
@@ -386,6 +388,11 @@
     const diaLabel=filtroDia?isoParaBR(filtroDia):'Todos os dias';
     document.getElementById('content').innerHTML='<div id="ultimaImportLanc"></div>'+formHTML+`
       <div style="font-size:13px;font-weight:700;color:var(--txt);margin:22px 0 12px;display:flex;align-items:center;gap:7px;border-top:1px solid var(--line);padding-top:18px">🔍 LANÇAMENTOS CADASTRADOS <span class="mut" style="font-weight:400;font-size:12px">— consultar e editar</span></div>
+      <div style="display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 14px;width:fit-content;margin-bottom:12px">
+        <button class="burger" style="width:32px;height:32px" title="Mês anterior" onclick="navMes(-1)">‹</button>
+        <span style="font-weight:700;font-size:14px;min-width:130px;text-align:center">${MESES_NOME[mesSel]} ${ANO_FIXO}</span>
+        <button class="burger" style="width:32px;height:32px" title="Próximo mês" onclick="navMes(1)">›</button>
+      </div>
       <div class="toolbar" style="position:sticky;top:64px;z-index:15;background:var(--bg);padding:8px 0">
         <div class="search">🔍<input id="buscaLanc" placeholder="Buscar por texto, contato ou valor..." value="${q}" oninput="filtrarLanc(this.value)"></div>
         <div style="display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:6px 10px">
@@ -459,6 +466,8 @@
     q=valor;
     const qn=q.replace(/[^0-9,]/g,'').replace(',','.');
     const rows=LANC.filter(l=>{
+      const m=parseInt(l.data.split('-')[1],10)-1;
+      if(m!==mesSel)return false;
       if(filtroDia && l.data!==filtroDia)return false;
       if(!q)return true;
       const cat=(l.categorias&&l.categorias.nome)||'';const cont=(l.contatos&&l.contatos.nome)||'';
@@ -770,7 +779,7 @@
     <button class="burger" style="width:32px;height:32px" onclick="navMes(-1)">‹</button>
     <span style="font-weight:700;font-size:14px;min-width:130px;text-align:center">${MESES_NOME[mesSel]} ${ANO_FIXO}</span>
     <button class="burger" style="width:32px;height:32px" onclick="navMes(1)">›</button></div>`;}
-  function navMes(d){mesSel+=d;if(mesSel<0)mesSel=0;if(mesSel>11)mesSel=11;render();}
+  function navMes(d){mesSel+=d;if(mesSel<0)mesSel=0;if(mesSel>11)mesSel=11;filtroDia='';render();}
   async function saldosCalculados(){
     await carregarContas();
     const {data:lancs}=await sb.from('lancamentos').select('valor,conta_id,categorias(grupo)').eq('loja_id',lojaAtual);
@@ -813,7 +822,30 @@
         <p class="mut" style="font-size:12.5px;line-height:1.5;margin-top:6px">Abra o app do Sicoob, veja o saldo de hoje e digite abaixo. O sistema compara com o que ele calculou. (É o saldo total atual da conta — não muda com o mês selecionado.)</p>
         ${saldosConc.length?saldosConc.map(s=>{const calcCents=Math.round(s.calc*100);return `<div style="padding:11px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:13.5px">🏦 ${s.nome}</b><span class="mut" style="font-size:12.5px">Sistema calculou: <b style="color:var(--txt)">${BRL(s.calc)}</b></span></div><div class="mut" style="font-size:11.5px;margin-top:3px">Começou com <b style="color:${s.ini<0?'var(--red)':'var(--txt)'}">${BRL(s.ini)}</b> · entradas <b style="color:var(--green)">+${BRL(s.ent)}</b> · saídas <b style="color:var(--red)">−${BRL(s.sai)}</b></div><div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap"><span class="qlabel" style="margin:0">Saldo real no banco:</span><input id="conc${s.id}" class="qin calc" data-cents="0" data-calc="${calcCents}" value="" placeholder="0,00" inputmode="numeric" style="max-width:150px" onkeydown="calcInput(this,event);atualizaConciliacao(${s.id})"></div><div id="difConc${s.id}" style="margin-top:7px;font-size:13px"><span class="mut">digite o saldo que aparece no app do banco</span></div></div>`;}).join(''):'<p class="mut" style="font-size:13px;margin-top:10px">Nenhuma conta de banco cadastrada. Vá em <b>Configurações</b> e cadastre a conta e o saldo inicial.</p>'}
       </div>
+    </div>
+    <div class="card" style="margin-top:16px"><div class="cardhead"><h3>📝 Observações de ${MESES_NOME[mesSel]}</h3></div>
+      <p class="mut" style="font-size:12px;margin:6px 0 10px">Anote aqui o que precisar sobre o fechamento deste mês. Salva sozinho.</p>
+      <textarea id="obsFech" placeholder="Ex: Faltou lançar a nota da Essilor. Conferir depósito do dia 15..." style="width:100%;min-height:120px;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--txt);padding:12px;font-size:13.5px;font-family:inherit;resize:vertical;outline:none" oninput="salvarObsFech(this.value)"></textarea>
+      <div id="obsFechStatus" class="mut" style="font-size:11.5px;margin-top:6px"></div>
     </div>`;
+    // carrega observação salva deste mês
+    carregarObsFech();
+  }
+  // ---- Observação do fechamento (salva sozinho) ----
+  let _obsTimer=null;
+  async function carregarObsFech(){
+    const {data}=await sb.from('fechamentos').select('observacao').eq('loja_id',lojaAtual).eq('ano',ANO_FIXO).eq('mes',mesSel+1).maybeSingle();
+    const ta=document.getElementById('obsFech');
+    if(ta&&data&&data.observacao){ta.value=data.observacao;}
+  }
+  function salvarObsFech(txt){
+    const st=document.getElementById('obsFechStatus');if(st)st.textContent='salvando...';
+    clearTimeout(_obsTimer);
+    _obsTimer=setTimeout(async()=>{
+      const {error}=await sb.from('fechamentos').upsert({loja_id:lojaAtual,ano:ANO_FIXO,mes:mesSel+1,observacao:txt},{onConflict:'loja_id,ano,mes'});
+      const st2=document.getElementById('obsFechStatus');
+      if(st2)st2.textContent=error?('erro ao salvar: '+error.message):'✅ salvo';
+    },700);
   }
 
   // ---- IMPORTAR EXTRATO (OFX real do Sicoob) ----
