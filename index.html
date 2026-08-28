@@ -652,21 +652,51 @@
     toast('Contato criado e selecionado!','ok');
   }
 
+  let _grpAberto=null; // qual grupo do DRE está expandido
   function viewCategorias(){
     const aDef=catsAtivas().filter(c=>c.grupo==='adef');
-    const aviso=aDef.length?`<div class="note soon">⚠️ <b>${aDef.length} categoria(s) a classificar:</b> ${aDef.map(c=>c.nome).join(', ')}. Clique ✏️ pra definir o grupo.</div>`:'';
-    const ordem=['rec','cmv','imp','fixo','nop','adef'];
-    const grupos=ordem.map(g=>{
-      const it=catsAtivas().filter(c=>c.grupo===g);if(!it.length)return '';
-      const rows=it.map(c=>`<div class="cfgrow">${c.nome}<span class="grp ${g}" style="margin-left:auto">${GRUPOS[g].nome}</span>${podeEditar()?`<span class="arqbtn" onclick="editarCat(${c.id})">✏️ editar</span><span class="arqbtn" onclick="arquivarCat(${c.id})">📥 arquivar</span>`:''}</div>`).join('');
-      return `<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="grp ${g}">${GRUPOS[g].nome}</span><span class="mut" style="font-size:12px">${it.length}</span></div>${rows}</div>`;
+    const aviso=aDef.length?`<div class="note soon">⚠️ <b>${aDef.length} categoria(s) ainda sem classificar (A definir).</b> Clique no grupo "A definir" abaixo e organize cada uma no lugar certo.</div>`:'';
+    const ordem=['rec','cmv','imp','fixo','nop','neutra','adef'];
+    // explicação de cada grupo (pra Heloísa entender)
+    const EXPLICA={
+      rec:'O que a loja recebe: vendas, cartão, à vista, prestações.',
+      cmv:'Custo da mercadoria vendida: óculos, lentes, laboratório, surfaçagem.',
+      imp:'Impostos: Simples Nacional, tributos.',
+      fixo:'Custos pra loja funcionar: aluguel, folha, energia, internet, mídia.',
+      nop:'Fora da operação do dia a dia: retirada dos sócios, empréstimos, compra de equipamento.',
+      neutra:'Não entra no DRE: transferências entre lojas.',
+      adef:'Ainda não classificadas. Organize cada uma no grupo certo.'
+    };
+    const cards=ordem.map(g=>{
+      const it=catsAtivas().filter(c=>c.grupo===g);
+      const aberto=_grpAberto===g;
+      // opções pra trocar o grupo (menos neutra pra evitar erro, mas mantém se já for)
+      const selGrupo=(c)=>`<select class="qin inlinesel" style="height:30px;font-size:12px;min-width:130px;margin-left:auto" onchange="mudarGrupoCat(${c.id},this.value)">${ordem.map(k=>`<option value="${k}" ${k===c.grupo?'selected':''}>${GRUPOS[k].nome}</option>`).join('')}</select>`;
+      const rows=aberto?(it.length?it.map(c=>`<div class="cfgrow" style="padding-left:6px">${c.nome}${podeEditar()?selGrupo(c):`<span class="grp ${g}" style="margin-left:auto">${GRUPOS[g].nome}</span>`}${podeEditar()?`<span class="arqbtn" onclick="arquivarCat(${c.id})">📥</span>`:''}</div>`).join(''):'<div class="mut" style="font-size:12.5px;padding:10px 6px">Nenhuma categoria neste grupo.</div>'):'';
+      return `<div class="card" style="margin-bottom:10px;padding:0;overflow:hidden">
+        <div onclick="_grpAberto=_grpAberto==='${g}'?null:'${g}';render()" style="cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:10px">
+          <span class="grp ${g}">${GRUPOS[g].nome}</span>
+          <span class="mut" style="font-size:12px">${it.length} categoria(s)</span>
+          <span class="mut" style="margin-left:auto;font-size:13px">${aberto?'▲ fechar':'▼ ver'}</span>
+        </div>
+        ${aberto?`<div style="padding:0 16px 14px"><div class="mut" style="font-size:12px;margin-bottom:10px;line-height:1.5">${EXPLICA[g]}</div>${rows}</div>`:''}
+      </div>`;
     }).join('');
     const arq=CATS.filter(c=>c.arquivada).map(c=>`<div class="cfgrow" style="opacity:.6">${c.nome}<span class="grp ${c.grupo}" style="margin-left:auto">${GRUPOS[c.grupo].nome}</span><span class="arqbtn ativar" onclick="ativarCat(${c.id})">↩ reativar</span></div>`).join('');
-    document.getElementById('content').innerHTML=`<div class="note">🏷️ <b>Categorias</b> organizadas pelo grupo do DRE. Salva no banco de verdade.</div>${aviso}
+    document.getElementById('content').innerHTML=`<div class="note">🏷️ <b>Categorias por grupo do DRE.</b> Clique num grupo pra ver as categorias dele. Pra corrigir, é só trocar o grupo na setinha — salva na hora.</div>${aviso}
       ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>Nova categoria</h3></div>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><input id="ncTela" class="qin maiusc" placeholder="Nome" style="max-width:240px"><select id="ngTela" class="qin" style="max-width:180px"><option value="adef">A definir</option><option value="rec">Receita</option><option value="cmv">CMV</option><option value="imp">Imposto</option><option value="fixo">Custo Fixo</option><option value="nop">Não Operacional</option></select><button class="btn" onclick="addCatTela()">+ Adicionar</button></div></div>`:''}
-      <div class="card" style="margin-bottom:16px">${grupos}</div>
+      ${cards}
       ${arq?`<div class="card" style="border-color:rgba(138,160,150,.3)"><div class="cardhead"><h3>🗄️ Arquivadas</h3></div><div style="margin-top:8px">${arq}</div></div>`:''}`;
+  }
+  // troca o grupo de uma categoria direto na setinha (salva na hora)
+  async function mudarGrupoCat(id,grupo){
+    const {error}=await sb.from('categorias').update({grupo}).eq('id',id);
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    const c=CATS.find(x=>x.id===id);if(c)c.grupo=grupo;
+    toast('Grupo alterado!','ok');
+    // mantém o grupo aberto e redesenha
+    render();
   }
   async function addCatTela(){
     const nome=document.getElementById('ncTela').value.trim().toUpperCase();const grupo=document.getElementById('ngTela').value;
