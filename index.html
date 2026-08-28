@@ -814,29 +814,32 @@
     const {data}=await sb.from('lancamentos').select('id,data,valor,descricao,categoria_id,categorias(nome,grupo),contatos(nome)').eq('loja_id',lojaAtual).gte('data',ini).lte('data',fim).limit(2000);
     const lista=(data||[]).filter(l=>{const g=l.categorias&&l.categorias.grupo;return g===grupoKey;}).sort((a,b)=>a.data.localeCompare(b.data));
     let total=0;
-    // opções de categoria pra troca rápida
-    const catOpts=(sel)=>catsAtivas().map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${c.nome}</option>`).join('');
-    const rows=lista.map(l=>{total+=Math.abs(Number(l.valor));return `<tr>
+    // opções dos 7 grupos do DRE pra troca rápida
+    const ordemG=['rec','cmv','imp','fixo','nop','neutra','adef'];
+    const grpOpts=(sel)=>ordemG.map(k=>`<option value="${k}" ${k===sel?'selected':''}>${GRUPOS[k].nome}</option>`).join('');
+    const rows=lista.map(l=>{total+=Math.abs(Number(l.valor));const gAtual=(l.categorias&&l.categorias.grupo)||'adef';return `<tr>
       <td class="mut" style="white-space:nowrap">${isoParaBR(l.data).slice(0,5)}</td>
       <td style="min-width:120px">${l.descricao||'—'}</td>
-      <td>${podeEditar()?`<select class="qin inlinesel" style="height:30px;font-size:12px;min-width:130px" onchange="mudarCatDeLancDRE(${l.id},this.value,'${grupoKey}',${mesIdx})"><option value="">— categoria</option>${catOpts(l.categoria_id)}</select>`:(l.categorias?.nome||'—')}</td>
+      <td class="mut" style="font-size:12px">${l.categorias?.nome||'—'}</td>
+      <td>${podeEditar()?`<select class="qin inlinesel" style="height:30px;font-size:12px;min-width:130px" onchange="mudarGrupoDeLancDRE(${l.categoria_id},this.value,'${grupoKey}',${mesIdx})"><option value="">— grupo</option>${grpOpts(gAtual)}</select>`:(GRUPOS[gAtual]?GRUPOS[gAtual].nome:'—')}</td>
       <td class="amt ${l.valor<0?'red':'green'}" style="white-space:nowrap;text-align:right">${l.valor<0?'-':'+'}${BRL(Math.abs(l.valor))}</td>
     </tr>`;}).join('');
     const nomeGrupo=GRUPOS[grupoKey]?GRUPOS[grupoKey].nome:grupoKey;
-    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="max-width:680px">
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="max-width:720px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0"><span class="grp ${grupoKey}">${nomeGrupo}</span> — ${MESES_NOME[mesIdx]}</h3><button class="delx" style="font-size:18px" onclick="fecharModal()">✕</button></div>
-      <p style="margin-top:4px">${lista.length} lançamento(s). Pra corrigir, troque a <b>categoria</b> na setinha — o grupo do DRE muda junto.</p>
-      <div style="max-height:60vh;overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="mut" style="text-align:center;padding:20px">Nenhum lançamento</td></tr>'}</tbody></table></div>
+      <p style="margin-top:4px">${lista.length} lançamento(s). Pra corrigir, troque o <b>grupo do DRE</b> na setinha. <b style="color:var(--amber)">Atenção:</b> muda a categoria inteira (todos os lançamentos dela).</p>
+      <div style="max-height:60vh;overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Grupo do DRE</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="mut" style="text-align:center;padding:20px">Nenhum lançamento</td></tr>'}</tbody></table></div>
       <div style="display:flex;justify-content:space-between;border-top:2px solid var(--line);margin-top:10px;padding-top:10px"><b>Total</b><b style="font-size:16px">${BRL(total)}</b></div>
-      <div class="mut" style="font-size:11.5px;margin-top:8px">💡 Quer mudar o grupo de uma categoria inteira (ex: jogar "Óculos" pro CMV)? Faça em <b>Gestão → Categorias</b>.</div>
     </div></div>`;
   }
-  // troca a categoria de um lançamento dentro da janela do DRE e recarrega
-  async function mudarCatDeLancDRE(id,catId,grupoKey,mesIdx){
-    const {error}=await sb.from('lancamentos').update({categoria_id:catId||null}).eq('id',id);
+  // troca o GRUPO de uma categoria (afeta todos os lançamentos dela) a partir da janela do DRE
+  async function mudarGrupoDeLancDRE(catId,grupo,grupoKey,mesIdx){
+    if(!catId){toast('Este lançamento está sem categoria. Defina a categoria em Lançamentos primeiro.','erro');return;}
+    if(!grupo)return;
+    const {error}=await sb.from('categorias').update({grupo}).eq('id',catId);
     if(error){toast('Erro: '+error.message,'erro');return;}
-    toast('Categoria alterada!','ok');
-    // recarrega a janela (o lançamento pode ter saído deste grupo)
+    const c=CATS.find(x=>x.id==catId);if(c)c.grupo=grupo;
+    toast('Grupo alterado (categoria inteira)!','ok');
     abrirDetalheGrupoDRE(grupoKey,mesIdx);
   }
 
