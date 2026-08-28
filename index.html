@@ -1067,9 +1067,13 @@
   async function darBaixa(id){await sb.from('lancamentos').update({pago:true}).eq('id',id);toast('Baixa dada!','ok');viewApagar();}
 
   // ---- VISÃO GERAL (Dashboard) ----
+  let _lancMesDash=[]; // lançamentos completos do mês, pra janela de detalhes do dashboard
   async function viewVisao(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando dashboard...</div>';
     await carregarLancAno();
+    // carrega lançamentos completos do mês (com descrição e contato) pra janela de detalhes
+    const {data:lancCompletos}=await sb.from('lancamentos').select('data,valor,descricao,categorias(nome,grupo),contatos(nome)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').limit(5000);
+    _lancMesDash=(lancCompletos||[]).filter(l=>{const m=parseInt(l.data.split('-')[1],10)-1;return m===mesSel;});
     const lojaNome=LOJAS.find(l=>l.id===lojaAtual)?.nome||'';
     // separa receitas e despesas do MÊS selecionado, por categoria (mesmo sem grupo definido)
     const receitasCat={},despesasCat={};
@@ -1141,8 +1145,8 @@
         ${card('A pagar (aberto)',totalApagar,'var(--amber)','boletos não pagos')}
       </div>
       <div class="grid two">
-        ${graficoCard('💸 Despesas pagas',despesas,saidaMes,'var(--red)',mesNome)}
-        ${graficoCard('💰 Receitas / Entradas',receitas,entradaMes,'var(--green)',mesNome)}
+        ${graficoCard('💸 Despesas pagas',despesas,saidaMes,'var(--red)',mesNome,'des')}
+        ${graficoCard('💰 Receitas / Entradas',receitas,entradaMes,'var(--green)',mesNome,'rec')}
         ${graficoCard('🧾 Contas a pagar (aberto)',apagarLista,totalApagar,'var(--amber)','')}
         ${dreCard}
         ${fechCard}
@@ -1413,8 +1417,8 @@
 
   // ====== GRÁFICO DE ROSCA (SVG puro) ======
   const CORES_GRAF=['#3ddc91','#7da2ff','#e8c468','#ff6b6b','#c084fc','#4dd4d4','#f5905a','#a0d468','#ec87c0','#5d9cec','#aab2bd','#ffce54','#48cfad','#ed5565','#967adc'];
-  function donut(itens,total){
-    // itens: [{nome,valor,pct}] já ordenados. total: soma
+  function donut(itens,total,tipo){
+    // itens: [{nome,valor,pct}] já ordenados. total: soma. tipo: 'rec' ou 'des' pra abrir detalhes
     if(total<=0||itens.length===0)return '<div class="empty" style="padding:30px"><div class="big">📊</div>Sem dados neste mês</div>';
     const R=70,r=42,cx=90,cy=90;let ang=-Math.PI/2;
     const arcs=itens.map((it,i)=>{
@@ -1429,28 +1433,53 @@
       ang=a2;
       // rótulo de % na fatia (só se >5%)
       let lbl='';
-      if(frac>0.05){const mid=(ang+ (ang-frac*Math.PI*2))/2;const lx=cx+(R+r)/2*Math.cos(mid),ly=cy+(R+r)/2*Math.sin(mid);lbl=`<text x="${lx}" y="${ly}" fill="#04130c" font-size="10" font-weight="800" text-anchor="middle" dominant-baseline="middle">${(frac*100).toFixed(1).replace('.',',')}%</text>`;}
-      return `<path d="${path}" fill="${cor}"></path>${lbl}`;
+      if(frac>0.05){const mid=(ang+ (ang-frac*Math.PI*2))/2;const lx=cx+(R+r)/2*Math.cos(mid),ly=cy+(R+r)/2*Math.sin(mid);lbl=`<text x="${lx}" y="${ly}" fill="#04130c" font-size="10" font-weight="800" text-anchor="middle" dominant-baseline="middle" style="pointer-events:none">${(frac*100).toFixed(1).replace('.',',')}%</text>`;}
+      const clique=tipo?`onclick="abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')" style="cursor:pointer"`:'';
+      return `<path d="${path}" fill="${cor}" ${clique}><title>${it.nome}: ${BRL(it.valor)}</title></path>${lbl}`;
     }).join('');
     return `<svg viewBox="0 0 180 180" style="width:180px;height:180px;flex-shrink:0">${arcs}</svg>`;
   }
-  function legenda(itens,total){
+  function legenda(itens,total,tipo){
     return itens.map((it,i)=>{
       const cor=CORES_GRAF[i%CORES_GRAF.length];const pct=total>0?(it.valor/total*100):0;
-      return `<div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">
+      const clique=tipo?`onclick="abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')" style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='transparent'"`:'style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"';
+      return `<div ${clique}>
         <span style="width:11px;height:11px;border-radius:3px;background:${cor};flex-shrink:0"></span>
         <span style="flex:1">${it.nome} <span class="mut" style="font-size:11px">${pct.toFixed(1).replace('.',',')}%</span></span>
-        <b style="font-variant-numeric:tabular-nums">${BRL(it.valor)}</b></div>`;
+        <b style="font-variant-numeric:tabular-nums">${BRL(it.valor)}</b>${tipo?'<span class="mut" style="font-size:11px;margin-left:4px">›</span>':''}</div>`;
     }).join('');
   }
-  function graficoCard(titulo,itens,total,corTotal,refMes){
+  function graficoCard(titulo,itens,total,corTotal,refMes,tipo){
     return `<div class="card"><div class="cardhead"><h3 style="font-size:14px">${titulo}</h3></div>
       <div style="display:flex;flex-direction:column;align-items:center;margin-top:6px">
-        ${donut(itens,total)}
-        <div style="width:100%;margin-top:10px">${legenda(itens,total)||'<div class="mut" style="font-size:13px;padding:16px 0;text-align:center">Sem dados neste mês</div>'}</div>
+        ${donut(itens,total,tipo)}
+        <div style="width:100%;margin-top:10px">${legenda(itens,total,tipo)||'<div class="mut" style="font-size:13px;padding:16px 0;text-align:center">Sem dados neste mês</div>'}</div>
       </div>
       <div style="display:flex;justify-content:space-between;border-top:2px solid var(--line);margin-top:10px;padding-top:10px"><b>Total</b><b style="color:${corTotal};font-size:15px">${BRL(total)}</b></div>
       ${refMes?`<div class="mut" style="font-size:11px;text-align:center;margin-top:6px">referente a ${refMes} ${ANO_FIXO}</div>`:''}</div>`;
+  }
+  // abre janela com os lançamentos de uma categoria (clicando no gráfico do dashboard)
+  function abrirDetalheCategoria(nomeCat,tipo){
+    const lista=_lancMesDash.filter(l=>{
+      const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return false;
+      const nome=(l.categorias&&l.categorias.nome)||'Sem categoria';
+      if(nome!==nomeCat)return false;
+      return tipo==='rec'?Number(l.valor)>0:Number(l.valor)<0;
+    }).sort((a,b)=>a.data.localeCompare(b.data));
+    let total=0;
+    const rows=lista.map(l=>{total+=Math.abs(Number(l.valor));return `<tr>
+      <td class="mut" style="white-space:nowrap">${isoParaBR(l.data).slice(0,5)}</td>
+      <td>${l.descricao||'—'}</td>
+      <td class="mut">${(l.contatos&&l.contatos.nome)||'—'}</td>
+      <td class="amt ${tipo==='rec'?'green':'red'}" style="white-space:nowrap;text-align:right">${tipo==='rec'?'+':'-'}${BRL(Math.abs(l.valor))}</td>
+    </tr>`;}).join('');
+    const cor=tipo==='rec'?'var(--green)':'var(--red)';
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="max-width:640px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0">${nomeCat}</h3><button class="delx" style="font-size:18px" onclick="fecharModal()">✕</button></div>
+      <p style="margin-top:0">${lista.length} lançamento(s) em ${MESES_NOME[mesSel]} ${ANO_FIXO}</p>
+      <div style="max-height:60vh;overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Contato</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="mut" style="text-align:center;padding:20px">Nenhum lançamento</td></tr>'}</tbody></table></div>
+      <div style="display:flex;justify-content:space-between;border-top:2px solid var(--line);margin-top:10px;padding-top:10px"><b>Total</b><b style="color:${cor};font-size:16px">${BRL(total)}</b></div>
+    </div></div>`;
   }
 
   // maiúsculo automático em qualquer campo com classe "maiusc"
