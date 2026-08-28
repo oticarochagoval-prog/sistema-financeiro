@@ -259,12 +259,12 @@
     ['apagar','A pagar','🧾',true],['caixa','Fechamento de caixa','🧮',true],['caixinha','Caixinha (dinheiro)','💵',true],
     ['__a','Análise'],
     ['dre','DRE','📊',true],['fechamento','Fechamento do mês','🔐',true],
-    ['comparativo','Comparativo','📈',true],['relcontato','Por contato','👥',true],
+    ['comparativo','Comparativo','📈',true],['relcontato','Por contato','👥',true],['juros','Juros por loja','🏦',true],
     ['__g','Gestão'],
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
     ['recorrentes','Recorrentes','🔁',true],['lixeira','Lixeira','🗑',true],['config','Configurações','⚙',true],
   ];
-  const TITLES={visao:'Dashboard',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',caixinha:'Caixinha (dinheiro)',dre:'DRE — Resultado',fechamento:'Fechamento do mês',comparativo:'Comparativo',relcontato:'Relatório por contato',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações'};
+  const TITLES={visao:'Dashboard',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',caixinha:'Caixinha (dinheiro)',dre:'DRE — Resultado',fechamento:'Fechamento do mês',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações'};
   function renderNav(){
     document.getElementById('nav').innerHTML=MENU.map(it=>{
       if(it[0].startsWith('__'))return `<div class="seclabel">${it[1]}</div>`;
@@ -339,7 +339,7 @@
   function isoParaBR(iso){if(!iso)return '';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;}
 
   function render(){
-    const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig};
+    const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig};
     const fn=V[page];if(fn){fn();}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -365,8 +365,30 @@
     });
     // soma dos lançamentos visíveis (entradas e saídas)
     let somaE=0,somaS=0;rows.forEach(l=>{if(l.valor>0)somaE+=Number(l.valor);else somaS+=Math.abs(Number(l.valor));});
+    // painel de saldo (tipo extrato): saldo inicial do Sicoob + movimento = saldo atual
+    const contaBanco=CONTAS.find(c=>/sicoob/i.test(c.nome))||CONTAS.find(c=>!/caixinha/i.test(c.nome));
+    let saldoBanco='';
+    if(contaBanco){
+      const ini=Number(contaBanco.saldo_inicial_banco||0);
+      // soma todo o movimento do banco (ano todo, não só o mês) pra saldo atual real
+      let movBanco=0;
+      LANC.forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;if(l.conta_id!==contaBanco.id)return;movBanco+=Number(l.valor);});
+      const saldoAtual=ini+movBanco;
+      const dataAj=contaBanco.saldo_inicial_data?isoParaBR(contaBanco.saldo_inicial_data):'não informada';
+      saldoBanco=`<div class="card" style="margin-bottom:16px;padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div><div class="mut" style="font-size:11px;font-weight:600">SALDO INICIAL (${contaBanco.nome})</div><div style="font-size:17px;font-weight:800;color:${ini<0?'var(--red)':'var(--txt)'}">${BRL(ini)}</div><div class="mut" style="font-size:10.5px">ajustado em ${dataAj}</div></div>
+          <div style="font-size:20px;color:var(--muted)">→</div>
+          <div><div class="mut" style="font-size:11px;font-weight:600">SALDO ATUAL (calculado)</div><div style="font-size:22px;font-weight:800;color:${saldoAtual<0?'var(--red)':'var(--green)'}">${BRL(saldoAtual)}</div><div class="mut" style="font-size:10.5px">inicial + entradas − saídas</div></div>
+          ${podeEditar()?`<button class="btn ghost" style="margin-left:auto" onclick="abrirAjusteSaldoInicial(${contaBanco.id})">⚖️ Ajustar saldo inicial</button>`:''}
+        </div>
+      </div>`;
+    }
     const formHTML=podeEditar()?`<div class="quickbar">
-      <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:12px;display:flex;align-items:center;gap:7px">➕ NOVO LANÇAMENTO</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="font-size:13px;font-weight:700;color:var(--green);display:flex;align-items:center;gap:7px">➕ NOVO LANÇAMENTO</span>
+        <button class="btn ghost" style="margin-left:auto;padding:7px 12px;font-size:12px" onclick="go('recorrentes')">🔁 Recorrentes</button>
+      </div>
       <div class="quickrow l1">
         <div><span class="qlabel">Tipo</span><div class="tipo-toggle"><button id="tDes" class="${tipo==='des'?'des':''}" onclick="setTipo('des')">Despesa</button><button id="tRec" class="${tipo==='rec'?'rec':''}" onclick="setTipo('rec')">Receita</button><button id="tTra" class="${tipo==='tra'?'tra':''}" onclick="setTipo('tra')">Transf.</button></div></div>
         <div><span class="qlabel">Data (dia/mês · ${ANO_FIXO})</span><input id="qData" class="qin" placeholder="dd/mm" data-dm="" onkeydown="maskData(this,event)" onfocus="this.select()"></div>
@@ -386,7 +408,7 @@
       <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho</span><span>👥 Categoria e contato obrigatórios</span></div>
     </div>`:'<div class="note">👁️ Seu acesso é somente leitura (contador). Você pode ver e exportar, mas não lançar.</div>';
     const diaLabel=filtroDia?isoParaBR(filtroDia):'Todos os dias';
-    document.getElementById('content').innerHTML='<div id="ultimaImportLanc"></div>'+formHTML+`
+    document.getElementById('content').innerHTML='<div id="ultimaImportLanc"></div>'+saldoBanco+formHTML+`
       <div style="font-size:13px;font-weight:700;color:var(--txt);margin:22px 0 12px;display:flex;align-items:center;gap:7px;border-top:1px solid var(--line);padding-top:18px">🔍 LANÇAMENTOS CADASTRADOS <span class="mut" style="font-weight:400;font-size:12px">— consultar e editar</span></div>
       <div style="display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 14px;width:fit-content;margin-bottom:12px">
         <button class="burger" style="width:32px;height:32px" title="Mês anterior" onclick="navMes(-1)">‹</button>
@@ -930,6 +952,7 @@
   const REGRAS_CAT=[
     [/ANTECIPA|CR COMPRAS|SIPAG|STONE|PAGSEGURO|PAGBANK|PAG\\*|GETNET|CIELO|REDE /i,'Cartão'],
     [/DEP\.?DINHEIRO/i,'__IGNORAR__'],
+    [/CHEQUE ESP|CH ESP|LIMITE|JUROS LIS|JUROS CHEQUE|ADIANT.*DEPOSIT|JUROS ADIANT/i,'Juros Cheque Especial'],
     [/EMPR[ÉE]STIMO|JUROS CONTA|PARCELAS SUBSC/i,'Empréstimo'],
     [/ESSILOR|LENTE/i,'Lentes/Laboratório'],
     [/PEREGO|GV OPTICAL|FREEFORM|SURFA/i,'Surfaçagem Freeform'],
@@ -1227,6 +1250,46 @@
       </div>`;
   }
 
+  // ---- JUROS POR LOJA (custo financeiro do cheque especial/empréstimo) ----
+  async function viewJuros(){
+    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Somando juros de todas as lojas...</div>';
+    // categorias que são custo financeiro
+    const catsFin=CATS.filter(c=>/juros|cheque especial|empr[ée]stimo|tarifa/i.test(c.nome)).map(c=>c.id);
+    // busca lançamentos financeiros de TODAS as lojas no ano
+    const {data}=await sb.from('lancamentos').select('loja_id,valor,data,descricao,categoria_id,categorias(nome)').gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').in('categoria_id',catsFin.length?catsFin:[-1]).limit(5000);
+    const lancs=data||[];
+    // soma por loja
+    const porLoja={};
+    lancs.forEach(l=>{
+      if(!porLoja[l.loja_id])porLoja[l.loja_id]={total:0,qtd:0,porCat:{}};
+      const v=Math.abs(Number(l.valor));
+      porLoja[l.loja_id].total+=v;porLoja[l.loja_id].qtd++;
+      const cat=(l.categorias&&l.categorias.nome)||'—';
+      porLoja[l.loja_id].porCat[cat]=(porLoja[l.loja_id].porCat[cat]||0)+v;
+    });
+    const linhas=LOJAS.map(loja=>{
+      const d=porLoja[loja.id];if(!d)return null;
+      return {nome:loja.nome,id:loja.id,...d};
+    }).filter(Boolean).sort((a,b)=>b.total-a.total);
+    const totalGeral=linhas.reduce((s,l)=>s+l.total,0);
+    if(linhas.length===0){
+      document.getElementById('content').innerHTML=`<div class="note">🏦 <b>Juros por loja</b> — mostra quanto cada loja pagou de custo financeiro (juros de cheque especial, empréstimo, tarifas) no ano. Ajuda a decidir onde vale trocar cheque especial por empréstimo.</div><div class="card empty"><div class="big">🏦</div><b>Nenhum custo financeiro lançado ainda</b><div style="margin-top:6px">Conforme você importar os extratos e classificar os juros/tarifas, eles aparecem aqui.</div></div>`;
+      return;
+    }
+    const rows=linhas.map((l,i)=>{
+      const detalhe=Object.entries(l.porCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`${c}: ${BRL(v)}`).join(' · ');
+      const media=l.total/12;
+      return `<tr><td><b>${l.nome}</b></td><td class="amt red" style="text-align:right">${BRL(l.total)}</td><td class="amt" style="text-align:right">${BRL(media)}</td><td class="mut" style="font-size:11px">${detalhe}</td></tr>`;
+    }).join('');
+    document.getElementById('content').innerHTML=`<div class="note">🏦 <b>Juros por loja — ${ANO_FIXO}.</b> Quanto cada loja pagou de custo financeiro (cheque especial, empréstimo, tarifas). Quanto maior, mais vale trocar o cheque especial por um empréstimo mais barato.</div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:16px">
+        <div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">TOTAL DE JUROS/TARIFAS (todas as lojas)</div><div style="font-size:28px;font-weight:800;color:var(--red);margin-top:8px">${BRL(totalGeral)}</div><div class="mut" style="font-size:11px;margin-top:4px">no ano de ${ANO_FIXO}</div></div>
+        <div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">MÉDIA POR MÊS</div><div style="font-size:28px;font-weight:800;color:var(--amber);margin-top:8px">${BRL(totalGeral/12)}</div><div class="mut" style="font-size:11px;margin-top:4px">custo financeiro mensal do grupo</div></div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Loja</th><th style="text-align:right">Total no ano</th><th style="text-align:right">Média/mês</th><th>Detalhe</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="note" style="margin-top:16px;background:rgba(61,220,145,.06);border-color:rgba(61,220,145,.2)">💡 <b>Dica:</b> as lojas com maior custo financeiro no topo são as que mais se beneficiam de trocar o cheque especial por um empréstimo. Compare os juros do empréstimo com esse valor mensal — se o empréstimo sair mais barato, vale a troca (como você fez no laboratório).</div>`;
+  }
+
   // ---- POR CONTATO (relatório) ----
   async function viewRelContato(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
@@ -1391,6 +1454,35 @@
     b.dataset.neg=neg?'0':'1';
     b.textContent=neg?'+':'−';
     b.style.color=neg?'var(--green)':'var(--red)';
+  }
+  // janela de ajuste de saldo inicial (chamada do topo de Lançamentos)
+  function abrirAjusteSaldoInicial(contaId){
+    const c=CONTAS.find(x=>x.id===contaId);if(!c)return;
+    const ini=Number(c.saldo_inicial_banco||0);
+    const hoje=new Date().toISOString().slice(0,10);
+    const dataAtual=c.saldo_inicial_data||`${ANO_FIXO}-06-01`;
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
+      <h3>⚖️ Ajustar saldo inicial — ${c.nome}</h3>
+      <p>O saldo que a conta tinha no banco quando você começou a usar o sistema. Pode ser negativo (cheque especial).</p>
+      <span class="qlabel">Data do saldo inicial (quando começou)</span>
+      <input type="date" id="aiData" value="${dataAtual}" style="background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--txt);padding:10px 12px;font-size:14px;width:100%;margin-bottom:10px">
+      <span class="qlabel">Valor do saldo inicial</span>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+        <button class="btn ghost" id="aiSinal" data-neg="${ini<0?'1':'0'}" onclick="const b=this;const n=b.dataset.neg==='1';b.dataset.neg=n?'0':'1';b.textContent=n?'+':'−';b.style.color=n?'var(--green)':'var(--red)'" style="min-width:46px;font-size:18px;font-weight:800;color:${ini<0?'var(--red)':'var(--green)'}">${ini<0?'−':'+'}</button>
+        <input id="aiVal" class="calc" data-cents="${Math.round(Math.abs(ini)*100)}" value="${Math.abs(ini).toLocaleString('pt-BR',{minimumFractionDigits:2})}" inputmode="numeric" onkeydown="calcInput(this,event)" style="flex:1">
+      </div>
+      <div id="aiErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarAjusteSaldoInicial(${contaId})">Salvar</button></div></div></div>`;
+  }
+  async function salvarAjusteSaldoInicial(contaId){
+    const cents=parseInt(document.getElementById('aiVal').dataset.cents||'0',10);
+    const neg=document.getElementById('aiSinal').dataset.neg==='1';
+    const valor=(neg?-1:1)*(cents/100);
+    const data=document.getElementById('aiData').value||null;
+    const {error}=await sb.from('contas').update({saldo_inicial_banco:valor,saldo_inicial_data:data}).eq('id',contaId);
+    if(error){document.getElementById('aiErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
+    const c=CONTAS.find(x=>x.id===contaId);if(c){c.saldo_inicial_banco=valor;c.saldo_inicial_data=data;}
+    fecharModal();toast('Saldo inicial ajustado!','ok');viewLanc();
   }
   async function salvarSaldoInicial(id){
     const cents=parseInt(document.getElementById('saldoIni'+id).dataset.cents||'0',10);
