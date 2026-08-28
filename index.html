@@ -817,18 +817,23 @@
     // opções dos 7 grupos do DRE pra troca rápida
     const ordemG=['rec','cmv','imp','fixo','nop','neutra','adef'];
     const grpOpts=(sel)=>ordemG.map(k=>`<option value="${k}" ${k===sel?'selected':''}>${GRUPOS[k].nome}</option>`).join('');
-    const rows=lista.map(l=>{total+=Math.abs(Number(l.valor));const gAtual=(l.categorias&&l.categorias.grupo)||'adef';return `<tr>
-      <td class="mut" style="white-space:nowrap">${isoParaBR(l.data).slice(0,5)}</td>
-      <td style="min-width:120px">${l.descricao||'—'}</td>
-      <td class="mut" style="font-size:12px">${l.categorias?.nome||'—'}</td>
-      <td>${podeEditar()?`<select class="qin inlinesel" style="height:30px;font-size:12px;min-width:130px" onchange="mudarGrupoDeLancDRE(${l.categoria_id},this.value,'${grupoKey}',${mesIdx})"><option value="">— grupo</option>${grpOpts(gAtual)}</select>`:(GRUPOS[gAtual]?GRUPOS[gAtual].nome:'—')}</td>
-      <td class="amt ${l.valor<0?'red':'green'}" style="white-space:nowrap;text-align:right">${l.valor<0?'-':'+'}${BRL(Math.abs(l.valor))}</td>
+    const rows=lista.map(l=>{total+=Math.abs(Number(l.valor));const gAtual=(l.categorias&&l.categorias.grupo)||'adef';
+      // etiqueta do grupo que vira seletor ao clicar
+      const grupoCel=podeEditar()
+        ?`<span class="grp ${gAtual}" style="cursor:pointer" title="Clique pra trocar o grupo" onclick="this.style.display='none';this.nextElementSibling.style.display='inline-block';this.nextElementSibling.focus()">${GRUPOS[gAtual].nome} ✎</span><select class="qin inlinesel" style="display:none;height:28px;font-size:11px;min-width:120px" onchange="mudarGrupoDeLancDRE(${l.categoria_id},this.value,'${grupoKey}',${mesIdx})" onblur="this.style.display='none';this.previousElementSibling.style.display='inline-block'">${grpOpts(gAtual)}</select>`
+        :`<span class="grp ${gAtual}">${GRUPOS[gAtual].nome}</span>`;
+      return `<tr>
+      <td class="mut" style="white-space:nowrap;font-size:12px">${isoParaBR(l.data).slice(0,5)}</td>
+      <td style="font-size:12.5px">${l.descricao||'—'}</td>
+      <td class="mut" style="font-size:11.5px">${l.categorias?.nome||'—'}</td>
+      <td>${grupoCel}</td>
+      <td class="amt ${l.valor<0?'red':'green'}" style="white-space:nowrap;text-align:right;font-size:12.5px">${l.valor<0?'-':'+'}${BRL(Math.abs(l.valor))}</td>
     </tr>`;}).join('');
     const nomeGrupo=GRUPOS[grupoKey]?GRUPOS[grupoKey].nome:grupoKey;
-    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="max-width:720px">
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="max-width:760px;width:96vw">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0"><span class="grp ${grupoKey}">${nomeGrupo}</span> — ${MESES_NOME[mesIdx]}</h3><button class="delx" style="font-size:18px" onclick="fecharModal()">✕</button></div>
-      <p style="margin-top:4px">${lista.length} lançamento(s). Pra corrigir, troque o <b>grupo do DRE</b> na setinha. <b style="color:var(--amber)">Atenção:</b> muda a categoria inteira (todos os lançamentos dela).</p>
-      <div style="max-height:60vh;overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Grupo do DRE</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="mut" style="text-align:center;padding:20px">Nenhum lançamento</td></tr>'}</tbody></table></div>
+      <p style="margin-top:4px;font-size:12.5px">${lista.length} lançamento(s). Passe o olho pra conferir. Pra trocar o grupo, clique na etiqueta (✎). <b style="color:var(--amber)">Muda a categoria inteira.</b></p>
+      <div style="max-height:60vh;overflow-y:auto;overflow-x:hidden"><table style="width:100%;table-layout:fixed"><thead><tr><th style="width:42px">Data</th><th>Descrição</th><th style="width:120px">Categoria</th><th style="width:130px">Grupo</th><th style="width:90px;text-align:right">Valor</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="mut" style="text-align:center;padding:20px">Nenhum lançamento</td></tr>'}</tbody></table></div>
       <div style="display:flex;justify-content:space-between;border-top:2px solid var(--line);margin-top:10px;padding-top:10px"><b>Total</b><b style="font-size:16px">${BRL(total)}</b></div>
     </div></div>`;
   }
