@@ -786,22 +786,58 @@
     });
     const av=(v,rec)=>rec?`<span style="color:var(--muted);font-size:11px">${(v/rec*100).toFixed(1).replace('.',',')}%</span>`:'';
     const head=`<th></th><th>Conta</th>`+cols.map(c=>`<th style="text-align:right">${c.mesNome}</th>`).join('');
+    // linha clicável por grupo: clica na célula do mês → abre lançamentos daquele grupo naquele mês
+    const lineG=(op,nome,key,grupoKey,o={})=>`<tr class="${o.cls||''}"><td style="text-align:center;color:var(--muted);font-weight:700">${op}</td><td>${nome}</td>`+cols.map((c,ci)=>{const v=o.sign?o.sign*c[key]:c[key];const mesIdx=comDados[ci];const clic=grupoKey?`onclick="abrirDetalheGrupoDRE('${grupoKey}',${mesIdx})" style="text-align:right;cursor:pointer;${v<0?'color:var(--red)':''}" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background='transparent'" title="Ver lançamentos"`:`style="text-align:right;${v<0?'color:var(--red)':''}"`;return `<td ${clic}>${BRL(v)}<br>${av(Math.abs(c[key]),c.rec)}${grupoKey?' <span class="mut" style="font-size:10px">›</span>':''}</td>`}).join('')+`</tr>`;
     const line=(op,nome,key,o={})=>`<tr class="${o.cls||''}"><td style="text-align:center;color:var(--muted);font-weight:700">${op}</td><td>${nome}</td>`+cols.map(c=>{const v=o.sign?o.sign*c[key]:c[key];return `<td style="text-align:right;${v<0?'color:var(--red)':''}">${BRL(v)}<br>${av(Math.abs(c[key]),c.rec)}</td>`}).join('')+`</tr>`;
     const sl=(nome,key)=>`<tr style="font-size:12px;color:var(--muted)"><td></td><td>${nome}</td>`+cols.map(c=>`<td style="text-align:right"><b style="color:var(--txt)">${BRL(c[key])}</b></td>`).join('')+`</tr>`;
-    document.getElementById('content').innerHTML=`<div class="note">📊 <b>DRE</b> — calculado de verdade dos seus lançamentos. <b>CMV</b> = custo da mercadoria vendida. Transferências entre lojas não entram (são neutras).</div>
+    document.getElementById('content').innerHTML=`<div class="note">📊 <b>DRE</b> — calculado de verdade dos seus lançamentos. 💡 <b>Clique num valor</b> (Receita, CMV, Custo Fixo...) pra ver e corrigir os lançamentos daquele grupo no mês.</div>
     <div class="card"><div class="cardhead"><h3>DRE — ${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</h3><span class="tag">${ANO_FIXO}</span></div>
     <div style="overflow-x:auto"><table style="font-variant-numeric:tabular-nums;font-size:12.5px"><thead><tr>${head}</tr></thead><tbody>
-      ${line('','Receita','rec')}
-      ${line('−','Custo da Mercadoria (CMV)','cmv',{sign:-1})}
+      ${lineG('','Receita','rec','rec')}
+      ${lineG('−','Custo da Mercadoria (CMV)','cmv','cmv',{sign:-1})}
       ${line('=','Margem de Contribuição','margem',{cls:''})}
-      ${line('−','Imposto','imp',{sign:-1})}
-      ${line('−','Custo Fixo','fixo',{sign:-1})}
+      ${lineG('−','Imposto','imp','imp',{sign:-1})}
+      ${lineG('−','Custo Fixo','fixo','fixo',{sign:-1})}
       ${line('=','Resultado Operacional','resultOp')}
-      ${line('−','Não Operacional','nop',{sign:-1})}
+      ${lineG('−','Não Operacional','nop','nop',{sign:-1})}
       ${line('=','Resultado Final','resultFinal')}
       ${sl('Saldo anterior','saldoAnt')}
       ${sl('Saldo atual','saldoAtual')}
     </tbody></table></div></div>`;
+  }
+  // abre janela com os lançamentos de um GRUPO do DRE num mês, podendo corrigir categoria e grupo
+  async function abrirDetalheGrupoDRE(grupoKey,mesIdx){
+    document.getElementById('modalRoot').innerHTML='<div class="modal-bg"><div class="modal"><div class="loading"><span class="spin"></span> Carregando...</div></div></div>';
+    // busca lançamentos completos do mês/grupo
+    const ini=`${ANO_FIXO}-${String(mesIdx+1).padStart(2,'0')}-01`;
+    const fim=`${ANO_FIXO}-${String(mesIdx+1).padStart(2,'0')}-31`;
+    const {data}=await sb.from('lancamentos').select('id,data,valor,descricao,categoria_id,categorias(nome,grupo),contatos(nome)').eq('loja_id',lojaAtual).gte('data',ini).lte('data',fim).limit(2000);
+    const lista=(data||[]).filter(l=>{const g=l.categorias&&l.categorias.grupo;return g===grupoKey;}).sort((a,b)=>a.data.localeCompare(b.data));
+    let total=0;
+    // opções de categoria pra troca rápida
+    const catOpts=(sel)=>catsAtivas().map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${c.nome}</option>`).join('');
+    const rows=lista.map(l=>{total+=Math.abs(Number(l.valor));return `<tr>
+      <td class="mut" style="white-space:nowrap">${isoParaBR(l.data).slice(0,5)}</td>
+      <td style="min-width:120px">${l.descricao||'—'}</td>
+      <td>${podeEditar()?`<select class="qin inlinesel" style="height:30px;font-size:12px;min-width:130px" onchange="mudarCatDeLancDRE(${l.id},this.value,'${grupoKey}',${mesIdx})"><option value="">— categoria</option>${catOpts(l.categoria_id)}</select>`:(l.categorias?.nome||'—')}</td>
+      <td class="amt ${l.valor<0?'red':'green'}" style="white-space:nowrap;text-align:right">${l.valor<0?'-':'+'}${BRL(Math.abs(l.valor))}</td>
+    </tr>`;}).join('');
+    const nomeGrupo=GRUPOS[grupoKey]?GRUPOS[grupoKey].nome:grupoKey;
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="max-width:680px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0"><span class="grp ${grupoKey}">${nomeGrupo}</span> — ${MESES_NOME[mesIdx]}</h3><button class="delx" style="font-size:18px" onclick="fecharModal()">✕</button></div>
+      <p style="margin-top:4px">${lista.length} lançamento(s). Pra corrigir, troque a <b>categoria</b> na setinha — o grupo do DRE muda junto.</p>
+      <div style="max-height:60vh;overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="mut" style="text-align:center;padding:20px">Nenhum lançamento</td></tr>'}</tbody></table></div>
+      <div style="display:flex;justify-content:space-between;border-top:2px solid var(--line);margin-top:10px;padding-top:10px"><b>Total</b><b style="font-size:16px">${BRL(total)}</b></div>
+      <div class="mut" style="font-size:11.5px;margin-top:8px">💡 Quer mudar o grupo de uma categoria inteira (ex: jogar "Óculos" pro CMV)? Faça em <b>Gestão → Categorias</b>.</div>
+    </div></div>`;
+  }
+  // troca a categoria de um lançamento dentro da janela do DRE e recarrega
+  async function mudarCatDeLancDRE(id,catId,grupoKey,mesIdx){
+    const {error}=await sb.from('lancamentos').update({categoria_id:catId||null}).eq('id',id);
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    toast('Categoria alterada!','ok');
+    // recarrega a janela (o lançamento pode ter saído deste grupo)
+    abrirDetalheGrupoDRE(grupoKey,mesIdx);
   }
 
   // ---- FECHAMENTO DO MÊS ----
