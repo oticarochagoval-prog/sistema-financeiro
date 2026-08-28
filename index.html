@@ -808,10 +808,10 @@
   // abre janela com os lançamentos de um GRUPO do DRE num mês, podendo corrigir categoria e grupo
   async function abrirDetalheGrupoDRE(grupoKey,mesIdx){
     document.getElementById('modalRoot').innerHTML='<div class="modal-bg"><div class="modal"><div class="loading"><span class="spin"></span> Carregando...</div></div></div>';
-    // busca lançamentos completos do mês/grupo
+    // busca lançamentos completos do mês/grupo (usa o 1º dia do mês seguinte pra pegar o mês inteiro)
     const ini=`${ANO_FIXO}-${String(mesIdx+1).padStart(2,'0')}-01`;
-    const fim=`${ANO_FIXO}-${String(mesIdx+1).padStart(2,'0')}-31`;
-    const {data}=await sb.from('lancamentos').select('id,data,valor,descricao,categoria_id,categorias(nome,grupo),contatos(nome)').eq('loja_id',lojaAtual).gte('data',ini).lte('data',fim).limit(2000);
+    const proxMes=mesIdx+1>=12?`${ANO_FIXO+1}-01-01`:`${ANO_FIXO}-${String(mesIdx+2).padStart(2,'0')}-01`;
+    const {data}=await sb.from('lancamentos').select('id,data,valor,descricao,categoria_id,categorias(nome,grupo),contatos(nome)').eq('loja_id',lojaAtual).gte('data',ini).lt('data',proxMes).limit(2000);
     const lista=(data||[]).filter(l=>{const g=l.categorias&&l.categorias.grupo;return g===grupoKey;}).sort((a,b)=>a.data.localeCompare(b.data));
     let total=0;
     // opções dos 7 grupos do DRE pra troca rápida
