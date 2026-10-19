@@ -234,7 +234,7 @@
     if(LOJAS.length && !lojaAtual)lojaAtual=LOJAS[0].id;
     const {data:cats}=await sb.from('categorias').select('*').order('nome');CATS=cats||[];
     const {data:cont}=await sb.from('contatos').select('*').order('nome');CONTATOS=cont||[];
-    await carregarContas();
+    await carregarContas();await carregarFechamentos();
     document.getElementById('store').innerHTML=LOJAS.map(l=>`<option value="${l.id}" ${l.id===lojaAtual?'selected':''}>${l.nome}</option>`).join('');
   }
   async function carregarContas(){const {data}=await sb.from('contas').select('*').eq('loja_id',lojaAtual).eq('arquivada',false).order('nome');CONTAS=data||[];}
@@ -244,13 +244,13 @@
   }
   let LANC_ANO=[];
   async function carregarLancAno(){
-    const {data}=await sb.from('lancamentos').select('data,valor,categorias(nome,grupo)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').limit(5000);
+    const {data}=await sb.from('lancamentos').select('data,valor,conta_id,categorias(nome,grupo)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').limit(5000);
     LANC_ANO=data||[];
   }
   async function trocarLoja(){
     lojaAtual=parseInt(document.getElementById('store').value,10);
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
-    await carregarContas();render();
+    await carregarContas();await carregarFechamentos();render();
   }
 
   const MENU=[
@@ -462,6 +462,7 @@
   // muda a descrição direto na linha
   async function mudarDescLanc(id,valor){
     const l=LANC.find(x=>x.id===id);if(!l)return;
+    if(bloqueadoPorFechamento(l.data,l.conta_id))return;
     const desc=(valor||'').toUpperCase();
     const {data,error}=await sb.from('lancamentos').update({descricao:desc}).eq('id',id).select();
     if(error){toast('Erro ao salvar: '+error.message,'erro');return;}
@@ -471,6 +472,7 @@
   // muda um campo direto na linha e salva no banco
   async function mudarCampoLanc(id,campo,valor){
     const l=LANC.find(x=>x.id===id);if(!l)return;
+    if(bloqueadoPorFechamento(l.data,l.conta_id))return;
     const val=valor||null;
     const {data,error}=await sb.from('lancamentos').update({[campo]:val}).eq('id',id).select();
     if(error){toast('Erro ao salvar: '+error.message,'erro');return;}
@@ -526,6 +528,7 @@
     if(!iso){toast('Data inválida (use dia/mês)','erro');return;}
     if(!catId){toast('Escolha a categoria','erro');return;}
     if(!contatoId && categoriaExigeContato(catId)){toast('Para Funcionários, escolha o contato (qual funcionário)','erro');return;}
+    if(bloqueadoPorFechamento(iso,contaId))return;
     const v=cents/100;
     const tipoDb=isTra?'transferencia':(tipo==='rec'?'receita':'despesa');
     const valor=(tipo==='rec')?v:-v;
@@ -544,6 +547,7 @@
     if(senha===null)return;
     if(senha!=='1234'){toast('Senha incorreta','erro');return;}
     const l=LANC.find(x=>x.id===id);
+    if(l&&bloqueadoPorFechamento(l.data,l.conta_id))return;
     await sb.from('lixeira').insert({loja_id:lojaAtual,dados:l,excluido_por:USER.id});
     const {error}=await sb.from('lancamentos').delete().eq('id',id);
     if(error){toast('Erro ao excluir: '+error.message,'erro');return;}
@@ -580,6 +584,9 @@
     const cents=parseInt(document.getElementById('edVal').dataset.cents||'0',10);
     const pa=document.getElementById('edParcA').value,pb=document.getElementById('edParcB').value;
     const iso=dataParaISO(document.getElementById('edData').value)||l.data;
+    const contaNova=document.getElementById('edConta').value||null;
+    if(bloqueadoPorFechamento(l.data,l.conta_id))return;
+    if(bloqueadoPorFechamento(iso,contaNova))return;
     const {error}=await sb.from('lancamentos').update({
       data:iso,descricao:document.getElementById('edDesc').value.toUpperCase(),
       valor:(l.valor<0?-1:1)*(cents/100),categoria_id:cat,contato_id:contato,
@@ -876,69 +883,221 @@
     <span style="font-weight:700;font-size:14px;min-width:130px;text-align:center">${MESES_NOME[mesSel]} ${ANO_FIXO}</span>
     <button class="burger" style="width:32px;height:32px" onclick="navMes(1)">›</button></div>`;}
   function navMes(d){mesSel+=d;if(mesSel<0)mesSel=0;if(mesSel>11)mesSel=11;filtroDia='';render();}
-  async function saldosCalculados(){
-    await carregarContas();
-    const {data:lancs}=await sb.from('lancamentos').select('valor,conta_id,categorias(grupo)').eq('loja_id',lojaAtual);
-    const ent={},sai={};
-    (lancs||[]).forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;if(!l.conta_id)return;const v=Number(l.valor);if(v>=0)ent[l.conta_id]=(ent[l.conta_id]||0)+v;else sai[l.conta_id]=(sai[l.conta_id]||0)+Math.abs(v);});
-    return CONTAS.filter(c=>!/caixinha/i.test(c.nome)).map(c=>{const ini=Number(c.saldo_inicial_banco||0);const e=ent[c.id]||0,x=sai[c.id]||0;return {id:c.id,nome:c.nome,ini,ent:e,sai:x,calc:ini+e-x};});
+  // ---- FECHAMENTO DO MÊS (saldo por mês, saldo real no fim do mês, fechar/travar) ----
+  // Fechamentos do ano desta loja: mes(1-12) -> linha da tabela fechamentos
+  let FECH_ANO={};
+  async function carregarFechamentos(){
+    FECH_ANO={};
+    try{const {data}=await sb.from('fechamentos').select('*').eq('loja_id',lojaAtual).eq('ano',ANO_FIXO);(data||[]).forEach(r=>{FECH_ANO[r.mes]=r;});}catch(e){}
   }
-  function atualizaConciliacao(id){
-    const inp=document.getElementById('conc'+id);const out=document.getElementById('difConc'+id);if(!inp||!out)return;
-    const real=parseInt(inp.dataset.cents||'0',10);
-    if(!real){out.innerHTML='<span class="mut">digite o saldo que aparece no app do banco</span>';return;}
-    const calc=parseInt(inp.dataset.calc||'0',10);
-    const dif=real-calc;
-    if(Math.abs(dif)<1){out.innerHTML='<span style="color:var(--green);font-weight:700">✅ Bateu certinho! O sistema está igual ao banco.</span>';}
-    else if(dif>0){out.innerHTML=`<span style="color:var(--amber);font-weight:700">⚠️ Sobrando ${BRL(dif/100)}</span> <span class="mut">— o banco tem mais que o sistema. Pode faltar lançar alguma entrada.</span>`;}
-    else {out.innerHTML=`<span style="color:var(--red);font-weight:700">🚨 Faltando ${BRL(Math.abs(dif)/100)}</span> <span class="mut">— o banco tem menos que o sistema. Pode faltar lançar alguma saída.</span>`;}
+  function contaEhCaixinha(contaId){const c=CONTAS.find(x=>x.id==contaId);return !!(c&&/caixinha/i.test(c.nome));}
+  function mesFechadoISO(iso){
+    if(!iso)return false;const p=String(iso).split('-');if(parseInt(p[0],10)!==ANO_FIXO)return false;
+    const r=FECH_ANO[parseInt(p[1],10)];return !!(r&&r.fechado);
   }
+  // true = bloqueado (já avisa). A caixinha não entra no bloqueio.
+  function bloqueadoPorFechamento(iso,contaId){
+    if(contaId&&contaEhCaixinha(contaId))return false;
+    if(!mesFechadoISO(iso))return false;
+    const m=parseInt(String(iso).split('-')[1],10);
+    toast(`🔐 ${MESES_NOME[m-1]} está fechado. Para mexer, o dono precisa reabrir o mês em "Fechamento do mês".`,'erro');
+    return true;
+  }
+  const _mm=mi=>String(mi+1).padStart(2,'0');
+  function _ultimoDiaBR(mi){const d=new Date(ANO_FIXO,mi+1,0).getDate();return `${String(d).padStart(2,'0')}/${_mm(mi)}`;}
+  function _saldosDe(row,contaId){const s=(row&&row.saldos)||{};return s[String(contaId)]||{};}
+  // movimento (sem neutras) de uma conta num mês, a partir de LANC_ANO
+  function _movMes(contaId,mi){
+    let e=0,s=0;
+    LANC_ANO.forEach(l=>{if(l.conta_id!==contaId)return;const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;const m=parseInt(l.data.split('-')[1],10)-1;if(m!==mi)return;const v=Number(l.valor);if(v>0)e+=v;else s+=Math.abs(v);});
+    return {ent:e,sai:s};
+  }
+  // Saldo inicial da conta no mês: (1) copiado do último mês anterior fechado, (2) digitado neste mês, (3) calculado
+  function _saldoInicialMes(conta,mi,antesDoAno){
+    for(let k=mi-1;k>=0;k--){
+      const r=FECH_ANO[k+1];if(!(r&&r.fechado))continue;
+      const s=_saldosDe(r,conta.id);if(s.real==null)continue;
+      let v=Number(s.real);for(let j=k+1;j<mi;j++){const mv=_movMes(conta.id,j);v+=mv.ent-mv.sai;}
+      return {valor:v,origem:'anterior',mesBase:k};
+    }
+    const s=_saldosDe(FECH_ANO[mi+1],conta.id);
+    if(s.inicial_manual!=null)return {valor:Number(s.inicial_manual),origem:'manual',por:s.inicial_por||'',motivo:s.inicial_motivo||''};
+    let v=Number(conta.saldo_inicial_banco||0)+(antesDoAno[conta.id]||0);
+    for(let j=0;j<mi;j++){const mv=_movMes(conta.id,j);v+=mv.ent-mv.sai;}
+    return {valor:v,origem:'calculado'};
+  }
+  let _escadas=[]; // último cálculo da tela (pra fechar o mês)
+  function _fmtTs(ts){if(!ts)return '';const d=new Date(ts);return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
 
   async function viewFechamento(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
-    await carregarLancAno();
-    const saldosConc=await saldosCalculados();
-    // calcula entradas e saídas do mês selecionado (ignora neutras)
-    let entradas=0,saidas=0;
+    await carregarContas();await carregarLancAno();await carregarFechamentos();
+    // o que aconteceu antes do ano (pra calcular o saldo inicial quando nenhum mês anterior foi fechado)
+    const {data:antesRows}=await sb.from('lancamentos').select('valor,conta_id,categorias(grupo)').eq('loja_id',lojaAtual).lt('data',ANO_FIXO+'-01-01');
+    const antes={};(antesRows||[]).forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra'||!l.conta_id)return;antes[l.conta_id]=(antes[l.conta_id]||0)+Number(l.valor);});
+    const row=FECH_ANO[mesSel+1]||null;const fechado=!!(row&&row.fechado);
+    const mesNome=MESES_NOME[mesSel],ult=_ultimoDiaBR(mesSel);
+    const bancos=CONTAS.filter(c=>!/caixinha/i.test(c.nome));
+    // resumo do mês (sem saldo inicial) + lançamentos sem categoria
+    let entradas=0,saidas=0,semCat=0;
     LANC_ANO.forEach(l=>{
-      const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;
       const m=parseInt(l.data.split('-')[1],10)-1;if(m!==mesSel)return;
+      const g=l.categorias&&l.categorias.grupo;
+      if(!l.categorias||g==='adef')semCat++;
+      if(g==='neutra')return;
       const v=Number(l.valor);if(v>0)entradas+=v;else saidas+=Math.abs(v);
     });
     const resultado=entradas-saidas;
-    document.getElementById('content').innerHTML=`<div class="note">🔐 <b>Fechamento do mês</b> — confere o que entrou, o que saiu e o resultado do mês. Ao lado, a <b>conciliação</b> compara o saldo calculado com o saldo real do banco.</div>
+    _escadas=[];
+    const escadasHTML=bancos.map(c=>{
+      const si=_saldoInicialMes(c,mesSel,antes);const mv=_movMes(c.id,mesSel);const calc=si.valor+mv.ent-mv.sai;
+      const s=_saldosDe(row,c.id);const real=(s.real!=null)?Number(s.real):null;
+      _escadas.push({id:c.id,nome:c.nome,calc,real});
+      const origemTxt=si.origem==='anterior'?`copiado do fechamento de ${MESES_NOME[si.mesBase]}`:(si.origem==='manual'?`digitado por ${si.por||'—'}${si.motivo?' · '+si.motivo:''}`:'calculado pelo sistema — confira com o extrato');
+      const podeCorrigir=!fechado&&podeEditar()&&si.origem!=='anterior';
+      const neg=real!=null&&real<0;
+      return `<div class="card" style="margin-bottom:12px">
+        <div class="cardhead"><h3>🏦 ${c.nome} — ${mesNome}</h3>${fechado?'<span class="catchip" style="border-color:var(--green);color:var(--green)">🔐 fechado</span>':''}</div>
+        <div class="cfgrow"><span>Saldo inicial em 01/${_mm(mesSel)}<br><span class="mut" style="font-size:11px">${origemTxt}</span></span><b style="margin-left:auto;color:${si.valor<0?'var(--red)':'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(si.valor)}</b>${podeCorrigir?`<button class="btn ghost" style="padding:4px 9px;margin-left:8px" title="Corrigir saldo inicial (pede motivo)" onclick="abrirCorrigirSaldoInicialMes(${c.id},${Math.round(si.valor*100)})">✎</button>`:''}</div>
+        <div class="cfgrow"><span>+ Entradas de ${mesNome}</span><b style="margin-left:auto;color:var(--green);font-variant-numeric:tabular-nums">${BRL(mv.ent)}</b></div>
+        <div class="cfgrow"><span>− Saídas de ${mesNome}</span><b style="margin-left:auto;color:var(--red);font-variant-numeric:tabular-nums">${BRL(mv.sai)}</b></div>
+        <div class="cfgrow" style="border-top:2px solid var(--line)"><b>= Tem que ter em ${ult}</b><b style="margin-left:auto;font-size:16px;color:${calc<0?'var(--red)':'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(calc)}</b></div>
+        <div class="cfgrow" style="flex-wrap:wrap;gap:8px"><span>Saldo real no banco em ${ult}<br><span class="mut" style="font-size:11px">o que o app do Sicoob mostra nesse dia · se o mês ainda não acabou, o saldo de agora</span></span>
+          <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+            <button class="btn ghost" id="sinalReal${c.id}" data-neg="${neg?'1':'0'}" ${fechado?'disabled':''} onclick="toggleSinalReal(${c.id})" title="Positivo / negativo" style="min-width:42px;font-size:17px;font-weight:800;color:${neg?'var(--red)':'var(--green)'}">${neg?'−':'+'}</button>
+            <input id="real${c.id}" class="qin calc" data-cents="${real==null?0:Math.round(Math.abs(real)*100)}" data-calc="${Math.round(calc*100)}" value="${real==null?'':Math.abs(real).toLocaleString('pt-BR',{minimumFractionDigits:2})}" placeholder="0,00" inputmode="numeric" style="max-width:150px" ${fechado?'disabled':''} onkeydown="calcInput(this,event);atualizaDifMes(${c.id});salvarSaldoRealMes(${c.id})">
+          </div></div>
+        <div id="dif${c.id}" style="padding:8px 0 2px;font-size:13px">${_difHTML(c.id,calc,real)}</div>
+      </div>`;
+    }).join('');
+    const fechadoHTML=fechado
+      ?`<p style="font-size:13px;line-height:1.6;margin-top:6px">Fechado por <b>${row.fechado_por||'—'}</b> em <b>${_fmtTs(row.fechado_em)}</b>.${row.motivo?`<br><span class="mut">Motivo registrado: ${row.motivo}</span>`:''}<br>${mesNome} não aceita mais lançamentos no banco. O saldo real virou o saldo inicial de ${mesSel<11?MESES_NOME[mesSel+1]:'janeiro'}.</p>
+        ${PERFIL.papel==='dono'?`<button class="btn ghost" style="margin-top:10px" onclick="reabrirMes()">🔓 Reabrir ${mesNome}</button>`:'<p class="mut" style="font-size:12px;margin-top:8px">Só o dono pode reabrir.</p>'}`
+      :`<p class="mut" style="font-size:12.5px;line-height:1.5;margin-top:6px">Para fechar: digite o saldo real de cada conta. Se alguma não bateu, escreva o motivo. Depois de fechado, ninguém lança mais nada em ${mesNome} sem o dono reabrir.</p>
+        ${semCat?`<p style="font-size:13px;color:var(--amber);margin-top:8px">⚠️ <b>${semCat} lançamento(s)</b> de ${mesNome} sem categoria. Dá pra fechar, mas o DRE fica errado — <a style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="go('lanc')">resolver em Lançamentos</a>.</p>`:''}
+        <textarea id="motivoFech" placeholder="Motivo, se alguma conta não bateu (obrigatório nesse caso)" style="width:100%;min-height:64px;margin-top:10px;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--txt);padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical;outline:none"></textarea>
+        ${podeEditar()?`<button class="btn" style="margin-top:10px" onclick="fecharMes()">🔐 Fechar ${mesNome}</button>`:''}`;
+    document.getElementById('content').innerHTML=`<div class="note">🔐 <b>Fechamento do mês</b> — a conta do dinheiro, igual ao extrato: <b>quanto tinha, quanto entrou, quanto saiu, quanto tem que ter</b>. Bateu com o app do banco, o mês fecha.</div>
     ${seletorMes()}
-    <div class="grid two">
-      <div class="card"><div class="cardhead"><h3>Resumo de ${MESES_NOME[mesSel]}</h3></div>
+    ${escadasHTML||'<div class="card" style="margin-bottom:12px"><p class="mut" style="font-size:13px">Nenhuma conta de banco cadastrada. Vá em <b>Configurações</b>.</p></div>'}
+    <div class="grid two" style="margin-top:4px">
+      <div class="card"><div class="cardhead"><h3>Resultado de ${mesNome}</h3><span class="tag">sem saldo inicial</span></div>
+        <p class="mut" style="font-size:11.5px;margin-top:4px">Desempenho do mês. Esta conta <b>não</b> usa o saldo inicial.</p>
         <div class="cfgrow">Entradas (recebido)<b style="margin-left:auto;color:var(--green)">${BRL(entradas)}</b></div>
         <div class="cfgrow">Saídas (pago)<b style="margin-left:auto;color:var(--red)">-${BRL(saidas)}</b></div>
         <div class="cfgrow" style="border-top:2px solid var(--line)"><b>Resultado do mês</b><b style="margin-left:auto;color:${resultado>=0?'var(--green)':'var(--red)'};font-size:17px">${BRL(resultado)}</b></div>
+        <div class="cfgrow">Lançamentos sem categoria<b style="margin-left:auto;color:${semCat?'var(--amber)':'var(--green)'}">${semCat}</b></div>
       </div>
-      <div class="card"><div class="cardhead"><h3>🧮 Conciliação de caixa</h3></div>
-        <p class="mut" style="font-size:12.5px;line-height:1.5;margin-top:6px">Abra o app do Sicoob, veja o saldo de hoje e digite abaixo. O sistema compara com o que ele calculou. (É o saldo total atual da conta — não muda com o mês selecionado.)</p>
-        ${saldosConc.length?saldosConc.map(s=>{const calcCents=Math.round(s.calc*100);return `<div style="padding:11px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:13.5px">🏦 ${s.nome}</b><span class="mut" style="font-size:12.5px">Sistema calculou: <b style="color:var(--txt)">${BRL(s.calc)}</b></span></div><div class="mut" style="font-size:11.5px;margin-top:3px">Começou com <b style="color:${s.ini<0?'var(--red)':'var(--txt)'}">${BRL(s.ini)}</b> · entradas <b style="color:var(--green)">+${BRL(s.ent)}</b> · saídas <b style="color:var(--red)">−${BRL(s.sai)}</b></div><div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap"><span class="qlabel" style="margin:0">Saldo real no banco:</span><input id="conc${s.id}" class="qin calc" data-cents="0" data-calc="${calcCents}" value="" placeholder="0,00" inputmode="numeric" style="max-width:150px" onkeydown="calcInput(this,event);atualizaConciliacao(${s.id})"></div><div id="difConc${s.id}" style="margin-top:7px;font-size:13px"><span class="mut">digite o saldo que aparece no app do banco</span></div></div>`;}).join(''):'<p class="mut" style="font-size:13px;margin-top:10px">Nenhuma conta de banco cadastrada. Vá em <b>Configurações</b> e cadastre a conta e o saldo inicial.</p>'}
-      </div>
+      <div class="card"><div class="cardhead"><h3>${fechado?'🔐 Mês fechado':'Fechar '+mesNome}</h3></div>${fechadoHTML}</div>
     </div>
-    <div class="card" style="margin-top:16px"><div class="cardhead"><h3>📝 Observações de ${MESES_NOME[mesSel]}</h3></div>
+    <div class="card" style="margin-top:16px"><div class="cardhead"><h3>📝 Observações de ${mesNome}</h3></div>
       <p class="mut" style="font-size:12px;margin:6px 0 10px">Anote aqui o que precisar sobre o fechamento deste mês. Salva sozinho.</p>
-      <textarea id="obsFech" placeholder="Ex: Faltou lançar a nota da Essilor. Conferir depósito do dia 15..." style="width:100%;min-height:120px;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--txt);padding:12px;font-size:13.5px;font-family:inherit;resize:vertical;outline:none" oninput="salvarObsFech(this.value)"></textarea>
+      <textarea id="obsFech" placeholder="Ex: Faltou lançar a nota da Essilor. Conferir depósito do dia 15..." style="width:100%;min-height:120px;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--txt);padding:12px;font-size:13.5px;font-family:inherit;resize:vertical;outline:none" oninput="salvarObsFech(this.value)">${row&&row.observacao?row.observacao.replace(/</g,'&lt;'):''}</textarea>
       <div id="obsFechStatus" class="mut" style="font-size:11.5px;margin-top:6px"></div>
     </div>`;
-    // carrega observação salva deste mês
-    carregarObsFech();
+  }
+  function _difHTML(contaId,calc,real){
+    if(real==null)return `<span class="mut">digite o saldo do banco no dia ${_ultimoDiaBR(mesSel)}</span>`;
+    const dif=real-calc;
+    if(Math.abs(dif)<0.01)return '<span style="color:var(--green);font-weight:700">✅ Bateu certinho! O sistema está igual ao banco.</span>';
+    if(dif>0)return `<span style="color:var(--amber);font-weight:700">⚠️ Sobrando ${BRL(dif)}</span> <span class="mut">— o banco tem mais que o sistema. Falta lançar alguma entrada, ou tem saída lançada a mais.</span>`;
+    return `<span style="color:var(--red);font-weight:700">🚨 Faltando ${BRL(Math.abs(dif))}</span> <span class="mut">— o banco tem menos que o sistema. Falta lançar alguma saída.</span>`;
+  }
+  function _lerReal(contaId){
+    const inp=document.getElementById('real'+contaId);if(!inp)return null;
+    if(inp.value==='')return null;
+    const neg=document.getElementById('sinalReal'+contaId).dataset.neg==='1';
+    return (neg?-1:1)*parseInt(inp.dataset.cents||'0',10)/100;
+  }
+  function atualizaDifMes(contaId){
+    const inp=document.getElementById('real'+contaId);const out=document.getElementById('dif'+contaId);if(!inp||!out)return;
+    const calc=parseInt(inp.dataset.calc||'0',10)/100;const real=_lerReal(contaId);
+    out.innerHTML=_difHTML(contaId,calc,real);
+    const e=_escadas.find(x=>x.id===contaId);if(e)e.real=real;
+  }
+  function toggleSinalReal(contaId){
+    const b=document.getElementById('sinalReal'+contaId);if(!b||b.disabled)return;
+    const neg=b.dataset.neg==='1';b.dataset.neg=neg?'0':'1';b.textContent=neg?'+':'−';b.style.color=neg?'var(--green)':'var(--red)';
+    atualizaDifMes(contaId);salvarSaldoRealMes(contaId);
+  }
+  // grava o saldo real digitado (salva sozinho, com atraso curto)
+  let _realTimer={};
+  function salvarSaldoRealMes(contaId){
+    clearTimeout(_realTimer[contaId]);
+    _realTimer[contaId]=setTimeout(async()=>{
+      const real=_lerReal(contaId);
+      await _gravarSaldos(mesSel+1,String(contaId),{real,real_por:PERFIL.nome||'',real_em:new Date().toISOString()});
+    },600);
+  }
+  // mescla e grava o JSON de saldos do mês no banco
+  async function _gravarSaldos(mes,contaKey,patch,extra){
+    const atual=FECH_ANO[mes]||{};const saldos=Object.assign({},atual.saldos||{});
+    if(contaKey)saldos[contaKey]=Object.assign({},saldos[contaKey]||{},patch||{});
+    const payload=Object.assign({loja_id:lojaAtual,ano:ANO_FIXO,mes,saldos},extra||{});
+    const {data,error}=await sb.from('fechamentos').upsert(payload,{onConflict:'loja_id,ano,mes'}).select().maybeSingle();
+    if(error){toast('Erro ao salvar: '+error.message,'erro');return false;}
+    FECH_ANO[mes]=data||Object.assign({},atual,payload);
+    return true;
+  }
+  function abrirCorrigirSaldoInicialMes(contaId,centsAtual){
+    const c=CONTAS.find(x=>x.id===contaId);if(!c)return;
+    const neg=centsAtual<0;const abs=Math.abs(centsAtual);
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
+      <h3>✎ Corrigir saldo inicial — ${c.nome} · 01/${_mm(mesSel)}</h3>
+      <p>Use só se o valor calculado estiver errado (ex.: o mês anterior não foi fechado). Pode ser negativo (cheque especial). Fica registrado quem corrigiu e por quê.</p>
+      <span class="qlabel">Saldo em 01/${_mm(mesSel)}/${ANO_FIXO}</span>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px">
+        <button class="btn ghost" id="csSinal" data-neg="${neg?'1':'0'}" onclick="const b=this;const n=b.dataset.neg==='1';b.dataset.neg=n?'0':'1';b.textContent=n?'+':'−';b.style.color=n?'var(--green)':'var(--red)'" style="min-width:46px;font-size:18px;font-weight:800;color:${neg?'var(--red)':'var(--green)'}">${neg?'−':'+'}</button>
+        <input id="csVal" class="calc" data-cents="${abs}" value="${(abs/100).toLocaleString('pt-BR',{minimumFractionDigits:2})}" inputmode="numeric" onkeydown="calcInput(this,event)" style="flex:1;margin-bottom:0">
+      </div>
+      <span class="qlabel">Motivo *</span><input id="csMotivo" class="maiusc" placeholder="Ex: SALDO DO EXTRATO DE 01/06">
+      <div id="csErr"></div>
+      <div class="modal-btns" style="flex-wrap:wrap"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn ghost" onclick="limparCorrecaoSaldoInicial(${contaId})" title="Volta ao valor calculado pelo sistema">Voltar ao calculado</button><button class="btn" onclick="salvarCorrecaoSaldoInicial(${contaId})">Salvar</button></div></div></div>`;
+  }
+  async function salvarCorrecaoSaldoInicial(contaId){
+    const cents=parseInt(document.getElementById('csVal').dataset.cents||'0',10);
+    const neg=document.getElementById('csSinal').dataset.neg==='1';
+    const motivo=(document.getElementById('csMotivo').value||'').trim().toUpperCase();
+    if(!motivo){document.getElementById('csErr').innerHTML='<div class="err">Escreva o motivo.</div>';return;}
+    const ok=await _gravarSaldos(mesSel+1,String(contaId),{inicial_manual:(neg?-1:1)*cents/100,inicial_motivo:motivo,inicial_por:PERFIL.nome||'',inicial_em:new Date().toISOString()});
+    if(!ok)return;fecharModal();toast('Saldo inicial corrigido!','ok');viewFechamento();
+  }
+  async function limparCorrecaoSaldoInicial(contaId){
+    const ok=await _gravarSaldos(mesSel+1,String(contaId),{inicial_manual:null,inicial_motivo:null,inicial_por:null,inicial_em:null});
+    if(!ok)return;fecharModal();toast('Voltou ao valor calculado.','ok');viewFechamento();
+  }
+  async function fecharMes(){
+    if(!podeEditar())return;
+    const mesNome=MESES_NOME[mesSel];
+    const semReal=_escadas.filter(e=>e.real==null);
+    if(semReal.length){toast(`Digite o saldo real de: ${semReal.map(e=>e.nome).join(', ')}`,'erro');return;}
+    const naoBateu=_escadas.filter(e=>Math.abs(e.real-e.calc)>=0.01);
+    const motivo=(document.getElementById('motivoFech')?.value||'').trim().toUpperCase();
+    if(naoBateu.length&&!motivo){toast(`${naoBateu.map(e=>e.nome).join(', ')} não bateu. Escreva o motivo para fechar mesmo assim.`,'erro');return;}
+    if(!confirm(`Fechar ${mesNome}? Depois disso ninguém lança mais nada em ${mesNome} sem o dono reabrir.`))return;
+    // garante que o saldo real digitado está gravado antes de fechar
+    for(const e of _escadas){await _gravarSaldos(mesSel+1,String(e.id),{real:e.real,real_por:PERFIL.nome||'',real_em:new Date().toISOString()});}
+    const ok=await _gravarSaldos(mesSel+1,null,null,{fechado:true,fechado_em:new Date().toISOString(),fechado_por:(PERFIL.nome||'').toUpperCase(),motivo:motivo||null});
+    if(!ok)return;toast(`🔐 ${mesNome} fechado!`,'ok');viewFechamento();
+  }
+  async function reabrirMes(){
+    if(PERFIL.papel!=='dono'){toast('Só o dono pode reabrir o mês.','erro');return;}
+    const mesNome=MESES_NOME[mesSel];
+    const motivo=prompt(`Motivo para reabrir ${mesNome}:`);if(motivo===null)return;
+    if(!motivo.trim()){toast('Escreva o motivo.','erro');return;}
+    const row=FECH_ANO[mesSel+1]||{};
+    const reg=`REABERTO POR ${(PERFIL.nome||'').toUpperCase()} EM ${_fmtTs(new Date().toISOString())}: ${motivo.trim().toUpperCase()}`;
+    const ok=await _gravarSaldos(mesSel+1,null,null,{fechado:false,fechado_em:null,fechado_por:null,motivo:(row.motivo?row.motivo+' · ':'')+reg});
+    if(!ok)return;toast(`🔓 ${mesNome} reaberto.`,'ok');viewFechamento();
   }
   // ---- Observação do fechamento (salva sozinho) ----
   let _obsTimer=null;
-  async function carregarObsFech(){
-    const {data}=await sb.from('fechamentos').select('observacao').eq('loja_id',lojaAtual).eq('ano',ANO_FIXO).eq('mes',mesSel+1).maybeSingle();
-    const ta=document.getElementById('obsFech');
-    if(ta&&data&&data.observacao){ta.value=data.observacao;}
-  }
   function salvarObsFech(txt){
     const st=document.getElementById('obsFechStatus');if(st)st.textContent='salvando...';
     clearTimeout(_obsTimer);
     _obsTimer=setTimeout(async()=>{
       const {error}=await sb.from('fechamentos').upsert({loja_id:lojaAtual,ano:ANO_FIXO,mes:mesSel+1,observacao:txt},{onConflict:'loja_id,ano,mes'});
+      if(!error&&FECH_ANO[mesSel+1])FECH_ANO[mesSel+1].observacao=txt;
       const st2=document.getElementById('obsFechStatus');
       if(st2)st2.textContent=error?('erro ao salvar: '+error.message):'✅ salvo';
     },700);
@@ -1131,8 +1290,9 @@
       });
     });
     // insere em lotes, ignorando duplicados (fitid)
-    let ok=0,dup=0,erro=0;
+    let ok=0,dup=0,erro=0,fech=0;
     for(const reg of registros){
+      if(mesFechadoISO(reg.data)){fech++;continue;} // mês fechado: não lança
       const {error}=await sb.from('lancamentos').insert(reg);
       if(error){if(error.message.includes('duplicate')||error.code==='23505')dup++;else erro++;}
       else ok++;
@@ -1147,7 +1307,7 @@
       });
     }catch(e){}
     IMPORT=[];importObs='';importPeriodo={de:'',ate:''};
-    toast(`${ok} lançados · ${dup} já existiam · ${erro} com erro`, erro>0?'erro':'ok');
+    toast(`${ok} lançados · ${dup} já existiam · ${erro} com erro${fech?` · ${fech} em mês fechado (não lançados)`:''}`, (erro>0||fech>0)?'erro':'ok');
     go('lanc');
   }
 
@@ -1406,6 +1566,7 @@
     const l=lix.dados;
     // remove campos que o banco gera sozinho
     delete l.id;delete l.criado_em;delete l.categorias;delete l.contatos;delete l.contas;
+    if(bloqueadoPorFechamento(l.data,l.conta_id))return;
     const {error}=await sb.from('lancamentos').insert(l);
     if(error){toast('Erro ao restaurar: '+error.message,'erro');return;}
     await sb.from('lixeira').delete().eq('id',lixId);
