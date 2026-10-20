@@ -222,7 +222,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.8.3', APP_DATA='21/10/2026';
+  const APP_VERSAO='1.8.4', APP_DATA='21/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1613,13 +1613,15 @@
   // painel "onde o mês está": última data lançada no banco, por loja
   async function painelAtrasoLojas(){
     const hoje=new Date();const out=[];
-    for(const L of LOJAS){try{const {data}=await sb.from('lancamentos').select('data').eq('loja_id',L.id).eq('origem','ofx').order('data',{ascending:false}).limit(1);let ult=data&&data[0]?data[0].data:null;
-      if(!ult){const r2=await sb.from('lancamentos').select('data').eq('loja_id',L.id).order('data',{ascending:false}).limit(1);ult=r2.data&&r2.data[0]?r2.data[0].data:null;}
-      const dias=ult?Math.floor((hoje-new Date(ult+'T12:00:00'))/86400000):null;out.push({L,ult,dias});}catch(e){out.push({L,ult:null,dias:null});}}
+    const hojeISO=hoje.toISOString().slice(0,10);
+    // conta só trabalho de gente: extrato importado (ofx) e lançamento manual. Espelhos (Lentes etc.) e datas futuras ficam de fora.
+    const ultimo=async(lojaId,origem)=>{const {data}=await sb.from('lancamentos').select('data').eq('loja_id',lojaId).eq('origem',origem).lte('data',hojeISO).order('data',{ascending:false}).limit(1);return data&&data[0]?data[0].data:null;};
+    for(const L of LOJAS){try{const ofx=await ultimo(L.id,'ofx');const man=await ultimo(L.id,'manual');const ult=[ofx,man].filter(Boolean).sort().pop()||null;
+      const dias=ult?Math.floor((hoje-new Date(ult+'T12:00:00'))/86400000):null;out.push({L,ult,ofx,man,dias});}catch(e){out.push({L,ult:null,ofx:null,man:null,dias:null});}}
     const cor=d=>d==null?'var(--muted)':(d<=2?'var(--green)':(d<=7?'var(--amber)':'var(--red)'));
     const html=`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>⏱ Lançamentos em dia?</h3><span class="tag">última data lançada por loja</span></div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px">${out.map(o=>`<div onclick="document.getElementById('store').value='${o.L.id}';trocarLoja();" style="cursor:pointer;border:1px solid var(--line);border-left:4px solid ${cor(o.dias)};border-radius:9px;padding:8px 10px"><div style="font-size:12.5px;font-weight:700">${o.L.nome.split(' — ')[0]}</div><div style="font-size:12px;color:${cor(o.dias)};font-weight:700">${o.dias==null?'nada lançado':(o.dias===0?'hoje':o.dias+' dia(s) atrás')}</div><div class="mut" style="font-size:10.5px">${o.ult?'até '+isoParaBR(o.ult):''}</div></div>`).join('')}</div>
-      <p class="mut" style="font-size:11.5px;margin-top:8px">Verde: até 2 dias · Amarelo: até 7 · Vermelho: mais de 7. Regra da casa: nunca mais de 2 dias atrasado.</p></div>`;
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px">${out.map(o=>`<div onclick="document.getElementById('store').value='${o.L.id}';trocarLoja();" style="cursor:pointer;border:1px solid var(--line);border-left:4px solid ${cor(o.dias)};border-radius:9px;padding:8px 10px"><div style="font-size:12.5px;font-weight:700">${o.L.nome.split(' — ')[0]}</div><div style="font-size:12px;color:${cor(o.dias)};font-weight:700">${o.dias==null?'nada lançado':(o.dias===0?'hoje':o.dias+' dia(s) atrás')}</div><div class="mut" style="font-size:10.5px;line-height:1.5">📥 extrato: ${o.ofx?isoParaBR(o.ofx).slice(0,5):'nunca'}<br>✍️ manual: ${o.man?isoParaBR(o.man).slice(0,5):'nunca'}</div></div>`).join('')}</div>
+      <p class="mut" style="font-size:11.5px;margin-top:8px">Conta só o que alguém lançou ou importou (extrato OFX e lançamento manual). Boletos do espelho das Lentes e datas futuras não contam. Verde: até 2 dias · Amarelo: até 7 · Vermelho: mais de 7. Regra da casa: nunca mais de 2 dias atrasado.</p></div>`;
     const c=document.getElementById('content');if(c&&page==='visao')c.insertAdjacentHTML('afterbegin',html);
   }
   async function viewVisao(){

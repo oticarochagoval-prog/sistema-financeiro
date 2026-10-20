@@ -98,7 +98,7 @@ Cada categoria pode ter **palavras-chave** (em Categorias, campo "palavras que p
 - Na importação do extrato, o topo mostra "N de M linhas vieram classificadas sozinhas". O que não casou vem em branco, para classificar na mão.
 - Categoria **A ESTORNAR (BANCO CAIXINHA)**: quando a descrição tem ESTORNAR, XT, VAI ESTORNAR ou CARTÃO AZUL, a linha vem marcada com 🔁 e a loja lida da descrição (R8, ROCHA 8). Se não achar a loja, pergunta — nunca chuta. Mandar pro Banco Caixinha com um clique vem na próxima versão.
 
-No Dashboard, o quadro **Lançamentos em dia?** mostra, por loja, a última data lançada e há quantos dias está parada.
+No Dashboard, o quadro **Lançamentos em dia?** mostra, por loja, até que dia foi o último extrato importado e o último lançamento manual, e há quantos dias está parada. Boletos do espelho das Lentes não contam — eles chegam sozinhos, não provam que alguém lançou.
 
 ## Quem pode o quê
 
@@ -149,6 +149,7 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 21/10/2026 | 1.8.4 | Quadro "Lançamentos em dia?" conta só extrato importado e lançamento manual (espelho das Lentes e datas futuras ficam de fora) e mostra as duas datas por loja | Nenhum |
 | 21/10/2026 | 1.8.3 | Espelho das Lentes passa a pegar boletos desde 01/09/2026 (ligando aos já lançados na mão) | Setembro ganha os boletos de lentes que faltavam |
 | 21/10/2026 | 1.8.2 | Espelho das Lentes mostra o erro do banco quando não consegue gravar; avisos ficam na tela mais tempo e fecham com um clique | Nenhum |
 | 21/10/2026 | 1.8.1 | Espelho das Lentes mostra quantos boletos leu e de qual loja não reconheceu; botão "Sair do Caixinha" só para dono | Nenhum |
