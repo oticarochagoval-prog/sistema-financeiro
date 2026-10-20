@@ -177,6 +177,8 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 21/10/2026 | 1.9.12 | Bloco da gaveta abre com "Abertura — o que a loja tinha" em destaque (dinheiro + emprestado), igual ao Caixinha | O valor da loja aparece grande no topo |
+| 21/10/2026 | 1.9.11 | Espelho da gaveta mostra o emprestado igual à tela do Caixinha em qualquer mês (inclusive junho, julho e agosto) | Junho mostra "R$ 0,00 em dinheiro + R$ 2.088,78 emprestado", igual ao Caixinha |
 | 21/10/2026 | 1.9.10 | Espelho da gaveta usa a regra oficial do Caixinha: emprestado a receber = empréstimos − reposições, qualquer contraparte; abertura e fim do mês sempre mostram "dinheiro + emprestado = total" | Bate com o Caixinha centavo a centavo |
 | 21/10/2026 | 1.9.9 | Tirada a escada "caixinha antiga" do Fechamento: ficam só Sicoob, Caixa (gaveta) e Banco Caixinha | Três blocos, sem confusão |
 | 21/10/2026 | 1.9.8 | Escada da gaveta no Fechamento ganhou a linha "Total da caixinha (dinheiro + emprestado)", igual ao Total do Caixinha; "Tem que ter" virou "Tem que ter na gaveta" | Dois números, dois significados: o que se conta e o que a loja tem |
