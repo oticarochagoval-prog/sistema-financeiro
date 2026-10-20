@@ -69,6 +69,31 @@ O empréstimo é anotado à parte, como dívida entre lojas. Quando devolver, vi
 | Loja tem 20 mil e emprestou 2 mil para a Rocha 9 | R$ 20.000,00 | Rocha 9 deve R$ 2.000,00 a esta loja |
 | Banco em −15 mil, e 3 mil disso foi emprestado para outra loja | −R$ 15.000,00 | A outra loja deve R$ 3.000,00 |
 
+## Empréstimo e estorno: o que vai pro Banco Caixinha
+
+Existem **dois empréstimos diferentes**, e cada um mora num lugar:
+
+| Tipo | Exemplo | Passa pelo Sicoob? | Onde se anota |
+| --- | --- | --- | --- |
+| **1. Escritório pagou conta da loja** | A CEMIG da Rocha 8 saiu da conta Sicoob da Rocha 1 | **Sim** — aparece no extrato | Caixa Rocha (categoria A ESTORNAR) **e** Banco Caixinha (empréstimo a estornar na Rocha 8) |
+| **2. Loja emprestou dinheiro da gaveta** | Rocha 1 deu R$ 1.000,00 em dinheiro pra Rocha 3 | **Não** | Só no Caixinha (lançamento "empréstimo", com a loja que recebeu) |
+| Transferência pelo banco entre lojas | Rocha 1 transferiu pelo Sicoob pra Rocha 3 | Sim | Só no Caixa Rocha, categoria Transferência entre lojas (neutra) |
+
+> ✅ **Regra de ouro: passou pelo extrato do Sicoob, o Caixa Rocha vê. Foi dinheiro da gaveta, só o Caixinha vê.**
+
+**Tipo 1 — passo a passo da Heloísa:**
+
+1. Na importação do extrato (ou no lançamento manual), a linha do pagamento recebe a categoria **A ESTORNAR (BANCO CAIXINHA)**. Se a descrição tiver R8 / ROCHA 8, a loja já vem lida.
+2. Em Lançamentos, clique no botão amarelo **🔁 Mandar pro Banco Caixinha**, confira a loja que deve e confirme. O empréstimo nasce na aba Banco do Caixinha; aqui fica a etiqueta **🔁 no Banco Caixinha ✓**.
+3. Quando a loja devolver **pelo banco**, a entrada aparece no extrato: categoria **ESTORNO RECEBIDO (BANCO CAIXINHA)** → botão **↩ Marcar devolução no Caixinha** → escolha o empréstimo → confirme. O Banco Caixinha baixa sozinho.
+4. Quando a loja devolver **em dinheiro** (a Rhaiane recolhe), isso é registrado só no Caixinha — no Caixa Rocha não aparece nada, porque não entrou no banco.
+
+> ⚠️ As duas categorias são **neutras**: não entram no DRE da loja que pagou. A despesa de verdade (a CEMIG) é da Rocha 8 e chega ao DRE dela pelo Caixinha.
+
+> ⛔ **Nunca** exclua nem lance o pagamento do escritório como despesa da loja que pagou. Categoria A ESTORNAR + botão. Excluir some com o dinheiro da escada do banco; lançar como despesa infla o custo da loja errada.
+
+> 💡 Tudo sobre a ligação com o Caixinha (Banco, Lentes, Caixa) está no **Manual do Caixinha** — botão 🔗? na barra de cima.
+
 ## Os três "bancos": onde cada um mora
 
 Existem três saldos no grupo, e cada um vive num lugar. **Nenhum deles se soma ao outro, e nenhum precisa ser redigitado.** Para não confundir, cada um tem um nome fixo:
@@ -98,7 +123,7 @@ Cada categoria pode ter **palavras-chave** (em Categorias, campo "palavras que p
 - Na importação do extrato, o topo mostra "N de M linhas vieram classificadas sozinhas". O que não casou vem em branco, para classificar na mão.
 - Categoria **A ESTORNAR (BANCO CAIXINHA)**: quando a descrição tem ESTORNAR, XT, VAI ESTORNAR ou CARTÃO AZUL, a linha vem marcada com 🔁 e a loja lida da descrição (R8, ROCHA 8). Se não achar a loja, pergunta — nunca chuta. Mandar pro Banco Caixinha com um clique vem na próxima versão.
 
-No Dashboard, o quadro **Lançamentos em dia?** mostra, por loja, até que dia foi o último extrato importado e o último lançamento manual, e há quantos dias está parada. Boletos do espelho das Lentes não contam — eles chegam sozinhos, não provam que alguém lançou.
+No Dashboard, o quadro **Extrato em dia?** mostra, por loja, até que dia o extrato do banco foi importado e quantos dias faltam. A cor é só pelo extrato: só ele prova que o mês está completo. Lançamento manual e boletos do espelho das Lentes aparecem como informação, mas não deixam a loja verde. Regra da casa: extrato de toda loja importado toda semana.
 
 ## Quem pode o quê
 
@@ -133,6 +158,7 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 | Qual saldo inicial eu coloco? | Nenhum, na maior parte das vezes: ele copia do mês anterior fechado. Só na primeira vez, se o calculado estiver diferente do extrato do dia 1º, use o ✎. |
 | E se o saldo era negativo? | Coloca negativo, com o botão de sinal. −R$ 15.000,00 é −R$ 15.000,00. |
 | Parte do dinheiro é emprestado de outra loja. Desconto? | Não. Saldo inicial é o que tem. O empréstimo fica anotado à parte, no Caixinha. |
+| O escritório pagou uma conta da loja pelo Sicoob. Lanço como? | Categoria A ESTORNAR (BANCO CAIXINHA) na loja que pagou e botão 🔁 Mandar pro Banco Caixinha. Veja "Empréstimo e estorno" e o Manual do Caixinha (🔗?). |
 | Onde lanço os juros do cheque especial? | Como saída normal, na data em que o banco cobrou, categoria de juros. |
 | Não bateu. Mexo no saldo inicial? | Não. Diferença se resolve achando o lançamento que falta ou que sobra. |
 | Pix recebido e depósito em dinheiro, lanço? | Sim, com categoria neutra (não entra no DRE, a Linx já contou a venda). Na conta do banco eles entram, então para a escada bater eles precisam estar lançados. |
@@ -149,6 +175,9 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 21/10/2026 | 1.9 | Botões "Mandar pro Banco Caixinha" e "Marcar devolução no Caixinha" nos lançamentos A ESTORNAR / ESTORNO RECEBIDO (liga, não duplica; faixa amarela dos pendentes); novo Manual do Caixinha (botão 🔗?) | Banco Caixinha passa a ser alimentado pelo extrato, sem excluir nada |
+| 21/10/2026 | 1.8.6 | Manual ganhou a seção "Empréstimo e estorno: o que vai pro Banco Caixinha" (dois tipos de empréstimo, passo a passo, avisos coloridos) e caixas verde/amarela/vermelha/azul | Heloísa sabe o que anotar onde, antes da automação |
+| 21/10/2026 | 1.8.5 | Quadro do Dashboard virou "Extrato em dia?": a cor é só pelo extrato importado (dias que faltam de extrato), com manual e "N lançamentos em X dias do mês" como informação | Fica claro qual loja ainda não tem o mês provado pelo extrato |
 | 21/10/2026 | 1.8.4 | Quadro "Lançamentos em dia?" conta só extrato importado e lançamento manual (espelho das Lentes e datas futuras ficam de fora) e mostra as duas datas por loja | Nenhum |
 | 21/10/2026 | 1.8.3 | Espelho das Lentes passa a pegar boletos desde 01/09/2026 (ligando aos já lançados na mão) | Setembro ganha os boletos de lentes que faltavam |
 | 21/10/2026 | 1.8.2 | Espelho das Lentes mostra o erro do banco quando não consegue gravar; avisos ficam na tela mais tempo e fecham com um clique | Nenhum |

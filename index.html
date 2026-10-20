@@ -24,12 +24,14 @@
   :root[data-theme="light"] .note b{color:#1d3480}
   .iconbtn{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--txt);cursor:pointer;font-size:15px;display:grid;place-items:center;flex-shrink:0}
   .iconbtn.help{background:#1f9d6b;border-color:#1f9d6b;color:#fff;font-weight:800;font-size:16px}
+  .iconbtn.help.cx{background:#2f6fd6;border-color:#2f6fd6;font-size:12px;width:auto;padding:0 9px;letter-spacing:-.5px}
   .manual{max-width:860px;line-height:1.65;font-size:14.5px}
   .manual h1{font-size:22px;margin:4px 0 14px}.manual h2{font-size:17px;margin:26px 0 10px;padding-top:14px;border-top:1px solid var(--line)}.manual h3{font-size:15px;margin:18px 0 8px}
   .manual p{margin:0 0 10px}.manual ul,.manual ol{margin:0 0 12px 22px}.manual li{margin-bottom:5px}
   .manual table{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:13.5px}.manual th,.manual td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}.manual th{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em}
   .manual blockquote{border-left:3px solid var(--green);padding:6px 12px;margin:0 0 12px;color:var(--muted);background:var(--panel-2);border-radius:0 8px 8px 0}
   .manual code{background:var(--chip);padding:1px 6px;border-radius:5px;font-size:12.5px}
+  .manual blockquote.ok{border-left-color:var(--green);background:rgba(61,214,140,.10);color:var(--txt)}.manual blockquote.nao{border-left-color:var(--red);background:rgba(255,92,92,.10);color:var(--txt)}.manual blockquote.cuidado{border-left-color:var(--amber);background:rgba(245,183,64,.12);color:var(--txt)}.manual blockquote.dica{border-left-color:var(--blue);background:rgba(125,162,255,.10);color:var(--txt)}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased}
   ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#2a3a32;border-radius:6px}
@@ -197,6 +199,7 @@
         <select class="store" id="store" onchange="trocarLoja()"></select>
         <button class="iconbtn" id="temaBtn" onclick="alternarTema()" title="Tema claro / escuro">🌙</button>
         <button class="iconbtn help" onclick="go('manual')" title="Manual: como usar o sistema">?</button>
+        <button class="iconbtn help cx" onclick="go('manualcx')" title="Manual do espelho do Caixinha: Lentes, Banco Caixinha (estornos) e Caixa">🔗?</button>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
           <button class="logout" onclick="sair()">Sair</button>
           <span id="versao" class="mut" style="font-size:10.5px;font-variant-numeric:tabular-nums;white-space:nowrap" title="Versão do sistema"></span>
@@ -222,7 +225,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.8.4', APP_DATA='21/10/2026';
+  const APP_VERSAO='1.9', APP_DATA='21/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -242,7 +245,7 @@
         const cells=r=>r.replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
         const body=rows.filter(r=>!/^\|\s*-{2,}/.test(r));
         html+='<table>'+body.map((r,k)=>'<tr>'+cells(r).map(c=>k===0?`<th>${inline(c)}</th>`:`<td>${inline(c)}</td>`).join('')+'</tr>').join('')+'</table>';continue;}
-      if(/^> /.test(L)){let t=[];while(i<lines.length&&/^> ?/.test(lines[i])){t.push(lines[i].replace(/^> ?/,''));i++;}html+=`<blockquote>${inline(t.join(' '))}</blockquote>`;continue;}
+      if(/^> /.test(L)){let t=[];while(i<lines.length&&/^> ?/.test(lines[i])){t.push(lines[i].replace(/^> ?/,''));i++;}const tx=t.join(' ');const cls=/^✅/.test(tx)?'ok':(/^⛔|^❌|^🚫/.test(tx)?'nao':(/^⚠/.test(tx)?'cuidado':(/^💡|^ℹ/.test(tx)?'dica':'')));html+=`<blockquote class="${cls}">${inline(tx)}</blockquote>`;continue;}
       if(/^(\d+)\. /.test(L)||/^[-*] /.test(L)){const ord=/^\d+\. /.test(L);const tag=ord?'ol':'ul';let items=[];
         while(i<lines.length&&(/^(\d+)\. /.test(lines[i])||/^[-*] /.test(lines[i])||/^\s{2,}\S/.test(lines[i]))){const ln=lines[i];if(/^\s{2,}\S/.test(ln)&&items.length){items[items.length-1]+=' '+ln.trim();}else{items.push(ln.replace(/^(\d+\. |[-*] )/,''));}i++;}
         html+=`<${tag}>`+items.map(x=>`<li>${inline(x)}</li>`).join('')+`</${tag}>`;continue;}
@@ -252,12 +255,14 @@
     }
     return html;
   }
-  async function viewManual(){
+  async function viewManualCx(){return viewManual('manual-caixinha.md');}
+  async function viewManual(arq){
+    arq=(typeof arq==='string')?arq:'manual.md';
     const c=document.getElementById('content');
     c.innerHTML='<div class="loading"><span class="spin"></span> Abrindo o manual...</div>';
     try{
-      const r=await fetch('manual.md?v='+APP_VERSAO+'-'+Date.now());
-      if(!r.ok)throw new Error('não encontrei o arquivo manual.md');
+      const r=await fetch(arq+'?v='+APP_VERSAO+'-'+Date.now());
+      if(!r.ok)throw new Error('não encontrei o arquivo '+arq);
       const md=await r.text();
       c.innerHTML=`<div class="card manual"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><span class="tag">Sistema v${APP_VERSAO} · ${APP_DATA}</span><button class="btn ghost" style="margin-left:auto;padding:6px 12px" onclick="window.print()">🖨 Imprimir</button></div>${mdParaHTML(md)}</div>`;
     }catch(e){
@@ -410,6 +415,83 @@
     return {categoria_id:bc?bc.r.categoria_id:null,contato_id:bk?bk.r.contato_id:(bc&&bc.r.contato_id)||null,palavra:bc?bc.r.palavra:bk.r.palavra,palavraContato:bk?bk.r.palavra:null};
   }
   const CAT_ESTORNAR='A ESTORNAR (BANCO CAIXINHA)';
+  const CAT_ESTORNO_REC='ESTORNO RECEBIDO (BANCO CAIXINHA)';
+  function catEstornoRecId(){const c=catsAtivas().find(x=>String(x.nome).toUpperCase()===CAT_ESTORNO_REC);return c?c.id:null;}
+  // ---- PONTE CAIXA ROCHA → BANCO CAIXINHA (empréstimos a estornar) ----
+  // ref_externa 'cxb:<conta>' = este lançamento virou empréstimo no Banco Caixinha · 'cxp:<conta>:<n>' = este lançamento marcou a devolução nº n
+  async function cxPronto(){const ses=await cxSessao();if(!ses){alert('Para falar com o Banco Caixinha, entre no Caixinha primeiro: menu Caixinha (espelho) → escolha seu nome e a senha do Caixinha. É só uma vez por computador.');go('caixinha');return false;}
+    if(!CX.carregado){const ok=await cxCarregar(true);if(!ok){toast('Não consegui ler o Caixinha: '+(CX.erro||''),'erro');return false;}}return true;}
+  function cxCaixaPorNome(nome){const ch=cxChaveLoja(nome);return CX.caixas.find(k=>cxChaveLoja(k.nome)===ch)||null;}
+  function cxOpcoesLojas(sel){const selCh=sel?cxChaveLoja(sel):'';return '<option value="">qual loja deve?</option>'+CX.caixas.map(k=>`<option value="${k.id}" ${cxChaveLoja(k.nome)===selCh?'selected':''}>${k.nome}</option>`).join('');}
+  function cxAberto(c){return Math.max(0,Number(c.valor||0)-Number(c.valor_pago||0));}
+  async function abrirMandarBanco(lancId){
+    if(!podeEditar())return;const l=LANC.find(x=>x.id===lancId);if(!l)return;
+    if(!(await cxPronto()))return;
+    const valor=Math.abs(Number(l.valor||0));const lojaSug=lojaDaDescricao(l.descricao||'');const contNome=(l.contatos&&l.contatos.nome)||'';
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
+      <h3>🔁 Mandar pro Banco Caixinha</h3>
+      <p>Vai virar um <b>empréstimo a estornar</b> na aba Banco do Caixinha, na loja que deve. O lançamento daqui fica ligado a ele (não manda duas vezes).</p>
+      <span class="qlabel">Qual loja deve este valor?</span><select id="mbLoja" class="qin" style="margin-bottom:8px">${cxOpcoesLojas(lojaSug)}</select>
+      ${lojaSug?`<p class="mut" style="font-size:12px;margin:-4px 0 8px">Li "<b>${lojaSug}</b>" na descrição. Confira.</p>`:'<p class="mut" style="font-size:12px;margin:-4px 0 8px">Não achei a loja na descrição — escolha.</p>'}
+      <span class="qlabel">Descrição (vai igual pro Caixinha)</span><input id="mbDesc" class="qin maiusc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
+      <span class="qlabel">Quem vai estornar / referência (contato no Caixinha)</span><input id="mbCont" class="qin maiusc" value="${(contNome||'ESCRITÓRIO').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
+      <div style="display:flex;gap:14px;font-size:13px;margin-bottom:6px"><span>Valor <b>${BRL(valor)}</b></span><span>Data <b>${isoParaBR(l.data)}</b></span><span class="mut">loja que pagou: ${LOJAS.find(x=>x.id===lojaAtual)?.nome.split(' — ')[0]||''}</span></div>
+      <div id="mbErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" id="mbOk" onclick="confirmarMandarBanco(${lancId})">Mandar pro Banco Caixinha</button></div></div></div>`;
+  }
+  async function confirmarMandarBanco(lancId){
+    const l=LANC.find(x=>x.id===lancId);if(!l)return;const caixaId=document.getElementById('mbLoja').value;const err=document.getElementById('mbErr');
+    if(!caixaId){err.innerHTML='<div class="err">Escolha a loja que deve.</div>';return;}
+    const desc=(document.getElementById('mbDesc').value||'').trim().toUpperCase()||'A ESTORNAR';const cont=(document.getElementById('mbCont').value||'').trim().toUpperCase()||null;
+    const valor=Math.abs(Number(l.valor||0));const btn=document.getElementById('mbOk');btn.disabled=true;btn.textContent='Mandando...';
+    const c=cxClient();
+    // já existe empréstimo igual lá (mesma loja, mesmo valor, até 7 dias)? liga em vez de criar
+    const igual=(CX.contas||[]).find(x=>String(x.caixinha_id)===String(caixaId)&&x.status==='estornar'&&Math.abs(Number(x.valor)-valor)<0.005&&x.data&&_dias(x.data,l.data)<=7);
+    let contaId=null;
+    if(igual&&confirm(`Já existe no Banco Caixinha um empréstimo a estornar de ${BRL(valor)} nessa loja em ${isoParaBR(igual.data)} ("${igual.descricao||''}").\n\nOK = ligar a esse (não cria outro).\nCancelar = criar um novo mesmo assim.`)){contaId=igual.id;}
+    else{
+      const {data,error}=await c.from('contas').insert({caixinha_id:caixaId,escopo:'loja',data:l.data,descricao:desc,contato:cont,obs:'Veio do Caixa Rocha ('+(LOJAS.find(x=>x.id===lojaAtual)?.nome.split(' — ')[0]||'')+') · lançado por '+PERFIL.nome,valor,valor_pago:0,status:'estornar',criado_por_nome:'CAIXA ROCHA · '+PERFIL.nome}).select('id').single();
+      if(error){err.innerHTML='<div class="err">Caixinha recusou: '+error.message+'</div>';btn.disabled=false;btn.textContent='Mandar pro Banco Caixinha';return;}
+      contaId=data&&data.id;
+      if(!contaId){const {data:d2}=await c.from('contas').select('id').eq('caixinha_id',caixaId).eq('data',l.data).eq('descricao',desc).eq('status','estornar').order('id',{ascending:false}).limit(1);contaId=d2&&d2[0]?d2[0].id:null;}
+      if(!contaId){err.innerHTML='<div class="err">Criou no Caixinha, mas não consegui descobrir o número dele. Abra o Caixinha e confira; depois me avise.</div>';btn.disabled=false;return;}
+    }
+    const {error:e2}=await sb.from('lancamentos').update({ref_externa:'cxb:'+contaId}).eq('id',l.id);
+    if(e2){err.innerHTML='<div class="err">Criou no Caixinha mas não consegui ligar aqui: '+e2.message+'</div>';btn.disabled=false;return;}
+    CX.carregado=false;fecharModal();toast(igual&&contaId===igual.id?'Ligado ao empréstimo que já existia no Banco Caixinha ✓':'Empréstimo criado no Banco Caixinha ✓','ok');_keepY=window.scrollY;viewLanc();
+  }
+  async function abrirMarcarDevolucao(lancId){
+    if(!podeEditar())return;const l=LANC.find(x=>x.id===lancId);if(!l)return;
+    if(!(await cxPronto()))return;
+    const valor=Math.abs(Number(l.valor||0));const lojaSug=lojaDaDescricao(l.descricao||'');
+    const lista=(k)=>dvListaHTML(k,valor);
+    const k0=cxCaixaPorNome(lojaSug||'');
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
+      <h3>↩ Marcar devolução no Banco Caixinha</h3>
+      <p>Entrou <b>${BRL(valor)}</b> em ${isoParaBR(l.data)} (${l.descricao||''}). É a devolução de qual empréstimo?</p>
+      <span class="qlabel">Loja que devolveu</span><select id="dvLoja" class="qin" style="margin-bottom:8px" onchange="document.getElementById('dvLista').innerHTML=dvListaHTML(this.value,${valor})">${cxOpcoesLojas(lojaSug)}</select>
+      <div id="dvLista" style="max-height:300px;overflow:auto">${k0?lista(k0.id):'<p class="mut" style="font-size:13px">Escolha a loja.</p>'}</div>
+      <div id="dvErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" id="dvOk" onclick="confirmarDevolucao(${lancId})">Marcar como devolvido</button></div></div></div>`;
+  }
+  function dvListaHTML(k,valor){const abertos=(CX.contas||[]).filter(x=>String(x.caixinha_id)===String(k)&&x.status==='estornar'&&cxAberto(x)>0.004).sort((a,b)=>(a.data||'')<(b.data||'')?1:-1);
+      if(!abertos.length)return '<p class="mut" style="font-size:13px">Nenhum empréstimo em aberto nessa loja.</p>';
+      return abertos.map(x=>{const ab=cxAberto(x);const bate=Math.abs(ab-valor)<0.005||Math.abs(Number(x.valor)-valor)<0.005;return `<label style="display:grid;grid-template-columns:20px 1fr auto;gap:8px;align-items:center;padding:7px 6px;border-bottom:1px solid var(--line);font-size:12.5px;cursor:pointer;${bate?'background:rgba(61,214,140,.10)':''}"><input type="radio" name="dvConta" value="${x.id}" ${bate?'checked':''}><span>${isoParaBR(x.data||'').slice(0,5)} · ${x.descricao||'—'}${x.contato?` <span class="mut">· ${x.contato}</span>`:''}${bate?' <b style="color:var(--green)">← mesmo valor</b>':''}</span><span style="text-align:right">em aberto <b>${BRL(ab)}</b>${Number(x.valor_pago||0)>0?`<div class="mut" style="font-size:10.5px">de ${BRL(x.valor)}</div>`:''}</span></label>`;}).join('');}
+  async function confirmarDevolucao(lancId){
+    const l=LANC.find(x=>x.id===lancId);if(!l)return;const sel=document.querySelector('input[name="dvConta"]:checked');const err=document.getElementById('dvErr');
+    if(!sel){err.innerHTML='<div class="err">Escolha o empréstimo.</div>';return;}
+    const ct=(CX.contas||[]).find(x=>String(x.id)===String(sel.value));if(!ct)return;
+    const valor=Math.abs(Number(l.valor||0));const ab=cxAberto(ct);
+    if(valor>ab+0.005&&!confirm(`A devolução (${BRL(valor)}) é maior que o em aberto (${BRL(ab)}). Marcar mesmo assim?`))return;
+    const btn=document.getElementById('dvOk');btn.disabled=true;btn.textContent='Marcando...';
+    const pgs=(Array.isArray(ct.pagamentos)?ct.pagamentos.slice():[]);const ref='CAIXA ROCHA · '+(l.descricao||'').slice(0,60);pgs.push({v:valor,d:l.data,ref});
+    const novoPago=Number(ct.valor_pago||0)+valor;
+    const {error}=await cxClient().from('contas').update({valor_pago:novoPago,status:'estornar',pagamentos:pgs,pago_ref:ref,pago_data:l.data,atualizado_em:new Date().toISOString()}).eq('id',ct.id);
+    if(error){err.innerHTML='<div class="err">Caixinha recusou: '+error.message+'</div>';btn.disabled=false;btn.textContent='Marcar como devolvido';return;}
+    const {error:e2}=await sb.from('lancamentos').update({ref_externa:'cxp:'+ct.id+':'+(pgs.length-1)}).eq('id',l.id);
+    if(e2){err.innerHTML='<div class="err">Marcou no Caixinha mas não consegui ligar aqui: '+e2.message+'</div>';btn.disabled=false;return;}
+    CX.carregado=false;fecharModal();toast(novoPago>=Number(ct.valor)-0.005?'Estorno completo no Banco Caixinha ✓':'Devolução parcial marcada no Banco Caixinha ✓','ok');_keepY=window.scrollY;viewLanc();
+  }
   function catEstornarId(){const c=catsAtivas().find(x=>String(x.nome).toUpperCase()===CAT_ESTORNAR);return c?c.id:null;}
   // lê a loja de dentro da descrição: R8, R08, ROCHA 8, ROCHA08, GV
   function lojaDaDescricao(desc){const t=normDesc(desc);let m=t.match(/\bROCHA\s*0?(\d{1,2})\b/)||t.match(/\bR0?(\d{1,2})\b/);if(m)return 'Rocha '+parseInt(m[1],10);if(/\bGV\b|OPTICAL/.test(t))return 'GV Optical';return null;}
@@ -441,9 +523,9 @@
     ['comparativo','Comparativo','📈',true],['relcontato','Por contato','👥',true],['juros','Juros por loja','🏦',true],
     ['__g','Gestão'],
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
-    ['recorrentes','Recorrentes','🔁',true],['lixeira','Lixeira','🗑',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],
+    ['recorrentes','Recorrentes','🔁',true],['lixeira','Lixeira','🗑',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],['manualcx','Manual do Caixinha','🔗',true],
   ];
-  const TITLES={visao:'Dashboard',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações',manual:'Manual — como usar'};
+  const TITLES={visao:'Dashboard',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
   function renderNav(){
     document.getElementById('nav').innerHTML=MENU.map(it=>{
       if(it[0].startsWith('__'))return `<div class="seclabel">${it[1]}</div>`;
@@ -522,7 +604,7 @@
   function isoParaBR(iso){if(!iso)return '';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;}
 
   function render(){
-    const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig,manual:viewManual};
+    const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
     const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -615,6 +697,12 @@
     if(_keepY!=null){const y=_keepY;_keepY=null;requestAnimationFrame(()=>window.scrollTo(0,y));}
   }
   // gera só os totais + tabela (usado pela busca sem redesenhar a barra)
+  function ponteHTML(l){const nome=String((l.categorias&&l.categorias.nome)||'').toUpperCase();const ref=l.ref_externa||'';
+    if(nome===CAT_ESTORNAR){if(ref.startsWith('cxb:'))return '<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)" title="Já está na aba Banco do Caixinha como empréstimo a estornar">🔁 no Banco Caixinha ✓</span>';
+      return podeEditar()?`<button class="catchip" onclick="abrirMandarBanco(${l.id})" style="font-size:10px;padding:1px 8px;border-color:var(--amber);color:var(--amber);cursor:pointer;background:rgba(245,183,64,.10)" title="Criar o empréstimo a estornar na aba Banco do Caixinha">🔁 Mandar pro Banco Caixinha</button>`:'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--amber);color:var(--amber)">🔁 falta mandar pro Banco Caixinha</span>';}
+    if(nome===CAT_ESTORNO_REC){if(ref.startsWith('cxp:'))return '<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)" title="Devolução já marcada no Banco Caixinha">↩ devolução marcada no Caixinha ✓</span>';
+      return podeEditar()?`<button class="catchip" onclick="abrirMarcarDevolucao(${l.id})" style="font-size:10px;padding:1px 8px;border-color:var(--amber);color:var(--amber);cursor:pointer;background:rgba(245,183,64,.10)" title="Marcar no Banco Caixinha que a loja devolveu">↩ Marcar devolução no Caixinha</button>`:'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--amber);color:var(--amber)">↩ falta marcar devolução</span>';}
+    return '';}
   function htmlResultadoLanc(rows,somaE,somaS){
     const editavel=podeEditar();
     const tr=rows.map(l=>{
@@ -628,7 +716,7 @@
       // seletor de conta inline
       // conta: sempre Sicoob (banco), não precisa mostrar/editar na lista
       const ehCx=contaEhCaixinha(l.conta_id);const quem=nomeDe(l.criado_por);
-      const etq=`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">${ehCx?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--gold);color:var(--gold)">💵 caixinha antiga</span>':''}${l.origem==='lentes'||(l.ref_externa||'').startsWith('fz:')?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)" title="Veio da aba Lentes do Caixinha. Para corrigir valor ou data, corrija lá.">🔗 Lentes</span>':''}<span class="catchip" style="font-size:10px;padding:1px 7px">${l.origem==='ofx'?'OFX':(l.origem==='lentes'?'Caixinha':'manual')}${quem?' · '+quem:''}</span>${l.anexo_url?`<a class="catchip" href="${l.anexo_url}" target="_blank" rel="noopener" style="font-size:10px;padding:1px 7px;text-decoration:none">📎 boleto</a>`:''}</div>`;
+      const etq=`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">${ehCx?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--gold);color:var(--gold)">💵 caixinha antiga</span>':''}${l.origem==='lentes'||(l.ref_externa||'').startsWith('fz:')?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)" title="Veio da aba Lentes do Caixinha. Para corrigir valor ou data, corrija lá.">🔗 Lentes</span>':''}<span class="catchip" style="font-size:10px;padding:1px 7px">${l.origem==='ofx'?'OFX':(l.origem==='lentes'?'Caixinha':'manual')}${quem?' · '+quem:''}</span>${l.anexo_url?`<a class="catchip" href="${l.anexo_url}" target="_blank" rel="noopener" style="font-size:10px;padding:1px 7px;text-decoration:none">📎 boleto</a>`:''}${ponteHTML(l)}</div>`;
       return `<tr class="${neutra?'neutra':''}" style="${ehCx?'background:rgba(232,196,104,.06)':''}">
         <td class="mut" style="white-space:nowrap">${isoParaBR(l.data).slice(0,5)}</td>
         <td style="min-width:140px">${editavel?`<input class="inlinedesc maiusc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" onchange="mudarDescLanc(${l.id},this.value)" title="Clique pra editar">`:l.descricao}${l.parcela?`<span class="parc">${l.parcela}</span>`:''}${etq}</td>
@@ -641,7 +729,7 @@
     const nCx=LANC.filter(l=>contaEhCaixinha(l.conta_id)&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
     const chip=(v,txt)=>`<button class="btn ghost" style="padding:4px 10px;font-size:12px;${filtroConta===v?'border-color:var(--green);color:var(--green)':''}" onclick="filtroConta='${v}';render()">${txt}</button>`;
     const nSemCat=LANC.filter(l=>!l.categoria_id&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
-    return `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">${chip('','Todos')}${chip('banco','🏦 Sicoob')}${chip('caixinha',`💵 Caixinha antiga${nCx?` (${nCx})`:''}`)}${podeEditar()&&nSemCat?`<button class="btn" style="padding:4px 10px;font-size:12px;margin-left:auto" onclick="aplicarRegrasNoMes()">🔑 Aplicar regras nos ${nSemCat} sem categoria</button>`:''}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">lançados na aba Caixinha antiga do Caixa Rocha — conferir categoria e contato; o dinheiro físico agora mora no sistema Caixinha</span>':''}<span style="margin-left:auto;display:flex;gap:8px;align-items:center">${lentesStatusHTML()}</span></div>
+    return `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">${chip('','Todos')}${chip('banco','🏦 Sicoob')}${chip('caixinha',`💵 Caixinha antiga${nCx?` (${nCx})`:''}`)}${podeEditar()&&nSemCat?`<button class="btn" style="padding:4px 10px;font-size:12px;margin-left:auto" onclick="aplicarRegrasNoMes()">🔑 Aplicar regras nos ${nSemCat} sem categoria</button>`:''}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">lançados na aba Caixinha antiga do Caixa Rocha — conferir categoria e contato; o dinheiro físico agora mora no sistema Caixinha</span>':''}<span style="margin-left:auto;display:flex;gap:8px;align-items:center">${lentesStatusHTML()}</span></div>${(()=>{const pend=LANC.filter(l=>{const n=String((l.categorias&&l.categorias.nome)||'').toUpperCase();const r=l.ref_externa||'';return (n===CAT_ESTORNAR&&!r.startsWith('cxb:'))||(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'));});return pend.length?`<div class="note" style="border-color:rgba(245,183,64,.45);margin-bottom:10px">🔁 <b>${pend.length} lançamento(s) do Banco Caixinha ainda não ligado(s)</b> — clique no botão amarelo de cada um ("Mandar pro Banco Caixinha" ou "Marcar devolução"). É isso que mantém o em aberto das lojas certo sem ninguém apagar nada.</div>`:'';})()}
       <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12.5px;flex-wrap:wrap">
         <span class="mut">${rows.length} lançamento(s)</span>
         <span style="color:var(--green)">Entradas: ${BRL(somaE)}</span>
@@ -1612,16 +1700,23 @@
   let _lancMesDash=[]; // lançamentos completos do mês, pra janela de detalhes do dashboard
   // painel "onde o mês está": última data lançada no banco, por loja
   async function painelAtrasoLojas(){
-    const hoje=new Date();const out=[];
-    const hojeISO=hoje.toISOString().slice(0,10);
-    // conta só trabalho de gente: extrato importado (ofx) e lançamento manual. Espelhos (Lentes etc.) e datas futuras ficam de fora.
+    const hoje=new Date();const hojeISO=hoje.toISOString().slice(0,10);const out=[];
+    const ini=hojeISO.slice(0,8)+'01';const diaHoje=parseInt(hojeISO.slice(8,10),10);
     const ultimo=async(lojaId,origem)=>{const {data}=await sb.from('lancamentos').select('data').eq('loja_id',lojaId).eq('origem',origem).lte('data',hojeISO).order('data',{ascending:false}).limit(1);return data&&data[0]?data[0].data:null;};
-    for(const L of LOJAS){try{const ofx=await ultimo(L.id,'ofx');const man=await ultimo(L.id,'manual');const ult=[ofx,man].filter(Boolean).sort().pop()||null;
-      const dias=ult?Math.floor((hoje-new Date(ult+'T12:00:00'))/86400000):null;out.push({L,ult,ofx,man,dias});}catch(e){out.push({L,ult:null,ofx:null,man:null,dias:null});}}
-    const cor=d=>d==null?'var(--muted)':(d<=2?'var(--green)':(d<=7?'var(--amber)':'var(--red)'));
-    const html=`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>⏱ Lançamentos em dia?</h3><span class="tag">última data lançada por loja</span></div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px">${out.map(o=>`<div onclick="document.getElementById('store').value='${o.L.id}';trocarLoja();" style="cursor:pointer;border:1px solid var(--line);border-left:4px solid ${cor(o.dias)};border-radius:9px;padding:8px 10px"><div style="font-size:12.5px;font-weight:700">${o.L.nome.split(' — ')[0]}</div><div style="font-size:12px;color:${cor(o.dias)};font-weight:700">${o.dias==null?'nada lançado':(o.dias===0?'hoje':o.dias+' dia(s) atrás')}</div><div class="mut" style="font-size:10.5px;line-height:1.5">📥 extrato: ${o.ofx?isoParaBR(o.ofx).slice(0,5):'nunca'}<br>✍️ manual: ${o.man?isoParaBR(o.man).slice(0,5):'nunca'}</div></div>`).join('')}</div>
-      <p class="mut" style="font-size:11.5px;margin-top:8px">Conta só o que alguém lançou ou importou (extrato OFX e lançamento manual). Boletos do espelho das Lentes e datas futuras não contam. Verde: até 2 dias · Amarelo: até 7 · Vermelho: mais de 7. Regra da casa: nunca mais de 2 dias atrasado.</p></div>`;
+    for(const L of LOJAS){try{
+      // 1) até que dia o EXTRATO cobre: fim do último período importado (ou, se não houver registro, a última linha OFX)
+      let ext=null;try{const {data}=await sb.from('importacoes').select('periodo_ate').eq('loja_id',L.id).not('periodo_ate','is',null).order('periodo_ate',{ascending:false}).limit(1);ext=data&&data[0]?data[0].periodo_ate:null;}catch(e){}
+      if(!ext)ext=await ultimo(L.id,'ofx');
+      const man=await ultimo(L.id,'manual');
+      // 2) quantos dias do mês atual têm algum lançamento feito por gente
+      const {data:mes}=await sb.from('lancamentos').select('data').eq('loja_id',L.id).in('origem',['ofx','manual']).gte('data',ini).lte('data',hojeISO);
+      const diasCom=new Set((mes||[]).map(x=>x.data)).size;
+      const faltam=ext?Math.floor((hoje-new Date(ext+'T12:00:00'))/86400000):null; // dias sem extrato
+      out.push({L,ext,man,faltam,diasCom,n:(mes||[]).length});}catch(e){out.push({L,ext:null,man:null,faltam:null,diasCom:0,n:0});}}
+    const cor=d=>d==null?'var(--red)':(d<=2?'var(--green)':(d<=7?'var(--amber)':'var(--red)'));
+    const html=`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>⏱ Extrato em dia?</h3><span class="tag">só o extrato do banco prova que o mês está completo</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:8px">${out.map(o=>`<div onclick="document.getElementById('store').value='${o.L.id}';trocarLoja();" style="cursor:pointer;border:1px solid var(--line);border-left:4px solid ${cor(o.faltam)};border-radius:9px;padding:8px 10px"><div style="font-size:12.5px;font-weight:700">${o.L.nome.split(' — ')[0]}</div><div style="font-size:12px;color:${cor(o.faltam)};font-weight:700">${o.faltam==null?'📥 extrato nunca importado':(o.faltam===0?'📥 extrato até hoje':`📥 faltam ${o.faltam} dia(s) de extrato`)}</div><div class="mut" style="font-size:10.5px;line-height:1.5">${o.ext?'extrato até '+isoParaBR(o.ext).slice(0,5):'—'}<br>✍️ manual até ${o.man?isoParaBR(o.man).slice(0,5):'nunca'}<br>este mês: ${o.n} lanç. em ${o.diasCom} de ${diaHoje} dias</div></div>`).join('')}</div>
+      <p class="mut" style="font-size:11.5px;margin-top:8px">A cor é só pelo extrato: verde = extrato importado até 2 dias atrás · amarelo = até 7 · vermelho = mais de 7 ou nunca. Lançamento manual não deixa a loja verde — ele mostra que alguém mexeu, não que o mês está completo. Regra da casa: extrato de toda loja importado toda semana.</p></div>`;
     const c=document.getElementById('content');if(c&&page==='visao')c.insertAdjacentHTML('afterbegin',html);
   }
   async function viewVisao(){
