@@ -1,6 +1,6 @@
 # Como fechar o mês no Caixa Rocha
 
-Atualizado em 20/10/2026 · versão do sistema 1.4
+Atualizado em 20/10/2026 · versão do sistema 1.5
 
 ## A escada
 
@@ -31,6 +31,10 @@ O **Resultado do mês** (entradas menos saídas, no quadro de baixo) é outra co
 7. **Anotar o que ficou pendente** nas Observações do mês. É o que o Lucas vai ler.
 
 A diferença nunca se resolve mexendo no saldo inicial. Ela se resolve achando o lançamento que falta ou que sobra.
+
+## Lançamentos: de onde veio cada um
+
+Cada linha em Lançamentos mostra uma etiqueta: **OFX** (veio da importação do extrato) ou **manual · nome** (quem digitou). As linhas marcadas **💵 caixinha antiga** foram lançadas na aba Caixinha que existia no Caixa Rocha, antes do espelho. O botão "💵 Caixinha antiga" no topo filtra só elas, para conferir categoria e contato. Daqui para frente, gasto de gaveta se lança só no sistema Caixinha.
 
 ## Mês fechado
 
@@ -81,6 +85,8 @@ No Caixa Rocha, o saldo inicial é **só o do Sicoob**. Não some caixinha nem e
 
 **A aba Caixinha do Caixa Rocha é um espelho.** Ela mostra, loja por loja, o que o sistema Caixinha calcula: abertura do mês, entradas, saídas, depósitos, tem que ter, a receber e a estornar. Não tem nada para digitar ali. Para corrigir um número, corrija no Caixinha — aqui atualiza sozinho. Na primeira vez em cada computador ela pede o login do Caixinha (o mesmo e-mail e senha de lá); depois abre direto. No Fechamento do mês, a escada da caixinha aparece embaixo da escada do Sicoob.
 
+**As lojas lançam no Caixinha.** Cada loja tem o próprio login lá e lança as saídas, o guardado e (três delas) os depósitos. A Rhaiane passa, recolhe o dinheiro, confere o caixa e completa o que faltou — principalmente categoria. No espelho, a coluna **🔎 Conferir** mostra quantas saídas do mês foram lançadas pela própria loja e quantas estão sem categoria.
+
 **Caixinha nunca fica negativa.** Dinheiro na gaveta não tem cheque especial. Se der negativo, não é saldo: é lançamento faltando. Alguém colocou dinheiro e não lançou a entrada, ou lançou uma saída duas vezes.
 
 ## Perguntas que sempre aparecem
@@ -105,6 +111,7 @@ No Caixa Rocha, o saldo inicial é **só o do Sicoob**. Não some caixinha nem e
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 20/10/2026 | 1.5 | Etiqueta de origem (OFX / manual · quem) em cada lançamento, filtro "Caixinha antiga", aviso de "saldo inicial é estimativa", contagem de lançamentos do mês no Fechamento e coluna "Conferir" no espelho (saídas lançadas pela própria loja, sem categoria em amarelo) | Dá para ver quem lançou e o que veio da caixinha antiga; o susto do saldo estimado vem explicado |
 | 20/10/2026 | 1.4 | Espelho ganhou o Banco Caixinha (em aberto no dia 1º, emprestado, voltou, em aberto hoje) e os nomes fixos: Banco Sicoob, Caixa (gaveta), Banco Caixinha | Heloísa vê os três no mesmo lugar |
 | 20/10/2026 | 1.3 | Aba Caixinha virou espelho do sistema Caixinha (só leitura); escada da caixinha aparece no Fechamento, embaixo da do Sicoob | Acabou o "ajustar saldo" da caixinha no Caixa Rocha |
 | 20/10/2026 | 1.2 | Ícone verde com F na aba do navegador | Nenhum |
