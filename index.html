@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Caixa Rocha — Financeiro</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f9d6b'/%3E%3Ctext x='32' y='46' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-weight='800' font-size='40' fill='white'%3EF%3C/text%3E%3C/svg%3E">
 <style>
   :root{
     --bg:#0b0f0d;--panel:#121814;--panel-2:#18211c;--line:#23302a;
@@ -11,6 +12,24 @@
     --accent:#3ddc91;--accent-ink:#04130c;--chip:#1d2722;
     --shadow:0 1px 0 rgba(255,255,255,.02),0 10px 30px rgba(0,0,0,.4);
   }
+  /* tema claro (botão ☀️/🌙 na barra de cima) */
+  :root[data-theme="light"]{
+    --bg:#f3f6f4;--panel:#ffffff;--panel-2:#eaf0ed;--line:#d6dfda;
+    --txt:#14201a;--muted:#5c6e65;--green:#1f9d6b;--red:#d64545;--gold:#b58a1b;--amber:#c7861a;--blue:#3b63d9;
+    --accent:#1f9d6b;--accent-ink:#ffffff;--chip:#e6ece9;
+    --shadow:0 1px 0 rgba(0,0,0,.02),0 8px 24px rgba(20,32,26,.08);
+  }
+  :root[data-theme="light"] ::-webkit-scrollbar-thumb{background:#c3cdc8}
+  :root[data-theme="light"] .note{color:#2b47a8;background:rgba(59,99,217,.07);border-color:rgba(59,99,217,.25)}
+  :root[data-theme="light"] .note b{color:#1d3480}
+  .iconbtn{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--txt);cursor:pointer;font-size:15px;display:grid;place-items:center;flex-shrink:0}
+  .iconbtn.help{background:#1f9d6b;border-color:#1f9d6b;color:#fff;font-weight:800;font-size:16px}
+  .manual{max-width:860px;line-height:1.65;font-size:14.5px}
+  .manual h1{font-size:22px;margin:4px 0 14px}.manual h2{font-size:17px;margin:26px 0 10px;padding-top:14px;border-top:1px solid var(--line)}.manual h3{font-size:15px;margin:18px 0 8px}
+  .manual p{margin:0 0 10px}.manual ul,.manual ol{margin:0 0 12px 22px}.manual li{margin-bottom:5px}
+  .manual table{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:13.5px}.manual th,.manual td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}.manual th{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em}
+  .manual blockquote{border-left:3px solid var(--green);padding:6px 12px;margin:0 0 12px;color:var(--muted);background:var(--panel-2);border-radius:0 8px 8px 0}
+  .manual code{background:var(--chip);padding:1px 6px;border-radius:5px;font-size:12.5px}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased}
   ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#2a3a32;border-radius:6px}
@@ -52,7 +71,7 @@
   .sidefoot{padding:12px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
   .side.collapsed .sidefoot{display:none}
   .main{flex:1;display:flex;flex-direction:column;min-width:0}
-  .topbar{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;background:rgba(11,15,13,.9)}
+  .topbar{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;background:var(--bg)}
   .pagetitle{font-size:18px;font-weight:700}
   .store{margin-left:auto;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--txt);max-width:230px}
   .logout{background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--txt);cursor:pointer;font-size:12px;padding:7px 12px}
@@ -173,6 +192,8 @@
       <div class="topbar">
         <span class="pagetitle" id="ptitle">Dashboard</span>
         <select class="store" id="store" onchange="trocarLoja()"></select>
+        <button class="iconbtn" id="temaBtn" onclick="alternarTema()" title="Tema claro / escuro">🌙</button>
+        <button class="iconbtn help" onclick="go('manual')" title="Manual: como usar o sistema">?</button>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
           <button class="logout" onclick="sair()">Sair</button>
           <span id="versao" class="mut" style="font-size:10.5px;font-variant-numeric:tabular-nums;white-space:nowrap" title="Versão do sistema"></span>
@@ -197,7 +218,48 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.0', APP_DATA='19/10/2026';
+  const APP_VERSAO='1.3', APP_DATA='20/10/2026';
+
+  // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
+  function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
+  function alternarTema(){const atual=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';const novo=atual==='light'?'dark':'light';try{localStorage.setItem('caixarocha_tema',novo);}catch(e){}aplicarTema(novo);}
+  try{aplicarTema(localStorage.getItem('caixarocha_tema')||'dark');}catch(e){aplicarTema('dark');}
+
+  // ---- MANUAL (lê o arquivo manual.md que fica na mesma pasta do index.html) ----
+  function mdParaHTML(md){
+    const esc=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const inline=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*(.+?)\*/g,'<i>$1</i>');
+    const lines=md.replace(/\r/g,'').split('\n');let html='',i=0;
+    while(i<lines.length){
+      const L=lines[i];
+      if(/^\s*$/.test(L)){i++;continue;}
+      if(/^#{1,3} /.test(L)){const n=L.match(/^#+/)[0].length;html+=`<h${n}>${inline(L.replace(/^#+ /,''))}</h${n}>`;i++;continue;}
+      if(/^\|/.test(L)){const rows=[];while(i<lines.length&&/^\|/.test(lines[i])){rows.push(lines[i]);i++;}
+        const cells=r=>r.replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+        const body=rows.filter(r=>!/^\|\s*-{2,}/.test(r));
+        html+='<table>'+body.map((r,k)=>'<tr>'+cells(r).map(c=>k===0?`<th>${inline(c)}</th>`:`<td>${inline(c)}</td>`).join('')+'</tr>').join('')+'</table>';continue;}
+      if(/^> /.test(L)){let t=[];while(i<lines.length&&/^> ?/.test(lines[i])){t.push(lines[i].replace(/^> ?/,''));i++;}html+=`<blockquote>${inline(t.join(' '))}</blockquote>`;continue;}
+      if(/^(\d+)\. /.test(L)||/^[-*] /.test(L)){const ord=/^\d+\. /.test(L);const tag=ord?'ol':'ul';let items=[];
+        while(i<lines.length&&(/^(\d+)\. /.test(lines[i])||/^[-*] /.test(lines[i])||/^\s{2,}\S/.test(lines[i]))){const ln=lines[i];if(/^\s{2,}\S/.test(ln)&&items.length){items[items.length-1]+=' '+ln.trim();}else{items.push(ln.replace(/^(\d+\. |[-*] )/,''));}i++;}
+        html+=`<${tag}>`+items.map(x=>`<li>${inline(x)}</li>`).join('')+`</${tag}>`;continue;}
+      if(/^---+$/.test(L)){i++;continue;}
+      let t=[];while(i<lines.length&&!/^\s*$/.test(lines[i])&&!/^(#{1,3} |\||> |\d+\. |[-*] |---)/.test(lines[i])){t.push(lines[i]);i++;}
+      html+=`<p>${inline(t.join(' '))}</p>`;
+    }
+    return html;
+  }
+  async function viewManual(){
+    const c=document.getElementById('content');
+    c.innerHTML='<div class="loading"><span class="spin"></span> Abrindo o manual...</div>';
+    try{
+      const r=await fetch('manual.md?v='+APP_VERSAO+'-'+Date.now());
+      if(!r.ok)throw new Error('não encontrei o arquivo manual.md');
+      const md=await r.text();
+      c.innerHTML=`<div class="card manual"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><span class="tag">Sistema v${APP_VERSAO} · ${APP_DATA}</span><button class="btn ghost" style="margin-left:auto;padding:6px 12px" onclick="window.print()">🖨 Imprimir</button></div>${mdParaHTML(md)}</div>`;
+    }catch(e){
+      c.innerHTML=`<div class="note">❓ <b>Manual</b> — ainda não está no ar: ${e.message}. Peça ao Lucas para colocar o arquivo <code>manual.md</code> na pasta do sistema.</div>`;
+    }
+  }
 
   function initSupabase(){
     try{
@@ -262,15 +324,15 @@
   const MENU=[
     ['__d','Dia a dia'],
     ['visao','Dashboard','◫',true],['lanc','Lançamentos','≣',true],['import','Importar extrato','⤓',true],
-    ['apagar','A pagar','🧾',true],['caixa','Fechamento de caixa','🧮',true],['caixinha','Caixinha (dinheiro)','💵',true],
+    ['apagar','A pagar','🧾',true],['caixa','Fechamento de caixa','🧮',true],['caixinha','Caixinha (espelho)','💵',true],
     ['__a','Análise'],
     ['dre','DRE','📊',true],['fechamento','Fechamento do mês','🔐',true],
     ['comparativo','Comparativo','📈',true],['relcontato','Por contato','👥',true],['juros','Juros por loja','🏦',true],
     ['__g','Gestão'],
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
-    ['recorrentes','Recorrentes','🔁',true],['lixeira','Lixeira','🗑',true],['config','Configurações','⚙',true],
+    ['recorrentes','Recorrentes','🔁',true],['lixeira','Lixeira','🗑',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],
   ];
-  const TITLES={visao:'Dashboard',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',caixinha:'Caixinha (dinheiro)',dre:'DRE — Resultado',fechamento:'Fechamento do mês',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações'};
+  const TITLES={visao:'Dashboard',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações',manual:'Manual — como usar'};
   function renderNav(){
     document.getElementById('nav').innerHTML=MENU.map(it=>{
       if(it[0].startsWith('__'))return `<div class="seclabel">${it[1]}</div>`;
@@ -345,7 +407,7 @@
   function isoParaBR(iso){if(!iso)return '';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;}
 
   function render(){
-    const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig};
+    const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig,manual:viewManual};
     const fn=V[page];if(fn){fn();}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -378,7 +440,7 @@
       const ini=Number(contaBanco.saldo_inicial_banco||0);
       // soma todo o movimento do banco (ano todo, não só o mês) pra saldo atual real
       let movBanco=0;
-      LANC.forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;if(l.conta_id!==contaBanco.id)return;movBanco+=Number(l.valor);});
+      LANC.forEach(l=>{if(l.conta_id!==contaBanco.id)return;movBanco+=Number(l.valor);});
       const saldoAtual=ini+movBanco;
       const dataAj=contaBanco.saldo_inicial_data?isoParaBR(contaBanco.saldo_inicial_data):'não informada';
       saldoBanco=`<div class="card" style="margin-bottom:16px;padding:14px 16px">
@@ -915,7 +977,7 @@
   // movimento (sem neutras) de uma conta num mês, a partir de LANC_ANO
   function _movMes(contaId,mi){
     let e=0,s=0;
-    LANC_ANO.forEach(l=>{if(l.conta_id!==contaId)return;const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;const m=parseInt(l.data.split('-')[1],10)-1;if(m!==mi)return;const v=Number(l.valor);if(v>0)e+=v;else s+=Math.abs(v);});
+    LANC_ANO.forEach(l=>{if(l.conta_id!==contaId)return;const m=parseInt(l.data.split('-')[1],10)-1;if(m!==mi)return;const v=Number(l.valor);if(v>0)e+=v;else s+=Math.abs(v);});
     return {ent:e,sai:s};
   }
   // Saldo inicial da conta no mês: (1) copiado do último mês anterior fechado, (2) digitado neste mês, (3) calculado
@@ -940,7 +1002,7 @@
     await carregarContas();await carregarLancAno();await carregarFechamentos();
     // o que aconteceu antes do ano (pra calcular o saldo inicial quando nenhum mês anterior foi fechado)
     const {data:antesRows}=await sb.from('lancamentos').select('valor,conta_id,categorias(grupo)').eq('loja_id',lojaAtual).lt('data',ANO_FIXO+'-01-01');
-    const antes={};(antesRows||[]).forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra'||!l.conta_id)return;antes[l.conta_id]=(antes[l.conta_id]||0)+Number(l.valor);});
+    const antes={};(antesRows||[]).forEach(l=>{if(!l.conta_id)return;antes[l.conta_id]=(antes[l.conta_id]||0)+Number(l.valor);});
     const row=FECH_ANO[mesSel+1]||null;const fechado=!!(row&&row.fechado);
     const mesNome=MESES_NOME[mesSel],ult=_ultimoDiaBR(mesSel);
     const bancos=CONTAS.filter(c=>!/caixinha/i.test(c.nome));
@@ -954,6 +1016,7 @@
       const v=Number(l.valor);if(v>0)entradas+=v;else saidas+=Math.abs(v);
     });
     const resultado=entradas-saidas;
+    const cxHTML=await cxBlocoFechamento();
     _escadas=[];
     const escadasHTML=bancos.map(c=>{
       const si=_saldoInicialMes(c,mesSel,antes);const mv=_movMes(c.id,mesSel);const calc=si.valor+mv.ent-mv.sai;
@@ -965,8 +1028,8 @@
       return `<div class="card" style="margin-bottom:12px">
         <div class="cardhead"><h3>🏦 ${c.nome} — ${mesNome}</h3>${fechado?'<span class="catchip" style="border-color:var(--green);color:var(--green)">🔐 fechado</span>':''}</div>
         <div class="cfgrow"><span>Saldo inicial em 01/${_mm(mesSel)}<br><span class="mut" style="font-size:11px">${origemTxt}</span></span><b style="margin-left:auto;color:${si.valor<0?'var(--red)':'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(si.valor)}</b>${podeCorrigir?`<button class="btn ghost" style="padding:4px 9px;margin-left:8px" title="Corrigir saldo inicial (pede motivo)" onclick="abrirCorrigirSaldoInicialMes(${c.id},${Math.round(si.valor*100)})">✎</button>`:''}</div>
-        <div class="cfgrow"><span>+ Entradas de ${mesNome}</span><b style="margin-left:auto;color:var(--green);font-variant-numeric:tabular-nums">${BRL(mv.ent)}</b></div>
-        <div class="cfgrow"><span>− Saídas de ${mesNome}</span><b style="margin-left:auto;color:var(--red);font-variant-numeric:tabular-nums">${BRL(mv.sai)}</b></div>
+        <div class="cfgrow"><span>+ Entradas de ${mesNome}<br><span class="mut" style="font-size:11px">tudo que entrou na conta, transferências inclusive</span></span><b style="margin-left:auto;color:var(--green);font-variant-numeric:tabular-nums">${BRL(mv.ent)}</b></div>
+        <div class="cfgrow"><span>− Saídas de ${mesNome}<br><span class="mut" style="font-size:11px">tudo que saiu da conta, transferências inclusive</span></span><b style="margin-left:auto;color:var(--red);font-variant-numeric:tabular-nums">${BRL(mv.sai)}</b></div>
         <div class="cfgrow" style="border-top:2px solid var(--line)"><b>= Tem que ter em ${ult}</b><b style="margin-left:auto;font-size:16px;color:${calc<0?'var(--red)':'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(calc)}</b></div>
         <div class="cfgrow" style="flex-wrap:wrap;gap:8px"><span>Saldo real no banco em ${ult}<br><span class="mut" style="font-size:11px">o que o app do Sicoob mostra nesse dia · se o mês ainda não acabou, o saldo de agora</span></span>
           <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
@@ -986,6 +1049,7 @@
     document.getElementById('content').innerHTML=`<div class="note">🔐 <b>Fechamento do mês</b> — a conta do dinheiro, igual ao extrato: <b>quanto tinha, quanto entrou, quanto saiu, quanto tem que ter</b>. Bateu com o app do banco, o mês fecha.</div>
     ${seletorMes()}
     ${escadasHTML||'<div class="card" style="margin-bottom:12px"><p class="mut" style="font-size:13px">Nenhuma conta de banco cadastrada. Vá em <b>Configurações</b>.</p></div>'}
+    ${cxHTML}
     <div class="grid two" style="margin-top:4px">
       <div class="card"><div class="cardhead"><h3>Resultado de ${mesNome}</h3><span class="tag">sem saldo inicial</span></div>
         <p class="mut" style="font-size:11.5px;margin-top:4px">Desempenho do mês. Esta conta <b>não</b> usa o saldo inicial.</p>
@@ -1586,7 +1650,7 @@
     // calcula o saldo atual de cada conta (saldo inicial + entradas - saídas dos lançamentos dessa conta)
     const {data:lancs}=await sb.from('lancamentos').select('valor,conta_id,categorias(grupo)').eq('loja_id',lojaAtual);
     const movPorConta={};
-    (lancs||[]).forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;if(!l.conta_id)return;movPorConta[l.conta_id]=(movPorConta[l.conta_id]||0)+Number(l.valor);});
+    (lancs||[]).forEach(l=>{if(!l.conta_id)return;movPorConta[l.conta_id]=(movPorConta[l.conta_id]||0)+Number(l.valor);});
     const contas=CONTAS.map(c=>{
       const ini=Number(c.saldo_inicial_banco||0);
       const atual=ini+(movPorConta[c.id]||0);
@@ -1669,81 +1733,132 @@
   }
   async function arquivarConta(id){await sb.from('contas').update({arquivada:true}).eq('id',id);toast('Conta arquivada','ok');viewConfig();}
 
-  // ---- CAIXINHA (dinheiro físico) ----
+  // ---- CAIXINHA (espelho do sistema Caixinha — só leitura) ----
+  // O dinheiro físico mora no sistema Caixinha (caixinha-rocha.vercel.app). Aqui só se olha.
+  const CX_URL='https://tadrcmjdmjltekphnlhf.supabase.co';
+  const CX_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhZHJjbWpkbWpsdGVrcGhubGhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxOTY5MTUsImV4cCI6MjEwMzc3MjkxNX0.-eJYAhnq0PhE_EI73Xq1TEBZGOvWxP2GW-ENWUzlVzU';
+  const CX_LINK='https://caixinha-rocha.vercel.app';
+  const CX_INICIO_RECOLHER='2026-09-21'; // mesma regra do Caixinha: "a recolher" só conta guardados a partir daqui
+  let sbCx=null, CX={carregado:false,em:null,caixas:[],contas:[],erro:''};
+  function cxClient(){
+    if(sbCx)return sbCx;
+    try{sbCx=supabase.createClient(CX_URL,CX_ANON,{auth:{storageKey:'sb-caixinha-espelho',persistSession:true,autoRefreshToken:true}});}catch(e){sbCx=null;}
+    return sbCx;
+  }
+  async function cxSessao(){const c=cxClient();if(!c)return null;try{const {data}=await c.auth.getSession();return data&&data.session?data.session:null;}catch(e){return null;}}
+  async function cxEntrar(){
+    const email=(document.getElementById('cxEmail')?.value||'').trim().toLowerCase();const senha=document.getElementById('cxSenha')?.value||'';
+    const err=document.getElementById('cxErr');if(err)err.textContent='';
+    if(!email||!senha){if(err)err.textContent='Escolha quem é você e digite a senha do Caixinha.';return;}
+    const c=cxClient();if(!c){if(err)err.textContent='Não consegui conectar.';return;}
+    const {error}=await c.auth.signInWithPassword({email,password:senha});
+    if(error){if(err)err.textContent='Senha do Caixinha incorreta.';return;}
+    CX.carregado=false;toast('Entrou no Caixinha. Carregando...','ok');render();
+  }
+  async function cxSair(){const c=cxClient();if(c){try{await c.auth.signOut();}catch(e){}}CX={carregado:false,em:null,caixas:[],contas:[],erro:''};render();}
+  async function cxSelectTudo(tabela,cols,ordem){
+    const c=cxClient();const PG=1000;let out=[];
+    for(let de=0;;de+=PG){const {data,error}=await c.from(tabela).select(cols||'*').order(ordem||'id').range(de,de+PG-1);if(error)return {data:null,error};out=out.concat(data||[]);if(!data||data.length<PG)break;}
+    return {data:out,error:null};
+  }
+  // carrega caixinhas de loja + movimentos (igual ao fetchAll do Caixinha, só o que precisa)
+  async function cxCarregar(forcar){
+    if(CX.carregado&&!forcar)return true;
+    const c=cxClient();if(!c)return false;
+    try{
+      const [cx,comp,lan,cont]=await Promise.all([
+        c.from('caixinhas').select('id,nome,tipo,arquivada,ordem').order('ordem'),
+        cxSelectTudo('competencias','id,caixinha_id,ano,mes'),
+        cxSelectTudo('lancamentos','id,competencia_id,data,tipo,valor,excluido,contraparte,recolhido'),
+        cxSelectTudo('contas','id,caixinha_id,status,valor,valor_pago'),
+      ]);
+      const fe=[cx,comp,lan].find(r=>r.error);
+      if(fe){CX.erro=fe.error.message||String(fe.error);return false;}
+      const compById={};(comp.data||[]).forEach(x=>compById[x.id]=x);
+      const caixas=(cx.data||[]).filter(x=>!x.arquivada&&x.tipo==='loja').map(x=>({id:x.id,nome:x.nome,mov:[]}));
+      const byId={};caixas.forEach(x=>byId[x.id]=x);
+      (lan.data||[]).forEach(l=>{if(l.excluido)return;const cp=compById[l.competencia_id];if(!cp)return;const k=byId[cp.caixinha_id];if(!k)return;k.mov.push({id:l.id,data:l.data,tipo:l.tipo,valor:Number(l.valor)||0,para:l.contraparte||null,recolhido:!!l.recolhido});});
+      CX.caixas=caixas;CX.contas=cont.error?[]:(cont.data||[]);CX.carregado=true;CX.em=new Date();CX.erro='';
+      return true;
+    }catch(e){CX.erro=e.message||String(e);return false;}
+  }
+  // mesma conta do Caixinha (calcMes): abertura = tudo antes do dia 1º; fechamento = abertura + entradas + reposições + guardado − saídas − empréstimos − depósitos
+  function cxCalcMes(k,ano,mes){
+    const first=`${ano}-${String(mes).padStart(2,'0')}-01`,pref=`${ano}-${String(mes).padStart(2,'0')}`;
+    let abertura=0,ent=0,sai=0,emp=0,rep=0,dep=0,gua=0,abEmp=0;
+    k.mov.forEach(m=>{const v=(m.tipo==='entrada'||m.tipo==='reposicao'||m.tipo==='guardado')?m.valor:-m.valor;
+      if((m.data||'')<first){abertura+=v;if(m.tipo==='emprestimo'&&m.para)abEmp+=m.valor;else if(m.tipo==='reposicao'&&m.para)abEmp-=m.valor;}
+      else if((m.data||'').slice(0,7)===pref){if(m.tipo==='entrada')ent+=m.valor;else if(m.tipo==='saida')sai+=m.valor;else if(m.tipo==='emprestimo')emp+=m.valor;else if(m.tipo==='reposicao')rep+=m.valor;else if(m.tipo==='deposito')dep+=m.valor;else if(m.tipo==='guardado')gua+=m.valor;}});
+    return {abertura,abEmp:Math.max(abEmp,0),ent,sai,emp,rep,dep,gua,fechamento:abertura+ent+rep+gua-sai-emp-dep,aReceber:Math.max(emp-rep,0)};
+  }
+  function cxFaltaRecolher(k){
+    const movs=(k.mov||[]).filter(m=>(m.data||'')>=CX_INICIO_RECOLHER&&(m.tipo==='guardado'||(m.tipo==='deposito'&&!m.para))).slice().sort((a,b)=>((a.data||'')<(b.data||'')?-1:(a.data||'')>(b.data||'')?1:((a.id||0)<(b.id||0)?-1:1)));
+    const fila=[];movs.forEach(m=>{if(m.tipo==='guardado'){if(!m.recolhido)fila.push(m.valor);}else{let d=m.valor;while(d>0&&fila.length){if(fila[0]<=d){d-=fila.shift();}else{fila[0]-=d;d=0;}}}});
+    return fila.reduce((s,v)=>s+v,0);
+  }
+  function cxEstornar(kId){let e=0;CX.contas.forEach(c=>{if(c.caixinha_id===kId&&c.status==='estornar')e+=Math.max((Number(c.valor)||0)-(Number(c.valor_pago)||0),0);});return e;}
+  // "Rocha 7" (Caixinha) ↔ loja do Caixa Rocha: casa pelo número; GV pelo nome
+  function cxChaveLoja(nome){const n=String(nome||'').toLowerCase();const m=n.match(/rocha\s*0*(\d+)/);if(m)return 'r'+parseInt(m[1],10);if(/gv|optical|lentes|laborat/.test(n))return 'gv';return n.replace(/[^a-z0-9]/g,'');}
+  function cxCaixaDaLojaAtual(){const L=LOJAS.find(l=>l.id===lojaAtual);if(!L)return null;const ch=cxChaveLoja(L.nome);return CX.caixas.find(k=>cxChaveLoja(k.nome)===ch)||null;}
+  function cxLoginHTML(){
+    return `<div class="card" style="max-width:460px"><div class="cardhead"><h3>🔑 Entrar no Caixinha</h3></div>
+      <p class="mut" style="font-size:13px;line-height:1.5;margin:6px 0 12px">Esta aba mostra os números do sistema Caixinha. Entre <b>uma vez</b> neste computador, igual você entra lá: escolha seu nome e digite sua senha do Caixinha. Depois abre sozinho.</p>
+      <span class="qlabel">Quem é você? (igual ao Caixinha)</span><select id="cxEmail" class="qin" style="margin-bottom:8px">
+        <optgroup label="Equipe"><option value="lucas@caixinharocha.com">Lucas</option><option value="heloisa@caixinharocha.com">Heloísa</option><option value="rhaiane@caixinharocha.com">Rhaiane</option><option value="carol@caixinharocha.com">Carol</option><option value="flavia@caixinharocha.com">Flávia</option></optgroup>
+        <optgroup label="Lojas"><option value="rocha1@caixinharocha.com">Rocha 1</option><option value="rocha2@caixinharocha.com">Rocha 2</option><option value="rocha3@caixinharocha.com">Rocha 3</option><option value="rocha4@caixinharocha.com">Rocha 4</option><option value="rocha5@caixinharocha.com">Rocha 5</option><option value="rocha6@caixinharocha.com">Rocha 6</option><option value="rocha7@caixinharocha.com">Rocha 7</option><option value="rocha8@caixinharocha.com">Rocha 8</option><option value="rocha9@caixinharocha.com">Rocha 9</option><option value="rocha10@caixinharocha.com">Rocha 10</option><option value="rocha11@caixinharocha.com">Rocha 11</option><option value="gvoptical@caixinharocha.com">GV Optical</option></optgroup></select>
+      <span class="qlabel">Senha do Caixinha</span><input id="cxSenha" class="qin" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')cxEntrar()" style="margin-bottom:8px">
+      <div id="cxErr" class="err" style="margin:0 0 8px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="cxEntrar()">Entrar</button><a class="btn ghost" href="${CX_LINK}" target="_blank" rel="noopener" style="text-decoration:none">Abrir o Caixinha ↗</a></div></div>`;
+  }
+  // escada da caixinha de uma loja num mês (usada na aba e no Fechamento)
+  function cxEscadaHTML(k,mi,compacta){
+    const r=cxCalcMes(k,ANO_FIXO,mi+1);const mesNome=MESES_NOME[mi],ult=_ultimoDiaBR(mi);
+    const row=(l,v,o={})=>`<div class="cfgrow"><span>${l}${o.sub?`<br><span class="mut" style="font-size:11px">${o.sub}</span>`:''}</span><b style="margin-left:auto;color:${o.cor||'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(v)}</b></div>`;
+    return `<div class="card" style="margin-bottom:12px"><div class="cardhead"><h3>💵 Caixinha ${k.nome} — ${mesNome}</h3><span class="tag">espelho · só leitura</span></div>
+      ${row(`Abertura em 01/${_mm(mi)}`,r.abertura,{sub:(r.emp>0.001?`em dinheiro · + ${BRL(r.emp)} emprestado no mês = ${BRL(r.abertura+r.emp)} (igual ao Caixinha)`:(r.aReceber>0?`em dinheiro · a receber ${BRL(r.aReceber)}`:'calculado pelo Caixinha')),cor:r.abertura<0?'var(--red)':'var(--txt)'})}
+      ${row(`+ Entradas de ${mesNome}`,r.ent,{cor:'var(--green)'})}
+      ${r.rep||r.gua?row('+ Reposições e guardado',r.rep+r.gua,{cor:'var(--green)',sub:'devoluções de empréstimo e dinheiro guardado'}):''}
+      ${row(`− Saídas de ${mesNome}`,r.sai,{cor:'var(--red)'})}
+      ${r.emp?row('− Emprestado para outra loja',r.emp,{cor:'var(--red)'}):''}
+      ${r.dep?row('− Depósitos no banco',r.dep,{cor:'var(--red)'}):''}
+      <div class="cfgrow" style="border-top:2px solid var(--line)"><b>= Tem que ter em ${ult}</b><b style="margin-left:auto;font-size:16px;color:${r.fechamento<0?'var(--red)':'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(r.fechamento)}</b></div>
+      ${r.fechamento<-0.009?'<p style="font-size:12.5px;color:var(--red);margin-top:8px">🚨 Caixinha não pode ficar negativa. É lançamento faltando no Caixinha, não saldo.</p>':''}
+      ${compacta?'':`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12.5px"><span class="mut">A receber de outras lojas: <b style="color:var(--txt)">${BRL(r.aReceber)}</b></span><span class="mut">A recolher: <b style="color:var(--txt)">${BRL(cxFaltaRecolher(k))}</b></span><span class="mut">A estornar (aba Banco): <b style="color:var(--txt)">${BRL(cxEstornar(k.id))}</b></span></div>`}
+      <div style="margin-top:10px"><a href="${CX_LINK}" target="_blank" rel="noopener" style="color:var(--blue);font-size:12.5px">Abrir no Caixinha ↗</a><span class="mut" style="font-size:11.5px;margin-left:10px">Para corrigir qualquer número, corrija lá — aqui atualiza sozinho.</span></div>
+    </div>`;
+  }
   async function viewCaixinha(){
-    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando caixinha...</div>';
-    await carregarContas();
-    const contaCx=CONTAS.find(c=>/caixinha/i.test(c.nome));
-    if(!contaCx){document.getElementById('content').innerHTML='<div class="note soon">⚠️ Esta loja não tem uma conta "Caixinha". Vá em Configurações e crie uma conta chamada CAIXINHA.</div>';return;}
-    // lançamentos da caixinha
-    const {data}=await sb.from('lancamentos').select('*, categorias(nome,grupo), contatos(nome)').eq('loja_id',lojaAtual).eq('conta_id',contaCx.id).order('data',{ascending:false}).limit(300);
-    const lancs=data||[];
-    const ini=Number(contaCx.saldo_inicial_banco||0);
-    let mov=0;lancs.forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;mov+=Number(l.valor);});
-    const saldoAtual=ini+mov;
-    const rows=lancs.map(l=>{const ajuste=/^AJUSTE DE SALDO/i.test(l.descricao||'');return `<tr style="${ajuste?'background:rgba(245,183,64,.07)':''}"><td class="mut">${isoParaBR(l.data).slice(0,5)}</td><td>${ajuste?'<span class="catchip" style="border-color:var(--amber);color:var(--amber)">⚖️ ajuste</span> ':''}${l.descricao}</td><td><span class="catchip">${l.categorias?.nome||'—'}</span></td><td class="amt ${l.valor>0?'green':'red'}">${l.valor>0?'+':'-'}${BRL(Math.abs(l.valor))}</td><td style="text-align:center">${podeEditar()?`<button class="delx" onclick="abrirEditarLanc(${l.id})">✏️</button> <button class="delx" onclick="excluirLanc(${l.id})">🗑</button>`:''}</td></tr>`;}).join('');
-    document.getElementById('content').innerHTML=`<div class="note">💵 <b>Caixinha</b> — o dinheiro físico da loja. As <b>entradas</b> em dinheiro você não lança (a Linx já conta). Aqui você registra as <b>saídas</b> (o que pagou com a caixinha) e o saldo vai descontando.</div>
-      <div class="grid" style="grid-template-columns:1fr 1fr;margin-bottom:16px">
-        <div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">SALDO ATUAL DA CAIXINHA</div><div style="font-size:30px;font-weight:800;color:${saldoAtual>=0?'var(--green)':'var(--red)'};margin-top:8px;font-variant-numeric:tabular-nums">${BRL(saldoAtual)}</div><div class="mut" style="font-size:11px;margin-top:4px">começou com ${BRL(ini)}</div></div>
-        <div class="card"><div class="cardhead"><h3 style="font-size:14px">Ações</h3></div>
-          <div style="display:flex;flex-direction:column;gap:9px;margin-top:10px">
-            ${podeEditar()?'<button class="btn" onclick="abrirSaidaCaixinha()">− Lançar saída da caixinha</button>':''}
-            ${podeEditar()?'<button class="btn ghost" onclick="abrirAjusteSaldo()">⚖️ Ajustar saldo (conferência)</button>':''}
-          </div>
-          <div class="mut" style="font-size:11px;margin-top:10px;line-height:1.5">Contou o dinheiro e não bateu? Use "Ajustar saldo" pra corrigir.</div></div>
+    const c=document.getElementById('content');
+    c.innerHTML='<div class="loading"><span class="spin"></span> Abrindo o espelho do Caixinha...</div>';
+    const nota=`<div class="note">💵 <b>Caixinha (dinheiro)</b> — o dinheiro físico mora no <b>sistema Caixinha</b>. Esta aba é um <b>espelho</b>: mostra, loja por loja, o que ele calcula. Ninguém lança nem ajusta aqui.</div>`;
+    const sess=await cxSessao();
+    if(!sess){c.innerHTML=nota+cxLoginHTML();return;}
+    const ok=await cxCarregar();
+    if(!ok){c.innerHTML=nota+`<div class="card"><p style="color:var(--red);font-size:13px">Não consegui ler o Caixinha: ${CX.erro||'erro desconhecido'}.</p><div style="display:flex;gap:8px;margin-top:10px"><button class="btn ghost" onclick="CX.carregado=false;render()">Tentar de novo</button><button class="btn ghost" onclick="cxSair()">Sair do Caixinha</button></div></div>`;return;}
+    const mi=mesSel;const atualCh=(()=>{const L=LOJAS.find(l=>l.id===lojaAtual);return L?cxChaveLoja(L.nome):'';})();
+    const linhas=CX.caixas.map(k=>{const r=cxCalcMes(k,ANO_FIXO,mi+1);const ehAtual=cxChaveLoja(k.nome)===atualCh;
+      return `<tr style="${ehAtual?'background:rgba(61,220,145,.07)':''}"><td><b>${k.nome}</b>${ehAtual?' <span class="catchip" style="border-color:var(--green);color:var(--green)">loja atual</span>':''}</td><td class="amt" style="color:${r.abertura<0?'var(--red)':'var(--txt)'}">${BRL(r.abertura)}</td><td class="amt green">${BRL(r.ent+r.rep+r.gua)}</td><td class="amt red">${BRL(r.sai+r.emp)}</td><td class="amt red">${BRL(r.dep)}</td><td class="amt" style="font-weight:800;color:${r.fechamento<0?'var(--red)':'var(--txt)'}">${BRL(r.fechamento)}</td><td class="amt">${BRL(r.aReceber)}</td><td class="amt">${BRL(cxEstornar(k.id))}</td></tr>`;}).join('');
+    const tot=CX.caixas.reduce((a,k)=>{const r=cxCalcMes(k,ANO_FIXO,mi+1);a.ab+=r.abertura;a.en+=r.ent+r.rep+r.gua;a.sa+=r.sai+r.emp;a.de+=r.dep;a.fe+=r.fechamento;a.ar+=r.aReceber;a.es+=cxEstornar(k.id);return a;},{ab:0,en:0,sa:0,de:0,fe:0,ar:0,es:0});
+    c.innerHTML=nota+seletorMes()+`
+      <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Loja</th><th style="text-align:right">Abertura 01/${_mm(mi)}</th><th style="text-align:right">+ Entradas</th><th style="text-align:right">− Saídas</th><th style="text-align:right">− Depósitos</th><th style="text-align:right">= Tem que ter</th><th style="text-align:right">A receber</th><th style="text-align:right">A estornar</th></tr></thead>
+      <tbody>${linhas||'<tr><td colspan="8" class="mut">Nenhuma caixinha de loja encontrada.</td></tr>'}</tbody>
+      <tfoot><tr style="font-weight:800"><td>Total</td><td class="amt">${BRL(tot.ab)}</td><td class="amt green">${BRL(tot.en)}</td><td class="amt red">${BRL(tot.sa)}</td><td class="amt red">${BRL(tot.de)}</td><td class="amt">${BRL(tot.fe)}</td><td class="amt">${BRL(tot.ar)}</td><td class="amt">${BRL(tot.es)}</td></tr></tfoot></table></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:12px" class="mut">
+        <span>Lido do Caixinha às ${CX.em?CX.em.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—'} · entrou como <b>${(document.querySelector(`#cxEmail option[value='${sess.user?.email||''}']`)||{}).textContent||({'lucas@caixinharocha.com':'Lucas','heloisa@caixinharocha.com':'Heloísa','rhaiane@caixinharocha.com':'Rhaiane','carol@caixinharocha.com':'Carol','flavia@caixinharocha.com':'Flávia'})[sess.user?.email]||sess.user?.email||''}</b></span>
+        <button class="btn ghost" style="padding:5px 10px;font-size:12px" onclick="CX.carregado=false;render()">↻ Atualizar</button>
+        <a class="btn ghost" href="${CX_LINK}" target="_blank" rel="noopener" style="padding:5px 10px;font-size:12px;text-decoration:none">Abrir o Caixinha ↗</a>
+        <button class="btn ghost" style="padding:5px 10px;font-size:12px;margin-left:auto" onclick="cxSair()">Sair do Caixinha</button>
       </div>
-      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${rows}</tbody></table>${lancs.length===0?'<div class="empty"><div class="big">💵</div>Nenhuma movimentação na caixinha ainda</div>':''}</div>`;
+      <p class="mut" style="font-size:11.5px;margin-top:10px;line-height:1.5">Entradas = entradas + reposições + guardado · Saídas = saídas + emprestado para outra loja · A receber = emprestado − devolvido · A estornar = contas pagas pelo banco que a loja ainda vai devolver (aba Banco do Caixinha).</p>`;
   }
-  function abrirSaidaCaixinha(){
-    const opts=catsOptions();
-    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
-      <h3>− Saída da caixinha</h3><p>Algo que você pagou com o dinheiro físico da loja.</p>
-      <span class="qlabel">Data</span><input id="cxData" placeholder="dd/mm" data-dm="" onkeydown="maskData(this,event)" onfocus="this.select()">
-      <span class="qlabel">Descrição</span><input id="cxDesc" class="maiusc" placeholder="Ex: ALMOÇO EQUIPE">
-      <span class="qlabel">Valor</span><input id="cxVal" class="calc" data-cents="0" placeholder="0,00" inputmode="numeric" onkeydown="calcInput(this,event)">
-      <span class="qlabel">Categoria</span><select id="cxCat"><option value="">Selecione...</option>${opts}</select>
-      <div id="cxErr"></div>
-      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarSaidaCaixinha()">Lançar saída</button></div></div></div>`;
-  }
-  async function salvarSaidaCaixinha(){
-    const contaCx=CONTAS.find(c=>/caixinha/i.test(c.nome));
-    const desc=document.getElementById('cxDesc').value.trim().toUpperCase();
-    const cents=parseInt(document.getElementById('cxVal').dataset.cents||'0',10);
-    const cat=document.getElementById('cxCat').value||null;
-    const iso=dataParaISO(document.getElementById('cxData').value);
-    if(!desc||!cents){document.getElementById('cxErr').innerHTML='<div class="err">Preencha descrição e valor.</div>';return;}
-    if(!iso){document.getElementById('cxErr').innerHTML='<div class="err">Data inválida.</div>';return;}
-    const {error}=await sb.from('lancamentos').insert({loja_id:lojaAtual,conta_id:contaCx.id,data:iso,descricao:desc,valor:-(cents/100),tipo:'despesa',categoria_id:cat,pago:true,origem:'manual',criado_por:USER.id});
-    if(error){document.getElementById('cxErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
-    fecharModal();toast('Saída lançada!','ok');viewCaixinha();
-  }
-  function abrirAjusteSaldo(){
-    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
-      <h3>⚖️ Ajustar saldo da caixinha</h3><p>Conte o dinheiro físico e digite quanto tem de verdade. Por ser dinheiro, todo ajuste fica registrado com quem fez e o motivo.</p>
-      <span class="qlabel">Quanto tem na caixinha agora (contado)</span><input id="ajVal" class="calc" data-cents="0" placeholder="0,00" inputmode="numeric" onkeydown="calcInput(this,event)">
-      <span class="qlabel" style="margin-top:12px">Motivo do ajuste (obrigatório)</span><input id="ajMotivo" class="maiusc" placeholder="Ex: SOBROU TROCO / FALTOU DINHEIRO / ERRO DE LANÇAMENTO">
-      <div id="ajErr"></div>
-      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarAjusteSaldo()">Ajustar</button></div></div></div>`;
-  }
-  async function salvarAjusteSaldo(){
-    const contaCx=CONTAS.find(c=>/caixinha/i.test(c.nome));
-    const novoCents=parseInt(document.getElementById('ajVal').dataset.cents||'0',10);
-    const novoSaldo=novoCents/100;
-    // calcula saldo atual
-    const {data}=await sb.from('lancamentos').select('valor,categorias(grupo)').eq('loja_id',lojaAtual).eq('conta_id',contaCx.id);
-    const ini=Number(contaCx.saldo_inicial_banco||0);
-    let mov=0;(data||[]).forEach(l=>{const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return;mov+=Number(l.valor);});
-    const saldoAtual=ini+mov;
-    const diferenca=novoSaldo-saldoAtual;
-    if(Math.abs(diferenca)<0.01){fecharModal();toast('Saldo já está certo!','ok');return;}
-    const motivo=(document.getElementById('ajMotivo').value||'').trim();
-    if(!motivo){document.getElementById('ajErr').innerHTML='<div class="err">Escreva o motivo do ajuste (obrigatório por ser dinheiro).</div>';return;}
-    const hoje=new Date().toISOString().slice(0,10);
-    const quem=(PERFIL&&PERFIL.nome?PERFIL.nome:'—').toUpperCase();
-    const desc=`AJUSTE DE SALDO · ${motivo.toUpperCase()} · POR ${quem}`;
-    const {error}=await sb.from('lancamentos').insert({loja_id:lojaAtual,conta_id:contaCx.id,data:hoje,descricao:desc,valor:diferenca,tipo:diferenca>0?'receita':'despesa',pago:true,origem:'manual',criado_por:USER.id});
-    if(error){document.getElementById('ajErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
-    fecharModal();toast('Saldo ajustado!','ok');viewCaixinha();
+  // bloco da caixinha dentro do Fechamento do mês (abaixo da escada do Sicoob)
+  async function cxBlocoFechamento(){
+    const sess=await cxSessao();
+    if(!sess)return `<div class="card" style="margin-bottom:12px"><div class="cardhead"><h3>💵 Caixinha — ${MESES_NOME[mesSel]}</h3><span class="tag">espelho</span></div><p class="mut" style="font-size:12.5px;margin-top:6px">Para ver a escada da caixinha aqui, <a style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="go('caixinha')">entre no Caixinha uma vez</a> (aba Caixinha).</p></div>`;
+    const ok=await cxCarregar();if(!ok)return `<div class="card" style="margin-bottom:12px"><p class="mut" style="font-size:12.5px">Caixinha indisponível agora: ${CX.erro||''}</p></div>`;
+    const k=cxCaixaDaLojaAtual();
+    if(!k)return `<div class="card" style="margin-bottom:12px"><div class="cardhead"><h3>💵 Caixinha — ${MESES_NOME[mesSel]}</h3></div><p class="mut" style="font-size:12.5px;margin-top:6px">Esta loja não tem caixinha no sistema Caixinha (ou o nome não casou).</p></div>`;
+    return cxEscadaHTML(k,mesSel,false);
   }
 
   function fecharModal(){document.getElementById('modalRoot').innerHTML='';}
