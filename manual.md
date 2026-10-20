@@ -108,9 +108,13 @@ No Caixa Rocha, o saldo inicial é **só o do Sicoob**. Não some caixinha nem e
 
 ## Caixinha: a regra é diferente
 
+**Meses antes do sistema Caixinha** (junho, julho, agosto de 2026): a gaveta foi lançada aqui mesmo, na conta CAIXINHA. Nesses meses o Fechamento mostra uma escada "💵 Caixa (gaveta) — caixinha antiga" com saldo inicial (✎) e o dinheiro contado na gaveta no último dia. Caixinha nunca fica negativa.
+
 **A aba Caixinha do Caixa Rocha é um espelho.** Ela mostra, loja por loja, o que o sistema Caixinha calcula: abertura do mês, entradas, saídas, depósitos, tem que ter, a receber e a estornar. Não tem nada para digitar ali. Para corrigir um número, corrija no Caixinha — aqui atualiza sozinho. Na primeira vez em cada computador ela pede o login do Caixinha (o mesmo e-mail e senha de lá); depois abre direto. No Fechamento do mês, a escada da caixinha aparece embaixo da escada do Sicoob.
 
 **As lojas lançam no Caixinha.** Cada loja tem o próprio login lá e lança as saídas, o guardado e (três delas) os depósitos. A Rhaiane passa, recolhe o dinheiro, confere o caixa e completa o que faltou — principalmente categoria. No espelho, a coluna **🔎 Conferir** mostra quantas saídas do mês foram lançadas pela própria loja e quantas estão sem categoria.
+
+**Dinheiro na gaveta e total da caixinha são dois números.** "Tem que ter na gaveta" é o que dá pra contar. "Total da caixinha" é a gaveta mais o que outras lojas devem a ela (emprestado). Os dois aparecem no Fechamento, igual ao Caixinha. Pra conferir a gaveta vale o primeiro; pra saber quanto a loja tem, o segundo. Somando o grupo inteiro, só o dinheiro conta — o emprestado de uma loja está na gaveta da outra.
 
 **Caixinha nunca fica negativa.** Dinheiro na gaveta não tem cheque especial. Se der negativo, não é saldo: é lançamento faltando. Alguém colocou dinheiro e não lançou a entrada, ou lançou uma saída duas vezes.
 
@@ -175,6 +179,10 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 21/10/2026 | 1.9.8 | Escada da gaveta no Fechamento ganhou a linha "Total da caixinha (dinheiro + emprestado)", igual ao Total do Caixinha; "Tem que ter" virou "Tem que ter na gaveta" | Dois números, dois significados: o que se conta e o que a loja tem |
+| 21/10/2026 | 1.9.7 | Espelho da gaveta mostra "Emprestado a outras lojas (a receber)" somando o que já vinha de meses anteriores | Bate com o "Total (dinheiro + emprestado)" do Caixinha |
+| 21/10/2026 | 1.9.6 | Escada da caixinha antiga aparece em todo mês em que o sistema Caixinha ainda não tem movimento da loja, mesmo sem lançamento aqui | Dá pra digitar o saldo da gaveta de junho |
+| 21/10/2026 | 1.9.5 | Fechamento mostra a escada da "caixinha antiga" (conta CAIXINHA lançada aqui) nos meses anteriores ao sistema Caixinha, com saldo inicial editável e dinheiro contado na gaveta | Junho, julho e agosto conseguem fechar a gaveta também |
 | 21/10/2026 | 1.9.4 | Trava do espelho das Lentes: linha "LENTES…" que perdeu a ligação e bate com boleto previsto vai pra Lixeira sozinha | Previsto nunca fica sobrando na escada |
 | 21/10/2026 | 1.9.3 | Botão "✕ não foi pago" na linha 🔗 Lentes: volta o boleto a previsto no Caixinha e tira daqui; busca dos espelhados simplificada | Dá pra desfazer um pago errado sem sair do Caixa Rocha |
 | 21/10/2026 | 1.9.2 | Espelho das Lentes: boleto que vira previsto ou some no Caixinha vai pra Lixeira mesmo quando o banco gravou a linha como "manual"; linha só ligada (extrato/manual) continua sendo apenas desligada | Previstos não ficam sobrando |

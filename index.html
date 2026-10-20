@@ -225,7 +225,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.9.5', APP_DATA='21/10/2026';
+  const APP_VERSAO='1.9.8', APP_DATA='21/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1308,7 +1308,11 @@
     const row=FECH_ANO[mesSel+1]||null;const fechado=!!(row&&row.fechado);
     const mesNome=MESES_NOME[mesSel],ult=_ultimoDiaBR(mesSel);
     // bancos sempre; a conta CAIXINHA (caixinha antiga, lançada aqui) só nos meses em que teve movimento ou saldo digitado — antes do sistema Caixinha existir
-    const bancos=CONTAS.filter(c=>{if(!/caixinha/i.test(c.nome))return true;const mv=_movMes(c.id,mesSel);const s0=_saldosDe(row,c.id);return mv.ent||mv.sai||(s0&&(s0.inicial!=null||s0.real!=null));});
+    const cxHTML=await cxBlocoFechamento();
+    // o sistema Caixinha já tem movimento desta loja neste mês? se não, a gaveta deste mês é a "caixinha antiga" (conta CAIXINHA daqui)
+    const kCx=(CX.carregado?cxCaixaDaLojaAtual():null);const prefMes=`${ANO_FIXO}-${_mm(mesSel)}`;
+    const cxTemMes=!!(kCx&&kCx.mov.some(m=>(m.data||'').slice(0,7)===prefMes));
+    const bancos=CONTAS.filter(c=>{if(!/caixinha/i.test(c.nome))return true;const mv=_movMes(c.id,mesSel);const s0=_saldosDe(row,c.id);return !cxTemMes||mv.ent||mv.sai||(s0&&(s0.inicial!=null||s0.real!=null));});
     // resumo do mês (sem saldo inicial) + lançamentos sem categoria
     let entradas=0,saidas=0,semCat=0;
     LANC_ANO.forEach(l=>{
@@ -1319,7 +1323,6 @@
       const v=Number(l.valor);if(v>0)entradas+=v;else saidas+=Math.abs(v);
     });
     const resultado=entradas-saidas;
-    const cxHTML=await cxBlocoFechamento();
     _escadas=[];
     const escadasHTML=bancos.map(c=>{
       const si=_saldoInicialMes(c,mesSel,antes);const mv=_movMes(c.id,mesSel);const calc=si.valor+mv.ent-mv.sai;
@@ -1328,7 +1331,7 @@
       const origemTxt=si.origem==='anterior'?`copiado do fechamento de ${MESES_NOME[si.mesBase]}`:(si.origem==='manual'?`digitado por ${si.por||'—'}${si.motivo?' · '+si.motivo:''}`:'calculado pelo sistema — confira com o extrato');
       const nLanc=LANC_ANO.filter(l=>l.conta_id===c.id&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
       const avisoEstim=si.origem==='calculado'?`<div style="margin:8px 0 2px;padding:9px 12px;border-radius:9px;background:rgba(245,183,64,.10);border:1px solid rgba(245,183,64,.35);font-size:12.5px;line-height:1.5"><b style="color:var(--amber)">⚠️ Este saldo inicial é uma estimativa.</b> Nenhum mês anterior foi fechado, então o sistema somou tudo desde o começo — se faltam lançamentos, o número sai torto. <b>Confira com o extrato do Sicoob de 01/${_mm(mesSel)}</b> e, se estiver diferente, corrija no ✎. A partir do primeiro mês fechado, ele passa a copiar o saldo real.</div>`:'';
-      const avisoVazio=nLanc===0?`<div style="margin:8px 0 2px;padding:9px 12px;border-radius:9px;background:rgba(125,162,255,.08);border:1px solid rgba(125,162,255,.3);font-size:12.5px"><b style="color:var(--blue)">Nenhum lançamento do Sicoob em ${mesNome}.</b> Nada a fechar ainda — lance o mês em Lançamentos primeiro.</div>`:`<div class="mut" style="font-size:11.5px;margin:6px 0 0">${nLanc} lançamento(s) do Sicoob em ${mesNome}</div>`;
+      const avisoVazio=nLanc===0?`<div style="margin:8px 0 2px;padding:9px 12px;border-radius:9px;background:rgba(125,162,255,.08);border:1px solid rgba(125,162,255,.3);font-size:12.5px"><b style="color:var(--blue)">${/caixinha/i.test(c.nome)?`Nenhum lançamento da gaveta em ${mesNome}.`:`Nenhum lançamento do Sicoob em ${mesNome}.`}</b> ${/caixinha/i.test(c.nome)?'Se a gaveta tinha dinheiro, digite o saldo inicial (✎) e o contado no último dia; o movimento do mês, se houver, lança em Lançamentos na conta CAIXINHA.':'Nada a fechar ainda — lance o mês em Lançamentos primeiro.'}</div>`:`<div class="mut" style="font-size:11.5px;margin:6px 0 0">${nLanc} lançamento(s) do Sicoob em ${mesNome}</div>`;
       const podeCorrigir=!fechado&&podeExcluir()&&si.origem!=='anterior';
       const neg=real!=null&&real<0;const ehCxAnt=/caixinha/i.test(c.nome);
       return `<div class="card" style="margin-bottom:12px">
@@ -2193,9 +2196,10 @@
       ${row(`− Saídas de ${mesNome}`,r.sai,{cor:'var(--red)'})}
       ${r.emp?row('− Emprestado para outra loja',r.emp,{cor:'var(--red)'}):''}
       ${r.dep?row('− Depósitos no banco',r.dep,{cor:'var(--red)'}):''}
-      <div class="cfgrow" style="border-top:2px solid var(--line)"><b>= Tem que ter em ${ult}</b><b style="margin-left:auto;font-size:16px;color:${r.fechamento<0?'var(--red)':'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(r.fechamento)}</b></div>
+      <div class="cfgrow" style="border-top:2px solid var(--line)"><b>= Tem que ter na gaveta em ${ult}</b><span class="mut" style="font-size:11px;margin-left:8px">dinheiro que dá pra contar</span><b style="margin-left:auto;font-size:16px;color:${r.fechamento<0?'var(--red)':'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(r.fechamento)}</b></div>
+      ${((r.abEmp||0)+r.aReceber)>0.004?`<div class="cfgrow" style="background:rgba(168,85,247,.07)"><b style="color:#b48cff">Total da caixinha (dinheiro + emprestado)</b><span class="mut" style="font-size:11px;margin-left:8px">o que a loja tem, contando o que outras lojas devem a ela · igual ao "Total" do Caixinha</span><b style="margin-left:auto;font-size:15px;color:#b48cff;font-variant-numeric:tabular-nums">${BRL(r.fechamento+(r.abEmp||0)+r.aReceber)}</b></div>`:''}
       ${r.fechamento<-0.009?'<p style="font-size:12.5px;color:var(--red);margin-top:8px">🚨 Caixinha não pode ficar negativa. É lançamento faltando no Caixinha, não saldo.</p>':''}
-      ${compacta?'':`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12.5px"><span class="mut">A receber de outras lojas: <b style="color:var(--txt)">${BRL(r.aReceber)}</b></span><span class="mut">A recolher: <b style="color:var(--txt)">${BRL(cxFaltaRecolher(k))}</b></span></div>`}
+      ${compacta?'':`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12.5px"><span class="mut" title="Emprestado a outras lojas e ainda não devolvido: o que já vinha de antes + o deste mês">Emprestado a outras lojas (a receber): <b style="color:var(--txt)">${BRL((r.abEmp||0)+r.aReceber)}</b>${r.abEmp?`<span class="mut" style="font-size:11px"> · ${BRL(r.abEmp)} de antes do mês</span>`:''}</span><span class="mut">A recolher: <b style="color:var(--txt)">${BRL(cxFaltaRecolher(k))}</b></span></div>`}
       ${(()=>{const q=cxConferir(k,mi);if(!q.loja&&!q.semCat)return '';return `<div style="margin-top:8px;font-size:12.5px;padding:8px 11px;border-radius:9px;background:rgba(245,183,64,.08);border:1px solid rgba(245,183,64,.3)">🔎 <b>Conferir no Caixinha:</b> ${q.loja} saída(s) de ${mesNome} lançada(s) pela própria loja${q.semCat?` · <b style="color:var(--amber)">${q.semCat} sem categoria</b>`:''}. A Rhaiane confere e completa lá.</div>`;})()}
       ${(()=>{const b=cxBancoResumo(k.id,ANO_FIXO,mi+1);const fimLbl=b.mesAtual?'hoje':ult;return `<div style="margin-top:14px;padding-top:10px;border-top:1px dashed var(--line)"><div style="font-weight:700;font-size:13.5px;margin-bottom:4px">🔁 Banco Caixinha ${k.nome} — ${mesNome} <span class="mut" style="font-weight:500;font-size:11.5px">o que o escritório pagou pela loja e ela ainda vai devolver (aba Banco do Caixinha)</span></div>
       ${row(`Em aberto em 01/${_mm(mi)}`,b.inicio,{sub:'início do mês'})}
