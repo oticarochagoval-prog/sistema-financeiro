@@ -222,7 +222,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.8', APP_DATA='21/10/2026';
+  const APP_VERSAO='1.8.1', APP_DATA='21/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -334,10 +334,11 @@
     const ses=await cxSessao();if(!ses)return {erro:'nao_logado'};
     const {data,error}=await cxSelectTudo('fz_fechamentos','id,loja_nome,ano,mes,boletos,criado_por_nome','id');
     if(error)return {erro:error.message||String(error)};
-    const itens=[];
-    (data||[]).forEach(f=>{(Array.isArray(f.boletos)?f.boletos:[]).forEach(b=>{if(!b||!b.id)return;const data=String(b.data||'').slice(0,10);if(!data||data<LENTES_DESDE)return;const valor=Math.abs(Number(b.valor)||0);if(!valor)return;
-      itens.push({ref:'fz:'+f.id+':'+b.id,lojaNome:f.loja_nome,lojaId:lentesLojaId(f.loja_nome),data,valor,nome:String(b.nome||'').toUpperCase(),anexo:b.anexo||null,por:b.por||f.criado_por_nome||''});});});
-    return {itens};
+    const itens=[];const diag={fechamentos:(data||[]).length,boletos:0,semId:0,antes:0,semValor:0,semLoja:0,lojasDesconhecidas:{}};
+    (data||[]).forEach(f=>{(Array.isArray(f.boletos)?f.boletos:[]).forEach((b,ix)=>{if(!b)return;diag.boletos++;const bid=b.id||('i'+ix+'-'+String(b.data||'')+'-'+String(b.valor||''));if(!b.id)diag.semId++;const data=String(b.data||'').slice(0,10);if(!data||data<LENTES_DESDE){diag.antes++;return;}const valor=Math.abs(Number(b.valor)||0);if(!valor){diag.semValor++;return;}
+      const lojaId=lentesLojaId(f.loja_nome);if(!lojaId){diag.semLoja++;diag.lojasDesconhecidas[f.loja_nome]=1;}
+      itens.push({ref:'fz:'+f.id+':'+bid,lojaNome:f.loja_nome,lojaId,data,valor,nome:String(b.nome||'').toUpperCase(),anexo:b.anexo||null,por:b.por||f.criado_por_nome||''});});});
+    return {itens,diag};
   }
   // sincroniza: cria o que falta, atualiza o que mudou, liga a lançamento já existente (manual/OFX) e manda pra lixeira o que sumiu lá
   async function lentesSincronizar(silencioso){
@@ -345,7 +346,7 @@
     const cat=lentesCat();if(!cat){if(!silencioso)toast('Crie a categoria Lentes/Laboratório primeiro.','erro');return;}
     const r=await lentesLerCaixinha();
     if(r.erro){LENTES_ULT.erro=r.erro;if(!silencioso)toast(r.erro==='nao_logado'?'Entre no Caixinha (aba Caixinha) para espelhar as Lentes.':'Lentes: '+r.erro,'erro');return;}
-    const itens=r.itens.filter(i=>i.lojaId);
+    const itens=r.itens.filter(i=>i.lojaId);LENTES_ULT.diag=r.diag;
     const {data:exist,error:e1}=await sb.from('lancamentos').select('id,loja_id,conta_id,data,valor,descricao,categoria_id,contato_id,ref_externa,anexo_url,origem').like('ref_externa','fz:%');
     if(e1){LENTES_ULT.erro=e1.message;if(!silencioso)toast('Lentes: rode o SQL da v1.8 (coluna ref_externa). '+e1.message,'erro');return;}
     const porRef={};(exist||[]).forEach(l=>porRef[l.ref_externa]=l);
@@ -378,15 +379,16 @@
       const {data:full}=await sb.from('lancamentos').select('*').eq('id',l.id).single();
       const {error:eL}=await sb.from('lixeira').insert({loja_id:l.loja_id,dados:Object.assign({},full||l,{_motivo:'boleto apagado na aba Lentes do Caixinha'}),excluido_por:USER.id});
       if(eL)continue;const {error}=await sb.from('lancamentos').delete().eq('id',l.id);if(!error)R.removidos++;}
-    LENTES_ULT=Object.assign({quando:new Date(),erro:''},R);
+    LENTES_ULT=Object.assign({quando:new Date(),erro:'',diag:r.diag},R);
     const mudou=R.novos+R.atualizados+R.ligados+R.removidos;
-    if(mudou||!silencioso)toast(`🔗 Lentes: ${R.novos} novo(s), ${R.ligados} ligado(s) a lançamento que já existia, ${R.atualizados} atualizado(s), ${R.removidos} pra lixeira${R.pulados?`, ${R.pulados} pulado(s) (mês fechado/sem permissão)`:''}`,'ok');
+    const d=r.diag;const lidos=`Li ${d.boletos} boleto(s) em ${d.fechamentos} fechamento(s) da aba Lentes${d.antes?`, ${d.antes} antes de ${isoParaBR(LENTES_DESDE)}`:''}${d.semLoja?`, ${d.semLoja} de loja que não reconheci (${Object.keys(d.lojasDesconhecidas).join(', ')})`:''}.`;
+    if(mudou||!silencioso)toast(`🔗 Lentes: ${lidos} ${R.novos} novo(s), ${R.ligados} ligado(s) a lançamento que já existia, ${R.atualizados} atualizado(s), ${R.removidos} pra lixeira${R.pulados?`, ${R.pulados} pulado(s) (mês fechado/sem conta/sem permissão)`:''}`,mudou||d.boletos?'ok':'erro');
     if(mudou&&(page==='lanc'||page==='visao'||page==='dre'||page==='fechamento'))render();
   }
   function lentesMesFechado(iso,lojaId,FT){const p=String(iso||'').split('-');return !!FT[lojaId+':'+parseInt(p[0],10)+':'+parseInt(p[1],10)];}
   function addDias(iso,n){const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
   function lentesStatusHTML(){const u=LENTES_ULT;const q=u.quando?u.quando.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):null;
-    const txt=u.erro==='nao_logado'?'<span style="color:var(--amber)">entre no Caixinha (aba Caixinha) pra espelhar os boletos de lentes</span>':(u.erro?`<span style="color:var(--red)">erro: ${u.erro}</span>`:(q?`atualizado às ${q}`:'ainda não sincronizou'));
+    const dg=u.diag?` · ${u.diag.boletos} boleto(s) lidos${u.diag.semLoja?`, ${u.diag.semLoja} sem loja`:''}`:'';const txt=u.erro==='nao_logado'?'<span style="color:var(--amber)">entre no Caixinha (aba Caixinha) pra espelhar os boletos de lentes</span>':(u.erro?`<span style="color:var(--red)">erro: ${u.erro}</span>`:(q?`atualizado às ${q}${dg}`:'ainda não sincronizou'));
     return `<span class="mut" style="font-size:12px">🔗 Lentes: ${txt}</span> ${podeEditar()?`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="lentesSincronizar(false)">↻ Atualizar Lentes</button>`:''}`;}
 
   // ---- REGRAS POR PALAVRA (palavras que puxam sozinho, por categoria) ----
@@ -2103,7 +2105,7 @@
         <span>Lido do Caixinha às ${CX.em?CX.em.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—'} · entrou como <b>${(document.querySelector(`#cxEmail option[value='${sess.user?.email||''}']`)||{}).textContent||({'lucas@caixinharocha.com':'Lucas','heloisa@caixinharocha.com':'Heloísa','rhaiane@caixinharocha.com':'Rhaiane','carol@caixinharocha.com':'Carol','flavia@caixinharocha.com':'Flávia'})[sess.user?.email]||sess.user?.email||''}</b></span>
         <button class="btn ghost" style="padding:5px 10px;font-size:12px" onclick="CX.carregado=false;render()">↻ Atualizar</button>
         <a class="btn ghost" href="${CX_LINK}" target="_blank" rel="noopener" style="padding:5px 10px;font-size:12px;text-decoration:none">Abrir o Caixinha ↗</a>
-        <button class="btn ghost" style="padding:5px 10px;font-size:12px;margin-left:auto" onclick="cxSair()">Sair do Caixinha</button>
+        ${ehDono()?`<button class="btn ghost" style="padding:5px 10px;font-size:12px;margin-left:auto" onclick="if(confirm('Sair do Caixinha neste computador? A aba vai pedir a senha do Caixinha de novo.'))cxSair()">Sair do Caixinha</button>`:''}
       </div>
       <div class="card" style="margin-top:14px"><div class="cardhead"><h3>Os três "bancos" — para não confundir</h3></div>
         <div class="cfgrow"><span>🏦 <b>Banco Sicoob</b> — a conta da loja no banco de verdade</span><span class="mut" style="margin-left:auto;font-size:12px">mora no <b>Fechamento do mês</b> (a escada do Sicoob)</span></div>
