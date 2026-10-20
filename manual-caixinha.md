@@ -52,7 +52,7 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 | Na importação do extrato, a linha do banco bate com um boleto já espelhado | Vem marcada "🔗 já lançado pelas Lentes" e não entra de novo |
 
 - Acontece sozinho ao abrir o Caixa Rocha (quem estiver logado no Caixinha naquele computador) e no botão **↻ Atualizar Lentes** em Lançamentos. A barrinha diz quantos boletos leu.
-- Pega boletos pagos **a partir de 01/09/2026**. Saldo anterior e "Compras" da aba Lentes não entram.
+- Pega boletos **pagos** a partir de 01/09/2026. Boleto **previsto** (ainda não pago, ou com data futura) não entra; quando virar pago no Caixinha, entra no próximo Atualizar. Se um boleto espelhado voltar a previsto, sai daqui pra Lixeira. Saldo anterior e "Compras" não entram.
 
 > ⛔ Não corrija valor ou data de um lançamento 🔗 Lentes aqui — corrija no Caixinha, que aqui acompanha. Categoria e contato podem ser ajustados aqui.
 
@@ -87,6 +87,7 @@ A aba **Caixinha (espelho)** mostra, loja por loja, o que o sistema Caixinha cal
 
 | Data | Versão | O que mudou |
 | --- | --- | --- |
+| 21/10/2026 | 1.9.1 | Lentes: só boleto pago entra (previsto e data futura ficam de fora) |
 | 21/10/2026 | 1.9 | Botões "Mandar pro Banco Caixinha" e "Marcar devolução no Caixinha" nos lançamentos; faixa amarela dos pendentes; este manual e o botão 🔗? |
 | 21/10/2026 | 1.8 | Espelho das Lentes (boletos viram saídas; atualiza, liga, vai pra lixeira; não duplica com o extrato) |
 | 20/10/2026 | 1.4 | Banco Caixinha no espelho; nomes fixos dos três bancos |

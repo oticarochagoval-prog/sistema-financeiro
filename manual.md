@@ -148,7 +148,7 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 - Editou valor ou data no Caixinha → atualiza aqui. Apagou lá → vai pra Lixeira aqui. Categoria e contato escolhidos aqui não são sobrescritos.
 - Se o boleto já estava lançado (na mão ou pelo extrato), o espelho **liga** ao lançamento existente em vez de duplicar (mesma loja, mesmo valor, até 3 dias de diferença).
 - Na importação do extrato, a linha do banco que bate com um boleto já espelhado vem marcada **"🔗 já lançado pelas Lentes"** e não entra de novo.
-- Saldo anterior e "Compras" da aba Lentes não entram — só boletos pagos, a partir de 01/09/2026.
+- Saldo anterior e "Compras" da aba Lentes não entram — só boletos **pagos**, a partir de 01/09/2026. Boleto **previsto** (ainda não pago, ou com data futura) não entra; quando for marcado como pago no Caixinha, entra no próximo Atualizar.
 
 ## Perguntas que sempre aparecem
 
@@ -175,6 +175,7 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 21/10/2026 | 1.9.1 | Espelho das Lentes só traz boleto pago: previsto ou com data futura fica de fora (e sai daqui pra Lixeira se deixar de ser pago) | Só despesa real entra |
 | 21/10/2026 | 1.9 | Botões "Mandar pro Banco Caixinha" e "Marcar devolução no Caixinha" nos lançamentos A ESTORNAR / ESTORNO RECEBIDO (liga, não duplica; faixa amarela dos pendentes); novo Manual do Caixinha (botão 🔗?) | Banco Caixinha passa a ser alimentado pelo extrato, sem excluir nada |
 | 21/10/2026 | 1.8.6 | Manual ganhou a seção "Empréstimo e estorno: o que vai pro Banco Caixinha" (dois tipos de empréstimo, passo a passo, avisos coloridos) e caixas verde/amarela/vermelha/azul | Heloísa sabe o que anotar onde, antes da automação |
 | 21/10/2026 | 1.8.5 | Quadro do Dashboard virou "Extrato em dia?": a cor é só pelo extrato importado (dias que faltam de extrato), com manual e "N lançamentos em X dias do mês" como informação | Fica claro qual loja ainda não tem o mês provado pelo extrato |
