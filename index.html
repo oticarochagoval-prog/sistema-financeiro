@@ -225,7 +225,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.9.8', APP_DATA='21/10/2026';
+  const APP_VERSAO='1.9.9', APP_DATA='21/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1309,10 +1309,8 @@
     const mesNome=MESES_NOME[mesSel],ult=_ultimoDiaBR(mesSel);
     // bancos sempre; a conta CAIXINHA (caixinha antiga, lançada aqui) só nos meses em que teve movimento ou saldo digitado — antes do sistema Caixinha existir
     const cxHTML=await cxBlocoFechamento();
-    // o sistema Caixinha já tem movimento desta loja neste mês? se não, a gaveta deste mês é a "caixinha antiga" (conta CAIXINHA daqui)
-    const kCx=(CX.carregado?cxCaixaDaLojaAtual():null);const prefMes=`${ANO_FIXO}-${_mm(mesSel)}`;
-    const cxTemMes=!!(kCx&&kCx.mov.some(m=>(m.data||'').slice(0,7)===prefMes));
-    const bancos=CONTAS.filter(c=>{if(!/caixinha/i.test(c.nome))return true;const mv=_movMes(c.id,mesSel);const s0=_saldosDe(row,c.id);return !cxTemMes||mv.ent||mv.sai||(s0&&(s0.inicial!=null||s0.real!=null));});
+    // Fechamento tem três blocos, sempre: Sicoob (aqui), Caixa (gaveta) e Banco Caixinha (espelho do Caixinha). A conta CAIXINHA antiga não ganha escada.
+    const bancos=CONTAS.filter(c=>!/caixinha/i.test(c.nome));
     // resumo do mês (sem saldo inicial) + lançamentos sem categoria
     let entradas=0,saidas=0,semCat=0;
     LANC_ANO.forEach(l=>{
