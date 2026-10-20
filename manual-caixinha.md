@@ -66,6 +66,17 @@ A aba **Caixinha (espelho)** mostra, loja por loja, o que o sistema Caixinha cal
 - A coluna **🔎 Conferir** mostra saídas lançadas pela própria loja e saídas sem categoria — é o que a Rhaiane passa olhando.
 - Caixinha nunca fica negativa. Se deu negativo, é lançamento faltando.
 
+## A conta do espelho da gaveta (regra oficial do Caixinha)
+
+| Número | Como é calculado |
+| --- | --- |
+| Dinheiro no caixa numa data | (entradas + reposições + guardado) − (saídas + empréstimos + depósitos), até essa data |
+| Emprestado a receber numa data | empréstimos − reposições até essa data, **qualquer contraparte** (loja, pessoa ou em branco); nunca negativo |
+| Abertura do mês | dinheiro + emprestado, com tudo que aconteceu **antes** do dia 1º |
+| Total no fim do mês | dinheiro + emprestado, com tudo até o último dia |
+
+Só caixinhas do tipo loja; lançamentos excluídos ficam de fora. O Fechamento mostra sempre os dois pedaços: "R$ X em dinheiro + R$ Y emprestado = R$ Z".
+
 ## Os três "bancos", pra não confundir
 
 | Nome | O que é | Onde mora | Quem mexe |
@@ -89,6 +100,7 @@ A aba **Caixinha (espelho)** mostra, loja por loja, o que o sistema Caixinha cal
 
 | Data | Versão | O que mudou |
 | --- | --- | --- |
+| 21/10/2026 | 1.9.10 | Regra oficial do emprestado a receber (qualquer contraparte) e "dinheiro + emprestado = total" na abertura e no fim do mês |
 | 21/10/2026 | 1.9.4 | Trava: linha "LENTES…" sem ligação que bate com previsto vai pra Lixeira sozinha |
 | 21/10/2026 | 1.9.3 | Botão "✕ não foi pago" na linha 🔗 Lentes |
 | 21/10/2026 | 1.9.2 | Lentes: previsto/apagado sai pra Lixeira em qualquer caso; linha do extrato só ligada continua |

@@ -225,7 +225,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.9.9', APP_DATA='21/10/2026';
+  const APP_VERSAO='1.9.10', APP_DATA='21/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -2142,11 +2142,16 @@
   // mesma conta do Caixinha (calcMes): abertura = tudo antes do dia 1º; fechamento = abertura + entradas + reposições + guardado − saídas − empréstimos − depósitos
   function cxCalcMes(k,ano,mes){
     const first=`${ano}-${String(mes).padStart(2,'0')}-01`,pref=`${ano}-${String(mes).padStart(2,'0')}`;
-    let abertura=0,ent=0,sai=0,emp=0,rep=0,dep=0,gua=0,abEmp=0;
+    // Regra oficial do Caixinha: dinheiro = (entrada + reposicao + guardado) − (saida + emprestimo + deposito);
+    // emprestado a receber = max(Σ emprestimo − Σ reposicao, 0), QUALQUER contraparte (loja, pessoa ou em branco). Lançamentos excluídos já ficam de fora na carga.
+    let abertura=0,ent=0,sai=0,emp=0,rep=0,dep=0,gua=0,empAntes=0,repAntes=0;
     k.mov.forEach(m=>{const v=(m.tipo==='entrada'||m.tipo==='reposicao'||m.tipo==='guardado')?m.valor:-m.valor;
-      if((m.data||'')<first){abertura+=v;if(m.tipo==='emprestimo'&&m.para)abEmp+=m.valor;else if(m.tipo==='reposicao'&&m.para)abEmp-=m.valor;}
+      if((m.data||'')<first){abertura+=v;if(m.tipo==='emprestimo')empAntes+=m.valor;else if(m.tipo==='reposicao')repAntes+=m.valor;}
       else if((m.data||'').slice(0,7)===pref){if(m.tipo==='entrada')ent+=m.valor;else if(m.tipo==='saida')sai+=m.valor;else if(m.tipo==='emprestimo')emp+=m.valor;else if(m.tipo==='reposicao')rep+=m.valor;else if(m.tipo==='deposito')dep+=m.valor;else if(m.tipo==='guardado')gua+=m.valor;}});
-    return {abertura,abEmp:Math.max(abEmp,0),ent,sai,emp,rep,dep,gua,fechamento:abertura+ent+rep+gua-sai-emp-dep,aReceber:Math.max(emp-rep,0)};
+    const abEmp=Math.max(empAntes-repAntes,0);                 // emprestado a receber em 01/MM
+    const fimEmp=Math.max(empAntes+emp-(repAntes+rep),0);      // emprestado a receber no último dia
+    const fechamento=abertura+ent+rep+gua-sai-emp-dep;
+    return {abertura,abEmp,empAntes,repAntes,ent,sai,emp,rep,dep,gua,fechamento,fimEmp,aReceber:fimEmp,totalAbertura:abertura+abEmp,totalFim:fechamento+fimEmp};
   }
   // saídas do mês lançadas pelo login da própria loja (Rocha N / GV Optical) — a Rhaiane confere; e saídas sem categoria
   function cxConferir(k,mi){const pref=`${ANO_FIXO}-${_mm(mi)}`;let loja=0,semCat=0,lojaSemCat=0;
@@ -2188,16 +2193,16 @@
     const r=cxCalcMes(k,ANO_FIXO,mi+1);const mesNome=MESES_NOME[mi],ult=_ultimoDiaBR(mi);
     const row=(l,v,o={})=>`<div class="cfgrow"><span>${l}${o.sub?`<br><span class="mut" style="font-size:11px">${o.sub}</span>`:''}</span><b style="margin-left:auto;color:${o.cor||'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(v)}</b></div>`;
     return `<div class="card" style="margin-bottom:12px"><div class="cardhead"><h3>💵 Caixa (gaveta) ${k.nome} — ${mesNome}</h3><span class="tag">espelho do Caixinha · só leitura</span></div>
-      ${row(`Abertura em 01/${_mm(mi)}`,r.abertura,{sub:(r.emp>0.001?`em dinheiro · + ${BRL(r.emp)} emprestado no mês = ${BRL(r.abertura+r.emp)} (igual ao Caixinha)`:(r.aReceber>0?`em dinheiro · a receber ${BRL(r.aReceber)}`:'calculado pelo Caixinha')),cor:r.abertura<0?'var(--red)':'var(--txt)'})}
+      ${row(`Abertura em 01/${_mm(mi)}`,r.abertura,{sub:`${BRL(r.abertura)} em dinheiro + ${BRL(r.abEmp)} emprestado = <b>${BRL(r.totalAbertura)}</b> (igual ao Caixinha)`,cor:r.abertura<0?'var(--red)':'var(--txt)'})}
       ${row(`+ Entradas de ${mesNome}`,r.ent,{cor:'var(--green)'})}
       ${r.rep||r.gua?row('+ Reposições e guardado',r.rep+r.gua,{cor:'var(--green)',sub:'devoluções de empréstimo e dinheiro guardado'}):''}
       ${row(`− Saídas de ${mesNome}`,r.sai,{cor:'var(--red)'})}
       ${r.emp?row('− Emprestado para outra loja',r.emp,{cor:'var(--red)'}):''}
       ${r.dep?row('− Depósitos no banco',r.dep,{cor:'var(--red)'}):''}
       <div class="cfgrow" style="border-top:2px solid var(--line)"><b>= Tem que ter na gaveta em ${ult}</b><span class="mut" style="font-size:11px;margin-left:8px">dinheiro que dá pra contar</span><b style="margin-left:auto;font-size:16px;color:${r.fechamento<0?'var(--red)':'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(r.fechamento)}</b></div>
-      ${((r.abEmp||0)+r.aReceber)>0.004?`<div class="cfgrow" style="background:rgba(168,85,247,.07)"><b style="color:#b48cff">Total da caixinha (dinheiro + emprestado)</b><span class="mut" style="font-size:11px;margin-left:8px">o que a loja tem, contando o que outras lojas devem a ela · igual ao "Total" do Caixinha</span><b style="margin-left:auto;font-size:15px;color:#b48cff;font-variant-numeric:tabular-nums">${BRL(r.fechamento+(r.abEmp||0)+r.aReceber)}</b></div>`:''}
+      <div class="cfgrow" style="background:rgba(168,85,247,.07)"><b style="color:#b48cff">Total da caixinha em ${ult} (dinheiro + emprestado)</b><span class="mut" style="font-size:11px;margin-left:8px">${BRL(r.fechamento)} em dinheiro + ${BRL(r.fimEmp)} emprestado · igual ao "Total" do Caixinha</span><b style="margin-left:auto;font-size:15px;color:#b48cff;font-variant-numeric:tabular-nums">${BRL(r.totalFim)}</b></div>
       ${r.fechamento<-0.009?'<p style="font-size:12.5px;color:var(--red);margin-top:8px">🚨 Caixinha não pode ficar negativa. É lançamento faltando no Caixinha, não saldo.</p>':''}
-      ${compacta?'':`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12.5px"><span class="mut" title="Emprestado a outras lojas e ainda não devolvido: o que já vinha de antes + o deste mês">Emprestado a outras lojas (a receber): <b style="color:var(--txt)">${BRL((r.abEmp||0)+r.aReceber)}</b>${r.abEmp?`<span class="mut" style="font-size:11px"> · ${BRL(r.abEmp)} de antes do mês</span>`:''}</span><span class="mut">A recolher: <b style="color:var(--txt)">${BRL(cxFaltaRecolher(k))}</b></span></div>`}
+      ${compacta?'':`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12.5px"><span class="mut" title="Σ empréstimos − Σ reposições até o fim do mês, qualquer contraparte">Emprestado a receber em ${ult}: <b style="color:var(--txt)">${BRL(r.fimEmp)}</b><span class="mut" style="font-size:11px"> · empréstimos ${BRL(r.empAntes+r.emp)} − reposições ${BRL(r.repAntes+r.rep)}</span></span><span class="mut">A recolher: <b style="color:var(--txt)">${BRL(cxFaltaRecolher(k))}</b></span></div>`}
       ${(()=>{const q=cxConferir(k,mi);if(!q.loja&&!q.semCat)return '';return `<div style="margin-top:8px;font-size:12.5px;padding:8px 11px;border-radius:9px;background:rgba(245,183,64,.08);border:1px solid rgba(245,183,64,.3)">🔎 <b>Conferir no Caixinha:</b> ${q.loja} saída(s) de ${mesNome} lançada(s) pela própria loja${q.semCat?` · <b style="color:var(--amber)">${q.semCat} sem categoria</b>`:''}. A Rhaiane confere e completa lá.</div>`;})()}
       ${(()=>{const b=cxBancoResumo(k.id,ANO_FIXO,mi+1);const fimLbl=b.mesAtual?'hoje':ult;return `<div style="margin-top:14px;padding-top:10px;border-top:1px dashed var(--line)"><div style="font-weight:700;font-size:13.5px;margin-bottom:4px">🔁 Banco Caixinha ${k.nome} — ${mesNome} <span class="mut" style="font-weight:500;font-size:11.5px">o que o escritório pagou pela loja e ela ainda vai devolver (aba Banco do Caixinha)</span></div>
       ${row(`Em aberto em 01/${_mm(mi)}`,b.inicio,{sub:'início do mês'})}
