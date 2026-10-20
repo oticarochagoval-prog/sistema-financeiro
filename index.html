@@ -225,7 +225,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.9.4', APP_DATA='21/10/2026';
+  const APP_VERSAO='1.9.5', APP_DATA='21/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1307,7 +1307,8 @@
     const antes={};(antesRows||[]).forEach(l=>{if(!l.conta_id)return;antes[l.conta_id]=(antes[l.conta_id]||0)+Number(l.valor);});
     const row=FECH_ANO[mesSel+1]||null;const fechado=!!(row&&row.fechado);
     const mesNome=MESES_NOME[mesSel],ult=_ultimoDiaBR(mesSel);
-    const bancos=CONTAS.filter(c=>!/caixinha/i.test(c.nome));
+    // bancos sempre; a conta CAIXINHA (caixinha antiga, lançada aqui) só nos meses em que teve movimento ou saldo digitado — antes do sistema Caixinha existir
+    const bancos=CONTAS.filter(c=>{if(!/caixinha/i.test(c.nome))return true;const mv=_movMes(c.id,mesSel);const s0=_saldosDe(row,c.id);return mv.ent||mv.sai||(s0&&(s0.inicial!=null||s0.real!=null));});
     // resumo do mês (sem saldo inicial) + lançamentos sem categoria
     let entradas=0,saidas=0,semCat=0;
     LANC_ANO.forEach(l=>{
@@ -1329,15 +1330,16 @@
       const avisoEstim=si.origem==='calculado'?`<div style="margin:8px 0 2px;padding:9px 12px;border-radius:9px;background:rgba(245,183,64,.10);border:1px solid rgba(245,183,64,.35);font-size:12.5px;line-height:1.5"><b style="color:var(--amber)">⚠️ Este saldo inicial é uma estimativa.</b> Nenhum mês anterior foi fechado, então o sistema somou tudo desde o começo — se faltam lançamentos, o número sai torto. <b>Confira com o extrato do Sicoob de 01/${_mm(mesSel)}</b> e, se estiver diferente, corrija no ✎. A partir do primeiro mês fechado, ele passa a copiar o saldo real.</div>`:'';
       const avisoVazio=nLanc===0?`<div style="margin:8px 0 2px;padding:9px 12px;border-radius:9px;background:rgba(125,162,255,.08);border:1px solid rgba(125,162,255,.3);font-size:12.5px"><b style="color:var(--blue)">Nenhum lançamento do Sicoob em ${mesNome}.</b> Nada a fechar ainda — lance o mês em Lançamentos primeiro.</div>`:`<div class="mut" style="font-size:11.5px;margin:6px 0 0">${nLanc} lançamento(s) do Sicoob em ${mesNome}</div>`;
       const podeCorrigir=!fechado&&podeExcluir()&&si.origem!=='anterior';
-      const neg=real!=null&&real<0;
+      const neg=real!=null&&real<0;const ehCxAnt=/caixinha/i.test(c.nome);
       return `<div class="card" style="margin-bottom:12px">
-        <div class="cardhead"><h3>🏦 ${c.nome} — ${mesNome}</h3>${fechado?'<span class="catchip" style="border-color:var(--green);color:var(--green)">🔐 fechado</span>':''}</div>
+        <div class="cardhead"><h3>${ehCxAnt?'💵 Caixa (gaveta) — caixinha antiga, lançada aqui':'🏦 '+c.nome} — ${mesNome}</h3>${ehCxAnt?'<span class="tag">antes do sistema Caixinha</span>':''}${fechado?'<span class="catchip" style="border-color:var(--green);color:var(--green)">🔐 fechado</span>':''}</div>
+        ${ehCxAnt?`<p class="mut" style="font-size:12px;margin:4px 0 6px">Dinheiro físico da loja neste mês foi lançado aqui mesmo (conta CAIXINHA). O saldo inicial é o que tinha na gaveta no dia 1º; o saldo real é o que foi contado no último dia. A partir do mês em que a loja passou pro sistema Caixinha, a gaveta aparece no bloco espelho abaixo.</p>`:''}
         ${fechado?'':avisoEstim}${avisoVazio}
         <div class="cfgrow"><span>Saldo inicial em 01/${_mm(mesSel)}<br><span class="mut" style="font-size:11px">${origemTxt}</span></span><b style="margin-left:auto;color:${si.valor<0?'var(--red)':'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(si.valor)}</b>${podeCorrigir?`<button class="btn ghost" style="padding:4px 9px;margin-left:8px" title="Corrigir saldo inicial (pede motivo)" onclick="abrirCorrigirSaldoInicialMes(${c.id},${Math.round(si.valor*100)})">✎</button>`:''}</div>
         <div class="cfgrow"><span>+ Entradas de ${mesNome}<br><span class="mut" style="font-size:11px">tudo que entrou na conta, transferências inclusive</span></span><b style="margin-left:auto;color:var(--green);font-variant-numeric:tabular-nums">${BRL(mv.ent)}</b></div>
         <div class="cfgrow"><span>− Saídas de ${mesNome}<br><span class="mut" style="font-size:11px">tudo que saiu da conta, transferências inclusive</span></span><b style="margin-left:auto;color:var(--red);font-variant-numeric:tabular-nums">${BRL(mv.sai)}</b></div>
         <div class="cfgrow" style="border-top:2px solid var(--line)"><b>= Tem que ter em ${ult}</b><b style="margin-left:auto;font-size:16px;color:${calc<0?'var(--red)':'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(calc)}</b></div>
-        <div class="cfgrow" style="flex-wrap:wrap;gap:8px"><span>Saldo real no banco em ${ult}<br><span class="mut" style="font-size:11px">o que o app do Sicoob mostra nesse dia · se o mês ainda não acabou, o saldo de agora</span></span>
+        <div class="cfgrow" style="flex-wrap:wrap;gap:8px"><span>${ehCxAnt?`Dinheiro contado na gaveta em ${ult}`:`Saldo real no banco em ${ult}`}<br><span class="mut" style="font-size:11px">${ehCxAnt?'o que foi contado na gaveta nesse dia (caixinha nunca fica negativa)':'o que o app do Sicoob mostra nesse dia · se o mês ainda não acabou, o saldo de agora'}</span></span>
           <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
             <button class="btn ghost" id="sinalReal${c.id}" data-neg="${neg?'1':'0'}" ${fechado?'disabled':''} onclick="toggleSinalReal(${c.id})" title="Positivo / negativo" style="min-width:42px;font-size:17px;font-weight:800;color:${neg?'var(--red)':'var(--green)'}">${neg?'−':'+'}</button>
             <input id="real${c.id}" class="qin calc" data-cents="${real==null?0:Math.round(Math.abs(real)*100)}" data-calc="${Math.round(calc*100)}" value="${real==null?'':Math.abs(real).toLocaleString('pt-BR',{minimumFractionDigits:2})}" placeholder="0,00" inputmode="numeric" style="max-width:150px" ${fechado?'disabled':''} onkeydown="calcInput(this,event);atualizaDifMes(${c.id});salvarSaldoRealMes(${c.id})">
