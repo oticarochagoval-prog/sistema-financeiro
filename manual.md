@@ -123,7 +123,7 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 - Editou valor ou data no Caixinha → atualiza aqui. Apagou lá → vai pra Lixeira aqui. Categoria e contato escolhidos aqui não são sobrescritos.
 - Se o boleto já estava lançado (na mão ou pelo extrato), o espelho **liga** ao lançamento existente em vez de duplicar (mesma loja, mesmo valor, até 3 dias de diferença).
 - Na importação do extrato, a linha do banco que bate com um boleto já espelhado vem marcada **"🔗 já lançado pelas Lentes"** e não entra de novo.
-- Saldo anterior e "Compras" da aba Lentes não entram — só boletos pagos, a partir de 01/10/2026.
+- Saldo anterior e "Compras" da aba Lentes não entram — só boletos pagos, a partir de 01/09/2026.
 
 ## Perguntas que sempre aparecem
 
@@ -149,6 +149,7 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 21/10/2026 | 1.8.3 | Espelho das Lentes passa a pegar boletos desde 01/09/2026 (ligando aos já lançados na mão) | Setembro ganha os boletos de lentes que faltavam |
 | 21/10/2026 | 1.8.2 | Espelho das Lentes mostra o erro do banco quando não consegue gravar; avisos ficam na tela mais tempo e fecham com um clique | Nenhum |
 | 21/10/2026 | 1.8.1 | Espelho das Lentes mostra quantos boletos leu e de qual loja não reconheceu; botão "Sair do Caixinha" só para dono | Nenhum |
 | 21/10/2026 | 1.8 | Espelho das Lentes: boletos pagos na aba Lentes do Caixinha viram saídas aqui (Lentes/Laboratório, fornecedor, foto), atualizam e vão pra Lixeira junto; importação do extrato não duplica boleto já espelhado | Lentes entram no CMV da loja certa sem ninguém digitar |
