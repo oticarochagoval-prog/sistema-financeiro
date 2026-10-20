@@ -100,6 +100,31 @@ Cada categoria pode ter **palavras-chave** (em Categorias, campo "palavras que p
 
 No Dashboard, o quadro **Lançamentos em dia?** mostra, por loja, a última data lançada e há quantos dias está parada.
 
+## Quem pode o quê
+
+Cada pessoa entra com o **próprio nome e senha** (tela "Quem é você?"). Tudo o que é lançado, excluído ou restaurado fica com o nome de quem fez.
+
+| Papel | Quem | Pode | Não pode |
+| --- | --- | --- | --- |
+| Dono | Lucas, Heloísa | Tudo: lançar, importar, excluir, restaurar, fechar e reabrir mês, contas e saldo inicial | — |
+| Lançador | Rhaiane, Carol | Lançar, corrigir categoria/contato, importar extrato, ver Lixeira | Excluir, restaurar, fechar mês, Configurações |
+| Operador | (ninguém hoje) | Igual ao dono, menos contas/saldo inicial e reabrir mês | Contas, reabrir mês |
+| Contador | (ninguém hoje) | Só olhar | Qualquer alteração |
+
+Não é só botão escondido: o banco também recusa (por exemplo, um lançador não consegue excluir nem pelo navegador). A **Lixeira** mostra quem excluiu, quando, e quem restaurou. Para trocar o papel de alguém, o Lucas roda uma linha no banco.
+
+**Contatos também puxam sozinho.** Em Contatos, cada empresa ou funcionário pode ter palavras-chave, iguais às das categorias. Na importação, a categoria pode vir de uma palavra e o contato de outra ("CEMIG" dá a categoria; "ESSILOR" dá o contato).
+
+## Lentes: o boleto vem sozinho do Caixinha
+
+Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados na aba **Lentes** do Caixinha, com foto. O Caixa Rocha **espelha** cada boleto pago como uma saída da loja: categoria sempre **Lentes/Laboratório**, contato = fornecedor, data = dia do pagamento, com o link 📎 do boleto. Etiqueta **🔗 Lentes**.
+
+- Acontece sozinho ao abrir o Caixa Rocha (quem estiver logado no Caixinha neste computador) e no botão **↻ Atualizar Lentes** em Lançamentos.
+- Editou valor ou data no Caixinha → atualiza aqui. Apagou lá → vai pra Lixeira aqui. Categoria e contato escolhidos aqui não são sobrescritos.
+- Se o boleto já estava lançado (na mão ou pelo extrato), o espelho **liga** ao lançamento existente em vez de duplicar (mesma loja, mesmo valor, até 3 dias de diferença).
+- Na importação do extrato, a linha do banco que bate com um boleto já espelhado vem marcada **"🔗 já lançado pelas Lentes"** e não entra de novo.
+- Saldo anterior e "Compras" da aba Lentes não entram — só boletos pagos, a partir de 01/10/2026.
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -117,11 +142,15 @@ No Dashboard, o quadro **Lançamentos em dia?** mostra, por loja, a última data
 | Preciso mexer num mês fechado. | Peça ao Lucas para reabrir em Fechamento do mês. Depois feche de novo. |
 | A aba Caixinha pediu e-mail e senha. | É o login do sistema Caixinha (o mesmo de lá). Só pede uma vez por computador. |
 | Como mudo para o tema claro? | Botão 🌙 / ☀️ na barra de cima. Cada pessoa escolhe o seu. |
+| Não aparece o botão de excluir. | Seu acesso é de lançador. Peça ao Lucas ou à Heloísa; vai pra Lixeira com o nome de quem excluiu. |
+| Cadê Configurações? | Só o dono vê. Saldo inicial de conta não se mexe no dia a dia; o ✎ do Fechamento resolve mês a mês. |
 
 ## Histórico de mudanças
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 21/10/2026 | 1.8 | Espelho das Lentes: boletos pagos na aba Lentes do Caixinha viram saídas aqui (Lentes/Laboratório, fornecedor, foto), atualizam e vão pra Lixeira junto; importação do extrato não duplica boleto já espelhado | Lentes entram no CMV da loja certa sem ninguém digitar |
+| 20/10/2026 | 1.7 | Login por pessoa ("Quem é você?"), papéis dono/lançador respeitados pelo banco, Lixeira mostra quem excluiu e quem restaurou, Configurações e saldo inicial só para dono, palavras-chave também em Contatos, categoria e contato podem vir de regras diferentes | Fica registrado quem mexeu em cada coisa; ninguém "arruma" saldo inicial por fora |
 | 20/10/2026 | 1.6 | Palavras-chave por categoria (gerar do histórico, editar, aplicar nos sem categoria), importação do extrato chega classificada com etiqueta 🔑, categoria A ESTORNAR (BANCO CAIXINHA) reconhecida com loja lida da descrição, quadro "Lançamentos em dia?" no Dashboard | Menos lançamento sem categoria; o contador do Fechamento cai sozinho |
 | 20/10/2026 | 1.5 | Etiqueta de origem (OFX / manual · quem) em cada lançamento, filtro "Caixinha antiga", aviso de "saldo inicial é estimativa", contagem de lançamentos do mês no Fechamento e coluna "Conferir" no espelho (saídas lançadas pela própria loja, sem categoria em amarelo) | Dá para ver quem lançou e o que veio da caixinha antiga; o susto do saldo estimado vem explicado |
 | 20/10/2026 | 1.4 | Espelho ganhou o Banco Caixinha (em aberto no dia 1º, emprestado, voltou, em aberto hoje) e os nomes fixos: Banco Sicoob, Caixa (gaveta), Banco Caixinha | Heloísa vê os três no mesmo lugar |
