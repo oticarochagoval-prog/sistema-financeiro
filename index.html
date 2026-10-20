@@ -222,7 +222,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.8.1', APP_DATA='21/10/2026';
+  const APP_VERSAO='1.8.2', APP_DATA='21/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -353,13 +353,13 @@
     const {data:contasAll}=await sb.from('contas').select('id,loja_id,nome,arquivada').eq('arquivada',false);
     const contaDa=(lojaId)=>{const cs=(contasAll||[]).filter(c=>c.loja_id===lojaId&&!/caixinha/i.test(c.nome));return (cs.find(c=>/sicoob/i.test(c.nome))||cs[0]||{}).id||null;};
     const {data:fechs}=await sb.from('fechamentos').select('loja_id,ano,mes,fechado').eq('fechado',true);const FT={};(fechs||[]).forEach(f=>FT[f.loja_id+':'+f.ano+':'+f.mes]=true);
-    const R={novos:0,atualizados:0,ligados:0,removidos:0,pulados:0};
+    const R={novos:0,atualizados:0,ligados:0,removidos:0,pulados:0,erros:0,erroMsg:''};const falha=(e,onde)=>{R.erros++;if(!R.erroMsg)R.erroMsg=onde+': '+(e.message||e.details||JSON.stringify(e));};
     for(const it of itens){
       const ja=porRef[it.ref];
       if(ja){ // atualiza só o que vem do Caixinha; categoria/contato escolhidos aqui ficam
         const patch={};if(ja.data!==it.data)patch.data=it.data;if(Math.abs(Math.abs(Number(ja.valor))-it.valor)>0.005)patch.valor=-it.valor;
         if((ja.anexo_url||null)!==(it.anexo||null))patch.anexo_url=it.anexo;if(!ja.contato_id){const ct=lentesContatoId(it.nome);if(ct)patch.contato_id=ct;}
-        if(Object.keys(patch).length){if(lentesMesFechado(ja.data,ja.loja_id,FT)||lentesMesFechado(it.data,ja.loja_id,FT)){R.pulados++;continue;}const {error}=await sb.from('lancamentos').update(patch).eq('id',ja.id);if(!error)R.atualizados++;}
+        if(Object.keys(patch).length){if(lentesMesFechado(ja.data,ja.loja_id,FT)||lentesMesFechado(it.data,ja.loja_id,FT)){R.pulados++;continue;}const {error}=await sb.from('lancamentos').update(patch).eq('id',ja.id);if(!error)R.atualizados++;else falha(error,'atualizar');}
         delete porRef[it.ref];continue;
       }
       if(lentesMesFechado(it.data,it.lojaId,FT)){R.pulados++;continue;}
@@ -367,10 +367,12 @@
       const {data:cand}=await sb.from('lancamentos').select('id,data,valor,categoria_id,contato_id,ref_externa').eq('loja_id',it.lojaId).is('ref_externa',null).lt('valor',0).gte('data',addDias(it.data,-3)).lte('data',addDias(it.data,3));
       const igual=(cand||[]).find(l=>Math.abs(Math.abs(Number(l.valor))-it.valor)<0.005);
       if(igual){const patch={ref_externa:it.ref,anexo_url:it.anexo};if(!igual.categoria_id)patch.categoria_id=cat.id;if(!igual.contato_id){const ct=lentesContatoId(it.nome);if(ct)patch.contato_id=ct;}
-        const {error}=await sb.from('lancamentos').update(patch).eq('id',igual.id);if(!error)R.ligados++;continue;}
+        const {error}=await sb.from('lancamentos').update(patch).eq('id',igual.id);if(!error)R.ligados++;else falha(error,'ligar');continue;}
       if(!contaDa(it.lojaId)){R.pulados++;continue;} // loja sem conta banco cadastrada
       const reg={loja_id:it.lojaId,conta_id:contaDa(it.lojaId),data:it.data,descricao:('LENTES '+it.nome).slice(0,200),valor:-it.valor,tipo:'despesa',categoria_id:cat.id,contato_id:lentesContatoId(it.nome),pago:true,origem:'lentes',ref_externa:it.ref,anexo_url:it.anexo,criado_por:USER.id};
-      const {error}=await sb.from('lancamentos').insert(reg);if(!error)R.novos++;
+      let {error}=await sb.from('lancamentos').insert(reg);
+      if(error&&/origem/i.test(error.message||'')){reg.origem='manual';({error}=await sb.from('lancamentos').insert(reg));} // banco antigo só aceita ofx/manual
+      if(!error)R.novos++;else falha(error,'criar');
     }
     // o que sobrou em porRef sumiu do Caixinha → lixeira (só quem pode excluir)
     for(const ref in porRef){const l=porRef[ref];if(lentesMesFechado(l.data,l.loja_id,FT)){R.pulados++;continue;}
@@ -378,11 +380,12 @@
       if(!podeExcluir()){R.pulados++;continue;}
       const {data:full}=await sb.from('lancamentos').select('*').eq('id',l.id).single();
       const {error:eL}=await sb.from('lixeira').insert({loja_id:l.loja_id,dados:Object.assign({},full||l,{_motivo:'boleto apagado na aba Lentes do Caixinha'}),excluido_por:USER.id});
-      if(eL)continue;const {error}=await sb.from('lancamentos').delete().eq('id',l.id);if(!error)R.removidos++;}
-    LENTES_ULT=Object.assign({quando:new Date(),erro:'',diag:r.diag},R);
+      if(eL){falha(eL,'lixeira');continue;}const {error}=await sb.from('lancamentos').delete().eq('id',l.id);if(!error)R.removidos++;else falha(error,'excluir');}
+    LENTES_ULT=Object.assign({quando:new Date(),erro:R.erros?('não gravou: '+R.erroMsg):'',diag:r.diag},R);
     const mudou=R.novos+R.atualizados+R.ligados+R.removidos;
     const d=r.diag;const lidos=`Li ${d.boletos} boleto(s) em ${d.fechamentos} fechamento(s) da aba Lentes${d.antes?`, ${d.antes} antes de ${isoParaBR(LENTES_DESDE)}`:''}${d.semLoja?`, ${d.semLoja} de loja que não reconheci (${Object.keys(d.lojasDesconhecidas).join(', ')})`:''}.`;
-    if(mudou||!silencioso)toast(`🔗 Lentes: ${lidos} ${R.novos} novo(s), ${R.ligados} ligado(s) a lançamento que já existia, ${R.atualizados} atualizado(s), ${R.removidos} pra lixeira${R.pulados?`, ${R.pulados} pulado(s) (mês fechado/sem conta/sem permissão)`:''}`,mudou||d.boletos?'ok':'erro');
+    if(R.erros){toast(`🔗 Lentes: ${R.erros} boleto(s) não gravaram. Erro do banco → ${R.erroMsg}`,'erro');console.error('lentes',R.erroMsg);}
+    else if(mudou||!silencioso)toast(`🔗 Lentes: ${lidos} ${R.novos} novo(s), ${R.ligados} ligado(s) a lançamento que já existia, ${R.atualizados} atualizado(s), ${R.removidos} pra lixeira${R.pulados?`, ${R.pulados} pulado(s) (mês fechado/sem conta/sem permissão)`:''}`,mudou||d.boletos?'ok':'erro');
     if(mudou&&(page==='lanc'||page==='visao'||page==='dre'||page==='fechamento'))render();
   }
   function lentesMesFechado(iso,lojaId,FT){const p=String(iso||'').split('-');return !!FT[lojaId+':'+parseInt(p[0],10)+':'+parseInt(p[1],10)];}
@@ -512,7 +515,7 @@
     const c=CATS.find(x=>x.id==catId);
     return c && /funcion[áa]rio/i.test(c.nome);
   }
-  function toast(msg,tp){const t=document.createElement('div');t.className='toast '+(tp||'ok');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600);}
+  function toast(msg,tp){const t=document.createElement('div');t.className='toast '+(tp||'ok');t.textContent=msg;t.title='clique para fechar';t.onclick=()=>t.remove();document.body.appendChild(t);setTimeout(()=>t.remove(),Math.min(15000,2600+String(msg).length*45));}
   function calcInput(el,e){if(e.key==='Enter')return;if(!/[0-9]/.test(e.key)&&e.key!=='Backspace')return;e.preventDefault();let c=parseInt(el.dataset.cents||'0',10);if(e.key==='Backspace')c=Math.floor(c/10);else c=c*10+parseInt(e.key,10);if(c>9999999999)c=parseInt(el.dataset.cents||'0',10);el.dataset.cents=c;el.value=(c/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
   function maskData(el,e){if(e.key==='Enter'||e.key==='Tab'||e.ctrlKey||e.metaKey)return;if(e.key.length===1&&!/[0-9]/.test(e.key)){e.preventDefault();return;}if(e.key!=='Backspace'&&!/[0-9]/.test(e.key))return;e.preventDefault();let dm=el.dataset.dm||'';if(e.key==='Backspace')dm=dm.slice(0,-1);else if(dm.length<4)dm=dm+e.key;el.dataset.dm=dm;let out=dm;if(dm.length>2)out=dm.slice(0,2)+'/'+dm.slice(2);if(dm.length===4)out=dm.slice(0,2)+'/'+dm.slice(2)+'/'+ANO_FIXO;el.value=out;}
   function dataParaISO(str){const m=str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);if(!m)return null;const d=+m[1],mes=+m[2],a=+m[3];if(mes<1||mes>12||d<1||d>31||a<2020||a>2035)return null;return `${a}-${m[2]}-${m[1]}`;}

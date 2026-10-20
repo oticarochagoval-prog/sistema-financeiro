@@ -149,6 +149,7 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 21/10/2026 | 1.8.2 | Espelho das Lentes mostra o erro do banco quando não consegue gravar; avisos ficam na tela mais tempo e fecham com um clique | Nenhum |
 | 21/10/2026 | 1.8.1 | Espelho das Lentes mostra quantos boletos leu e de qual loja não reconheceu; botão "Sair do Caixinha" só para dono | Nenhum |
 | 21/10/2026 | 1.8 | Espelho das Lentes: boletos pagos na aba Lentes do Caixinha viram saídas aqui (Lentes/Laboratório, fornecedor, foto), atualizam e vão pra Lixeira junto; importação do extrato não duplica boleto já espelhado | Lentes entram no CMV da loja certa sem ninguém digitar |
 | 20/10/2026 | 1.7 | Login por pessoa ("Quem é você?"), papéis dono/lançador respeitados pelo banco, Lixeira mostra quem excluiu e quem restaurou, Configurações e saldo inicial só para dono, palavras-chave também em Contatos, categoria e contato podem vir de regras diferentes | Fica registrado quem mexeu em cada coisa; ninguém "arruma" saldo inicial por fora |
