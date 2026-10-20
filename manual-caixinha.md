@@ -56,6 +56,8 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 
 > ⛔ Não corrija valor ou data de um lançamento 🔗 Lentes aqui — corrija no Caixinha, que aqui acompanha. Categoria e contato podem ser ajustados aqui.
 
+> ✅ Marcou como pago por engano? Na linha 🔗 Lentes, clique em **✕ não foi pago**: o boleto volta a previsto no Caixinha e o lançamento sai daqui pra Lixeira.
+
 ## 3. Caixa da gaveta: só espelho
 
 A aba **Caixinha (espelho)** mostra, loja por loja, o que o sistema Caixinha calcula: abertura, entradas, saídas, depósitos, tem que ter, a receber e a estornar. **Não tem nada para digitar ali.** Para corrigir, corrija no Caixinha. No Fechamento do mês, a escada da caixinha aparece embaixo da do Sicoob.
@@ -87,6 +89,8 @@ A aba **Caixinha (espelho)** mostra, loja por loja, o que o sistema Caixinha cal
 
 | Data | Versão | O que mudou |
 | --- | --- | --- |
+| 21/10/2026 | 1.9.4 | Trava: linha "LENTES…" sem ligação que bate com previsto vai pra Lixeira sozinha |
+| 21/10/2026 | 1.9.3 | Botão "✕ não foi pago" na linha 🔗 Lentes |
 | 21/10/2026 | 1.9.2 | Lentes: previsto/apagado sai pra Lixeira em qualquer caso; linha do extrato só ligada continua |
 | 21/10/2026 | 1.9.1 | Lentes: só boleto pago entra (previsto e data futura ficam de fora) |
 | 21/10/2026 | 1.9 | Botões "Mandar pro Banco Caixinha" e "Marcar devolução no Caixinha" nos lançamentos; faixa amarela dos pendentes; este manual e o botão 🔗? |
