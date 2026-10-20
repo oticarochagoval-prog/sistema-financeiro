@@ -225,7 +225,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.9.1', APP_DATA='21/10/2026';
+  const APP_VERSAO='1.9.2', APP_DATA='21/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -354,9 +354,11 @@
     const r=await lentesLerCaixinha();
     if(r.erro){LENTES_ULT.erro=r.erro;if(!silencioso)toast(r.erro==='nao_logado'?'Entre no Caixinha (aba Caixinha) para espelhar as Lentes.':'Lentes: '+r.erro,'erro');return;}
     const itens=r.itens.filter(i=>i.lojaId);LENTES_ULT.diag=r.diag;
-    const {data:exist,error:e1}=await sb.from('lancamentos').select('id,loja_id,conta_id,data,valor,descricao,categoria_id,contato_id,ref_externa,anexo_url,origem').like('ref_externa','fz:%');
+    const {data:exist,error:e1}=await sb.from('lancamentos').select('id,loja_id,conta_id,data,valor,descricao,categoria_id,contato_id,ref_externa,anexo_url,origem,criado_por').or('ref_externa.like.fz:%,ref_externa.like.fzl:%');
     if(e1){LENTES_ULT.erro=e1.message;if(!silencioso)toast('Lentes: rode o SQL da v1.8 (coluna ref_externa). '+e1.message,'erro');return;}
-    const porRef={};(exist||[]).forEach(l=>porRef[l.ref_externa]=l);
+    const porRef={};(exist||[]).forEach(l=>porRef[String(l.ref_externa).replace(/^fzl:/,'fz:')]=l);
+    // foi o espelho que criou (vai pra lixeira se sumir) ou só ligou a uma linha que já existia (só desliga)?
+    const criadoPeloEspelho=(l)=>String(l.ref_externa||'').startsWith('fz:')&&(l.origem==='lentes'||(String(l.descricao||'').startsWith('LENTES ')&&l.origem!=='ofx'));
     const {data:contasAll}=await sb.from('contas').select('id,loja_id,nome,arquivada').eq('arquivada',false);
     const contaDa=(lojaId)=>{const cs=(contasAll||[]).filter(c=>c.loja_id===lojaId&&!/caixinha/i.test(c.nome));return (cs.find(c=>/sicoob/i.test(c.nome))||cs[0]||{}).id||null;};
     const {data:fechs}=await sb.from('fechamentos').select('loja_id,ano,mes,fechado').eq('fechado',true);const FT={};(fechs||[]).forEach(f=>FT[f.loja_id+':'+f.ano+':'+f.mes]=true);
@@ -373,7 +375,7 @@
       // já existe lançamento igual (manual ou OFX) sem ligação? liga em vez de duplicar
       const {data:cand}=await sb.from('lancamentos').select('id,data,valor,categoria_id,contato_id,ref_externa').eq('loja_id',it.lojaId).is('ref_externa',null).lt('valor',0).gte('data',addDias(it.data,-3)).lte('data',addDias(it.data,3));
       const igual=(cand||[]).find(l=>Math.abs(Math.abs(Number(l.valor))-it.valor)<0.005);
-      if(igual){const patch={ref_externa:it.ref,anexo_url:it.anexo};if(!igual.categoria_id)patch.categoria_id=cat.id;if(!igual.contato_id){const ct=lentesContatoId(it.nome);if(ct)patch.contato_id=ct;}
+      if(igual){const patch={ref_externa:it.ref.replace(/^fz:/,'fzl:'),anexo_url:it.anexo};if(!igual.categoria_id)patch.categoria_id=cat.id;if(!igual.contato_id){const ct=lentesContatoId(it.nome);if(ct)patch.contato_id=ct;}
         const {error}=await sb.from('lancamentos').update(patch).eq('id',igual.id);if(!error)R.ligados++;else falha(error,'ligar');continue;}
       if(!contaDa(it.lojaId)){R.pulados++;continue;} // loja sem conta banco cadastrada
       const reg={loja_id:it.lojaId,conta_id:contaDa(it.lojaId),data:it.data,descricao:('LENTES '+it.nome).slice(0,200),valor:-it.valor,tipo:'despesa',categoria_id:cat.id,contato_id:lentesContatoId(it.nome),pago:true,origem:'lentes',ref_externa:it.ref,anexo_url:it.anexo,criado_por:USER.id};
@@ -383,7 +385,7 @@
     }
     // o que sobrou em porRef sumiu do Caixinha → lixeira (só quem pode excluir)
     for(const ref in porRef){const l=porRef[ref];if(lentesMesFechado(l.data,l.loja_id,FT)){R.pulados++;continue;}
-      if(l.origem!=='lentes'){const {error}=await sb.from('lancamentos').update({ref_externa:null,anexo_url:null}).eq('id',l.id);if(!error)R.atualizados++;continue;} // era linha do banco/manual: só desliga
+      if(!criadoPeloEspelho(l)){const {error}=await sb.from('lancamentos').update({ref_externa:null,anexo_url:null}).eq('id',l.id);if(!error)R.atualizados++;else falha(error,'desligar');continue;} // era linha do banco/manual: só desliga
       if(!podeExcluir()){R.pulados++;continue;}
       const {data:full}=await sb.from('lancamentos').select('*').eq('id',l.id).single();
       const {error:eL}=await sb.from('lixeira').insert({loja_id:l.loja_id,dados:Object.assign({},full||l,{_motivo:'boleto apagado na aba Lentes do Caixinha'}),excluido_por:USER.id});
@@ -718,7 +720,7 @@
       // seletor de conta inline
       // conta: sempre Sicoob (banco), não precisa mostrar/editar na lista
       const ehCx=contaEhCaixinha(l.conta_id);const quem=nomeDe(l.criado_por);
-      const etq=`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">${ehCx?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--gold);color:var(--gold)">💵 caixinha antiga</span>':''}${l.origem==='lentes'||(l.ref_externa||'').startsWith('fz:')?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)" title="Veio da aba Lentes do Caixinha. Para corrigir valor ou data, corrija lá.">🔗 Lentes</span>':''}<span class="catchip" style="font-size:10px;padding:1px 7px">${l.origem==='ofx'?'OFX':(l.origem==='lentes'?'Caixinha':'manual')}${quem?' · '+quem:''}</span>${l.anexo_url?`<a class="catchip" href="${l.anexo_url}" target="_blank" rel="noopener" style="font-size:10px;padding:1px 7px;text-decoration:none">📎 boleto</a>`:''}${ponteHTML(l)}</div>`;
+      const etq=`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">${ehCx?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--gold);color:var(--gold)">💵 caixinha antiga</span>':''}${l.origem==='lentes'||/^fzl?:/.test(l.ref_externa||'')?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)" title="Veio da aba Lentes do Caixinha. Para corrigir valor ou data, corrija lá.">🔗 Lentes</span>':''}<span class="catchip" style="font-size:10px;padding:1px 7px">${l.origem==='ofx'?'OFX':(l.origem==='lentes'?'Caixinha':'manual')}${quem?' · '+quem:''}</span>${l.anexo_url?`<a class="catchip" href="${l.anexo_url}" target="_blank" rel="noopener" style="font-size:10px;padding:1px 7px;text-decoration:none">📎 boleto</a>`:''}${ponteHTML(l)}</div>`;
       return `<tr class="${neutra?'neutra':''}" style="${ehCx?'background:rgba(232,196,104,.06)':''}">
         <td class="mut" style="white-space:nowrap">${isoParaBR(l.data).slice(0,5)}</td>
         <td style="min-width:140px">${editavel?`<input class="inlinedesc maiusc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" onchange="mudarDescLanc(${l.id},this.value)" title="Clique pra editar">`:l.descricao}${l.parcela?`<span class="parc">${l.parcela}</span>`:''}${etq}</td>
@@ -1609,7 +1611,7 @@
       // boletos de lentes já espelhados neste período (pra não lançar duas vezes)
       const datas=trans.map(t=>t.iso).filter(Boolean).sort();
       let LENT=[];
-      try{if(datas.length){const {data}=await sb.from('lancamentos').select('id,data,valor,descricao,fitid').eq('loja_id',lojaAtual).like('ref_externa','fz:%').gte('data',addDias(datas[0],-3)).lte('data',addDias(datas[datas.length-1],3));LENT=data||[];}}catch(e){}
+      try{if(datas.length){const {data}=await sb.from('lancamentos').select('id,data,valor,descricao,fitid').eq('loja_id',lojaAtual).or('ref_externa.like.fz:%,ref_externa.like.fzl:%').gte('data',addDias(datas[0],-3)).lte('data',addDias(datas[datas.length-1],3));LENT=data||[];}}catch(e){}
       const usados=new Set();
       // monta a lista com adivinhação
       IMPORT=trans.map(t=>{

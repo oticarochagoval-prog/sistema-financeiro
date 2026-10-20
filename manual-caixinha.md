@@ -87,6 +87,7 @@ A aba **Caixinha (espelho)** mostra, loja por loja, o que o sistema Caixinha cal
 
 | Data | Versão | O que mudou |
 | --- | --- | --- |
+| 21/10/2026 | 1.9.2 | Lentes: previsto/apagado sai pra Lixeira em qualquer caso; linha do extrato só ligada continua |
 | 21/10/2026 | 1.9.1 | Lentes: só boleto pago entra (previsto e data futura ficam de fora) |
 | 21/10/2026 | 1.9 | Botões "Mandar pro Banco Caixinha" e "Marcar devolução no Caixinha" nos lançamentos; faixa amarela dos pendentes; este manual e o botão 🔗? |
 | 21/10/2026 | 1.8 | Espelho das Lentes (boletos viram saídas; atualiza, liga, vai pra lixeira; não duplica com o extrato) |

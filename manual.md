@@ -175,6 +175,7 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 21/10/2026 | 1.9.2 | Espelho das Lentes: boleto que vira previsto ou some no Caixinha vai pra Lixeira mesmo quando o banco gravou a linha como "manual"; linha só ligada (extrato/manual) continua sendo apenas desligada | Previstos não ficam sobrando |
 | 21/10/2026 | 1.9.1 | Espelho das Lentes só traz boleto pago: previsto ou com data futura fica de fora (e sai daqui pra Lixeira se deixar de ser pago) | Só despesa real entra |
 | 21/10/2026 | 1.9 | Botões "Mandar pro Banco Caixinha" e "Marcar devolução no Caixinha" nos lançamentos A ESTORNAR / ESTORNO RECEBIDO (liga, não duplica; faixa amarela dos pendentes); novo Manual do Caixinha (botão 🔗?) | Banco Caixinha passa a ser alimentado pelo extrato, sem excluir nada |
 | 21/10/2026 | 1.8.6 | Manual ganhou a seção "Empréstimo e estorno: o que vai pro Banco Caixinha" (dois tipos de empréstimo, passo a passo, avisos coloridos) e caixas verde/amarela/vermelha/azul | Heloísa sabe o que anotar onde, antes da automação |
