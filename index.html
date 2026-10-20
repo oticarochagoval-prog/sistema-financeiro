@@ -173,7 +173,10 @@
       <div class="topbar">
         <span class="pagetitle" id="ptitle">Dashboard</span>
         <select class="store" id="store" onchange="trocarLoja()"></select>
-        <button class="logout" onclick="sair()">Sair</button>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+          <button class="logout" onclick="sair()">Sair</button>
+          <span id="versao" class="mut" style="font-size:10.5px;font-variant-numeric:tabular-nums;white-space:nowrap" title="Versão do sistema"></span>
+        </div>
       </div>
       <div class="content" id="content"><div class="loading"><span class="spin"></span> Carregando...</div></div>
     </div>
@@ -193,6 +196,8 @@
   const BRL=n=>(n<0?'-':'')+'R$ '+Math.abs(Number(n)).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
+  // Versão do sistema — some um número a cada atualização e anote no histórico do manual
+  const APP_VERSAO='1.0', APP_DATA='19/10/2026';
 
   function initSupabase(){
     try{
@@ -225,6 +230,7 @@
     document.getElementById('loginWrap').style.display='none';
     document.getElementById('app').classList.add('show');
     document.getElementById('sidefoot').textContent=PERFIL.nome+' · '+PERFIL.papel;
+    const vEl=document.getElementById('versao');if(vEl)vEl.textContent='v'+APP_VERSAO+' · '+APP_DATA;
     await carregarBase();
     renderNav();render();
   }
