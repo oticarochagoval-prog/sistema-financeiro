@@ -1,6 +1,6 @@
 # Como fechar o mês no Caixa Rocha
 
-Atualizado em 20/10/2026 · versão do sistema 1.3
+Atualizado em 20/10/2026 · versão do sistema 1.4
 
 ## A escada
 
@@ -65,15 +65,15 @@ O empréstimo é anotado à parte, como dívida entre lojas. Quando devolver, vi
 | Loja tem 20 mil e emprestou 2 mil para a Rocha 9 | R$ 20.000,00 | Rocha 9 deve R$ 2.000,00 a esta loja |
 | Banco em −15 mil, e 3 mil disso foi emprestado para outra loja | −R$ 15.000,00 | A outra loja deve R$ 3.000,00 |
 
-## Os três saldos iniciais: onde cada um mora
+## Os três "bancos": onde cada um mora
 
-Existem três "saldos iniciais" no grupo, e cada um vive num lugar. **Nenhum deles se soma ao outro, e nenhum precisa ser redigitado.**
+Existem três saldos no grupo, e cada um vive num lugar. **Nenhum deles se soma ao outro, e nenhum precisa ser redigitado.** Para não confundir, cada um tem um nome fixo:
 
 | Qual | Onde mora | Quem cuida |
 | --- | --- | --- |
-| Banco Sicoob da loja | Caixa Rocha → Fechamento do mês (a escada) | Copia sozinho do mês anterior fechado |
-| Dinheiro na gaveta (caixa da loja) | Sistema Caixinha → aba Caixa → "Abertura do mês". No Caixa Rocha, a aba **Caixinha (espelho)** mostra o mesmo número | O Caixinha calcula sozinho: dinheiro + emprestado |
-| Empréstimos a estornar | Sistema Caixinha → aba Banco → "Início do mês em aberto" | O Caixinha calcula sozinho |
+| 🏦 **Banco Sicoob** — a conta da loja no banco de verdade | Caixa Rocha → Fechamento do mês (a escada) | Copia sozinho do mês anterior fechado |
+| 💵 **Caixa (gaveta)** — o dinheiro físico que a loja tem na mão | Sistema Caixinha → aba Caixa. No Caixa Rocha, a aba **Caixinha (espelho)** mostra o mesmo número | O Caixinha calcula sozinho: dinheiro + emprestado |
+| 🔁 **Banco Caixinha** — o que o escritório pagou pela loja e ela ainda vai devolver (estornar). Vira o mês e continua em aberto | Sistema Caixinha → aba Banco. No Caixa Rocha, o espelho mostra início do mês, emprestado, voltou e em aberto | O Caixinha calcula sozinho |
 
 No Caixa Rocha, o saldo inicial é **só o do Sicoob**. Não some caixinha nem empréstimo nele.
 
@@ -105,6 +105,7 @@ No Caixa Rocha, o saldo inicial é **só o do Sicoob**. Não some caixinha nem e
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 20/10/2026 | 1.4 | Espelho ganhou o Banco Caixinha (em aberto no dia 1º, emprestado, voltou, em aberto hoje) e os nomes fixos: Banco Sicoob, Caixa (gaveta), Banco Caixinha | Heloísa vê os três no mesmo lugar |
 | 20/10/2026 | 1.3 | Aba Caixinha virou espelho do sistema Caixinha (só leitura); escada da caixinha aparece no Fechamento, embaixo da do Sicoob | Acabou o "ajustar saldo" da caixinha no Caixa Rocha |
 | 20/10/2026 | 1.2 | Ícone verde com F na aba do navegador | Nenhum |
 | 20/10/2026 | 1.1 | Tema claro/escuro, botão ? de ajuda, aba Manual, escada passa a contar transferências entre lojas | Transferências entram na escada do banco (continuam fora do DRE) |

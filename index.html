@@ -218,7 +218,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.3', APP_DATA='20/10/2026';
+  const APP_VERSAO='1.4', APP_DATA='20/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1770,7 +1770,7 @@
         c.from('caixinhas').select('id,nome,tipo,arquivada,ordem').order('ordem'),
         cxSelectTudo('competencias','id,caixinha_id,ano,mes'),
         cxSelectTudo('lancamentos','id,competencia_id,data,tipo,valor,excluido,contraparte,recolhido'),
-        cxSelectTudo('contas','id,caixinha_id,status,valor,valor_pago'),
+        cxSelectTudo('contas','id,caixinha_id,status,escopo,data,valor,valor_pago,pagamentos,pago_data'),
       ]);
       const fe=[cx,comp,lan].find(r=>r.error);
       if(fe){CX.erro=fe.error.message||String(fe.error);return false;}
@@ -1796,6 +1796,18 @@
     const fila=[];movs.forEach(m=>{if(m.tipo==='guardado'){if(!m.recolhido)fila.push(m.valor);}else{let d=m.valor;while(d>0&&fila.length){if(fila[0]<=d){d-=fila.shift();}else{fila[0]-=d;d=0;}}}});
     return fila.reduce((s,v)=>s+v,0);
   }
+  // Banco Caixinha = o que o escritório pagou pela loja e ela ainda vai devolver (aba Banco do Caixinha). Mesma conta do Caixinha (bancoResumo).
+  function _cxEstornos(ct){const pgs=Array.isArray(ct.pagamentos)?ct.pagamentos:[];if(pgs.length)return pgs.map(p=>({v:Number(p.v)||0,d:p.d||ct.data||''}));const vp=Number(ct.valor_pago)||0;return vp>0?[{v:vp,d:ct.pago_data||ct.data||''}]:[];}
+  function _cxAbertoAte(ct,dataISO){if((ct.data||'')>dataISO)return 0;const pago=_cxEstornos(ct).filter(p=>(p.d||'')<=dataISO).reduce((a,p)=>a+p.v,0);return Math.max((Number(ct.valor)||0)-pago,0);}
+  function cxBancoResumo(kId,ano,mes){
+    const pref=`${ano}-${String(mes).padStart(2,'0')}`,ultimo=new Date(ano,mes,0).getDate(),fimMes=`${pref}-${String(ultimo).padStart(2,'0')}`;
+    const antes=new Date(ano,mes-1,0),diaAntes=`${antes.getFullYear()}-${String(antes.getMonth()+1).padStart(2,'0')}-${String(antes.getDate()).padStart(2,'0')}`;
+    const hoje=new Date().toISOString().slice(0,10),mesAtual=hoje.slice(0,7)===pref,corte=mesAtual?(hoje>fimMes?fimMes:hoje):fimMes;
+    const lista=CX.contas.filter(c=>(kId==null||c.caixinha_id===kId)&&c.status==='estornar'&&c.escopo!=='decimo');
+    let inicio=0,emprestado=0,voltou=0,fim=0;
+    lista.forEach(ct=>{inicio+=_cxAbertoAte(ct,diaAntes);const d=ct.data||'';if(d.slice(0,7)===pref)emprestado+=Number(ct.valor)||0;_cxEstornos(ct).forEach(p=>{if((p.d||'').slice(0,7)===pref&&(p.d||'')<=corte)voltou+=p.v;});fim+=_cxAbertoAte(ct,corte);});
+    return {inicio,emprestado,voltou,fim,mesAtual,corte};
+  }
   function cxEstornar(kId){let e=0;CX.contas.forEach(c=>{if(c.caixinha_id===kId&&c.status==='estornar')e+=Math.max((Number(c.valor)||0)-(Number(c.valor_pago)||0),0);});return e;}
   // "Rocha 7" (Caixinha) ↔ loja do Caixa Rocha: casa pelo número; GV pelo nome
   function cxChaveLoja(nome){const n=String(nome||'').toLowerCase();const m=n.match(/rocha\s*0*(\d+)/);if(m)return 'r'+parseInt(m[1],10);if(/gv|optical|lentes|laborat/.test(n))return 'gv';return n.replace(/[^a-z0-9]/g,'');}
@@ -1814,7 +1826,7 @@
   function cxEscadaHTML(k,mi,compacta){
     const r=cxCalcMes(k,ANO_FIXO,mi+1);const mesNome=MESES_NOME[mi],ult=_ultimoDiaBR(mi);
     const row=(l,v,o={})=>`<div class="cfgrow"><span>${l}${o.sub?`<br><span class="mut" style="font-size:11px">${o.sub}</span>`:''}</span><b style="margin-left:auto;color:${o.cor||'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(v)}</b></div>`;
-    return `<div class="card" style="margin-bottom:12px"><div class="cardhead"><h3>💵 Caixinha ${k.nome} — ${mesNome}</h3><span class="tag">espelho · só leitura</span></div>
+    return `<div class="card" style="margin-bottom:12px"><div class="cardhead"><h3>💵 Caixa (gaveta) ${k.nome} — ${mesNome}</h3><span class="tag">espelho do Caixinha · só leitura</span></div>
       ${row(`Abertura em 01/${_mm(mi)}`,r.abertura,{sub:(r.emp>0.001?`em dinheiro · + ${BRL(r.emp)} emprestado no mês = ${BRL(r.abertura+r.emp)} (igual ao Caixinha)`:(r.aReceber>0?`em dinheiro · a receber ${BRL(r.aReceber)}`:'calculado pelo Caixinha')),cor:r.abertura<0?'var(--red)':'var(--txt)'})}
       ${row(`+ Entradas de ${mesNome}`,r.ent,{cor:'var(--green)'})}
       ${r.rep||r.gua?row('+ Reposições e guardado',r.rep+r.gua,{cor:'var(--green)',sub:'devoluções de empréstimo e dinheiro guardado'}):''}
@@ -1823,7 +1835,12 @@
       ${r.dep?row('− Depósitos no banco',r.dep,{cor:'var(--red)'}):''}
       <div class="cfgrow" style="border-top:2px solid var(--line)"><b>= Tem que ter em ${ult}</b><b style="margin-left:auto;font-size:16px;color:${r.fechamento<0?'var(--red)':'var(--txt)'};font-variant-numeric:tabular-nums">${BRL(r.fechamento)}</b></div>
       ${r.fechamento<-0.009?'<p style="font-size:12.5px;color:var(--red);margin-top:8px">🚨 Caixinha não pode ficar negativa. É lançamento faltando no Caixinha, não saldo.</p>':''}
-      ${compacta?'':`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12.5px"><span class="mut">A receber de outras lojas: <b style="color:var(--txt)">${BRL(r.aReceber)}</b></span><span class="mut">A recolher: <b style="color:var(--txt)">${BRL(cxFaltaRecolher(k))}</b></span><span class="mut">A estornar (aba Banco): <b style="color:var(--txt)">${BRL(cxEstornar(k.id))}</b></span></div>`}
+      ${compacta?'':`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12.5px"><span class="mut">A receber de outras lojas: <b style="color:var(--txt)">${BRL(r.aReceber)}</b></span><span class="mut">A recolher: <b style="color:var(--txt)">${BRL(cxFaltaRecolher(k))}</b></span></div>`}
+      ${(()=>{const b=cxBancoResumo(k.id,ANO_FIXO,mi+1);const fimLbl=b.mesAtual?'hoje':ult;return `<div style="margin-top:14px;padding-top:10px;border-top:1px dashed var(--line)"><div style="font-weight:700;font-size:13.5px;margin-bottom:4px">🔁 Banco Caixinha ${k.nome} — ${mesNome} <span class="mut" style="font-weight:500;font-size:11.5px">o que o escritório pagou pela loja e ela ainda vai devolver (aba Banco do Caixinha)</span></div>
+      ${row(`Em aberto em 01/${_mm(mi)}`,b.inicio,{sub:'início do mês'})}
+      ${row(`+ Emprestado em ${mesNome}`,b.emprestado,{cor:'var(--red)'})}
+      ${row(`− Voltou (estornado) em ${mesNome}`,b.voltou,{cor:'var(--green)'})}
+      <div class="cfgrow" style="border-top:2px solid var(--line)"><b>= Em aberto ${fimLbl}</b><b style="margin-left:auto;font-size:15px;color:var(--blue);font-variant-numeric:tabular-nums">${BRL(b.fim)}</b></div></div>`;})()}
       <div style="margin-top:10px"><a href="${CX_LINK}" target="_blank" rel="noopener" style="color:var(--blue);font-size:12.5px">Abrir no Caixinha ↗</a><span class="mut" style="font-size:11.5px;margin-left:10px">Para corrigir qualquer número, corrija lá — aqui atualiza sozinho.</span></div>
     </div>`;
   }
@@ -1836,25 +1853,32 @@
     const ok=await cxCarregar();
     if(!ok){c.innerHTML=nota+`<div class="card"><p style="color:var(--red);font-size:13px">Não consegui ler o Caixinha: ${CX.erro||'erro desconhecido'}.</p><div style="display:flex;gap:8px;margin-top:10px"><button class="btn ghost" onclick="CX.carregado=false;render()">Tentar de novo</button><button class="btn ghost" onclick="cxSair()">Sair do Caixinha</button></div></div>`;return;}
     const mi=mesSel;const atualCh=(()=>{const L=LOJAS.find(l=>l.id===lojaAtual);return L?cxChaveLoja(L.nome):'';})();
-    const linhas=CX.caixas.map(k=>{const r=cxCalcMes(k,ANO_FIXO,mi+1);const ehAtual=cxChaveLoja(k.nome)===atualCh;
-      return `<tr style="${ehAtual?'background:rgba(61,220,145,.07)':''}"><td><b>${k.nome}</b>${ehAtual?' <span class="catchip" style="border-color:var(--green);color:var(--green)">loja atual</span>':''}</td><td class="amt" style="color:${r.abertura<0?'var(--red)':'var(--txt)'}">${BRL(r.abertura)}</td><td class="amt green">${BRL(r.ent+r.rep+r.gua)}</td><td class="amt red">${BRL(r.sai+r.emp)}</td><td class="amt red">${BRL(r.dep)}</td><td class="amt" style="font-weight:800;color:${r.fechamento<0?'var(--red)':'var(--txt)'}">${BRL(r.fechamento)}</td><td class="amt">${BRL(r.aReceber)}</td><td class="amt">${BRL(cxEstornar(k.id))}</td></tr>`;}).join('');
-    const tot=CX.caixas.reduce((a,k)=>{const r=cxCalcMes(k,ANO_FIXO,mi+1);a.ab+=r.abertura;a.en+=r.ent+r.rep+r.gua;a.sa+=r.sai+r.emp;a.de+=r.dep;a.fe+=r.fechamento;a.ar+=r.aReceber;a.es+=cxEstornar(k.id);return a;},{ab:0,en:0,sa:0,de:0,fe:0,ar:0,es:0});
+    const bT=cxBancoResumo(null,ANO_FIXO,mi+1);const fimLbl=bT.mesAtual?'hoje':_ultimoDiaBR(mi);
+    const linhas=CX.caixas.map(k=>{const r=cxCalcMes(k,ANO_FIXO,mi+1);const b=cxBancoResumo(k.id,ANO_FIXO,mi+1);const ehAtual=cxChaveLoja(k.nome)===atualCh;
+      return `<tr style="${ehAtual?'background:rgba(61,220,145,.07)':''}"><td><b>${k.nome}</b>${ehAtual?' <span class="catchip" style="border-color:var(--green);color:var(--green)">loja atual</span>':''}</td><td class="amt" style="color:${r.abertura<0?'var(--red)':'var(--txt)'}">${BRL(r.abertura)}</td><td class="amt green">${BRL(r.ent+r.rep+r.gua)}</td><td class="amt red">${BRL(r.sai+r.emp)}</td><td class="amt red">${BRL(r.dep)}</td><td class="amt" style="font-weight:800;color:${r.fechamento<0?'var(--red)':'var(--txt)'};border-right:2px solid var(--line)">${BRL(r.fechamento)}</td><td class="amt">${BRL(b.inicio)}</td><td class="amt red">${BRL(b.emprestado)}</td><td class="amt green">${BRL(b.voltou)}</td><td class="amt" style="font-weight:800;color:var(--blue)">${BRL(b.fim)}</td></tr>`;}).join('');
+    const tot=CX.caixas.reduce((a,k)=>{const r=cxCalcMes(k,ANO_FIXO,mi+1);a.ab+=r.abertura;a.en+=r.ent+r.rep+r.gua;a.sa+=r.sai+r.emp;a.de+=r.dep;a.fe+=r.fechamento;return a;},{ab:0,en:0,sa:0,de:0,fe:0});
     c.innerHTML=nota+seletorMes()+`
-      <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Loja</th><th style="text-align:right">Abertura 01/${_mm(mi)}</th><th style="text-align:right">+ Entradas</th><th style="text-align:right">− Saídas</th><th style="text-align:right">− Depósitos</th><th style="text-align:right">= Tem que ter</th><th style="text-align:right">A receber</th><th style="text-align:right">A estornar</th></tr></thead>
-      <tbody>${linhas||'<tr><td colspan="8" class="mut">Nenhuma caixinha de loja encontrada.</td></tr>'}</tbody>
-      <tfoot><tr style="font-weight:800"><td>Total</td><td class="amt">${BRL(tot.ab)}</td><td class="amt green">${BRL(tot.en)}</td><td class="amt red">${BRL(tot.sa)}</td><td class="amt red">${BRL(tot.de)}</td><td class="amt">${BRL(tot.fe)}</td><td class="amt">${BRL(tot.ar)}</td><td class="amt">${BRL(tot.es)}</td></tr></tfoot></table></div>
+      <div class="card" style="padding:0;overflow:auto"><table>
+      <thead><tr><th></th><th colspan="5" style="text-align:center;color:var(--green);border-right:2px solid var(--line)">💵 Caixa (gaveta) — dinheiro físico da loja</th><th colspan="4" style="text-align:center;color:var(--blue)">🔁 Banco Caixinha — o escritório pagou, a loja vai devolver</th></tr>
+      <tr><th>Loja</th><th style="text-align:right">Abertura 01/${_mm(mi)}</th><th style="text-align:right">+ Entradas</th><th style="text-align:right">− Saídas</th><th style="text-align:right">− Depósitos</th><th style="text-align:right;border-right:2px solid var(--line)">= Tem que ter</th><th style="text-align:right">Em aberto 01/${_mm(mi)}</th><th style="text-align:right">+ Emprestado</th><th style="text-align:right">− Voltou</th><th style="text-align:right">= Em aberto ${fimLbl}</th></tr></thead>
+      <tbody>${linhas||'<tr><td colspan="10" class="mut">Nenhuma caixinha de loja encontrada.</td></tr>'}</tbody>
+      <tfoot><tr style="font-weight:800"><td>Total</td><td class="amt">${BRL(tot.ab)}</td><td class="amt green">${BRL(tot.en)}</td><td class="amt red">${BRL(tot.sa)}</td><td class="amt red">${BRL(tot.de)}</td><td class="amt" style="border-right:2px solid var(--line)">${BRL(tot.fe)}</td><td class="amt">${BRL(bT.inicio)}</td><td class="amt red">${BRL(bT.emprestado)}</td><td class="amt green">${BRL(bT.voltou)}</td><td class="amt" style="color:var(--blue)">${BRL(bT.fim)}</td></tr></tfoot></table></div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:12px" class="mut">
         <span>Lido do Caixinha às ${CX.em?CX.em.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—'} · entrou como <b>${(document.querySelector(`#cxEmail option[value='${sess.user?.email||''}']`)||{}).textContent||({'lucas@caixinharocha.com':'Lucas','heloisa@caixinharocha.com':'Heloísa','rhaiane@caixinharocha.com':'Rhaiane','carol@caixinharocha.com':'Carol','flavia@caixinharocha.com':'Flávia'})[sess.user?.email]||sess.user?.email||''}</b></span>
         <button class="btn ghost" style="padding:5px 10px;font-size:12px" onclick="CX.carregado=false;render()">↻ Atualizar</button>
         <a class="btn ghost" href="${CX_LINK}" target="_blank" rel="noopener" style="padding:5px 10px;font-size:12px;text-decoration:none">Abrir o Caixinha ↗</a>
         <button class="btn ghost" style="padding:5px 10px;font-size:12px;margin-left:auto" onclick="cxSair()">Sair do Caixinha</button>
       </div>
-      <p class="mut" style="font-size:11.5px;margin-top:10px;line-height:1.5">Entradas = entradas + reposições + guardado · Saídas = saídas + emprestado para outra loja · A receber = emprestado − devolvido · A estornar = contas pagas pelo banco que a loja ainda vai devolver (aba Banco do Caixinha).</p>`;
+      <div class="card" style="margin-top:14px"><div class="cardhead"><h3>Os três "bancos" — para não confundir</h3></div>
+        <div class="cfgrow"><span>🏦 <b>Banco Sicoob</b> — a conta da loja no banco de verdade</span><span class="mut" style="margin-left:auto;font-size:12px">mora no <b>Fechamento do mês</b> (a escada do Sicoob)</span></div>
+        <div class="cfgrow"><span>💵 <b>Caixa (gaveta)</b> — o dinheiro físico que a loja tem na mão</span><span class="mut" style="margin-left:auto;font-size:12px">mora no <b>Caixinha → aba Caixa</b>; aqui é espelho</span></div>
+        <div class="cfgrow"><span>🔁 <b>Banco Caixinha</b> — o que o escritório pagou pela loja e ela ainda vai devolver (estornar). Vira o mês e continua em aberto</span><span class="mut" style="margin-left:auto;font-size:12px">mora no <b>Caixinha → aba Banco</b>; aqui é espelho</span></div>
+        <p class="mut" style="font-size:11.5px;margin-top:8px;line-height:1.5">Nenhum dos três se soma ao outro. Entradas = entradas + reposições + guardado · Saídas = saídas + emprestado para outra loja · Em aberto = contas com status "a estornar" ainda não devolvidas, pela mesma conta da aba Banco do Caixinha.</p></div>`;
   }
   // bloco da caixinha dentro do Fechamento do mês (abaixo da escada do Sicoob)
   async function cxBlocoFechamento(){
     const sess=await cxSessao();
-    if(!sess)return `<div class="card" style="margin-bottom:12px"><div class="cardhead"><h3>💵 Caixinha — ${MESES_NOME[mesSel]}</h3><span class="tag">espelho</span></div><p class="mut" style="font-size:12.5px;margin-top:6px">Para ver a escada da caixinha aqui, <a style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="go('caixinha')">entre no Caixinha uma vez</a> (aba Caixinha).</p></div>`;
+    if(!sess)return `<div class="card" style="margin-bottom:12px"><div class="cardhead"><h3>💵 Caixa (gaveta) e 🔁 Banco Caixinha — ${MESES_NOME[mesSel]}</h3><span class="tag">espelho</span></div><p class="mut" style="font-size:12.5px;margin-top:6px">Para ver a escada da caixinha aqui, <a style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="go('caixinha')">entre no Caixinha uma vez</a> (aba Caixinha).</p></div>`;
     const ok=await cxCarregar();if(!ok)return `<div class="card" style="margin-bottom:12px"><p class="mut" style="font-size:12.5px">Caixinha indisponível agora: ${CX.erro||''}</p></div>`;
     const k=cxCaixaDaLojaAtual();
     if(!k)return `<div class="card" style="margin-bottom:12px"><div class="cardhead"><h3>💵 Caixinha — ${MESES_NOME[mesSel]}</h3></div><p class="mut" style="font-size:12.5px;margin-top:6px">Esta loja não tem caixinha no sistema Caixinha (ou o nome não casou).</p></div>`;
