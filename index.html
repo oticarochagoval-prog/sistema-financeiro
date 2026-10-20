@@ -219,7 +219,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.5', APP_DATA='20/10/2026';
+  const APP_VERSAO='1.6', APP_DATA='20/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -303,9 +303,25 @@
     if(LOJAS.length && !lojaAtual)lojaAtual=LOJAS[0].id;
     const {data:cats}=await sb.from('categorias').select('*').order('nome');CATS=cats||[];
     const {data:cont}=await sb.from('contatos').select('*').order('nome');CONTATOS=cont||[];
-    await carregarContas();await carregarFechamentos();await carregarPerfis();
+    await carregarContas();await carregarFechamentos();await carregarPerfis();await carregarRegrasP();
     document.getElementById('store').innerHTML=LOJAS.map(l=>`<option value="${l.id}" ${l.id===lojaAtual?'selected':''}>${l.nome}</option>`).join('');
   }
+  // ---- REGRAS POR PALAVRA (palavras que puxam sozinho, por categoria) ----
+  let REGRAS_P=[];
+  async function carregarRegrasP(){try{const {data}=await sb.from('regras_palavras').select('*').eq('ativa',true);REGRAS_P=data||[];}catch(e){REGRAS_P=[];}}
+  // normaliza descrição: maiúsculo, sem acento, sem números longos, sem pontuação, espaços simples
+  function normDesc(t){return String(t||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\d{3,}/g,' ').replace(/[^A-Z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();}
+  // devolve a regra que casa (palavra mais longa ganha); loja específica vence global
+  function aplicarRegrasP(desc,lojaId){
+    const n=' '+normDesc(desc)+' ';let best=null;
+    REGRAS_P.forEach(r=>{if(r.loja_id&&lojaId&&r.loja_id!==lojaId)return;const pw=' '+normDesc(r.palavra)+' ';if(!pw.trim())return;
+      if(n.includes(pw)){const score=pw.length*10+(r.loja_id?1:0);if(!best||score>best.score)best={r,score};}});
+    return best?best.r:null;
+  }
+  const CAT_ESTORNAR='A ESTORNAR (BANCO CAIXINHA)';
+  function catEstornarId(){const c=catsAtivas().find(x=>String(x.nome).toUpperCase()===CAT_ESTORNAR);return c?c.id:null;}
+  // lê a loja de dentro da descrição: R8, R08, ROCHA 8, ROCHA08, GV
+  function lojaDaDescricao(desc){const t=normDesc(desc);let m=t.match(/\bROCHA\s*0?(\d{1,2})\b/)||t.match(/\bR0?(\d{1,2})\b/);if(m)return 'Rocha '+parseInt(m[1],10);if(/\bGV\b|OPTICAL/.test(t))return 'GV Optical';return null;}
   let PERFIS={};
   async function carregarPerfis(){try{const {data}=await sb.from('perfis').select('id,nome');(data||[]).forEach(p=>PERFIS[p.id]=p.nome);}catch(e){} if(USER&&PERFIL.nome)PERFIS[USER.id]=PERFIL.nome;}
   function nomeDe(uid){return PERFIS[uid]||'';}
@@ -412,7 +428,7 @@
 
   function render(){
     const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig,manual:viewManual};
-    const fn=V[page];if(fn){fn();}else{viewEmBreve();}
+    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   let mesSel=new Date().getMonth();let _keepY=null;
@@ -529,7 +545,8 @@
     }).join('');
     const nCx=LANC.filter(l=>contaEhCaixinha(l.conta_id)&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
     const chip=(v,txt)=>`<button class="btn ghost" style="padding:4px 10px;font-size:12px;${filtroConta===v?'border-color:var(--green);color:var(--green)':''}" onclick="filtroConta='${v}';render()">${txt}</button>`;
-    return `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">${chip('','Todos')}${chip('banco','🏦 Sicoob')}${chip('caixinha',`💵 Caixinha antiga${nCx?` (${nCx})`:''}`)}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">lançados na aba Caixinha antiga do Caixa Rocha — conferir categoria e contato; o dinheiro físico agora mora no sistema Caixinha</span>':''}</div>
+    const nSemCat=LANC.filter(l=>!l.categoria_id&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
+    return `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">${chip('','Todos')}${chip('banco','🏦 Sicoob')}${chip('caixinha',`💵 Caixinha antiga${nCx?` (${nCx})`:''}`)}${podeEditar()&&nSemCat?`<button class="btn" style="padding:4px 10px;font-size:12px;margin-left:auto" onclick="aplicarRegrasNoMes()">🔑 Aplicar regras nos ${nSemCat} sem categoria</button>`:''}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">lançados na aba Caixinha antiga do Caixa Rocha — conferir categoria e contato; o dinheiro físico agora mora no sistema Caixinha</span>':''}</div>
       <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12.5px;flex-wrap:wrap">
         <span class="mut">${rows.length} lançamento(s)</span>
         <span style="color:var(--green)">Entradas: ${BRL(somaE)}</span>
@@ -763,6 +780,57 @@
   }
 
   let _grpAberto=null; // qual grupo do DRE está expandido
+  async function salvarPalavrasCat(catId,texto){
+    const novas=[...new Set(String(texto||'').split(',').map(x=>normDesc(x)).filter(x=>x.length>=2))];
+    const atuais=REGRAS_P.filter(r=>r.categoria_id===catId&&!r.loja_id);
+    const remover=atuais.filter(r=>!novas.includes(normDesc(r.palavra)));
+    const inserir=novas.filter(p=>!atuais.some(r=>normDesc(r.palavra)===p));
+    for(const r of remover){await sb.from('regras_palavras').update({ativa:false}).eq('id',r.id);}
+    if(inserir.length){const {error}=await sb.from('regras_palavras').insert(inserir.map(p=>({palavra:p,categoria_id:catId,origem:'manual',criado_por:USER.id})));if(error){toast('Erro ao salvar palavras: '+error.message,'erro');return;}}
+    await carregarRegrasP();toast('Palavras salvas!','ok');
+  }
+  // olha tudo que já foi classificado e propõe palavras (só quando a mesma descrição sempre caiu na mesma categoria)
+  async function gerarRegrasHistorico(){
+    document.getElementById('modalRoot').innerHTML='<div class="modal-bg"><div class="modal"><h3>✨ Lendo o histórico...</h3><p>Olhando todos os lançamentos já classificados.</p></div></div>';
+    let rows=[];for(let de=0;;de+=1000){const {data,error}=await sb.from('lancamentos').select('descricao,categoria_id,contato_id,valor').not('categoria_id','is',null).order('id').range(de,de+999);if(error){toast('Erro: '+error.message,'erro');fecharModal();return;}rows=rows.concat(data||[]);if(!data||data.length<1000)break;}
+    const STOP=new Set(['PGTO','PAGTO','PAGAMENTO','PIX','TED','DOC','DEB','DEBITO','CRED','CREDITO','TRANSF','TRANSFERENCIA','COMPRA','CARTAO','BOLETO','TITULO','TIT','COBRANCA','REF','DE','DA','DO','PARA','LTDA','ME','EIRELI','SA','EPP','E','A','O']);
+    const g={};
+    rows.forEach(l=>{const toks=normDesc(l.descricao).split(' ').filter(t=>t.length>=3&&!STOP.has(t)&&!/^\d+$/.test(t));if(!toks.length)return;const key=toks.slice(0,2).join(' ');
+      const o=g[key]=g[key]||{n:0,cats:{},conts:{}};o.n++;o.cats[l.categoria_id]=(o.cats[l.categoria_id]||0)+1;if(l.contato_id)o.conts[l.contato_id]=(o.conts[l.contato_id]||0)+1;});
+    const jaTem=new Set(REGRAS_P.map(r=>normDesc(r.palavra)));
+    const props=[];
+    Object.entries(g).forEach(([key,o])=>{if(o.n<2||jaTem.has(key))return;const [cat,nc]=Object.entries(o.cats).sort((a,b)=>b[1]-a[1])[0];if(nc/o.n<0.9)return;
+      const ce=Object.entries(o.conts).sort((a,b)=>b[1]-a[1])[0];const cont=(ce&&ce[1]/o.n>=0.9)?Number(ce[0]):null;
+      // não propor palavra que já casa com outra regra existente
+      if(aplicarRegrasP(key,null))return;
+      props.push({palavra:key,catId:Number(cat),contId:cont,n:o.n});});
+    props.sort((a,b)=>b.n-a.n);
+    if(!props.length){fecharModal();toast('Nada novo pra sugerir — o histórico já está coberto pelas regras.','ok');return;}
+    const linhas=props.map((p,i)=>{const c=CATS.find(x=>x.id===p.catId);const ct=CONTATOS.find(x=>x.id===p.contId);return `<label style="display:grid;grid-template-columns:20px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px;cursor:pointer"><input type="checkbox" checked data-i="${i}"><span><b>${p.palavra}</b> → ${c?c.nome:'?'}${ct?` <span class="mut">· ${ct.nome}</span>`:''}</span><span class="mut" style="font-variant-numeric:tabular-nums">${p.n}×</span></label>`;}).join('');
+    window._propsRegras=props;
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(640px,94vw)"><h3>✨ ${props.length} palavra(s) encontradas no histórico</h3><p>Cada linha: a palavra, a categoria que ela sempre recebeu e quantas vezes. Desmarque o que não fizer sentido e salve.</p><div style="max-height:50vh;overflow:auto;margin-bottom:14px" id="propsBox">${linhas}</div><div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarRegrasHistorico()">Salvar as marcadas</button></div></div></div>`;
+  }
+  async function salvarRegrasHistorico(){
+    const marcadas=[...document.querySelectorAll('#propsBox input:checked')].map(i=>window._propsRegras[Number(i.dataset.i)]);
+    if(!marcadas.length){fecharModal();return;}
+    const {error}=await sb.from('regras_palavras').insert(marcadas.map(p=>({palavra:p.palavra,categoria_id:p.catId,contato_id:p.contId,origem:'historico',criado_por:USER.id})));
+    if(error){toast('Erro ao salvar: '+error.message,'erro');return;}
+    await carregarRegrasP();fecharModal();toast(`${marcadas.length} regra(s) criadas!`,'ok');render();
+  }
+  // Lançamentos: aplica as regras no que está sem categoria no mês (mostra antes, grava depois)
+  async function aplicarRegrasNoMes(){
+    const alvo=LANC.filter(l=>!l.categoria_id&&parseInt(l.data.split('-')[1],10)-1===mesSel&&!mesFechadoISO(l.data));
+    const plano=[];alvo.forEach(l=>{const r=aplicarRegrasP(l.descricao,lojaAtual);if(r&&r.categoria_id)plano.push({l,r});});
+    if(!plano.length){toast(alvo.length?'Nenhuma regra casou com os lançamentos sem categoria deste mês.':'Não há lançamentos sem categoria neste mês.','ok');return;}
+    const linhas=plano.map((p,i)=>{const c=CATS.find(x=>x.id===p.r.categoria_id);const ct=CONTATOS.find(x=>x.id===p.r.contato_id);return `<label style="display:grid;grid-template-columns:20px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px;cursor:pointer"><input type="checkbox" checked data-i="${i}"><span>${isoParaBR(p.l.data).slice(0,5)} · ${p.l.descricao} → <b>${c?c.nome:'?'}</b>${ct?` <span class="mut">· ${ct.nome}</span>`:''} <span class="mut">(regra "${p.r.palavra}")</span></span><span class="amt ${p.l.valor>0?'green':'red'}">${BRL(p.l.valor)}</span></label>`;}).join('');
+    window._planoRegras=plano;
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(680px,94vw)"><h3>🔑 ${plano.length} de ${alvo.length} sem categoria casaram com regras</h3><p>Confira e salve. Só preenche o que está vazio; nada que já tem categoria muda.</p><div style="max-height:50vh;overflow:auto;margin-bottom:14px" id="planoBox">${linhas}</div><div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="confirmarRegrasNoMes()">Preencher as marcadas</button></div></div></div>`;
+  }
+  async function confirmarRegrasNoMes(){
+    const marc=[...document.querySelectorAll('#planoBox input:checked')].map(i=>window._planoRegras[Number(i.dataset.i)]);
+    let ok=0;for(const p of marc){const upd={categoria_id:p.r.categoria_id};if(!p.l.contato_id&&p.r.contato_id)upd.contato_id=p.r.contato_id;const {error}=await sb.from('lancamentos').update(upd).eq('id',p.l.id);if(!error)ok++;}
+    fecharModal();toast(`${ok} lançamento(s) preenchidos pelas regras.`,'ok');viewLanc();
+  }
   function viewCategorias(){
     const aDef=catsAtivas().filter(c=>c.grupo==='adef');
     const aviso=aDef.length?`<div class="note soon">⚠️ <b>${aDef.length} categoria(s) ainda sem classificar (A definir).</b> Clique no grupo "A definir" abaixo e organize cada uma no lugar certo.</div>`:'';
@@ -782,7 +850,9 @@
       const aberto=_grpAberto===g;
       // opções pra trocar o grupo (menos neutra pra evitar erro, mas mantém se já for)
       const selGrupo=(c)=>`<select class="qin inlinesel" style="height:30px;font-size:12px;min-width:130px;margin-left:auto" onchange="mudarGrupoCat(${c.id},this.value)">${ordem.map(k=>`<option value="${k}" ${k===c.grupo?'selected':''}>${GRUPOS[k].nome}</option>`).join('')}</select>`;
-      const rows=aberto?(it.length?it.map(c=>`<div class="cfgrow" style="padding-left:6px">${c.nome}${podeEditar()?selGrupo(c):`<span class="grp ${g}" style="margin-left:auto">${GRUPOS[g].nome}</span>`}${podeEditar()?`<span class="arqbtn" onclick="arquivarCat(${c.id})">📥</span>`:''}</div>`).join(''):'<div class="mut" style="font-size:12.5px;padding:10px 6px">Nenhuma categoria neste grupo.</div>'):'';
+      const palavrasDe=(c)=>REGRAS_P.filter(r=>r.categoria_id===c.id&&!r.loja_id).map(r=>r.palavra).join(', ');
+      const campoPal=(c)=>podeEditar()?`<div style="display:flex;gap:8px;align-items:center;padding:0 6px 10px 6px"><span class="mut" style="font-size:11px;white-space:nowrap">🔑 palavras que puxam sozinho</span><input class="qin maiusc" style="height:32px;font-size:12px;flex:1" value="${palavrasDe(c).replace(/"/g,'&quot;')}" placeholder="ex: CEMIG, SAAE, VIVO (separadas por vírgula)" onchange="salvarPalavrasCat(${c.id},this.value)"></div>`:(palavrasDe(c)?`<div class="mut" style="font-size:11.5px;padding:0 6px 10px 6px">🔑 ${palavrasDe(c)}</div>`:'');
+      const rows=aberto?(it.length?it.map(c=>`<div class="cfgrow" style="padding-left:6px;border-bottom:none">${c.nome}${podeEditar()?selGrupo(c):`<span class="grp ${g}" style="margin-left:auto">${GRUPOS[g].nome}</span>`}${podeEditar()?`<span class="arqbtn" onclick="arquivarCat(${c.id})">📥</span>`:''}</div>${campoPal(c)}<div style="border-bottom:1px solid var(--line)"></div>`).join(''):'<div class="mut" style="font-size:12.5px;padding:10px 6px">Nenhuma categoria neste grupo.</div>'):'';
       return `<div class="card" style="margin-bottom:10px;padding:0;overflow:hidden">
         <div onclick="_grpAberto=_grpAberto==='${g}'?null:'${g}';render()" style="cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:10px">
           <span class="grp ${g}">${GRUPOS[g].nome}</span>
@@ -793,7 +863,10 @@
       </div>`;
     }).join('');
     const arq=CATS.filter(c=>c.arquivada).map(c=>`<div class="cfgrow" style="opacity:.6">${c.nome}<span class="grp ${c.grupo}" style="margin-left:auto">${GRUPOS[c.grupo].nome}</span><span class="arqbtn ativar" onclick="ativarCat(${c.id})">↩ reativar</span></div>`).join('');
-    document.getElementById('content').innerHTML=`<div class="note">🏷️ <b>Categorias por grupo do DRE.</b> Clique num grupo pra ver as categorias dele. Pra corrigir, é só trocar o grupo na setinha — salva na hora.</div>${aviso}
+    const painelRegras=`<div class="card" style="margin-bottom:14px"><div class="cardhead"><h3>🔑 Palavras que puxam sozinho</h3><span class="tag">${REGRAS_P.length} regra(s)</span></div>
+      <p class="mut" style="font-size:12.5px;line-height:1.5;margin:6px 0 10px">Igual ao FaturaFácil: cada categoria tem palavras separadas por vírgula. Quando a descrição do extrato tiver uma delas, a categoria (e o contato, se a regra tiver) já vem preenchida na importação e no botão "Aplicar regras" de Lançamentos. Palavra mais longa ganha.</p>
+      ${podeEditar()?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="gerarRegrasHistorico()">✨ Gerar palavras do histórico</button><span class="mut" style="font-size:12px;align-self:center">olha os meses já classificados e sugere as palavras — você aprova antes de salvar</span></div>`:''}</div>`;
+    document.getElementById('content').innerHTML=`<div class="note">🏷️ <b>Categorias por grupo do DRE.</b> Clique num grupo pra ver as categorias dele. Pra corrigir, é só trocar o grupo na setinha — salva na hora.</div>${aviso}${painelRegras}
       ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>Nova categoria</h3></div>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><input id="ncTela" class="qin maiusc" placeholder="Nome" style="max-width:240px"><select id="ngTela" class="qin" style="max-width:180px"><option value="adef">A definir</option><option value="rec">Receita</option><option value="cmv">CMV</option><option value="imp">Imposto</option><option value="fixo">Custo Fixo</option><option value="nop">Não Operacional</option></select><button class="btn" onclick="addCatTela()">+ Adicionar</button></div></div>`:''}
       ${cards}
@@ -1292,12 +1365,14 @@
         return `<tr style="${r.destino==='ignora'?'opacity:.45':''}"><td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td><td>${r.desc}</td><td><span class="arqbtn" onclick="cicloDestino(${i},'${next[r.destino]}')" style="cursor:pointer">${labels[r.destino]}</span></td><td><span class="mut" style="font-size:11px">recebimento</span></td><td class="amt green">+${BRL(r.amt)}</td></tr>`;
       }
       const opts=catsOptions(r.catId);
-      const destaque=r.corrigir?'style="background:rgba(245,183,64,.08)"':'';
-      return `<tr ${destaque}><td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td><td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">conferir</span>':''}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button></div></td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||'— contato'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td><td class="amt red">-${BRL(Math.abs(r.amt))}</td></tr>`;
+      const destaque=r.corrigir?'style="background:rgba(245,183,64,.08)"':(r.estornar?'style="background:rgba(125,162,255,.07)"':'');
+      const etqRegra=r.regra?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 regra "${r.regra}"</span>${r.estornar?` <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">🔁 a estornar → ${r.lojaEstorno||'qual loja?'}</span>`:''}</div>`:(r.catId&&!r.corrigir?'<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">adivinhado</span></div>':'');
+      return `<tr ${destaque}><td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td><td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">conferir</span>':''}${etqRegra}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button></div></td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||'— contato'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td><td class="amt red">-${BRL(Math.abs(r.amt))}</td></tr>`;
     }).join('');
     const naoClass=IMPORT.filter(r=>r.amt<0&&!r.catId).length;
     const periodoTxt=(importPeriodo.de&&importPeriodo.ate)?`📅 Extrato de <b>${importPeriodo.de}</b> a <b>${importPeriodo.ate}</b>`:'';
-    document.getElementById('content').innerHTML=`<div class="note">📥 <b>${IMPORT.length} transações lidas</b> · ${ignoraN} recebimentos ignorados (Pix e dinheiro — a Linx já conta) · ${naoClass>0?`<b style="color:var(--amber)">${naoClass} saídas a classificar ⚠️</b>`:'✅ saídas classificadas'}</div>
+    const saidasTot=IMPORT.filter(r=>r.amt<0).length,porRegra=IMPORT.filter(r=>r.amt<0&&r.regra).length;
+    document.getElementById('content').innerHTML=`<div class="note">📥 <b>${IMPORT.length} transações lidas</b> · ${ignoraN} recebimentos ignorados (Pix e dinheiro — a Linx já conta) · ${naoClass>0?`<b style="color:var(--amber)">${naoClass} saídas a classificar ⚠️</b>`:'✅ saídas classificadas'}${saidasTot?` · <b style="color:var(--green)">🔑 ${porRegra} de ${saidasTot} saídas vieram classificadas pelas palavras-chave (${Math.round(porRegra/saidasTot*100)}%)</b>`:''}</div>
       <div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="font-size:13px">${periodoTxt}</div>
         <div style="flex:1;min-width:220px"><span class="qlabel">Observação desta importação (opcional)</span><input class="qin" placeholder="Ex: Extrato Sicoob conta principal — junho" value="${importObs}" oninput="importObs=this.value"></div>
@@ -1345,6 +1420,11 @@
         }
         // saídas: adivinha categoria. Transferência entre lojas vira "a corrigir" pra Heloísa conferir
         if(ehTransferenciaRocha(full)){item.catId='';item.corrigir=true;return item;}
+        // 1º as palavras-chave cadastradas (aprendidas do histórico ou digitadas em Categorias)
+        const rp=aplicarRegrasP(full,lojaAtual);
+        if(rp&&rp.categoria_id){item.catId=rp.categoria_id;item.contatoId=rp.contato_id||null;item.regra=rp.palavra;
+          if(rp.categoria_id===catEstornarId()){item.estornar=true;item.lojaEstorno=lojaDaDescricao(full);}
+          return item;}
         const catNome=adivinhaCat(full);
         if(catNome&&catNome!=='__IGNORAR__'){const c=catsAtivas().find(c=>c.nome===catNome);item.catId=c?c.id:'';}else item.catId='';
         const contNome=adivinhaContato(full);
@@ -1412,6 +1492,18 @@
 
   // ---- VISÃO GERAL (Dashboard) ----
   let _lancMesDash=[]; // lançamentos completos do mês, pra janela de detalhes do dashboard
+  // painel "onde o mês está": última data lançada no banco, por loja
+  async function painelAtrasoLojas(){
+    const hoje=new Date();const out=[];
+    for(const L of LOJAS){try{const {data}=await sb.from('lancamentos').select('data').eq('loja_id',L.id).eq('origem','ofx').order('data',{ascending:false}).limit(1);let ult=data&&data[0]?data[0].data:null;
+      if(!ult){const r2=await sb.from('lancamentos').select('data').eq('loja_id',L.id).order('data',{ascending:false}).limit(1);ult=r2.data&&r2.data[0]?r2.data[0].data:null;}
+      const dias=ult?Math.floor((hoje-new Date(ult+'T12:00:00'))/86400000):null;out.push({L,ult,dias});}catch(e){out.push({L,ult:null,dias:null});}}
+    const cor=d=>d==null?'var(--muted)':(d<=2?'var(--green)':(d<=7?'var(--amber)':'var(--red)'));
+    const html=`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>⏱ Lançamentos em dia?</h3><span class="tag">última data lançada por loja</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px">${out.map(o=>`<div onclick="document.getElementById('store').value='${o.L.id}';trocarLoja();" style="cursor:pointer;border:1px solid var(--line);border-left:4px solid ${cor(o.dias)};border-radius:9px;padding:8px 10px"><div style="font-size:12.5px;font-weight:700">${o.L.nome.split(' — ')[0]}</div><div style="font-size:12px;color:${cor(o.dias)};font-weight:700">${o.dias==null?'nada lançado':(o.dias===0?'hoje':o.dias+' dia(s) atrás')}</div><div class="mut" style="font-size:10.5px">${o.ult?'até '+isoParaBR(o.ult):''}</div></div>`).join('')}</div>
+      <p class="mut" style="font-size:11.5px;margin-top:8px">Verde: até 2 dias · Amarelo: até 7 · Vermelho: mais de 7. Regra da casa: nunca mais de 2 dias atrasado.</p></div>`;
+    const c=document.getElementById('content');if(c&&page==='visao')c.insertAdjacentHTML('afterbegin',html);
+  }
   async function viewVisao(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando dashboard...</div>';
     await carregarLancAno();

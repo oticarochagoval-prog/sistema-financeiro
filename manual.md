@@ -89,6 +89,17 @@ No Caixa Rocha, o saldo inicial é **só o do Sicoob**. Não some caixinha nem e
 
 **Caixinha nunca fica negativa.** Dinheiro na gaveta não tem cheque especial. Se der negativo, não é saldo: é lançamento faltando. Alguém colocou dinheiro e não lançou a entrada, ou lançou uma saída duas vezes.
 
+## Palavras que puxam sozinho
+
+Cada categoria pode ter **palavras-chave** (em Categorias, campo "palavras que puxam sozinho", separadas por vírgula). Quando uma linha do extrato tiver uma dessas palavras na descrição, a categoria já vem preenchida, com a etiqueta **🔑 regra**. Palavra mais longa ganha: "JUROS LIS" vence "LIS".
+
+- **Gerar palavras do histórico** (botão em Categorias): olha os meses já classificados e propõe as palavras. Nada é salvo até você aprovar a lista.
+- **Aplicar regras nos N sem categoria** (botão em Lançamentos): preenche os lançamentos do mês que ainda estão em branco. Mostra o que vai mudar e só grava depois do OK. Regra nunca mexe em categoria que alguém já escolheu na mão.
+- Na importação do extrato, o topo mostra "N de M linhas vieram classificadas sozinhas". O que não casou vem em branco, para classificar na mão.
+- Categoria **A ESTORNAR (BANCO CAIXINHA)**: quando a descrição tem ESTORNAR, XT, VAI ESTORNAR ou CARTÃO AZUL, a linha vem marcada com 🔁 e a loja lida da descrição (R8, ROCHA 8). Se não achar a loja, pergunta — nunca chuta. Mandar pro Banco Caixinha com um clique vem na próxima versão.
+
+No Dashboard, o quadro **Lançamentos em dia?** mostra, por loja, a última data lançada e há quantos dias está parada.
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -111,6 +122,7 @@ No Caixa Rocha, o saldo inicial é **só o do Sicoob**. Não some caixinha nem e
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 20/10/2026 | 1.6 | Palavras-chave por categoria (gerar do histórico, editar, aplicar nos sem categoria), importação do extrato chega classificada com etiqueta 🔑, categoria A ESTORNAR (BANCO CAIXINHA) reconhecida com loja lida da descrição, quadro "Lançamentos em dia?" no Dashboard | Menos lançamento sem categoria; o contador do Fechamento cai sozinho |
 | 20/10/2026 | 1.5 | Etiqueta de origem (OFX / manual · quem) em cada lançamento, filtro "Caixinha antiga", aviso de "saldo inicial é estimativa", contagem de lançamentos do mês no Fechamento e coluna "Conferir" no espelho (saídas lançadas pela própria loja, sem categoria em amarelo) | Dá para ver quem lançou e o que veio da caixinha antiga; o susto do saldo estimado vem explicado |
 | 20/10/2026 | 1.4 | Espelho ganhou o Banco Caixinha (em aberto no dia 1º, emprestado, voltou, em aberto hoje) e os nomes fixos: Banco Sicoob, Caixa (gaveta), Banco Caixinha | Heloísa vê os três no mesmo lugar |
 | 20/10/2026 | 1.3 | Aba Caixinha virou espelho do sistema Caixinha (só leitura); escada da caixinha aparece no Fechamento, embaixo da do Sicoob | Acabou o "ajustar saldo" da caixinha no Caixa Rocha |
