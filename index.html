@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Caixa Rocha — Financeiro</title>
+<title>Fluxo — Financeiro</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f9d6b'/%3E%3Ctext x='32' y='46' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-weight='800' font-size='40' fill='white'%3EF%3C/text%3E%3C/svg%3E">
 <style>
   :root{
@@ -174,8 +174,8 @@
 <body>
   <div class="login-wrap" id="loginWrap">
     <div class="login-card">
-      <div class="login-logo">R</div>
-      <h1>Caixa Rocha</h1>
+      <div class="login-logo">F</div>
+      <h1>Fluxo</h1>
       <div class="sub">Sistema Financeiro · entre para continuar</div>
       <div class="login-err" id="loginErr"></div>
       <div class="field" id="fQuem"><label>Quem é você?</label><select id="quem" onchange="quemMudou()"><option value="">Selecione seu nome...</option><option value="lucas">Lucas</option><option value="heloisa">Heloísa</option><option value="rhaiane">Rhaiane</option><option value="carol">Carol</option><option value="__email">Outro (entrar com e-mail)</option></select></div>
@@ -188,7 +188,7 @@
 
   <div id="app">
     <aside class="side" id="side">
-      <div class="brand"><div class="logo">R</div><b>Caixa Rocha<small>FINANCEIRO</small></b>
+      <div class="brand"><div class="logo">F</div><b>Fluxo<small>FINANCEIRO · GRUPO ROCHA</small></b>
         <button class="burger" id="burgerBtn" title="Fechar menu" onclick="toggleMenu()">‹</button></div>
       <nav id="nav"></nav>
       <div class="sidefoot" id="sidefoot">—</div>
@@ -225,7 +225,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='1.9.12', APP_DATA='21/10/2026';
+  const APP_VERSAO='1.11', APP_DATA='21/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -460,7 +460,7 @@
     let contaId=null;
     if(igual&&confirm(`Já existe no Banco Caixinha um empréstimo a estornar de ${BRL(valor)} nessa loja em ${isoParaBR(igual.data)} ("${igual.descricao||''}").\n\nOK = ligar a esse (não cria outro).\nCancelar = criar um novo mesmo assim.`)){contaId=igual.id;}
     else{
-      const {data,error}=await c.from('contas').insert({caixinha_id:caixaId,escopo:'loja',data:l.data,descricao:desc,contato:cont,obs:'Veio do Caixa Rocha ('+(LOJAS.find(x=>x.id===lojaAtual)?.nome.split(' — ')[0]||'')+') · lançado por '+PERFIL.nome,valor,valor_pago:0,status:'estornar',criado_por_nome:'CAIXA ROCHA · '+PERFIL.nome}).select('id').single();
+      const {data,error}=await c.from('contas').insert({caixinha_id:caixaId,escopo:'loja',data:l.data,descricao:desc,contato:cont,obs:'Veio do Fluxo ('+(LOJAS.find(x=>x.id===lojaAtual)?.nome.split(' — ')[0]||'')+') · lançado por '+PERFIL.nome,valor,valor_pago:0,status:'estornar',criado_por_nome:'FLUXO · '+PERFIL.nome}).select('id').single();
       if(error){err.innerHTML='<div class="err">Caixinha recusou: '+error.message+'</div>';btn.disabled=false;btn.textContent='Mandar pro Banco Caixinha';return;}
       contaId=data&&data.id;
       if(!contaId){const {data:d2}=await c.from('contas').select('id').eq('caixinha_id',caixaId).eq('data',l.data).eq('descricao',desc).eq('status','estornar').order('id',{ascending:false}).limit(1);contaId=d2&&d2[0]?d2[0].id:null;}
@@ -494,7 +494,7 @@
     const valor=Math.abs(Number(l.valor||0));const ab=cxAberto(ct);
     if(valor>ab+0.005&&!confirm(`A devolução (${BRL(valor)}) é maior que o em aberto (${BRL(ab)}). Marcar mesmo assim?`))return;
     const btn=document.getElementById('dvOk');btn.disabled=true;btn.textContent='Marcando...';
-    const pgs=(Array.isArray(ct.pagamentos)?ct.pagamentos.slice():[]);const ref='CAIXA ROCHA · '+(l.descricao||'').slice(0,60);pgs.push({v:valor,d:l.data,ref});
+    const pgs=(Array.isArray(ct.pagamentos)?ct.pagamentos.slice():[]);const ref='FLUXO · '+(l.descricao||'').slice(0,60);pgs.push({v:valor,d:l.data,ref});
     const novoPago=Number(ct.valor_pago||0)+valor;
     const {error}=await cxClient().from('contas').update({valor_pago:novoPago,status:'estornar',pagamentos:pgs,pago_ref:ref,pago_data:l.data,atualizado_em:new Date().toISOString()}).eq('id',ct.id);
     if(error){err.innerHTML='<div class="err">Caixinha recusou: '+error.message+'</div>';btn.disabled=false;btn.textContent='Marcar como devolvido';return;}
@@ -603,6 +603,31 @@
   function ehDono(){return PERFIL.papel==='dono';} // contas, saldo inicial, reabrir mês
   const PAPEL_NOME={dono:'Dono (tudo)',operador:'Operador (tudo menos contas e reabrir mês)',lancador:'Lançador (lança e corrige, não exclui)',contador:'Contador (só olha)'};
   // contato só é obrigatório quando a categoria for "Funcionários"
+  // um lançamento está PRONTO quando tem categoria definida, contato quando a categoria exige,
+  // e (se for do Banco Caixinha) já foi mandado/marcado lá
+  function lancPronto(l){const cat=l.categorias;if(!l.categoria_id||!cat||cat.grupo==='adef')return false;
+    if(categoriaExigeContato(l.categoria_id)&&!l.contato_id)return false;
+    const n=String(cat.nome||'').toUpperCase(),r=l.ref_externa||'';
+    if(n===CAT_ESTORNAR&&!r.startsWith('cxb:'))return false;if(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'))return false;return true;}
+  function faixaDiasHTML(){
+    const pref=`${ANO_FIXO}-${_mm(mesSel)}`;const dias={};
+    LANC.forEach(l=>{if((l.data||'').slice(0,7)!==pref||contaEhCaixinha(l.conta_id))return;const d=dias[l.data]=dias[l.data]||{t:0,ok:0};d.t++;if(lancPronto(l))d.ok++;});
+    const ult=new Date(ANO_FIXO,mesSel+1,0).getDate();let tot=0,ok=0,parou=null;
+    const chips=[];for(let i=1;i<=ult;i++){const iso=`${pref}-${String(i).padStart(2,'0')}`;const d=dias[iso];
+      if(d){tot+=d.t;ok+=d.ok;if(d.ok<d.t&&!parou)parou=iso;}
+      const sel=filtroDia===iso;const st=!d?'vazio':(d.ok===d.t?'ok':'falta');
+      const cor=st==='ok'?'var(--green)':(st==='falta'?'var(--amber)':'var(--line)');
+      chips.push(`<button onclick="filtroDia=${sel?"''":`'${iso}'`};render()" title="${isoParaBR(iso)}${d?` · ${d.ok} de ${d.t} pronto(s)`:' · sem lançamento'}" style="cursor:pointer;min-width:44px;padding:4px 2px;border-radius:8px;border:${sel?'2px solid var(--txt)':'1px solid '+cor};background:${st==='ok'?'rgba(61,214,140,.12)':(st==='falta'?'rgba(245,183,64,.14)':'transparent')};color:var(--txt);font-size:11px;line-height:1.25;font-family:inherit"><b style="font-size:12.5px">${i}</b><br><span style="color:${st==='vazio'?'var(--muted)':cor};font-weight:700">${!d?'—':(st==='ok'?'✓':`${d.ok}/${d.t}`)}</span></button>`);}
+    if(!tot)return '';
+    const pct=Math.round(ok/tot*100);
+    return `<div class="card" style="margin-bottom:12px;padding:12px 14px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><b style="font-size:13px">📅 Dia a dia de ${MESES_NOME[mesSel]}</b>
+        <span class="mut" style="font-size:12px">${ok} de ${tot} lançamentos prontos (${pct}%)</span>
+        ${parou?`<button class="btn" style="padding:4px 12px;font-size:12px;margin-left:auto" onclick="filtroDia='${parou}';render()">▶ Continuar de onde parou: dia ${parseInt(parou.slice(8),10)}</button>`:'<span style="margin-left:auto;color:var(--green);font-weight:700;font-size:12.5px">✓ Mês todo pronto</span>'}</div>
+      <div style="height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin-bottom:10px"><div style="height:100%;width:${pct}%;background:var(--green)"></div></div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">${chips.join('')}</div>
+      <p class="mut" style="font-size:11px;margin-top:8px">Verde ✓ = dia pronto · amarelo 4/5 = falta classificar · — = sem lançamento. <b>Pronto</b> = tem categoria (e contato quando é funcionário; e, se for Banco Caixinha, já foi mandado). Clique no dia pra ver só ele. Só conta o banco (Sicoob).</p></div>`;
+  }
   function categoriaExigeContato(catId){
     const c=CATS.find(x=>x.id==catId);
     return c && /funcion[áa]rio/i.test(c.nome);
@@ -692,6 +717,7 @@
         <span style="font-weight:700;font-size:14px;min-width:130px;text-align:center">${MESES_NOME[mesSel]} ${ANO_FIXO}</span>
         <button class="burger" style="width:32px;height:32px" title="Próximo mês" onclick="navMes(1)">›</button>
       </div>
+      ${faixaDiasHTML()}
       <div class="toolbar" style="position:sticky;top:64px;z-index:15;background:var(--bg);padding:8px 0">
         <div class="search">🔍<input id="buscaLanc" placeholder="Buscar por texto, contato ou valor..." value="${q}" oninput="filtrarLanc(this.value)"></div>
         <div style="display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:6px 10px">
@@ -750,7 +776,7 @@
     const nCx=LANC.filter(l=>contaEhCaixinha(l.conta_id)&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
     const chip=(v,txt)=>`<button class="btn ghost" style="padding:4px 10px;font-size:12px;${filtroConta===v?'border-color:var(--green);color:var(--green)':''}" onclick="filtroConta='${v}';render()">${txt}</button>`;
     const nSemCat=LANC.filter(l=>!l.categoria_id&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
-    return `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">${chip('','Todos')}${chip('banco','🏦 Sicoob')}${chip('caixinha',`💵 Caixinha antiga${nCx?` (${nCx})`:''}`)}${podeEditar()&&nSemCat?`<button class="btn" style="padding:4px 10px;font-size:12px;margin-left:auto" onclick="aplicarRegrasNoMes()">🔑 Aplicar regras nos ${nSemCat} sem categoria</button>`:''}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">lançados na aba Caixinha antiga do Caixa Rocha — conferir categoria e contato; o dinheiro físico agora mora no sistema Caixinha</span>':''}<span style="margin-left:auto;display:flex;gap:8px;align-items:center">${lentesStatusHTML()}</span></div>${(()=>{const pend=LANC.filter(l=>{const n=String((l.categorias&&l.categorias.nome)||'').toUpperCase();const r=l.ref_externa||'';return (n===CAT_ESTORNAR&&!r.startsWith('cxb:'))||(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'));});return pend.length?`<div class="note" style="border-color:rgba(245,183,64,.45);margin-bottom:10px">🔁 <b>${pend.length} lançamento(s) do Banco Caixinha ainda não ligado(s)</b> — clique no botão amarelo de cada um ("Mandar pro Banco Caixinha" ou "Marcar devolução"). É isso que mantém o em aberto das lojas certo sem ninguém apagar nada.</div>`:'';})()}
+    return `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">${chip('','Todos')}${chip('banco','🏦 Sicoob')}${chip('caixinha',`💵 Caixinha antiga${nCx?` (${nCx})`:''}`)}${podeEditar()&&nSemCat?`<button class="btn" style="padding:4px 10px;font-size:12px;margin-left:auto" onclick="aplicarRegrasNoMes()">🔑 Aplicar regras nos ${nSemCat} sem categoria</button>`:''}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">lançados na aba Caixinha antiga do Fluxo — conferir categoria e contato; o dinheiro físico agora mora no sistema Caixinha</span>':''}<span style="margin-left:auto;display:flex;gap:8px;align-items:center">${lentesStatusHTML()}</span></div>${(()=>{const pend=LANC.filter(l=>{const n=String((l.categorias&&l.categorias.nome)||'').toUpperCase();const r=l.ref_externa||'';return (n===CAT_ESTORNAR&&!r.startsWith('cxb:'))||(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'));});return pend.length?`<div class="note" style="border-color:rgba(245,183,64,.45);margin-bottom:10px">🔁 <b>${pend.length} lançamento(s) do Banco Caixinha ainda não ligado(s)</b> — clique no botão amarelo de cada um ("Mandar pro Banco Caixinha" ou "Marcar devolução"). É isso que mantém o em aberto das lojas certo sem ninguém apagar nada.</div>`:'';})()}
       <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12.5px;flex-wrap:wrap">
         <span class="mut">${rows.length} lançamento(s)</span>
         <span style="color:var(--green)">Entradas: ${BRL(somaE)}</span>
@@ -2033,7 +2059,7 @@
         <p class="mut" style="font-size:12px;margin-top:8px">Excluir e restaurar: dono e operador. Contas, saldo inicial e reabrir mês: só dono. Para trocar o papel de alguém, peça ao Lucas (é uma linha no banco).</p>
       </div>
       <div class="card" style="margin-top:16px"><div class="cardhead"><h3>ℹ️ Sobre</h3></div>
-        <p class="mut" style="font-size:13px;line-height:1.7;margin-top:6px">Sistema Financeiro do Grupo Rocha. Dados salvos com segurança no banco. Cada loja tem seus lançamentos; categorias e contatos são compartilhados.</p></div>`;
+        <p class="mut" style="font-size:13px;line-height:1.7;margin-top:6px">Fluxo — sistema financeiro do Grupo Rocha. Dados salvos com segurança no banco. Cada loja tem seus lançamentos; categorias e contatos são compartilhados.</p></div>`;
   }
   function toggleSinal(id){
     const b=document.getElementById('sinal'+id);
@@ -2149,9 +2175,9 @@
       if(m.tipo==='emprestimo')empTudo+=m.valor;else if(m.tipo==='reposicao')repTudo+=m.valor;
       if((m.data||'')<first){abertura+=v;if(m.tipo==='emprestimo')empAntes+=m.valor;else if(m.tipo==='reposicao')repAntes+=m.valor;}
       else if((m.data||'').slice(0,7)===pref){if(m.tipo==='entrada')ent+=m.valor;else if(m.tipo==='saida')sai+=m.valor;else if(m.tipo==='emprestimo')emp+=m.valor;else if(m.tipo==='reposicao')rep+=m.valor;else if(m.tipo==='deposito')dep+=m.valor;else if(m.tipo==='guardado')gua+=m.valor;}});
-    // IGUAL À TELA DO CAIXINHA: o emprestado é a situação dos empréstimos da loja (todos − reposições), mostrada em qualquer mês.
-    // Os empréstimos que já existiam foram registrados na abertura do Caixinha (31/08), então valem também para os meses antes disso.
-    const abEmp=Math.max(empTudo-repTudo,0), fimEmp=abEmp;
+    // IGUAL AO CAIXINHA v57 (aReceberAte): emprestado em 01/MM = empréstimos − reposições com data ANTES do dia 1º;
+    // no fim do mês = com data ATÉ o último dia. Qualquer contraparte. Nunca negativo.
+    const abEmp=Math.max(empAntes-repAntes,0), fimEmp=Math.max(empAntes+emp-(repAntes+rep),0);
     const fechamento=abertura+ent+rep+gua-sai-emp-dep;
     return {abertura,abEmp,empAntes,repAntes,ent,sai,emp,rep,dep,gua,fechamento,fimEmp,aReceber:fimEmp,totalAbertura:abertura+abEmp,totalFim:fechamento+fimEmp};
   }

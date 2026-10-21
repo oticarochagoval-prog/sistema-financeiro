@@ -1,8 +1,8 @@
-# Manual — o Caixa Rocha e o Caixinha conversando
+# Manual — o Fluxo e o Caixinha conversando
 
 Para Heloísa, Rhaiane e Carol. Tudo que liga os dois sistemas está aqui: o **Banco Caixinha** (empréstimos a estornar), as **Lentes** (boletos) e o **Caixa da gaveta**. Botão 🔗? na barra de cima abre esta página.
 
-> 💡 **Regra de ouro:** passou pelo extrato do Sicoob, o Caixa Rocha vê. Foi dinheiro da gaveta, só o Caixinha vê. Quando as duas coisas acontecem com o mesmo dinheiro, os dois sistemas precisam se falar — e é isso que esta página explica.
+> 💡 **Regra de ouro:** passou pelo extrato do Sicoob, o Fluxo vê. Foi dinheiro da gaveta, só o Caixinha vê. Quando as duas coisas acontecem com o mesmo dinheiro, os dois sistemas precisam se falar — e é isso que esta página explica.
 
 ## 1. Banco Caixinha: empréstimo a estornar (o que mais pede atenção)
 
@@ -17,7 +17,7 @@ Para Heloísa, Rhaiane e Carol. Tudo que liga os dois sistemas está aqui: o **B
 | 1 | Importar extrato | A linha vem com a categoria **A ESTORNAR (BANCO CAIXINHA)** sozinha quando a descrição tem ESTORNAR, XT, VAI ESTORNAR ou CARTÃO AZUL. Se não vier, escolha a categoria na mão. |
 | 2 | Lançamentos | O lançamento aparece com o botão amarelo **🔁 Mandar pro Banco Caixinha**. Clique. |
 | 3 | Janela que abre | Confira a **loja que deve** (ele lê R8 / ROCHA 8 da descrição; se não achar, escolha), a descrição e quem vai estornar. Clique em **Mandar**. |
-| 4 | Pronto | O empréstimo nasce na aba Banco do Caixinha, na loja certa, com descrição, valor e data iguais, e a observação "Veio do Caixa Rocha". Aqui o lançamento ganha **🔁 no Banco Caixinha ✓**. |
+| 4 | Pronto | O empréstimo nasce na aba Banco do Caixinha, na loja certa, com descrição, valor e data iguais, e a observação "Veio do Fluxo". Aqui o lançamento ganha **🔁 no Banco Caixinha ✓**. |
 
 > ✅ Se a Heloísa já tinha anotado esse empréstimo no Caixinha, o sistema avisa ("já existe um de R$ 781,82 nessa loja") e **liga** ao que existe, sem criar outro.
 
@@ -28,7 +28,7 @@ Para Heloísa, Rhaiane e Carol. Tudo que liga os dois sistemas está aqui: o **B
 | Como devolveu | Onde aparece | O que fazer |
 | --- | --- | --- |
 | **Pelo banco** (transferência/depósito no Sicoob) | No extrato, como entrada | Categoria **ESTORNO RECEBIDO (BANCO CAIXINHA)** → botão **↩ Marcar devolução no Caixinha** → escolha a loja e o empréstimo (ele já marca o de mesmo valor) → **Marcar como devolvido**. O Banco Caixinha baixa sozinho. |
-| **Em dinheiro** (a Rhaiane recolheu) | Só no Caixinha | Registrar o estorno no Caixinha, como sempre. No Caixa Rocha não aparece nada — o dinheiro não entrou no banco. |
+| **Em dinheiro** (a Rhaiane recolheu) | Só no Caixinha | Registrar o estorno no Caixinha, como sempre. No Fluxo não aparece nada — o dinheiro não entrou no banco. |
 
 > ✅ Devolução parcial funciona: marca os R$ 300 que entraram e o resto continua em aberto lá.
 
@@ -36,14 +36,14 @@ Para Heloísa, Rhaiane e Carol. Tudo que liga os dois sistemas está aqui: o **B
 
 - As duas categorias são **neutras**: não entram no DRE da loja que pagou. A despesa de verdade (a CEMIG) é da Rocha 8 e entra no DRE dela pelo Caixinha.
 - Nunca lance pagamento do escritório como despesa da loja que pagou. Isso infla o custo dela e esconde a dívida da outra.
-- O Caixinha continua **dono do "em aberto"**. O Caixa Rocha só cria, liga e marca — sempre com você clicando. Nada acontece sozinho nessa parte.
+- O Caixinha continua **dono do "em aberto"**. O Fluxo só cria, liga e marca — sempre com você clicando. Nada acontece sozinho nessa parte.
 - Só quem tem acesso de lançador pra cima vê os botões. O que foi mandado fica com o nome de quem mandou.
 
 ## 2. Lentes: o boleto vem sozinho
 
-Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados na aba **Lentes** do Caixinha, com foto. O Caixa Rocha **espelha** cada boleto pago como uma saída da loja.
+Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados na aba **Lentes** do Caixinha, com foto. O Fluxo **espelha** cada boleto pago como uma saída da loja.
 
-| O que acontece | Como fica no Caixa Rocha |
+| O que acontece | Como fica no Fluxo |
 | --- | --- |
 | Boleto pago registrado no Caixinha | Saída na loja, categoria **Lentes/Laboratório**, contato = fornecedor, data do pagamento, link **📎 boleto**, etiqueta **🔗 Lentes** |
 | Editou valor ou data no Caixinha | Atualiza aqui sozinho |
@@ -51,7 +51,7 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 | O boleto já estava lançado aqui (na mão ou pelo extrato) | **Liga** ao que existe, não duplica |
 | Na importação do extrato, a linha do banco bate com um boleto já espelhado | Vem marcada "🔗 já lançado pelas Lentes" e não entra de novo |
 
-- Acontece sozinho ao abrir o Caixa Rocha (quem estiver logado no Caixinha naquele computador) e no botão **↻ Atualizar Lentes** em Lançamentos. A barrinha diz quantos boletos leu.
+- Acontece sozinho ao abrir o Fluxo (quem estiver logado no Caixinha naquele computador) e no botão **↻ Atualizar Lentes** em Lançamentos. A barrinha diz quantos boletos leu.
 - Pega boletos **pagos** a partir de 01/09/2026. Boleto **previsto** (ainda não pago, ou com data futura) não entra; quando virar pago no Caixinha, entra no próximo Atualizar. Se um boleto espelhado voltar a previsto, sai daqui pra Lixeira. Saldo anterior e "Compras" não entram.
 
 > ⛔ Não corrija valor ou data de um lançamento 🔗 Lentes aqui — corrija no Caixinha, que aqui acompanha. Categoria e contato podem ser ajustados aqui.
@@ -71,7 +71,7 @@ A aba **Caixinha (espelho)** mostra, loja por loja, o que o sistema Caixinha cal
 | Número | Como é calculado |
 | --- | --- |
 | Dinheiro no caixa numa data | (entradas + reposições + guardado) − (saídas + empréstimos + depósitos), até essa data |
-| Emprestado a receber numa data | empréstimos − reposições até essa data, **qualquer contraparte** (loja, pessoa ou em branco); nunca negativo |
+| Emprestado a receber numa data | empréstimos − reposições **com data até esse dia**, qualquer contraparte (loja, pessoa ou em branco); nunca negativo. Igual ao Caixinha (versão 57). Os empréstimos antigos foram registrados na abertura do Caixinha, em 31/08, então aparecem a partir de agosto |
 | Abertura do mês | dinheiro + emprestado, com tudo que aconteceu **antes** do dia 1º |
 | Total no fim do mês | dinheiro + emprestado, com tudo até o último dia |
 
@@ -81,9 +81,9 @@ Só caixinhas do tipo loja; lançamentos excluídos ficam de fora. O Fechamento 
 
 | Nome | O que é | Onde mora | Quem mexe |
 | --- | --- | --- | --- |
-| **Banco Sicoob** | A conta de verdade da loja | Caixa Rocha | Heloísa (extrato, lançamentos) |
+| **Banco Sicoob** | A conta de verdade da loja | Fluxo | Heloísa (extrato, lançamentos) |
 | **Caixa (gaveta)** | Dinheiro físico da loja | Caixinha | Lojas lançam, Rhaiane confere |
-| **Banco Caixinha** | O que as lojas devem ao escritório (a estornar) | Caixinha, alimentado pelo Caixa Rocha | Heloísa, pelos botões 🔁 e ↩ |
+| **Banco Caixinha** | O que as lojas devem ao escritório (a estornar) | Caixinha, alimentado pelo Fluxo | Heloísa, pelos botões 🔁 e ↩ |
 
 ## Perguntas rápidas
 
@@ -101,6 +101,7 @@ Só caixinhas do tipo loja; lançamentos excluídos ficam de fora. O Fechamento 
 | Data | Versão | O que mudou |
 | --- | --- | --- |
 | 21/10/2026 | 1.9.10 | Regra oficial do emprestado a receber (qualquer contraparte) e "dinheiro + emprestado = total" na abertura e no fim do mês |
+| 21/10/2026 | 1.11 | O sistema financeiro passou a se chamar **Fluxo** |
 | 21/10/2026 | 1.9.4 | Trava: linha "LENTES…" sem ligação que bate com previsto vai pra Lixeira sozinha |
 | 21/10/2026 | 1.9.3 | Botão "✕ não foi pago" na linha 🔗 Lentes |
 | 21/10/2026 | 1.9.2 | Lentes: previsto/apagado sai pra Lixeira em qualquer caso; linha do extrato só ligada continua |
