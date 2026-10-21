@@ -226,7 +226,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.0', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.0.1', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -398,7 +398,7 @@
     const M=`${ANO_FIXO}-${_mm(mesSel)}`,mesNome=MESES_NOME[mesSel],mesAntNome=MESES_NOME[(mesSel+11)%12],loja=lojaNomeCurto(lojaAtual),hoje=new Date().toISOString().slice(0,10);
     let esp,R0,erroCt='',erroSb='';
     try{esp=await sipagEsperado(loja,M);}catch(e){erroCt=e.message||String(e);esp={E:[],extras:[],avisos:[],ecs:[]};}
-    try{const {data,error}=await sb.from('sipag_lancamentos').select('*').eq('loja_id',lojaAtual).gte('data',M+'-01').lte('data',M+'-31').order('data');if(error)throw error;R0=data||[];}catch(e){erroSb=e.message||String(e);R0=[];}
+    try{const {data,error}=await sb.from('sipag_lancamentos').select('*').eq('loja_id',lojaAtual).gte('data',M+'-01').lte('data',`${M}-${String(new Date(Number(M.slice(0,4)),Number(M.slice(5,7)),0).getDate()).padStart(2,'0')}`).order('data');if(error)throw error;R0=data||[];}catch(e){erroSb=e.message||String(e);R0=[];}
     const lix=R0.filter(r=>String(r.origem_ref||'').startsWith('lix:'));
     const R=R0.filter(r=>!String(r.origem_ref||'').startsWith('lix:')).map(r=>Object.assign({},r,{valor:Number(r.valor)}));
     const res=conciliarSipag(esp.E,R);_concSip={M,res,R};
