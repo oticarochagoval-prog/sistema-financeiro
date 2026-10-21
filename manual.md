@@ -1,6 +1,6 @@
 # Como fechar o mês no Fluxo
 
-Atualizado em 21/10/2026 · versão do sistema 1.11 · o Fluxo se chamava "Caixa Rocha" até a versão 1.10
+Atualizado em 22/10/2026 · versão do sistema 2.0 · o Fluxo se chamava "Caixa Rocha" até a versão 1.10
 
 ## A escada
 
@@ -162,6 +162,54 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 - Na importação do extrato, a linha do banco que bate com um boleto já espelhado vem marcada **"🔗 já lançado pelas Lentes"** e não entra de novo.
 - Saldo anterior e "Compras" da aba Lentes não entram — só boletos **pagos**, a partir de 01/09/2026. Boleto **previsto** (ainda não pago, ou com data futura) não entra; quando for marcado como pago no Caixinha, entra no próximo Atualizar.
 
+## Saldo do dia 1º (Dashboard, Lançamentos e Fechamento)
+
+Ao lado do mês aparece **💰 Saldo em 01/MM** da loja: **🏦 Sicoob + 💵 Gaveta + 🤝 Emprestado a receber = Total**. À direita, separado e **fora do total**, o **🔁 Deve ao escritório** (Banco Caixinha: contas que o escritório pagou pela loja e ela vai devolver). Mudou o mês, muda o saldo.
+
+- O Sicoob vem da escada: com o mês anterior **fechado**, é o saldo real do banco. Sem mês anterior fechado aparece "(estimado)".
+- Gaveta, emprestado e Banco Caixinha vêm do Caixinha (é preciso ter entrado no Caixinha uma vez naquele computador).
+- Saldo "de hoje" fica pra quando o extrato cair todo dia pela API — até lá ele poderia mostrar número errado.
+
+## Importar o extrato (OFX) — a partir da v2.0
+
+O lançamento do Sicoob volta a ser **pelo extrato**. Ninguém precisa redigitar linha por linha.
+
+1. **Importar extrato** → escolha o arquivo **.OFX** da loja (Sicoob → extrato → salvar em OFX).
+2. O Fluxo compara cada linha com o que **já está lançado**: mesmo código do banco (importado antes) ou **digitado à mão com a mesma data e o mesmo valor**. Essas linhas **não entram de novo**; as digitadas só ganham o código do banco.
+3. Na tela aparecem só as linhas que **precisam de você** (em amarelo). O resto vem **agrupado e fechado**: ✓ já lançados · 💳 Cartão · 💸 Pix de clientes · 🏧 depósitos da gaveta · ⇆ transferências · 🔑 palavras-chave. Clique num grupo pra abrir, se quiser conferir.
+4. **Confirmar** lança as novas e liga as que já existiam.
+
+**O sistema aprende:** classificou uma linha nova (ex.: "FORNECEDOR XYZ" → Material), ele aplica na hora nas outras linhas iguais do mesmo extrato e mostra **🔑 Lembrar sempre**. Clicou, na próxima importação já vem classificado. A barra verde mostra quanto falta ("faltam 1 de 3").
+
+**Sem mouse:** na busca de categoria ou contato, digite parte do nome, use **↑ ↓** pra escolher e **Enter** (ou Tab) pra confirmar.
+
+> ✅ **Nada do extrato é ignorado nem excluído.** Pix de cliente, depósito da gaveta e transferência entre lojas entram **sozinhos** como **neutros**: não mexem no resultado nem no Dashboard, só fazem a escada do banco bater.
+
+> ⚠️ Linha que não é dessa loja (cliente pagou na conta errada, Pix devolvido, troca por cartão) **não se exclui**: entrada como **Pix de cliente** e saída como **Transferência entre lojas** ou **Devolução a cliente**. As duas se anulam.
+
+## Neutras: dinheiro que passa, mas não é venda nem despesa
+
+| Categoria neutra | Quando |
+| --- | --- |
+| **PIX DE CLIENTE — VENDA NA LINX** | Pix recebido de cliente. A venda já está contada na Linx; aparece só porque o dinheiro entrou no banco. |
+| **DEPÓSITO DA GAVETA (CAIXINHA)** | Dinheiro da caixinha levado ao banco. |
+| **Transferência entre lojas** | Dinheiro de uma loja pra outra (inclusive Pix que caiu na loja errada e foi repassado). |
+| **DEVOLUÇÃO A CLIENTE** | Pix devolvido, cliente trocou por cartão, compra cancelada. |
+| **A ESTORNAR / ESTORNO RECEBIDO (BANCO CAIXINHA)** | Escritório pagou conta de outra loja / a loja devolveu. |
+
+Onde aparecem: **não** entram em receitas, despesas, Dashboard nem DRE. Entram só na **escada do banco** (Fechamento), separadas: "despesas da loja R$ X · neutras R$ Y". No **Dashboard** tem o quadro **⇄ Neutras do mês**, com cada lançamento, data e valor (entrada em verde, saída em vermelho).
+
+## Cartão × Sipag (conciliação)
+
+Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito por depósito, o que o **Cartões Rocha** previu com o que **caiu no Sicoob**.
+
+- **Antecipação:** as vendas de um mês caem no **começo do mês seguinte**, em vários depósitos (Master, Visa, Elo — às vezes o mesmo cartão em dois). O Fluxo casa um a um; se a Sipag juntou ou separou, casa pela **soma do dia**.
+- **Débito:** cai no dia seguinte à venda; casa pela agenda do Detalhado.
+- **✓** bateu · **✕** esperava e não caiu · **?** caiu sem estar previsto · **⏳** ainda vai cair.
+- O resultado fica gravado (com a mesma chave do Cartões), e o Cartões Rocha pode ler pra marcar sozinho.
+- O que for **digitado na conferência do Cartões** aparece aqui como "aguardando extrato", mas **não vira lançamento** no Fluxo: dinheiro só entra pelo extrato.
+- **⤓ Trazer os cartões já lançados** copia pra conciliação os créditos de cartão já lançados desde 01/06 — inclusive os digitados à mão e os que estão na **Lixeira** (que aparecem num quadro vermelho: se algum é o que falta, restaure).
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -187,6 +235,7 @@ Os boletos de lentes (Shinedux, Perego, Optview, Unióptica…) são registrados
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.0 | Importação do OFX volta: liga ao que já foi digitado (não duplica), agrupa o que já está classificado, Pix/depósito/transferência entram sozinhos como neutros (nada ignorado); conciliação **Cartão × Sipag** com o Cartões Rocha; importação aprende ("Lembrar sempre") e busca de categoria/contato com setas e Enter; **Saldo em 01/MM** (Sicoob + gaveta + emprestado = total; Banco Caixinha à parte) no Dashboard, Lançamentos e Fechamento; quadro **Neutras do mês** no Dashboard; escada separa despesas de neutras; corrigida regra antiga que classificava "PAG…" como Cartão | O extrato volta a ser a fonte; a escada passa a bater sem excluir nada |
 | 21/10/2026 | 1.11 | O sistema passou a se chamar **Fluxo** (antes "Caixa Rocha"), pra não confundir com o Caixinha. Endereço, logins e dados continuam os mesmos | Nenhum |
 | 21/10/2026 | 1.10 | Lançamentos ganhou o "Dia a dia do mês": cada dia mostra ✓ (pronto) ou 4/5 (falta classificar), a barra do mês e o botão "Continuar de onde parou" | Quem para no meio sabe onde retomar; o mês só fecha quando tudo estiver verde |
 | 21/10/2026 | 1.9.13 | Espelho da gaveta alinhado ao Caixinha versão 57: o emprestado respeita a data (aparece a partir do mês em que foi lançado) | Fluxo e Caixinha mostram o mesmo número em todo mês |
