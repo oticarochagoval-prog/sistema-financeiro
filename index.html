@@ -226,7 +226,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.0.4', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.0.6', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -407,9 +407,9 @@
     const M=`${ANO_FIXO}-${_mm(mesSel)}`,mesNome=MESES_NOME[mesSel],mesAntNome=MESES_NOME[(mesSel+11)%12],loja=lojaNomeCurto(lojaAtual),hoje=new Date().toISOString().slice(0,10);
     let esp,R0,erroCt='',erroSb='';
     try{esp=await sipagEsperado(loja,M);}catch(e){erroCt=e.message||String(e);esp={E:[],extras:[],avisos:[],ecs:[]};}
-    try{const {data,error}=await sb.from('sipag_lancamentos').select('*').eq('loja_id',lojaAtual).gte('data',M+'-01').lte('data',`${M}-${String(new Date(Number(M.slice(0,4)),Number(M.slice(5,7)),0).getDate()).padStart(2,'0')}`).order('data');if(error)throw error;R0=data||[];}catch(e){erroSb=e.message||String(e);R0=[];}
+    try{const lido=await sipagLerMes(M,lojaAtual);if(lido.erro)throw new Error(lido.erro);R0=lido.R;}catch(e){erroSb=e.message||String(e);R0=[];}
     const lix=R0.filter(r=>String(r.origem_ref||'').startsWith('lix:'));
-    const R=R0.filter(r=>!String(r.origem_ref||'').startsWith('lix:')).map(r=>Object.assign({},r,{valor:Number(r.valor)}));
+    const R=sipagClassificar(R0.filter(r=>!String(r.origem_ref||'').startsWith('lix:')),esp.E);
     const res=conciliarSipag(esp.E,R);_concSip={M,res,R};
     // grava a conferência na tabela (o Cartões Rocha lê daqui)
     if(podeEditar()&&!erroSb){const casou={};res.pares.forEach(p=>{const ks=p.e.map(e=>e.k).join(',');p.r.forEach(r=>{casou[r.id]=ks;});});
@@ -439,7 +439,7 @@
     const outros=Ro.length?`<div class="card" style="margin-bottom:12px"><b style="font-size:13.5px">Outros créditos Sipag do mês</b> <span class="mut" style="font-size:12px">(parcelas de crédito, estornos — o Cartões não prevê esses)</span><div style="margin-top:6px;font-size:12.5px;line-height:1.8">${Ro.map(r=>`${({credito_parcela:'parcela de crédito',estorno:'estorno',outro:'Sipag'})[r.tipo]||r.tipo} · ${rTxt(r)}`).join('<br>')}</div></div>`:'';
     const lixHTML=lix.length?`<div class="card" style="margin-bottom:12px;border-color:rgba(255,92,92,.35)"><b style="font-size:13.5px;color:var(--red)">🗑 Créditos de cartão que estão na Lixeira</b> <span class="mut" style="font-size:12px">— se algum desses é o que está faltando acima, restaure na Lixeira</span><div style="margin-top:6px;font-size:12.5px;line-height:1.8">${lix.map(r=>`${isoParaBR(r.data).slice(0,5)} · <b>${BRL(Number(r.valor))}</b> <span class="mut">${(r.descricao||'').replace('[NA LIXEIRA] ','').slice(0,60)}</span>`).join('<br>')}</div></div>`:'';
     const extrasHTML=esp.extras.length?`<div class="card" style="margin-bottom:12px"><b style="font-size:13.5px">✍️ Digitados na conferência do Cartões</b> <span class="mut" style="font-size:12px">— aparecem aqui como "aguardando extrato"; não viram lançamento no Fluxo</span><div style="margin-top:6px;font-size:12.5px;line-height:1.8">${esp.extras.map(x=>x.legado?`antecipação inteira marcada ✓${x.valor?' ('+x.valor+')':''} · vendas de ${x.mesV}`:`${x.data?isoParaBR(x.data).slice(0,5):'—'} · ${x.tipo==='d'?'débito':'antecipação'} <b>${x.valor}</b> · aguardando extrato`).join('<br>')}</div></div>`:'';
-    c.innerHTML=`<div class="note">💳 <b>Cartão × Sipag</b> — o que o Cartões Rocha diz que ia cair × o que caiu no Sicoob, depósito por depósito. Lembre: <b>a antecipação das vendas de ${mesAntNome} cai no começo de ${mesNome}</b>; o débito cai no dia seguinte à venda.</div>
+    c.innerHTML=`<div class="note">💳 <b>${mesNome} no Fluxo = o que caiu no banco em ${mesNome}:</b> a <b>antecipação das vendas de ${mesAntNome}</b> (cai no começo de ${mesNome}) + os <b>débitos das vendas de ${mesNome}</b> (caem no dia seguinte a cada venda).<br><span style="opacity:.85">No Cartões Rocha o mês é o das <b>vendas</b>: a antecipação das vendas de ${mesNome} aparece aqui na tela de <b>${MESES_NOME[(mesSel+1)%12]}</b>. Os débitos de ${mesNome} só dá pra conferir dia a dia depois que o mês fecha e o Detalhado de vendas sobe no Cartões.</span></div>
       ${seletorMes()}
       <div id="cartoesTodas"></div>
       <div style="font-size:13px;font-weight:700;margin:6px 0 10px;display:flex;align-items:center;gap:7px">🔎 DETALHE DA LOJA: ${loja.toUpperCase()} <span class="mut" style="font-weight:400;font-size:12px">— depósito por depósito (troque a loja lá em cima ou clique numa linha do quadro)</span></div>
@@ -455,6 +455,36 @@
       <p class="mut" style="font-size:11.5px">✓ = bateu (mesmo valor, até 3 dias de diferença; ou a soma do dia, porque a Sipag junta e separa depósitos) · ✕ = esperava e não caiu · ? = caiu sem estar previsto · ⏳ = ainda vai cair. A marcação fica gravada e o Cartões Rocha pode ler.</p>`;    preencherCartoesTodas().catch(e=>console.error('cartoes todas',e));
   }
 
+
+  // ---- cartões lançados no mês → conciliação, automático (não precisa mais clicar em "Trazer") ----
+  function catEhCartao(id){const c=CATS.find(x=>x.id===id);return !!c&&c.grupo!=='neutra'&&/CART[AÃ]O|SIPAG|ANTECIPA/i.test(c.nome||'');}
+  function lancEhCartao(l){return Number(l.valor)>0&&(CARTAO_RE.test(l.descricao||'')||catEhCartao(l.categoria_id));}
+  // copia pra sipag_lancamentos os créditos de cartão do mês que ainda não estão lá; devolve {id: lançamento} dos que existem hoje
+  async function sipagSyncMes(M,soLoja){
+    const fimM=`${M}-${String(new Date(Number(M.slice(0,4)),Number(M.slice(5,7)),0).getDate()).padStart(2,'0')}`;
+    let lancs=[];
+    for(let de=0;;de+=1000){let q=sb.from('lancamentos').select('id,loja_id,data,valor,descricao,fitid,categoria_id').gte('data',M+'-01').lte('data',fimM).gt('valor',0);
+      if(soLoja)q=q.eq('loja_id',soLoja);const {data,error}=await q.order('id').range(de,de+999);if(error)return null;lancs=lancs.concat(data||[]);if(!data||data.length<1000)break;}
+    const vivos={};lancs.filter(lancEhCartao).forEach(l=>{vivos[l.id]=l;});
+    if(podeEditar()){const rows=Object.values(vivos).map(l=>{const inf=sipagInfo(l.descricao,Number(l.valor))||{tipo:'outro'};
+        return {loja:lojaNomeCurto(l.loja_id),loja_id:l.loja_id,data:l.data,valor:Number(l.valor),descricao:(l.descricao||'').slice(0,300),tipo:inf.tipo,origem:l.fitid?'ofx':'digitado',origem_ref:l.fitid||('lanc:'+l.id),lancamento_id:l.id,criado_por:USER.id};});
+      for(let i=0;i<rows.length;i+=200){try{await sb.from('sipag_lancamentos').upsert(rows.slice(i,i+200),{onConflict:'origem_ref',ignoreDuplicates:true});}catch(e){}}}
+    return vivos;
+  }
+  // lê os créditos de cartão do mês já prontos pra conferir: digitado apagado/mudado some, valor/data do digitado vêm do lançamento de hoje,
+  // e o que não tem a palavra (só a categoria Cartão) vira antecipação ou débito pela data
+  async function sipagLerMes(M,soLoja){
+    const vivos=await sipagSyncMes(M,soLoja);
+    const fimM=`${M}-${String(new Date(Number(M.slice(0,4)),Number(M.slice(5,7)),0).getDate()).padStart(2,'0')}`;
+    let q=sb.from('sipag_lancamentos').select('*').gte('data',M+'-01').lte('data',fimM);if(soLoja)q=q.eq('loja_id',soLoja);
+    const {data,error}=await q.order('data').limit(5000);if(error)return {erro:error.message||String(error),R:[]};
+    const R=[];(data||[]).forEach(r=>{const ref=String(r.origem_ref||'');
+      if(ref.startsWith('lanc:')){if(!vivos)return R.push(r);const v=vivos[r.lancamento_id];if(!v)return;r=Object.assign({},r,{valor:Number(v.valor),data:v.data});}
+      R.push(Object.assign({},r,{valor:Number(r.valor)}));});
+    return {R:R.filter(r=>r.data>=M+'-01'&&r.data<=fimM)};
+  }
+  function sipagClassificar(R,E){const datasA=E.filter(e=>e.t==='a').map(e=>e.data);
+    return R.map(r=>r.tipo!=='outro'?r:Object.assign({},r,{tipo:datasA.some(d=>_dias(d,r.data)<=3)?'antecipacao':'debito'}));}
   // ---- CARTÕES DO MÊS: previsto (Cartões Rocha) × caiu (extrato) ----
   // Dashboard = só a loja escolhida · tela Cartão × Sipag = todas as lojas
   let _ctDashSeq=0,_ctTodasSeq=0;
@@ -465,16 +495,15 @@
   async function cartoesLinhas(M,soLoja){
     const hoje=new Date().toISOString().slice(0,10),mesHoje=hoje.slice(0,7);
     const fimM=`${M}-${String(new Date(Number(M.slice(0,4)),Number(M.slice(5,7)),0).getDate()).padStart(2,'0')}`;
-    let q=sb.from('sipag_lancamentos').select('id,loja_id,data,valor,tipo,origem_ref').gte('data',M+'-01').lte('data',fimM);
-    if(soLoja)q=q.eq('loja_id',soLoja);
-    const {data:R0,error}=await q.limit(5000);if(error)return {erroSb:error.message||String(error),linhas:[]};
+    const lido=await sipagLerMes(M,soLoja);if(lido.erro)return {erroSb:lido.erro,linhas:[]};const R0=lido.R;
     const soma=_ctSoma,linhas=[];
     for(const L of LOJAS.filter(l=>!soLoja||l.id===soLoja)){
       const curta=lojaNomeCurto(L.id);let esp;
       try{esp=await sipagEsperado(curta,M);}catch(e){return {erroCt:e.message||String(e),linhas:[]};}
       if(!esp.ecs.length)continue;
-      const R=(R0||[]).filter(r=>r.loja_id===L.id&&!String(r.origem_ref||'').startsWith('lix:')).map(r=>Object.assign({},r,{valor:Number(r.valor)}));
-      const E=esp.E;if(!E.length&&!R.length&&!(esp.debTotal>0))continue;
+      const E=esp.E;
+      const R=sipagClassificar((R0||[]).filter(r=>r.loja_id===L.id&&!String(r.origem_ref||'').startsWith('lix:')),E);
+      if(!E.length&&!R.length&&!(esp.debTotal>0))continue;
       const res=conciliarSipag(E,R);
       const ev=e=>e.sub==='eventual';
       const Ea=E.filter(e=>e.t==='a'&&e.data<=hoje),Ed=E.filter(e=>e.t==='d'&&e.data<=hoje);
@@ -603,10 +632,10 @@
     if(!podeExcluir())return;
     if(!confirm('Copiar pra conciliação todos os créditos de cartão já lançados desde 01/06/2026, de todas as lojas (inclusive os digitados à mão e os que estão na Lixeira)?\n\nNão muda nenhum lançamento. Pode repetir: não duplica.'))return;
     toast('Lendo os lançamentos...','ok');
-    let lancs=[];for(let de=0;;de+=1000){const {data,error}=await sb.from('lancamentos').select('id,loja_id,data,valor,descricao,fitid').gte('data','2026-06-01').gt('valor',0).order('id').range(de,de+999);if(error){toast('Erro: '+error.message,'erro');return;}lancs=lancs.concat(data||[]);if(!data||data.length<1000)break;}
+    let lancs=[];for(let de=0;;de+=1000){const {data,error}=await sb.from('lancamentos').select('id,loja_id,data,valor,descricao,fitid,categoria_id').gte('data','2026-06-01').gt('valor',0).order('id').range(de,de+999);if(error){toast('Erro: '+error.message,'erro');return;}lancs=lancs.concat(data||[]);if(!data||data.length<1000)break;}
     const {data:lx}=await sb.from('lixeira').select('id,loja_id,dados,restaurado_em').is('restaurado_em',null).limit(5000);
     const rows=[];
-    lancs.filter(l=>CARTAO_RE.test(l.descricao||'')).forEach(l=>{const inf=sipagInfo(l.descricao,Number(l.valor))||{tipo:'outro'};rows.push({loja:lojaNomeCurto(l.loja_id),loja_id:l.loja_id,data:l.data,valor:Number(l.valor),descricao:(l.descricao||'').slice(0,300),tipo:inf.tipo,origem:l.fitid?'ofx':'digitado',origem_ref:l.fitid||('lanc:'+l.id),lancamento_id:l.id,criado_por:USER.id});});
+    lancs.filter(lancEhCartao).forEach(l=>{const inf=sipagInfo(l.descricao,Number(l.valor))||{tipo:'outro'};rows.push({loja:lojaNomeCurto(l.loja_id),loja_id:l.loja_id,data:l.data,valor:Number(l.valor),descricao:(l.descricao||'').slice(0,300),tipo:inf.tipo,origem:l.fitid?'ofx':'digitado',origem_ref:l.fitid||('lanc:'+l.id),lancamento_id:l.id,criado_por:USER.id});});
     (lx||[]).forEach(x=>{const d=x.dados||{};if(!(Number(d.valor)>0)||!(d.data>='2026-06-01')||!CARTAO_RE.test(d.descricao||''))return;const inf=sipagInfo(d.descricao,Number(d.valor))||{tipo:'outro'};rows.push({loja:lojaNomeCurto(x.loja_id),loja_id:x.loja_id,data:d.data,valor:Number(d.valor),descricao:('[NA LIXEIRA] '+(d.descricao||'')).slice(0,300),tipo:inf.tipo,origem:'digitado',origem_ref:'lix:'+x.id,lancamento_id:null,criado_por:USER.id});});
     let ok=0,erroMsg='';for(let i=0;i<rows.length;i+=200){const {error}=await sb.from('sipag_lancamentos').upsert(rows.slice(i,i+200),{onConflict:'origem_ref',ignoreDuplicates:true});if(error){erroMsg=error.message;break;}ok+=Math.min(200,rows.length-i);}
     toast(erroMsg?('Erro: '+erroMsg):`💳 ${ok} créditos de cartão copiados pra conciliação (os repetidos foram pulados).`,erroMsg?'erro':'ok');render();
@@ -946,7 +975,7 @@
 
   function render(){
     const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
-    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao'){painelAtrasoLojas();preencherCartoesDash().catch(e=>console.error('cartoes dash',e));}if(['visao','lanc','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
+    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao')preencherCartoesDash().catch(e=>console.error('cartoes dash',e));if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   let mesSel=new Date().getMonth();let _keepY=null;
@@ -954,7 +983,9 @@
     document.getElementById('content').innerHTML=`<div class="note soon">🚧 <b>${TITLES[page]||'Essa tela'}</b> ainda não está conectada ao banco. Vamos ligar numa próxima etapa! Por enquanto use <b>Lançamentos</b>, <b>Categorias</b> e <b>Contatos</b>, que já salvam de verdade.</div><div class="card empty"><div class="big">🚧</div>Em breve</div>`;
   }
 
-  async function viewLanc(){
+  // Lançamentos: depois de desenhar (inclusive após salvar/editar/excluir), atualiza o saldo do dia 1º e os cartões da loja
+  async function viewLanc(){await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));}
+  async function viewLancBase(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando lançamentos...</div>';
     await carregarLancamentos();
     const opts=catsOptions();const contaOpts=CONTAS.filter(c=>!/caixinha/i.test(c.nome)).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
@@ -1024,6 +1055,7 @@
         <button class="burger" style="width:32px;height:32px" title="Próximo mês" onclick="navMes(1)">›</button>
       </div>
       <div id="saldoDia1" style="margin-bottom:12px"></div>
+      <div id="cartoesDash"></div>
       ${faixaDiasHTML()}
       <div class="toolbar" style="position:sticky;top:64px;z-index:15;background:var(--bg);padding:8px 0">
         <div class="search">🔍<input id="buscaLanc" placeholder="Buscar por texto, contato ou valor..." value="${q}" oninput="filtrarLanc(this.value)"></div>

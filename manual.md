@@ -214,7 +214,11 @@ Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito po
 
 **Cada mês mostra o que cai no banco naquele mês.** Em **Outubro** aparece a antecipação das **vendas de setembro** (cai em 01/10). Em **Setembro**, a das vendas de agosto. O valor da antecipação não é previsão: é o que **tem que cair**.
 
-**No Dashboard: só a loja escolhida lá em cima.** É um quadro pequeno, abaixo do **Saldo do dia 1º**.
+**No Dashboard e nos Lançamentos: só a loja escolhida lá em cima.** É um quadro pequeno, abaixo do **Saldo do dia 1º**. Nos Lançamentos ele se atualiza a cada lançamento salvo: dá para ir lançando e ver o vermelho sumir.
+
+**Automático (v2.0.5):** não precisa mais clicar em "Trazer os cartões já lançados". Todo crédito de cartão lançado no mês entra sozinho na conferência, tanto pela descrição (SIPAG, antecipação…) quanto pela **categoria Cartão**. Se um digitado for corrigido ou apagado, a conferência acompanha.
+
+**Cuidado com os nomes dos meses:** no Cartões Rocha, "Setembro" quer dizer **vendas de setembro**. A antecipação dessas vendas cai em **outubro**, então ela aparece na tela de **Outubro** do Fluxo. A tela de **Setembro** do Fluxo mostra o que caiu em setembro: a antecipação das **vendas de agosto**.
 
 **Na tela 💳 Cartão × Sipag: todas as lojas de uma vez**, no topo. Embaixo vem o **detalhe da loja**. **Clique numa loja** para ver o detalhe dela.
 
@@ -250,6 +254,8 @@ Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito po
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.0.6 | Tela Cartão × Sipag explica no topo: "Junho no Fluxo = antecipação das vendas de maio + débitos das vendas de junho" | Nenhum |
+| 22/10/2026 | 2.0.5 | Quadro de cartões também nos **Lançamentos** (abaixo do saldo do dia 1º, atualiza ao salvar); cartões lançados entram **sozinhos** na conferência (descrição ou categoria Cartão); digitado corrigido/apagado acompanha | Nenhum (só mostra) |
 | 22/10/2026 | 2.0.4 | Cartões: "previsto" virou **"tem que cair"**; quadrinhos somam todas as lojas e avisam quantas aguardam extrato; débito do mês corrente "confere quando o mês fechar"; mês fechado sem Detalhado compara pelo **total de débito** do Cartões (≈); débito sem previsão não deixa mais a loja em "não bateu" | Nenhum (só mostra) |
 | 22/10/2026 | 2.0.3 | Cartões previsto × caiu: no **Dashboard só a loja escolhida** (quadro pequeno); **todas as lojas** ficam no topo da tela **Cartão × Sipag**, com o detalhe da loja embaixo | Nenhum (só mostra) |
 | 22/10/2026 | 2.0.2 | Dashboard ganhou o quadro **💳 Cartões do mês** (previsto × caiu; vermelho quando vem a menos) | Nenhum (só mostra) |
