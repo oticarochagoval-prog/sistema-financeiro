@@ -266,6 +266,21 @@ Menu **🧭 Radar do mês**, logo abaixo do Dashboard. Mostra **o que deve entra
 
 **📌 Fixar (só dono):** para valor que não varia, como o aluguel. Ele vira um **Recorrente** e passa a valer no lugar da média. Quando mudar, troque em **Recorrentes**, uma vez só.
 
+## 🤖 Medidor de automação (v2.4.0)
+
+No **Dashboard** e nos **Lançamentos**, logo abaixo dos cartões, uma faixa mostra **quanto o sistema já faz sozinho** na loja, no mês escolhido, comparado com o mês anterior (▲ subiu, ▼ caiu):
+
+- **Categoria sozinha na importação:** das linhas novas do extrato, quantas já vieram com categoria sem ninguém escolher.
+- **Lançamentos com categoria:** o DRE e o Radar dependem disso.
+- **Despesas com contato:** fornecedor, laboratório, funcionário.
+- **Veio do extrato:** quantos lançamentos vieram do OFX. O resto foi digitado à mão.
+
+Cores: 🟢 90% ou mais · 🟡 70% a 89% · 🔴 menos de 70%. A **meta é 99%**.
+
+Na tela de **Importar extrato** aparece também: "🤖 Sozinho: X% das linhas novas já vieram com categoria".
+
+Cada vez que alguém classifica uma linha, o sistema aprende a palavra, e na próxima importação o número sobe sozinho.
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -291,6 +306,9 @@ Menu **🧭 Radar do mês**, logo abaixo do Dashboard. Mostra **o que deve entra
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.4.2 | Medidor de automação também nos **Lançamentos** (atualiza a cada lançamento salvo) | Nenhum |
+| 22/10/2026 | 2.4.1 | Menu com ícones simples de traço, da mesma cor do texto (no claro e no escuro), no lugar dos emojis coloridos | Nenhum |
+| 22/10/2026 | 2.4.0 | **🤖 Medidor de automação** no Dashboard (categoria sozinha na importação, com categoria, despesas com contato, veio do extrato — mês × anterior) e na tela de importação. Precisa do SQL v2.4 para o 1º número | Nenhum (só mostra) |
 | 22/10/2026 | 2.3.2 | Radar mais limpo: só o nome da categoria (sem emojis e etiquetas); de onde vem o previsto aparece ao passar o mouse; "📌 fixar" só aparece ao passar o mouse | Nenhum |
 | 22/10/2026 | 2.3.1 | Radar: clique na categoria para ver **por contato** (média × este mês, aviso quando sobe) | Nenhum |
 | 22/10/2026 | 2.3.0 | Nova tela **🧭 Radar do mês**: deve entrar × deve sair × sobra prevista, previsto × pago por categoria (média de 3 meses ou fixo), próximos 3 meses com parcelas, comparar lojas e visão Grupo todo. Não é conta a pagar, não acumula | Nenhum (só mostra) |

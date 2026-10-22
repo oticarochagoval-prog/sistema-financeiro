@@ -68,7 +68,8 @@
   .nav{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:11px;color:var(--muted);cursor:pointer;font-size:13.5px;font-weight:550;white-space:nowrap;margin-bottom:2px;border:1px solid transparent;position:relative}
   .nav:hover{background:var(--panel-2);color:var(--txt)}
   .nav.active{background:linear-gradient(100deg,rgba(61,220,145,.16),rgba(61,220,145,.04));color:var(--green);border-color:rgba(61,220,145,.22)}
-  .nav .ic{width:19px;text-align:center;font-size:15px;flex-shrink:0}
+  .nav .ic{width:19px;text-align:center;font-size:15px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center}
+  .nav .ic svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .nav .soon{margin-left:auto;font-size:9px;background:var(--chip);color:var(--muted);padding:1px 6px;border-radius:8px;font-weight:700}
   .side.collapsed .nav{justify-content:center;padding:11px}.side.collapsed .nav .soon{display:none}
   .side.collapsed .nav:hover::after{content:attr(data-label);position:absolute;left:58px;background:#000;color:#fff;font-size:12px;font-weight:600;padding:6px 11px;border-radius:8px;white-space:nowrap;z-index:50;box-shadow:0 4px 14px rgba(0,0,0,.5)}
@@ -227,7 +228,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.3.2', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.4.2', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -851,6 +852,37 @@
     toast(`📌 ${c.nome} fixado em ${BRL(valor)} — vale no lugar da média.`,'ok');render();
   }
 
+
+  // ---- 🤖 MEDIDOR DE AUTOMAÇÃO: quanto o sistema já faz sozinho (por loja, mês atual × anterior) ----
+  let _autoSeq=0;
+  async function autoMedir(M,loja){
+    const fim=`${M}-${String(new Date(Number(M.slice(0,4)),Number(M.slice(5,7)),0).getDate()).padStart(2,'0')}`;
+    let ls=[];for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('id,valor,categoria_id,contato_id,fitid').eq('loja_id',loja).gte('data',M+'-01').lte('data',fim).range(o,o+999);if(error)return null;ls=ls.concat(data||[]);if(!data||data.length<1000)break;}
+    const grp=l=>{const c=CATS.find(x=>x.id===l.categoria_id);return c?c.grupo:null;};
+    const tot=ls.length,comCat=ls.filter(l=>{const g=grp(l);return g&&g!=='adef';}).length;
+    const desp=ls.filter(l=>Number(l.valor)<0&&grp(l)!=='neutra'),comCt=desp.filter(l=>l.contato_id).length,ext=ls.filter(l=>l.fitid).length;
+    let imp={tot:0,auto:0};try{const {data}=await sb.from('importacoes').select('*').eq('loja_id',loja).limit(500);
+      (data||[]).forEach(r=>{const d=String(r.criado_em||r.created_at||r.periodo_ate||'').slice(0,7);if(d!==M||!(r.linhas_total>0))return;imp.tot+=r.linhas_total;imp.auto+=r.linhas_auto_cat||0;});}catch(e){}
+    return {tot,pCat:tot?comCat/tot:null,pCt:desp.length?comCt/desp.length:null,pExt:tot?ext/tot:null,pAuto:imp.tot?imp.auto/imp.tot:null};
+  }
+  async function preencherAutoDash(){
+    const box=document.getElementById('autoDash');if(!box)return;const seq=++_autoSeq,mi=mesSel,loja=lojaAtual;
+    const M=`${ANO_FIXO}-${_mm(mi)}`,Mant=mesShift(M,-1);
+    const [a,b]=await Promise.all([autoMedir(M,loja),autoMedir(Mant,loja)]);
+    if(seq!==_autoSeq||mi!==mesSel||loja!==lojaAtual||!document.getElementById('autoDash'))return;
+    if(!a||!a.tot){box.innerHTML='';return;}
+    const nAnt=MESES_NOME[(mi+11)%12].slice(0,3).toLowerCase();
+    const item=(lbl,v,vAnt,dica)=>{if(v==null)return '';const p=Math.round(v*100),pa=vAnt==null?null:Math.round(vAnt*100);
+      const cor=p>=90?'var(--green)':p>=70?'var(--amber)':'var(--red)';const seta=pa==null?'':(p>pa?`<span style="color:var(--green)">▲</span>`:p<pa?`<span style="color:var(--red)">▼</span>`:'');
+      return `<div title="${dica}" style="display:flex;flex-direction:column;gap:1px;min-width:120px"><span class="mut" style="font-size:10.5px;white-space:nowrap">${lbl}</span><span style="white-space:nowrap"><b style="font-size:15px;color:${cor}">${p}%</b> ${seta} <span class="mut" style="font-size:10.5px">${pa==null?'':nAnt+' '+pa+'%'}</span></span></div>`;};
+    box.innerHTML=`<div class="card" style="margin-bottom:16px;padding:10px 16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+      <b style="font-size:13px;white-space:nowrap">🤖 Automação · ${MESES_NOME[mi]}</b>
+      ${item('Categoria sozinha na importação',a.pAuto,b&&b.pAuto,'das linhas novas do extrato, quantas já vieram com categoria sem ninguém escolher')}
+      ${item('Lançamentos com categoria',a.pCat,b&&b.pCat,'do mês, quantos lançamentos têm categoria (o DRE e o Radar dependem disso)')}
+      ${item('Despesas com contato',a.pCt,b&&b.pCt,'das despesas do mês, quantas têm contato (fornecedor, laboratório, funcionário)')}
+      ${item('Veio do extrato',a.pExt,b&&b.pExt,'do mês, quantos lançamentos vieram do OFX — o resto foi digitado à mão')}
+      <span class="mut" style="font-size:11px;margin-left:auto">meta: 99% · verde ≥ 90%</span></div>`;
+  }
   // copia pra conciliação os créditos de cartão que já estão lançados (OFX antigo, digitados e Lixeira), a partir de 01/06/2026
   async function sipagTrazerDigitados(){
     if(!podeExcluir())return;
@@ -1079,13 +1111,15 @@
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
     ['recorrentes','Recorrentes','🔁',true],['lixeira','Lixeira','🗑',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],['manualcx','Manual do Caixinha','🔗',true],
   ];
-  const TITLES={visao:'Dashboard',radar:'🧭 Radar do mês — o que deve entrar e sair',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag — conciliação',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
+  const TITLES={visao:'Dashboard',radar:'Radar do mês — o que deve entrar e sair',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag — conciliação',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
+  // ícones do menu: traço simples, da mesma cor do texto (claro e escuro), no estilo do Microvix
+  const NAV_ICON={visao:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',radar:'<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.8 5.41a2 2 0 0 1-1.27 1.27L7.76 16.24l1.8-5.41a2 2 0 0 1 1.27-1.27z"/>',lanc:'<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',import:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',apagar:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',caixa:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M16 14v4M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/>',caixinha:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',dre:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',fechamento:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',concsipag:'<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>',comparativo:'<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',relcontato:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',juros:'<path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"/>',categorias:'<path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',cadcontatos:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',recorrentes:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',lixeira:'<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',config:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',manual:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',manualcx:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'};
   function renderNav(){
     document.getElementById('nav').innerHTML=MENU.map(it=>{
       if(it[0].startsWith('__'))return `<div class="seclabel">${it[1]}</div>`;
       const [id,l,ic,pronto]=it;
       if(id==='config'&&!ehDono())return '';
-      return `<div class="nav ${id===page?'active':''}" data-label="${l}" onclick="go('${id}')"><span class="ic">${ic}</span><span class="navtxt">${l}</span>${pronto?'':'<span class="soon">em breve</span>'}</div>`;
+      return `<div class="nav ${id===page?'active':''}" data-label="${l}" onclick="go('${id}')"><span class="ic">${NAV_ICON[id]?`<svg viewBox="0 0 24 24" aria-hidden="true">${NAV_ICON[id]}</svg>`:ic}</span><span class="navtxt">${l}</span>${pronto?'':'<span class="soon">em breve</span>'}</div>`;
     }).join('');
   }
   function go(p){page=p;q='';document.getElementById('ptitle').textContent=TITLES[p]||p;renderNav();render();}
@@ -1199,7 +1233,7 @@
 
   function render(){
     const V={visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
-    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao')preencherCartoesDash().catch(e=>console.error('cartoes dash',e));if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
+    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   let mesSel=new Date().getMonth();let _keepY=null;
@@ -1208,7 +1242,7 @@
   }
 
   // Lançamentos: depois de desenhar (inclusive após salvar/editar/excluir), atualiza o saldo do dia 1º e os cartões da loja
-  async function viewLanc(){await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));}
+  async function viewLanc(){await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
   async function viewLancBase(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando lançamentos...</div>';
     await carregarLancamentos();
@@ -1280,6 +1314,7 @@
       </div>
       <div id="saldoDia1" style="margin-bottom:12px"></div>
       <div id="cartoesDash"></div>
+      <div id="autoDash"></div>
       ${faixaDiasHTML()}
       <div class="toolbar" style="position:sticky;top:64px;z-index:15;background:var(--bg);padding:8px 0">
         <div class="search">🔍<input id="buscaLanc" placeholder="Buscar por texto, contato ou valor..." value="${q}" oninput="filtrarLanc(this.value)"></div>
@@ -2195,10 +2230,12 @@
     const rowsAt=atencao.map(i=>linhaImp(IMPORT[i],i)).join('');
     const jaN=IMPORT.filter(r=>r.grupo==='ja').length,jaLentesN=IMPORT.filter(r=>r.grupo==='lentes').length;
     const novos=IMPORT.length-jaN-jaLentesN;
+    const novosR=IMPORT.filter(r=>r.grupo!=='ja'&&r.grupo!=='lentes'),autoN=novosR.filter(r=>r.catId&&!r.resolvido).length,ctN=novosR.filter(r=>r.contatoId).length;
+    const autoTxt=novosR.length?`<div style="font-size:13px">🤖 <b>Sozinho:</b> ${Math.round(autoN/novosR.length*100)}% das linhas novas já vieram com categoria (${autoN} de ${novosR.length})${ctN?` · ${ctN} com contato`:''}</div>`:'';
     const periodoTxt=(importPeriodo.de&&importPeriodo.ate)?`📅 Extrato de <b>${importPeriodo.de}</b> a <b>${importPeriodo.ate}</b>`:'';
     document.getElementById('content').innerHTML=`<div class="note">📥 <b>${IMPORT.length} linhas do extrato</b> · ✓ ${jaN} já estavam lançadas · <b>${novos} novas</b>${jaLentesN?` · 🔗 ${jaLentesN} boletos de lentes`:''} · ${pend?`<b style="color:var(--amber)">${pend} precisam de você ⚠️</b>`:'<b style="color:var(--green)">✅ tudo classificado</b>'}<div class="mut" style="font-size:12px;margin-top:4px">Nada do extrato é ignorado: Pix de cliente, depósito e transferência entram como <b>neutros</b> (não mexem no resultado, só fazem a escada do banco bater).</div></div>
       <div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-        <div style="font-size:13px">${periodoTxt}</div>
+        <div style="font-size:13px">${periodoTxt}${autoTxt}</div>
         <div style="flex:1;min-width:220px"><span class="qlabel">Observação desta importação (opcional)</span><input class="qin" placeholder="Ex: Extrato Sicoob conta principal — junho" value="${importObs}" oninput="importObs=this.value"></div>
         <div class="tag" style="align-self:flex-end">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</div>
       </div>
@@ -2294,7 +2331,7 @@
     const btn=document.getElementById('btnConfImport');if(btn){btn.disabled=true;btn.textContent='Lançando...';}
     const contaSicoob=CONTAS.find(c=>/sicoob/i.test(c.nome))||CONTAS.find(c=>!/caixinha/i.test(c.nome))||null;
     const lojaCurta=lojaNomeCurto(lojaAtual);
-    let ok=0,dup=0,erro=0,fech=0,ligados=0,sip=0,sipErr='';
+    let ok=0,dup=0,erro=0,fech=0,ligados=0,sip=0,sipErr='',nAutoCat=0,nAutoCt=0;
     const gravarSipag=async(r,lancId)=>{ // um crédito de cartão do extrato → tabela da conciliação (não duplica pelo código do banco)
       if(!r.sipag||!r.fitid)return;
       const row={loja:lojaCurta,loja_id:lojaAtual,data:r.iso,valor:r.amt,descricao:(r.desc||'').slice(0,300),tipo:r.sipag.tipo,origem:'ofx',origem_ref:r.fitid,lancamento_id:lancId||null,criado_por:USER.id};
@@ -2316,16 +2353,16 @@
         pago:true,origem:'ofx',fitid:r.fitid||null,criado_por:USER.id};
       const {data:ins,error}=await sb.from('lancamentos').insert(reg).select('id').single();
       if(error){if(error.message.includes('duplicate')||error.code==='23505')dup++;else erro++;continue;}
-      ok++;await gravarSipag(r,ins&&ins.id);
+      ok++;if(r.catId&&!r.resolvido)nAutoCat++;if(r.contatoId)nAutoCt++;await gravarSipag(r,ins&&ins.id);
     }
     // salva o histórico da importação
     try{
-      await sb.from('importacoes').insert({
-        loja_id:lojaAtual,
+      const hist={loja_id:lojaAtual,
         periodo_de:importPeriodo.de?importPeriodo.de.split('/').reverse().join('-'):null,
         periodo_ate:importPeriodo.ate?importPeriodo.ate.split('/').reverse().join('-'):null,
-        qtd_lancamentos:ok,observacao:importObs||null,importado_por:USER.id
-      });
+        qtd_lancamentos:ok,observacao:importObs||null,importado_por:USER.id};
+      const {error:eh}=await sb.from('importacoes').insert(Object.assign({linhas_total:ok,linhas_auto_cat:nAutoCat,linhas_auto_contato:nAutoCt},hist));
+      if(eh&&/linhas_|column|schema/i.test(eh.message||''))await sb.from('importacoes').insert(hist); // SQL da v2.4 ainda não rodou
     }catch(e){}
     IMPORT=[];importObs='';importPeriodo={de:'',ate:''};
     toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${sipErr?` · conciliação: ${sipErr}`:''}`, (erro>0||fech>0||sipErr)?'erro':'ok');
@@ -2438,6 +2475,7 @@
 
     document.getElementById('content').innerHTML=`${seletor}
       <div id="cartoesDash"></div>
+      <div id="autoDash"></div>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:16px">
         ${card('Saídas do mês',saidaMes,'var(--red)','pago em '+mesNome)}
         ${card('Entradas do mês',entradaMes,'var(--green)','recebido em '+mesNome)}
