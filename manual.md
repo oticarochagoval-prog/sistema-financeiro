@@ -291,6 +291,7 @@ Menu **🧭 Radar do mês**, logo abaixo do Dashboard. Mostra **o que deve entra
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.3.2 | Radar mais limpo: só o nome da categoria (sem emojis e etiquetas); de onde vem o previsto aparece ao passar o mouse; "📌 fixar" só aparece ao passar o mouse | Nenhum |
 | 22/10/2026 | 2.3.1 | Radar: clique na categoria para ver **por contato** (média × este mês, aviso quando sobe) | Nenhum |
 | 22/10/2026 | 2.3.0 | Nova tela **🧭 Radar do mês**: deve entrar × deve sair × sobra prevista, previsto × pago por categoria (média de 3 meses ou fixo), próximos 3 meses com parcelas, comparar lojas e visão Grupo todo. Não é conta a pagar, não acumula | Nenhum (só mostra) |
 | 22/10/2026 | 2.2.1 | Dica na caixa "Parece não ser Sipag": CNPJ/razão social da própria loja = "provavelmente Stone"; de outra loja do grupo = "parece transferência" (nunca marca sozinho) | Nenhum |

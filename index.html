@@ -154,6 +154,7 @@
   .grp.nop{background:rgba(255,107,107,.14);color:var(--red)}.grp.neutra{background:rgba(138,160,150,.18);color:var(--muted)}.grp.adef{background:rgba(245,183,64,.18);color:var(--amber)}
   .btn{background:var(--green);color:var(--accent-ink);border:none;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer}
   .btn.ghost{background:var(--panel);color:var(--txt);border:1px solid var(--line)}
+  .rlinha .rfixar{visibility:hidden}.rlinha:hover .rfixar{visibility:visible}
   .arqbtn{margin-left:12px;font-size:11.5px;color:var(--muted);cursor:pointer;padding:3px 9px;border-radius:20px;border:1px solid var(--line);white-space:nowrap}
   .arqbtn:hover{color:var(--amber);border-color:var(--amber)}.arqbtn.ativar:hover{color:var(--green);border-color:var(--green)}
   .note{background:rgba(125,162,255,.08);border:1px solid rgba(125,162,255,.2);border-radius:12px;padding:13px 15px;font-size:12.5px;color:#aec2ff;margin-bottom:16px;line-height:1.5}
@@ -226,7 +227,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.3.1', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.3.2', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -779,7 +780,7 @@
     const barra=(p,cor)=>`<span style="display:inline-block;height:7px;width:110px;background:var(--panel-2);border-radius:6px;position:relative;overflow:hidden;vertical-align:middle"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.min(100,Math.round(p*100))}%;background:${cor}"></i></span>`;
     const tdN='style="text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap"';
     const linhasHTML=R.linhas.map(x=>{const nome=x.cat?x.cat.nome:'Sem categoria';const det=x.fixo>0?`fixo${x.dia?' · vence dia '+x.dia:''}${Math.abs(x.media-x.fixo)>1&&x.media>0?' · média '+n0(x.media):''}`:(x.temParcela?'média · tem parcela':'média');
-      const fixar=!grupo&&ehDono()&&x.cat&&!(x.fixo>0)?` <span class="arqbtn" style="margin-left:4px;font-size:10.5px;padding:1px 7px" onclick="radarFixar(${x.cat.id})" title="Valor que não varia (ex.: aluguel): vale este valor em vez da média">📌 fixar</span>`:'';
+      const fixar=!grupo&&ehDono()&&x.cat&&!(x.fixo>0)?` <span class="arqbtn rfixar" style="margin-left:6px;font-size:10.5px;padding:1px 7px" onclick="radarFixar(${x.cat.id})" title="Valor que não varia (ex.: aluguel): vale este valor em vez da média">📌 fixar</span>`:'';
       const cts=Object.values(x.ct).filter(c=>c.media>0.5||c.pago>0.5).sort((a,b)=>Math.max(b.media,b.pago)-Math.max(a.media,a.pago));
       const temCt=cts.some(c=>c.id);const rid='rc'+String(x.id).replace(/\W/g,'');
       const nomeCt=c=>{if(!c.id)return '<span class="mut">sem contato</span>';const k=CONTATOS.find(z=>z.id===c.id);return k?k.nome:'contato #'+c.id;};
@@ -787,7 +788,7 @@
           return `<tr class="${rid}" style="display:none;background:var(--panel-2)"><td style="padding-left:34px;font-size:12.5px">↳ ${nomeCt(c)}</td><td ${tdN} class="mut">${n2(c.media)} <span style="font-size:10.5px">média</span></td><td ${tdN}>${n2(c.pago)}</td><td></td><td></td><td>${sc}</td></tr>`;}).join('')
         +(cts.length>10?`<tr class="${rid}" style="display:none;background:var(--panel-2)"><td colspan="6" class="mut" style="padding-left:34px;font-size:12px">… e mais ${cts.length-10} contato(s)</td></tr>`:''):'';
       const abre=temCt?` onclick="if(event.target.closest('.arqbtn'))return;document.querySelectorAll('.${rid}').forEach(t=>t.style.display=t.style.display==='none'?'':'none');this.querySelector('.seta').textContent=this.querySelector('.seta').textContent==='▸'?'▾':'▸'" style="cursor:pointer" title="Clique para ver por contato"`:'';
-      return `<tr${abre}><td>${temCt?'<span class="seta mut" style="display:inline-block;width:12px">▸</span>':'<span style="display:inline-block;width:12px"></span>'}<b>${radarIcone(x.cat)} ${nome}</b> <span class="mut" style="font-size:11px">${det}</span>${fixar}</td><td ${tdN}>${n2(x.prev)}</td><td ${tdN}>${n2(x.pago)}</td><td>${barra(x.prev>0?x.pago/x.prev:(x.pago>0?1:0),x.cls==='wa'&&x.pago>x.prev?'var(--amber)':'var(--green)')}</td><td ${tdN}>${x.falta>0.5?n2(x.falta):'—'}${x.aberto>0.5?`<div class="mut" style="font-size:10.5px">${n2(x.aberto)} no A pagar</div>`:''}</td><td>${pill(x.sit,x.cls)}</td></tr>${subs}`;}).join('');
+      return `<tr class="rlinha"${abre}><td title="${det}">${temCt?'<span class="seta mut" style="display:inline-block;width:12px">▸</span>':'<span style="display:inline-block;width:12px"></span>'}<b>${nome}</b>${fixar}</td><td ${tdN}>${n2(x.prev)}</td><td ${tdN}>${n2(x.pago)}</td><td>${barra(x.prev>0?x.pago/x.prev:(x.pago>0?1:0),x.cls==='wa'&&x.pago>x.prev?'var(--amber)':'var(--green)')}</td><td ${tdN}>${x.falta>0.5?n2(x.falta):'—'}${x.aberto>0.5?`<div class="mut" style="font-size:10.5px">${n2(x.aberto)} no A pagar</div>`:''}</td><td>${pill(x.sit,x.cls)}</td></tr>${subs}`;}).join('');
     const futHTML=R.futuros.map(f=>{const mm=parseInt(f.M.slice(5,7),10);return `<tr><td>${_mesNomeM(f.M)}${mm===11||mm===12?' '+pill('13º','bl'):''}</td><td ${tdN}>${n0(f.tot)}</td><td ${tdN} class="mut">${f.sab>0.5?'parcelas/abertos: '+n0(f.sab):'—'}</td></tr>`;}).join('');
     const catsOpc=CATS.filter(c=>c.grupo!=='neutra'&&c.grupo!=='rec'&&!c.arquivada).sort((a,b)=>a.nome.localeCompare(b.nome));
     if(!RADAR_CMP){const f=catsOpc.find(c=>/FUNCION/i.test(c.nome));RADAR_CMP=f?f.id:(catsOpc[0]&&catsOpc[0].id);}
@@ -818,13 +819,13 @@
         <table style="min-width:720px"><thead><tr><th>Categoria</th><th ${tdN}>Previsto no mês</th><th ${tdN}>${R.passado?'Pago no mês':'Pago até hoje'}</th><th>Andamento</th><th ${tdN}>${R.passado?'—':'Ainda deve sair'}</th><th>Situação</th></tr></thead>
         <tbody>${linhasHTML||'<tr><td colspan="6" class="mut">Sem despesas nos últimos 3 meses nem neste mês.</td></tr>'}
           <tr style="font-weight:800"><td>Total</td><td ${tdN}>${n2(R.linhas.reduce((t,x)=>t+x.prev,0))}</td><td ${tdN}>${n2(R.jaSaiu)}</td><td></td><td ${tdN}>${n2(R.linhas.reduce((t,x)=>t+x.falta,0))}</td><td></td></tr></tbody></table>
-        <div class="mut" style="font-size:11.5px;padding:8px 16px 14px">💡 <b>📌 fixar</b> (só dono): para valor que não varia, como o aluguel. Ele vira um Recorrente e passa a valer no lugar da média. Quando mudar, troque em <b>Recorrentes</b>, uma vez só.</div></div>
+        <div class="mut" style="font-size:11.5px;padding:8px 16px 14px">Passe o mouse no nome para ver de onde vem o previsto (média ou fixo). <b>📌 fixar</b> (só dono) aparece ao passar o mouse: para valor que não varia, como o aluguel.</div></div>
       <div class="grid two" style="margin-bottom:14px">
         <div class="card"><h3 style="font-size:14.5px;margin:0 0 8px">📅 Próximos 3 meses <span class="mut" style="font-size:12px;font-weight:400">· deve sair</span></h3>
           <table><thead><tr><th>Mês</th><th ${tdN}>Deve sair</th><th ${tdN}>Já se sabe</th></tr></thead><tbody>${futHTML}</tbody></table>
           <div class="mut" style="font-size:11.5px;margin-top:8px">Média (ou fixo) por categoria + parcelas já lançadas (3/6 → mostra a 4ª, a 5ª e a 6ª) + o que estiver no A pagar.</div></div>
         <div class="card"><h3 style="font-size:14.5px;margin:0 0 8px">🏪 Comparar lojas <span class="mut" style="font-size:12px;font-weight:400">· média por mês (${mesesTxt})</span></h3>
-          <select onchange="RADAR_CMP=parseInt(this.value,10);radarComparar()" style="width:100%;margin-bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:6px 8px">${catsOpc.map(c=>`<option value="${c.id}" ${c.id===RADAR_CMP?'selected':''}>${radarIcone(c)} ${c.nome}</option>`).join('')}</select>
+          <select onchange="RADAR_CMP=parseInt(this.value,10);radarComparar()" style="width:100%;margin-bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:6px 8px">${catsOpc.map(c=>`<option value="${c.id}" ${c.id===RADAR_CMP?'selected':''}>${c.nome}</option>`).join('')}</select>
           <div id="radarCmp" class="mut" style="font-size:12px">carregando…</div></div></div>`;
     radarComparar();
   }
