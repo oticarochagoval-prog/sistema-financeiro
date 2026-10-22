@@ -226,7 +226,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.0.6', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.1.0', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -428,7 +428,7 @@
     const subA={automatica:'automática',eventual:'eventual'};
     const marcaTxt=(e)=>e.marca&&(e.marca.ok||e.marca.valor)?`<span class="catchip" style="font-size:10px;padding:1px 6px;border-color:var(--blue);color:var(--blue)" title="marcado na conferência do Cartões">✓ Cartões${e.marca.valor?' '+e.marca.valor:''}</span>`:'';
     const eTxt=(e)=>`${isoParaBR(e.data).slice(0,5)} · ${e.t==='a'?(e.total?'antecipação (total do mês)':'antecipação '+(subA[e.sub]||'')):'débito do dia'} <b>${BRL(e.valor)}</b> ${marcaTxt(e)}`;
-    const rTxt=(r)=>`${isoParaBR(r.data).slice(0,5)} · <b>${BRL(r.valor)}</b> <span class="mut" style="font-size:11px">${(r.descricao||'').slice(0,60)}</span>${r.origem==='digitado'?' <span class="catchip" style="font-size:10px;padding:1px 6px;border-color:var(--amber);color:var(--amber)" title="veio de lançamento digitado, não do arquivo do banco">digitado</span>':''}`;
+    const rTxt=(r)=>`${isoParaBR(r.data).slice(0,5)} · <b>${BRL(r.valor)}</b> <span class="mut" style="font-size:11px">${(r.descricao||'').slice(0,60)}</span>${r.origem==='digitado'?' <span class="catchip" style="font-size:10px;padding:1px 6px;border-color:var(--amber);color:var(--amber)" title="veio de lançamento digitado, não do arquivo do banco">digitado</span>':''}${r.confirmado_em?` <span class="catchip" style="font-size:10px;padding:1px 6px;border-color:var(--green);color:var(--green)" title="${r.origem==='digitado'?'aprovado olhando o extrato do Sicoob':'aprovado à mão antes; agora já veio do banco'}">✔ conferido no extrato por ${(r.confirmado_por||'?')} · ${isoParaBR(String(r.confirmado_em).slice(0,10)).slice(0,5)}</span>`:''}`;
     const tabela=(t,titulo)=>{const ps=res.pares.filter(p=>p.t===t);const fs=res.eSobra.filter(e=>e.t===t);const ns=res.rSobra.filter(r=>t==='a'?r.tipo==='antecipacao':r.tipo==='debito');
       const linhas=ps.map(p=>`<tr><td>${p.e.map(eTxt).join('<br>')}</td><td style="color:var(--green);font-weight:800;text-align:center">✓</td><td>${p.r.map(rTxt).join('<br>')}</td></tr>`).join('')
         +fs.map(e=>`<tr style="background:${e.data>hoje?'transparent':'rgba(255,92,92,.07)'}"><td>${eTxt(e)}</td><td style="text-align:center">${e.data>hoje?'<span class="mut">⏳</span>':'<b style="color:var(--red)">✕</b>'}</td><td class="mut">${e.data>hoje?'ainda vai cair':'<b style="color:var(--red)">esperava e não caiu</b>'}</td></tr>`).join('')
@@ -444,7 +444,12 @@
       <div id="cartoesTodas"></div>
       <div style="font-size:13px;font-weight:700;margin:6px 0 10px;display:flex;align-items:center;gap:7px">🔎 DETALHE DA LOJA: ${loja.toUpperCase()} <span class="mut" style="font-weight:400;font-size:12px">— depósito por depósito (troque a loja lá em cima ou clique numa linha do quadro)</span></div>
       <div class="card" style="margin-bottom:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div><div class="mut" style="font-size:12px">${loja} · créditos que caíram em ${mesNome}</div><div style="font-size:20px;font-weight:800;color:${cor}">${status}</div></div>
-        <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" onclick="_ctCache={};render()">↻ Conferir de novo</button>${podeExcluir()?`<button class="btn ghost" onclick="sipagTrazerDigitados()" title="Copia pra conciliação os créditos de cartão já lançados (inclusive os digitados à mão e os que estão na Lixeira), de 01/06 pra frente">⤓ Trazer os cartões já lançados</button>`:''}</div></div>
+        <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">${(()=>{const dg=R.filter(r=>r.origem==='digitado'),pend=dg.filter(r=>!r.confirmado_em),feitos=dg.filter(r=>r.confirmado_em);
+          if(!dg.length||erroSb)return '';
+          if(!ehDono())return pend.length?`<span class="mut" style="font-size:12px;align-self:center">🟡 ${pend.length} depósito(s) digitado(s) esperando o Lucas/Heloísa conferir no extrato</span>`:`<span style="font-size:12px;align-self:center;color:var(--green)">✔ digitados conferidos no extrato</span>`;
+          return (pend.length?`<button class="btn" onclick="sipagConfirmar(false)" title="Olhei o extrato do Sicoob e esses depósitos digitados caíram mesmo">✅ Conferi no extrato (${pend.length})</button>`:'')
+            +(feitos.length?`<button class="btn ghost" onclick="sipagConfirmar(true)" title="Tira a aprovação manual destes depósitos">↩ Desfazer conferência</button>`:'');})()}
+        <button class="btn ghost" onclick="_ctCache={};render()">↻ Conferir de novo</button>${podeExcluir()?`<button class="btn ghost" onclick="sipagTrazerDigitados()" title="Copia pra conciliação os créditos de cartão já lançados (inclusive os digitados à mão e os que estão na Lixeira), de 01/06 pra frente">⤓ Trazer os cartões já lançados</button>`:''}</div></div>
       ${erroCt?`<div class="note" style="border-color:rgba(255,92,92,.4)">Não consegui ler o Cartões Rocha: ${erroCt}</div>`:''}
       ${erroSb?`<div class="note" style="border-color:rgba(255,92,92,.4)">Tabela da conciliação: ${erroSb}. Rode o SQL da v2.0 no sistema-financeiro.</div>`:''}
       ${esp.avisos.length?`<div class="note" style="border-color:rgba(245,183,64,.4)">${esp.avisos.map(a=>'⚠️ '+a).join('<br>')}</div>`:''}
@@ -626,6 +631,22 @@
         <tbody>${tr}<tr style="font-weight:800"><td>Total</td><td ${tdN}>${sR(s(linhas,'prevA'))}</td><td ${tdN}>${sR(s(C,'caiuA'))}</td><td ${tdN}>${sR(s(linhas.filter(compD),'prevD'))}</td><td ${tdN}>${sR(s(C,'caiuD'))}</td><td>${resumo}</td></tr></tbody></table></div>
       ${debNota?`<div class="mut" style="font-size:11.5px;margin-top:6px">${debNota}</div>`:''}
       ${_ctProx(linhas,mesNome)}${_CT_REGRA('A comparação só conta as lojas que já têm o extrato do mês importado.')}</div>`;
+  }
+
+  // ---- "Conferi no extrato": aprovação manual dos depósitos digitados (só dono; o banco grava nome e hora) ----
+  async function sipagConfirmar(desfazer){
+    if(!ehDono()){toast('Só o Lucas ou a Heloísa podem conferir no extrato.','erro');return;}
+    if(!_concSip){render();return;}
+    const loja=lojaNomeCurto(lojaAtual),mesNome=MESES_NOME[mesSel];
+    const alvo=_concSip.R.filter(r=>r.origem==='digitado'&&(desfazer?!!r.confirmado_em:!r.confirmado_em));
+    if(!alvo.length){toast('Nada pra '+(desfazer?'desfazer':'conferir')+'.','ok');return;}
+    const tot=alvo.reduce((a,r)=>a+Number(r.valor||0),0);
+    const msg=desfazer?`Desfazer a conferência de ${alvo.length} depósito(s) digitado(s) da ${loja} em ${mesNome} (${BRL(tot)})?\n\nEles voltam a ficar "falta o banco confirmar" no Cartões Rocha.`
+      :`Confirmar que você olhou o extrato do Sicoob e caíram ${alvo.length} depósito(s) digitado(s) da ${loja} em ${mesNome}, total ${BRL(tot)}?\n\nFica gravado o seu nome e a hora. Quando o OFX entrar, a linha do banco passa a valer.`;
+    if(!confirm(msg))return;
+    const {error}=await sb.from('sipag_lancamentos').update(desfazer?{confirmado_por:null,confirmado_em:null}:{confirmado_por:PERFIL.nome||'?',confirmado_em:new Date().toISOString()}).in('id',alvo.map(r=>r.id));
+    if(error){toast(/confirmado/i.test(error.message)&&/column|coluna|schema/i.test(error.message)?'Rode o SQL da v2.1 no sistema-financeiro primeiro.':'Erro: '+error.message,'erro');return;}
+    toast(desfazer?'↩ Conferência desfeita.':`✅ ${alvo.length} depósito(s) conferido(s) no extrato.`,'ok');render();
   }
   // copia pra conciliação os créditos de cartão que já estão lançados (OFX antigo, digitados e Lixeira), a partir de 01/06/2026
   async function sipagTrazerDigitados(){

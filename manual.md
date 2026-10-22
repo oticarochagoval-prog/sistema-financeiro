@@ -209,6 +209,7 @@ Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito po
 - O resultado fica gravado (com a mesma chave do Cartões), e o Cartões Rocha pode ler pra marcar sozinho.
 - O que for **digitado na conferência do Cartões** aparece aqui como "aguardando extrato", mas **não vira lançamento** no Fluxo: dinheiro só entra pelo extrato.
 - **⤓ Trazer os cartões já lançados** copia pra conciliação os créditos de cartão já lançados desde 01/06 — inclusive os digitados à mão e os que estão na **Lixeira** (que aparecem num quadro vermelho: se algum é o que falta, restaure).
+- **✅ Conferi no extrato (só Lucas e Heloísa):** depósito **digitado** fica amarelo no Cartões Rocha ("falta o banco confirmar"). Olhe o extrato do Sicoob e clique em **Conferi no extrato**: fica gravado **quem conferiu e quando**, e aparece "✔ conferido no extrato por …" em cada depósito. **↩ Desfazer conferência** tira a aprovação. Quando o OFX entrar, a linha do banco passa a valer e a aprovação fica como histórico.
 
 ### Cartões do mês: tem que cair × caiu (v2.0.4)
 
@@ -254,6 +255,7 @@ Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito po
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.1.0 | Botão **✅ Conferi no extrato** na conciliação de cartões (só dono): aprova os depósitos digitados olhando o extrato, grava nome e hora; dá pra desfazer. Precisa do SQL v2.1 | Nenhum |
 | 22/10/2026 | 2.0.6 | Tela Cartão × Sipag explica no topo: "Junho no Fluxo = antecipação das vendas de maio + débitos das vendas de junho" | Nenhum |
 | 22/10/2026 | 2.0.5 | Quadro de cartões também nos **Lançamentos** (abaixo do saldo do dia 1º, atualiza ao salvar); cartões lançados entram **sozinhos** na conferência (descrição ou categoria Cartão); digitado corrigido/apagado acompanha | Nenhum (só mostra) |
 | 22/10/2026 | 2.0.4 | Cartões: "previsto" virou **"tem que cair"**; quadrinhos somam todas as lojas e avisam quantas aguardam extrato; débito do mês corrente "confere quando o mês fechar"; mês fechado sem Detalhado compara pelo **total de débito** do Cartões (≈); débito sem previsão não deixa mais a loja em "não bateu" | Nenhum (só mostra) |
