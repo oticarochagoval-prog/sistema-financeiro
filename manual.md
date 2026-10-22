@@ -364,6 +364,37 @@ No alto da tela, ao lado da escolha da loja, ficam os **módulos**. Ao trocar de
 - **Conferências do Laboratório.**
 - **Uso pelo celular.**
 
+## Remanejos (v2.8.0 · automático na v2.8.1)
+
+Quando o combinado não deu para cumprir: a loja pagou menos do que costuma, pagou mais, atrasou ou não pagou. Exemplo: a Rocha 1 transferia R$ 17.000 por mês para os óculos e este mês mandou R$ 8.000.
+
+- **Quem vê:** só o gestor (Lucas, Heloísa) e a Flávia. Para as outras pessoas o menu nem aparece, e o banco também não deixa ler.
+- **Entra sozinho:** quando o gestor abre a tela (ou o Dashboard), o Fluxo confere os últimos meses e registra:
+  - **A menos:** saiu menos que o normal (ou não saiu). Ele espera passar 2 dias úteis do vencimento antes de registrar.
+  - **A mais:** saiu mais que o normal (custo subiu, ou pagou um atraso).
+  - **Atraso:** a conta tem dia de vencimento nos Recorrentes (ou na Agenda) e saiu 2 dias úteis depois ou mais.
+  - **Agenda:** conta vencida e em aberto, ou marcada "não vou pagar" (o motivo da Agenda já vem preenchido).
+- **Com o que ele compara:** com o **valor fixo dos Recorrentes**, quando tem (avisa a partir de 10% de diferença). Sem fixo, com a **média dos 3 meses** (avisa a partir de 25%). Diferença menor que R$ 300 não entra.
+  - **Dica:** cadastre nos Recorrentes os repasses com o valor combinado (ex.: repasse da Rocha 1 para o grupo de compras, R$ 17.000, dia 5). Assim ele sempre compara com o combinado, e não com uma média que vai caindo.
+- **Dia útil:** sábado, domingo e feriado nacional não contam. Venceu no sábado e pagou na segunda = em dia.
+- **Ficam de fora:** contato do tipo funcionário e as categorias de funcionário, salário, férias, juros e tarifas. Em **Ajustes do acompanhamento** (no fim da tela, só o gestor) dá para marcar outras categorias ou contatos que não devem entrar.
+- **Completar o porquê:** cada registro sem motivo mostra **"falta o porquê"**. É só abrir e escrever. **Não foi remanejo** tira da lista e o Fluxo não pergunta mais.
+- **Se deixar de valer** (ex.: o resto do pagamento caiu depois) e ninguém tinha escrito o porquê, ele sai sozinho da lista.
+- **Registrar à mão:** **+ Registrar remanejo** continua funcionando para o que o Fluxo não enxerga.
+- **Resumo em cima:** quantos remanejos teve no mês e quantos estão sem porquê, total a menos, total a mais, atrasos (média de dias úteis), juros e tarifas do mês e quanto as lojas devem ao grupo de compras.
+- **Por loja, por categoria e por contato:** onde mais aconteceu.
+- **Deve ao grupo de compras:** pagar a menos para FZ Grifes ou Grupo VR soma; pagar a mais desconta. Em Ajustes dá para marcar outro contato que acumula dívida.
+- **No Dashboard** da loja aparece uma linha discreta: quantos remanejos e quantos sem porquê.
+- Tudo fica guardado para o agente ler depois. Registrar por mensagem de WhatsApp fica para quando o agente existir.
+
+## Empréstimos entre lojas — espelho do Caixinha (v2.8.0)
+
+Os empréstimos continuam sendo lançados e baixados no **Caixinha**. No Fluxo, o menu **Empréstimos (espelho)** mostra todas as lojas numa tela só, sem trocar de loja no seletor. Ninguém lança nada aqui.
+
+- **Entre lojas (dinheiro da gaveta):** para cada loja que emprestou, quanto falta voltar (a mesma conta do Caixinha), para quem emprestou e quanto emprestou e voltou no mês. Devolução registrada sem nome aparece como "voltou sem nome".
+- **Banco Caixinha:** cada conta que o escritório pagou por uma loja e ainda falta voltar, com data, descrição, valor, quanto já voltou e quanto falta.
+- Precisa ter entrado no Caixinha uma vez neste computador (igual à aba Caixinha espelho). Só aparece no módulo Óticas.
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -389,6 +420,8 @@ No alto da tela, ao lado da escolha da loja, ficam os **módulos**. Ao trocar de
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.8.1 | Remanejos entram sozinhos: a menos, a mais e atraso (só dia útil, feriado nacional não conta), comparando com o fixo dos Recorrentes ou a média dos 3 meses; funcionários ficam de fora. Resumo do mês por loja, categoria e contato, juros e o que as lojas devem ao grupo de compras. Ajustes de categorias e contatos | Rodar o SQL v2.8.1 no sistema-financeiro |
+| 22/10/2026 | 2.8.0 | Remanejos: registro de quando o combinado não deu para cumprir (só gestor e Flávia), com o Fluxo avisando pagamento bem abaixo do normal e conta da Agenda vencida. Empréstimos (espelho): todas as lojas do Caixinha numa tela. Importação: aviso de amarelos conta só as marcadas | Rodar o SQL v2.8.1 no sistema-financeiro (já inclui a v2.8) |
 | 22/10/2026 | 2.7.7 | Importação: botões de "Marcar para lançar" acendem em verde, mostram quantas linhas são e podem ser somados (ex.: Entradas + O que eu mexi); total de marcadas ao lado. "Mostrar" só muda a tela | Nenhum |
 | 22/10/2026 | 2.7.6 | Importação: caixinha em cada linha e barra "Marcar para lançar" (Entradas + o que eu mexi, Só o que eu mexi…); o resto volta na próxima importação. Por contato: mostra a observação quando não há contato (e passou a trazer os contatos certinho). Juros por loja: valor de cada mês por loja, sem média | Nenhum |
 | 22/10/2026 | 2.7.5 | Importação: com "Só entradas"/"Só saídas", o botão lança só aquele tipo; o resto volta na próxima importação. Importação parcial não marca o extrato como em dia. Neutras não ficam vermelhas por falta de contato | Nenhum |

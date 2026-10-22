@@ -249,7 +249,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.7.7', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.8.1', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -327,7 +327,7 @@
 
   async function iniciarApp(user){
     USER=user;
-    try{const {data}=await sb.from('perfis').select('nome,papel').eq('id',user.id).single();if(data)PERFIL=data;}catch(e){}
+    try{const {data}=await sb.from('perfis').select('*').eq('id',user.id).single();if(data)PERFIL=data;}catch(e){}
     document.getElementById('loginWrap').style.display='none';
     document.getElementById('app').classList.add('show');
     document.getElementById('sidefoot').textContent=PERFIL.nome+' · '+(({dono:'gestor',lancador:'lançador'})[PERFIL.papel]||PERFIL.papel);
@@ -355,7 +355,7 @@
   let _lojaPorModulo={};
   async function trocarModulo(k){if(k===MODULO_ATUAL)return;_lojaPorModulo[MODULO_ATUAL]=lojaAtual;MODULO_ATUAL=k;try{localStorage.setItem('fluxo_modulo',k);}catch(e){}
     const ls=lojasDoModulo();lojaAtual=(ls.find(l=>l.id===_lojaPorModulo[k])||ls[0]||{}).id||lojaAtual;
-    if(['concsipag','caixinha','caixa','juros','manualcx'].includes(page)&&k!=='oticas')page='visao';
+    if(['concsipag','caixinha','caixa','juros','manualcx','emprestimos'].includes(page)&&k!=='oticas')page='visao';
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
     preencherSeletores();await carregarContas();await carregarFechamentos();document.getElementById('ptitle').textContent=TITLES[page]||page;renderNav();render();}
   // ---- CONCILIAÇÃO SIPAG (v2.0): extrato do Sicoob × previsto do Cartões Rocha (só leitura lá) ----
@@ -1187,7 +1187,7 @@
   const MENU=[
     ['__d','Dia a dia'],
     ['visao','Dashboard','◫',true],['radar','Radar do mês','🧭',true],['lanc','Lançamentos','≣',true],['import','Importar extrato','⤓',true],
-    ['apagar','Agenda de pagamentos','🧾',true],['caixa','Fechamento de caixa','🧮',true],['caixinha','Caixinha (espelho)','💵',true],
+    ['apagar','Agenda de pagamentos','🧾',true],['remanejos','Remanejos','↹',true],['caixa','Fechamento de caixa','🧮',true],['caixinha','Caixinha (espelho)','💵',true],['emprestimos','Empréstimos (espelho)','⇄',true],
     ['__a','Análise'],
     ['dre','DRE','📊',true],['fechamento','Fechamento do mês','🔐',true],['concsipag','Cartão × Sipag','💳',true],
     ['comparativo','Comparativo','📈',true],['relcontato','Por contato','👥',true],['juros','Juros por loja','🏦',true],
@@ -1195,9 +1195,9 @@
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
     ['recorrentes','Recorrentes','🔁',true],['lixeira','Lixeira','🗑',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],['manualcx','Manual do Caixinha','🔗',true],
   ];
-  const TITLES={visao:'Dashboard',radar:'Radar do mês',lanc:'Lançamentos',import:'Importar extrato',apagar:'Agenda de pagamentos',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
+  const TITLES={visao:'Dashboard',radar:'Radar do mês',lanc:'Lançamentos',import:'Importar extrato',apagar:'Agenda de pagamentos',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',remanejos:'Remanejos',emprestimos:'Empréstimos entre lojas — espelho do Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
   // ícones do menu: traço simples, da mesma cor do texto (claro e escuro), no estilo do Microvix
-  const NAV_ICON={visao:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',radar:'<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.8 5.41a2 2 0 0 1-1.27 1.27L7.76 16.24l1.8-5.41a2 2 0 0 1 1.27-1.27z"/>',lanc:'<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',import:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',apagar:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',caixa:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M16 14v4M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/>',caixinha:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',dre:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',fechamento:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',concsipag:'<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>',comparativo:'<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',relcontato:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',juros:'<path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"/>',categorias:'<path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',cadcontatos:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',recorrentes:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',lixeira:'<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',config:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',manual:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',manualcx:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'};
+  const NAV_ICON={remanejos:'<path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/>',emprestimos:'<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',visao:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',radar:'<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.8 5.41a2 2 0 0 1-1.27 1.27L7.76 16.24l1.8-5.41a2 2 0 0 1 1.27-1.27z"/>',lanc:'<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',import:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',apagar:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',caixa:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M16 14v4M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/>',caixinha:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',dre:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',fechamento:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',concsipag:'<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>',comparativo:'<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',relcontato:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',juros:'<path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"/>',categorias:'<path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',cadcontatos:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',recorrentes:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',lixeira:'<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',config:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',manual:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',manualcx:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'};
   // menu que abre e fecha por grupo (Dia a dia / Análise / Gestão); lembra no navegador; o grupo da tela aberta fica sempre aberto
   let NAV_FECHADO={};try{NAV_FECHADO=JSON.parse(localStorage.getItem('fluxo_menu_fechado')||'{}')||{};}catch(e){NAV_FECHADO={};}
   function navDobrar(sec){NAV_FECHADO[sec]=!NAV_FECHADO[sec];try{localStorage.setItem('fluxo_menu_fechado',JSON.stringify(NAV_FECHADO));}catch(e){}renderNav();}
@@ -1208,7 +1208,8 @@
         return `<div class="seclabel dobra ${fech?'fechada':''}" onclick="navDobrar('${it[0]}')" title="${fech?'Abrir':'Fechar'} ${it[1]}"><span>${it[1]}</span><span class="seta">▾</span></div>`;}
       const [id,l,ic,pronto]=it;
       if(id==='config'&&!ehDono())return '';
-      if(MODULO_ATUAL!=='oticas'&&['concsipag','caixinha','caixa','juros','manualcx'].includes(id))return '';
+      if(id==='remanejos'&&!veRemanejos())return '';
+      if(MODULO_ATUAL!=='oticas'&&['concsipag','caixinha','caixa','juros','manualcx','emprestimos'].includes(id))return '';
       if(NAV_FECHADO[secDe[id]]&&secDe[page]!==secDe[id])return '';
       return `<div class="nav ${id===page?'active':''}" data-label="${l}" onclick="go('${id}')"><span class="ic">${NAV_ICON[id]?`<svg viewBox="0 0 24 24" aria-hidden="true">${NAV_ICON[id]}</svg>`:ic}</span><span class="navtxt">${l}</span>${pronto?'':'<span class="soon">em breve</span>'}</div>`;
     }).join('');
@@ -1340,8 +1341,8 @@
   function isoParaBR(iso){if(!iso)return '';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;}
 
   function render(){
-    const V={visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
-    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
+    const V={visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,remanejos:viewRemanejos,emprestimos:viewEmprestimos,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
+    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));preencherRemDash().catch(e=>console.error('rem dash',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   let mesSel=new Date().getMonth();let _keepY=null;
@@ -2380,7 +2381,8 @@
       <h3 style="font-size:14px;margin:6px 0 8px">Já classificados — clique pra abrir</h3>
       <div class="card" style="padding:0;overflow:auto"><table><tbody>${blocos||'<tr><td class="mut">—</td></tr>'}</tbody></table></div>
       <div class="card" style="margin-top:16px;text-align:center;background:linear-gradient(100deg,var(--panel),var(--panel-2))">
-        <div class="mut" style="font-size:12.5px;margin-bottom:12px">${pend?`👆 Ainda faltam ${pend} em amarelo. Pode confirmar assim mesmo (elas entram sem categoria e aparecem no Dia a dia), ou resolver antes:`:'🎉 Tudo resolvido. É só confirmar:'}</div>
+        <div class="mut" style="font-size:12.5px;margin-bottom:12px">${(()=>{const pm=atencao.filter(i=>{const r=IMPORT[i];return impSel(r)&&!r.catId;}).length,am=atencao.filter(i=>{const r=IMPORT[i];return impSel(r)&&r.catId&&r.corrigir;}).length;
+          return pm?`👆 ${pm} das marcadas ainda sem categoria. Pode confirmar assim mesmo (entram sem categoria e aparecem no Dia a dia), ou resolver antes:`:(am?`👆 ${am} das marcadas em "confira" — já têm categoria e entram com ela. Pode confirmar:`:'🎉 As marcadas estão resolvidas. É só confirmar:');})()}</div>
         ${(()=>{const nv=IMPORT.filter(r=>r.grupo!=='ja'&&r.grupo!=='lentes'),sel=nv.filter(r=>impSel(r));
           if(sel.length===nv.length)return `<button class="btn" id="btnConfImport" onclick="confirmarImport()" style="font-size:15px;padding:13px 32px">✓ Confirmar: lançar ${novos} novas${jaN?` e ligar ${jaN} já lançadas`:''}</button>`;
           const e=sel.filter(r=>r.amt>0).length,s2=sel.length-e;
@@ -2819,6 +2821,7 @@
     document.getElementById('content').innerHTML=`${seletor}
       <div id="cartoesDash"></div>
       <div id="autoDash"></div>
+      <div id="remDash"></div>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:16px">
         ${card('Saídas do mês',saidaMes,'var(--red)','pago em '+mesNome)}
         ${card('Entradas do mês',entradaMes,'var(--green)','recebido em '+mesNome)}
@@ -2912,6 +2915,248 @@
       <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>Loja</th>${meses.map(m=>`<th style="text-align:right">${MESES_NOME[m].slice(0,3)}${m===mAtual?' *':''}</th>`).join('')}<th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table></div>
       <div class="mut" style="font-size:11.5px;margin-top:6px">* ${MESES_NOME[mAtual]} ainda está correndo.</div>
       <div class="note" style="margin-top:16px;background:rgba(61,220,145,.06);border-color:rgba(61,220,145,.2)">💡 <b>Dica:</b> as lojas no topo são as que mais pagam custo financeiro. Compare o valor de um mês com a parcela de um empréstimo — se o empréstimo sair mais barato, vale trocar o cheque especial (como você fez no laboratório).</div>`
+  }
+
+
+  // ===================== REMANEJOS (v2.8.1) =====================
+  // Quando o combinado não deu para cumprir: pagou menos, pagou mais, atrasou, não pagou.
+  // Entra SOZINHO (comparando com o fixo dos Recorrentes ou a média dos 3 meses); a pessoa só completa o porquê.
+  // Também dá para registrar à mão. Só o gestor (Lucas, Heloísa) e a Flávia.
+  function veRemanejos(){return PERFIL.papel==='dono'||PERFIL.ve_casa===true;}
+  const _remEsc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const _r2=x=>Math.round((Number(x)||0)*100)/100;
+  let REM_ERRO_TAB=false,_remLista=[],_remEd=null,_remSeq=0,REM_FILTRO='';
+  // ---- dias úteis: sábado, domingo e feriado nacional não contam (venceu no fim de semana = paga na segunda) ----
+  function _pascoa(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1;return `${y}-${String(mes).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;}
+  const _FER={};
+  function feriadosAno(y){if(_FER[y])return _FER[y];const p=_pascoa(y);const s=new Set(['01-01','04-21','05-01','09-07','10-12','11-02','11-15','11-20','12-25'].map(x=>y+'-'+x));[-48,-47,-2,60].forEach(n=>s.add(addDias(p,n)));return _FER[y]=s;} // carnaval (seg/ter), sexta santa, corpus christi
+  function ehDiaUtil(iso){const d=new Date(iso+'T00:00:00').getDay();if(d===0||d===6)return false;return !feriadosAno(Number(iso.slice(0,4))).has(iso);}
+  function proxDiaUtil(iso){let x=iso,n=0;while(!ehDiaUtil(x)&&n<10){x=addDias(x,1);n++;}return x;}
+  function diasUteisDepois(a,b){let n=0,x=a,g=0;while(x<b&&g<400){x=addDias(x,1);g++;if(ehDiaUtil(x))n++;}return n;} // de a (fora) até b (dentro)
+  // ---- o que fica de fora / o que vira dívida ----
+  const REM_MIN=300,REM_TOL_FIXO=0.10,REM_TOL_MEDIA=0.25,REM_ATRASO=2;
+  const REM_RE_FORA=/funcion|sal[aá]ri|folha|f[ée]rias|rescis|pr[oó].?labore|d[ée]cimo|juros|tarifa|cheque especial|\biof\b/i;
+  function remCatFora(c){if(!c)return false;if(c.rem_fora===true)return true;if(c.rem_fora===false)return false;return REM_RE_FORA.test(c.nome||'');}
+  function remContFora(k){return !!(k&&(k.tipo==='funcionario'||k.rem_fora===true));}
+  function remContDivida(k){if(!k)return false;if(k.rem_divida===true)return true;const n=String(k.nome||'').toUpperCase();
+    return /FZ\s*GRIF|GRUPO\s*VR/.test(n)||LOJAS.some(l=>_modDe(l)==='compras'&&n.includes(String(l.nome||'').split(' — ')[0].toUpperCase()));}
+  // ---- detectar: a menos, a mais, atraso ----
+  function remDetectar(lancs,recs,ym,hoje){
+    if(ym>hoje.slice(0,7))return [];
+    const mesAtual=hoje.slice(0,7)===ym,prev=[1,2,3].map(k=>mesShift(ym,-k)),G={},out=[];
+    lancs.forEach(l=>{const v=Number(l.valor);if(!(v<0))return;const m=String(l.data).slice(0,7);if(m!==ym&&!prev.includes(m))return;
+      const cat=CATS.find(c=>c.id===l.categoria_id),ct=l.contato_id?CONTATOS.find(c=>c.id===l.contato_id):null;
+      if(remContFora(ct)||remCatFora(cat))return;if(!ct&&(!cat||cat.grupo==='neutra'))return;
+      const k=l.loja_id+'|'+(ct?'c'+ct.id:'k'+cat.id);
+      if(!G[k])G[k]={k,loja_id:l.loja_id,ct,cat,nome:ct?ct.nome:cat.nome,mes:{},datas:{}};
+      const g=G[k];g.mes[m]=(g.mes[m]||0)+Math.abs(v);(g.datas[m]=g.datas[m]||[]).push(String(l.data));if(!g.cat&&cat)g.cat=cat;});
+    Object.values(G).forEach(g=>{
+      const rec=(recs||[]).find(r=>r.loja_id==g.loja_id&&(g.ct?r.contato_id===g.ct.id:(!r.contato_id&&g.cat&&r.categoria_id===g.cat.id)));
+      const fixo=rec?Math.abs(Number(rec.valor)||0):0,vals=prev.map(m=>g.mes[m]||0);let ref,tol,base;
+      if(fixo>0){ref=fixo;tol=REM_TOL_FIXO;base='o fixo dos Recorrentes';}
+      else{if(vals.some(v=>!(v>0)))return;ref=vals.reduce((a,b)=>a+b,0)/3;tol=REM_TOL_MEDIA;base='a média dos 3 meses';}
+      if(ref<REM_MIN)return;
+      const feito=g.mes[ym]||0,diff=feito-ref,ult=Number(_fimMes(ym).slice(8,10));
+      const diaV=rec&&rec.dia_vencimento?rec.dia_vencimento:Math.max(0,...prev.flatMap(m=>(g.datas[m]||[]).map(d=>Number(d.slice(8,10)))));
+      const venc=diaV?proxDiaUtil(`${ym}-${String(Math.min(diaV,ult)).padStart(2,'0')}`):_fimMes(ym);
+      const passou=!mesAtual||diasUteisDepois(venc,hoje)>=REM_ATRASO;
+      const L=lojaNomeCurto(g.loja_id),comum={loja_id:g.loja_id,contato_id:g.ct?g.ct.id:null,categoria_id:g.cat?g.cat.id:null,descricao:g.nome,previsto:_r2(ref),feito:_r2(feito),divida:remContDivida(g.ct),data:venc,base};
+      if(diff<0&&-diff>=Math.max(REM_MIN,ref*tol)&&passou)out.push({...comum,chave:`v:${g.k}:${ym}`,origem:'auto_valor',tipo:'menos'});
+      else if(diff>0&&diff>=Math.max(REM_MIN,ref*tol))out.push({...comum,chave:`m:${g.k}:${ym}`,origem:'auto_valor',tipo:'mais'});
+      if(rec&&rec.dia_vencimento&&(g.datas[ym]||[]).length){const pg=g.datas[ym].slice().sort()[0],d=diasUteisDepois(venc,pg);
+        if(d>=REM_ATRASO)out.push({...comum,divida:false,data:pg,chave:`t:${g.k}:${ym}`,origem:'auto_valor',tipo:'atraso',dias_atraso:d});}
+    });
+    return out;}
+  function remDetectarAgenda(cps,ym,hoje){return (cps||[]).filter(c=>String(c.vencimento).slice(0,7)===ym).map(c=>{
+      if(remCatFora(CATS.find(x=>x.id===c.categoria_id))||remContFora(CONTATOS.find(x=>x.id===c.contato_id)))return null;
+      const venc=proxDiaUtil(c.vencimento),v=_r2(c.valor);
+      const b={loja_id:c.loja_id,contato_id:c.contato_id||null,categoria_id:c.categoria_id||null,descricao:c.descricao+(c.parcela?' '+c.parcela:''),previsto:v,chave:'a:'+c.id,origem:'auto_agenda',conta_pagar_id:c.id,divida:false};
+      if(c.status==='cancelado')return {...b,tipo:'menos',feito:0,data:c.vencimento,motivo:c.motivo||null};
+      if(c.status==='pago'&&c.pago_em){const n=diasUteisDepois(venc,c.pago_em);return n>=REM_ATRASO?{...b,tipo:'atraso',feito:v,dias_atraso:n,data:c.pago_em}:null;}
+      if(c.status==='aberto'&&venc<hoje){const n=diasUteisDepois(venc,hoje);return n>=REM_ATRASO?{...b,tipo:'atraso',feito:0,dias_atraso:n,data:venc,aberto:true}:null;}
+      return null;}).filter(Boolean);}
+  // ---- grava sozinho (só quando um gestor abre a tela ou o Dashboard) ----
+  async function remSincronizar(ids,meses){const hoje=_hojeLocal();meses=meses.filter(m=>m<=hoje.slice(0,7));if(!meses.length||!ids.length)return true;
+    const de=mesShift(meses[0],-3)+'-01',ate=_fimMes(meses[meses.length-1]);
+    let lancs=[];for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('id,loja_id,data,valor,categoria_id,contato_id').in('loja_id',ids).lt('valor',0).gte('data',de).lte('data',ate).order('id').range(o,o+999);if(error)return false;lancs=lancs.concat(data||[]);if(!data||data.length<1000)break;}
+    const {data:recs}=await sb.from('recorrentes').select('*').in('loja_id',ids);
+    const {data:cps}=await sb.from('contas_pagar').select('*').in('loja_id',ids).gte('vencimento',meses[0]+'-01').lte('vencimento',ate);
+    const {data:ex,error:e2}=await sb.from('remanejos').select('*').in('loja_id',ids).limit(20000);if(e2){REM_ERRO_TAB=true;return false;}
+    const porChave={};(ex||[]).forEach(r=>{if(r.chave)porChave[r.chave]=r;});
+    let det=[];meses.forEach(m=>{det=det.concat(remDetectar(lancs,recs||[],m,hoje),remDetectarAgenda(cps,m,hoje));});
+    const igual=(a,b)=>(a==null&&b==null)||(a!=null&&b!=null&&(typeof b==='number'?Math.abs(Number(a)-b)<0.005:String(a)===String(b)));
+    const novos=[],vistos=new Set();
+    for(const d of det){vistos.add(d.chave);const e=porChave[d.chave];
+      const campos={previsto:d.previsto,feito:d.feito,dias_atraso:d.dias_atraso||null,data:d.data};
+      if(!e){novos.push({...campos,descricao:d.descricao,tipo:d.tipo,divida:!!d.divida,loja_id:d.loja_id,contato_id:d.contato_id,categoria_id:d.categoria_id,origem:d.origem,chave:d.chave,conta_pagar_id:d.conta_pagar_id||null,motivo:d.motivo||null,status:'registrado',criado_por_nome:'FLUXO (AUTOMÁTICO)'});continue;}
+      if(e.status!=='registrado'&&e.status!=='resolvido')continue;
+      const upd={};if(!e.valores_manuais)Object.keys(campos).forEach(c=>{if(!igual(e[c],campos[c]))upd[c]=campos[c];});
+      if(e.tipo!==d.tipo)upd.tipo=d.tipo;if(e.status==='resolvido')upd.status='registrado';
+      if(Object.keys(upd).length)await sb.from('remanejos').update(upd).eq('id',e.id);}
+    if(novos.length){const {error}=await sb.from('remanejos').insert(novos);if(error){for(const n of novos){await sb.from('remanejos').insert(n);}}}
+    // entrou sozinho e deixou de valer (ex.: o resto do pagamento caiu) e ninguém escreveu o porquê → resolvido
+    for(const e of (ex||[])){if(e.status!=='registrado'||!e.chave||e.motivo||!/^auto/.test(e.origem||''))continue;
+      const mm=(String(e.chave).match(/(\d{4}-\d{2})$/)||[])[1]||String(e.data||'').slice(0,7);
+      if(meses.includes(mm)&&!vistos.has(e.chave))await sb.from('remanejos').update({status:'resolvido'}).eq('id',e.id);}
+    return true;}
+  // ---- textos ----
+  function remTipoTxt(r){return r.tipo==='menos'?'A menos':r.tipo==='mais'?'A mais':r.tipo==='atraso'?`Atrasou ${r.dias_atraso||'?'} ${r.dias_atraso==1?'dia útil':'dias úteis'}`:'Registrado à mão';}
+  function remDif(r){if(r.previsto==null||r.feito==null)return null;return _r2(Number(r.feito)-Number(r.previsto));}
+  function remTexto(r){const L=lojaNomeCurto(r.loja_id),p=r.previsto!=null?BRL(Number(r.previsto)):'',f=r.feito!=null?BRL(Number(r.feito)):'';
+    if(r.tipo==='menos')return Number(r.feito)>0?`${L} pagou ${f} em ${r.descricao}. O normal é ${p}.`:`${L} não pagou ${r.descricao}. O normal é ${p}.`;
+    if(r.tipo==='mais')return `${L} pagou ${f} em ${r.descricao}. O normal é ${p}.`;
+    if(r.tipo==='atraso')return Number(r.feito)>0?`${r.descricao} da ${L} saiu ${r.dias_atraso} dias úteis depois do vencimento.`:`${r.descricao} da ${L} está ${r.dias_atraso} dias úteis atrasada e ainda em aberto.`;
+    return '';}
+  const _remCatsFin=()=>CATS.filter(c=>/juros|cheque especial|tarifa|\biof\b/i.test(c.nome||'')).map(c=>c.id);
+  // ---- tela ----
+  async function viewRemanejos(){const box=document.getElementById('content');const seq=++_remSeq;
+    if(!veRemanejos()){box.innerHTML='<div class="note">Esta tela é só do gestor.</div>';return;}
+    box.innerHTML='<div class="loading"><span class="spin"></span> Conferindo os remanejos do mês…</div>';
+    const mi=mesSel,ym=`${ANO_FIXO}-${_mm(mi)}`,ids=idsDoModulo();
+    const meses=[];for(let k=5;k>=0;k--){const m=mesShift(ym,-k);if(m>=`${ANO_FIXO}-06`||m>='2026-06')meses.push(m);}
+    try{await remSincronizar(ids,meses);}catch(e){console.error('rem sync',e);}
+    const {data:todos,error}=await sb.from('remanejos').select('*').in('loja_id',ids).limit(20000);REM_ERRO_TAB=!!error;
+    const cf=_remCatsFin();let juros=[];
+    if(cf.length){const {data}=await sb.from('lancamentos').select('loja_id,valor,categoria_id').in('loja_id',ids).in('categoria_id',cf).gte('data',ym+'-01').lte('data',_fimMes(ym)).limit(5000);juros=data||[];}
+    if(seq!==_remSeq||page!=='remanejos')return;
+    const ativos=(todos||[]).filter(r=>r.status==='registrado');
+    const doMes=ativos.filter(r=>String(r.data||'').slice(0,7)===ym).sort((a,b)=>(a.motivo?1:0)-(b.motivo?1:0)||String(b.data).localeCompare(String(a.data)));
+    _remLista=doMes;
+    const menos=doMes.filter(r=>(r.tipo==='menos'||r.tipo==='manual')&&remDif(r)<0),mais=doMes.filter(r=>r.tipo==='mais'),atr=doMes.filter(r=>r.tipo==='atraso'),semPq=doMes.filter(r=>!r.motivo);
+    const somaMenos=menos.reduce((t,r)=>t-remDif(r),0),somaMais=mais.reduce((t,r)=>t+remDif(r),0);
+    const mediaAtr=atr.length?Math.round(atr.reduce((t,r)=>t+(Number(r.dias_atraso)||0),0)/atr.length):0;
+    const jurosPor={};juros.forEach(l=>{jurosPor[l.loja_id]=(jurosPor[l.loja_id]||0)+Math.abs(Number(l.valor));});const jurosTot=Object.values(jurosPor).reduce((a,b)=>a+b,0);
+    // deve ao grupo de compras: soma dos meses (a menos aumenta, a mais diminui)
+    const div={};ativos.filter(r=>r.divida&&(r.tipo==='menos'||r.tipo==='mais')&&String(r.data||'').slice(0,7)<=ym).forEach(r=>{const k=r.loja_id+'|'+(r.contato_id||r.descricao);if(!div[k])div[k]={loja_id:r.loja_id,nome:r.descricao,v:0};div[k].v-=remDif(r)||0;});
+    const divLista=Object.values(div).filter(d=>d.v>0.5).sort((a,b)=>b.v-a.v),divPorLoja={};divLista.forEach(d=>{divPorLoja[d.loja_id]=(divPorLoja[d.loja_id]||0)+d.v;});
+    const v=x=>x==null?'—':BRL(Math.abs(Number(x))).replace('R$ ','');
+    const tile=(t,val,sub,cor)=>`<div class="card" style="text-align:center;padding:14px 10px"><div class="mut" style="font-size:11.5px;font-weight:600">${t}</div><div style="font-size:20px;font-weight:800;margin-top:6px;white-space:nowrap;${cor?'color:'+cor:''}">${val}</div><div class="mut" style="font-size:11px;margin-top:3px">${sub}</div></div>`;
+    // por loja
+    const lojasIds=[...new Set([...doMes.map(r=>r.loja_id),...Object.keys(jurosPor).map(Number),...Object.keys(divPorLoja).map(Number)])];
+    const porLoja=lojasIds.map(id=>{const rs=doMes.filter(r=>r.loja_id===id);return {id,n:rs.length,menos:rs.filter(r=>(r.tipo==='menos'||r.tipo==='manual')&&remDif(r)<0).reduce((t,r)=>t-remDif(r),0),mais:rs.filter(r=>r.tipo==='mais').reduce((t,r)=>t+remDif(r),0),atr:rs.filter(r=>r.tipo==='atraso').length,juros:jurosPor[id]||0,div:divPorLoja[id]||0};}).sort((a,b)=>b.menos-a.menos||b.n-a.n);
+    const tabLoja=porLoja.length?`<div class="card" style="padding:0;overflow-x:auto;margin-bottom:14px"><table><thead><tr><th>Loja</th><th style="text-align:right">Remanejos</th><th style="text-align:right">A menos</th><th style="text-align:right">A mais</th><th style="text-align:right">Atrasos</th><th style="text-align:right">Juros e tarifas</th><th style="text-align:right">Deve ao grupo de compras</th></tr></thead><tbody>
+      ${porLoja.map(x=>`<tr><td style="white-space:nowrap"><b>${lojaNomeCurto(x.id)}</b></td><td class="amt" style="text-align:right">${x.n||'—'}</td><td class="amt" style="text-align:right;color:var(--amber)">${x.menos?v(x.menos):'—'}</td><td class="amt" style="text-align:right;color:var(--blue)">${x.mais?v(x.mais):'—'}</td><td class="amt" style="text-align:right">${x.atr||'—'}</td><td class="amt red" style="text-align:right">${x.juros?v(x.juros):'—'}</td><td class="amt" style="text-align:right"><b>${x.div?v(x.div):'—'}</b></td></tr>`).join('')}</tbody></table></div>`:'';
+    // onde mais aconteceu
+    const ranking=(chaveFn,nomeFn)=>{const R={};doMes.forEach(r=>{const k=chaveFn(r);if(k==null)return;if(!R[k])R[k]={nome:nomeFn(r),n:0,menos:0};R[k].n++;const d=remDif(r);if(d<0&&r.tipo!=='atraso')R[k].menos-=d;});
+      return Object.values(R).sort((a,b)=>b.n-a.n||b.menos-a.menos).slice(0,6).map(x=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:13px"><span>${_remEsc(x.nome)}</span><span class="mut">${x.n}×${x.menos?' · '+v(x.menos)+' a menos':''}</span></div>`).join('')||'<div class="mut" style="font-size:12.5px">—</div>';};
+    const porCat=ranking(r=>r.categoria_id,r=>(CATS.find(c=>c.id===r.categoria_id)||{}).nome||'—'),porCont=ranking(r=>r.contato_id||null,r=>(CONTATOS.find(c=>c.id===r.contato_id)||{}).nome||r.descricao);
+    const listaFiltrada=doMes.filter(r=>REM_FILTRO==='semPq'?!r.motivo:REM_FILTRO?(REM_FILTRO==='menos'?(r.tipo==='menos'||r.tipo==='manual'):r.tipo===REM_FILTRO):true);
+    const chip=(k,t,n)=>`<button class="btn ${REM_FILTRO===k?'':'ghost'}" style="padding:4px 11px;font-size:12px" onclick="REM_FILTRO='${k}';_keepY=window.scrollY;render()">${t}${n!=null?` (${n})`:''}</button>`;
+    const linhas=listaFiltrada.map(r=>{const d=remDif(r);return `<tr><td style="white-space:nowrap">${lojaNomeCurto(r.loja_id)}</td><td class="mut" style="white-space:nowrap">${isoParaBR(r.data).slice(0,5)}</td><td style="white-space:nowrap;font-size:12.5px">${remTipoTxt(r)}</td><td>${_remEsc(r.descricao)}</td><td class="amt" style="text-align:right">${v(r.previsto)}</td><td class="amt" style="text-align:right">${v(r.feito)}</td><td class="amt" style="text-align:right;color:${d<0?'var(--amber)':d>0?'var(--blue)':'inherit'}">${d&&r.tipo!=='atraso'?(d<0?'− ':'+ ')+v(d):'—'}</td><td>${r.motivo?_remEsc(r.motivo):`<span class="arqbtn" style="color:var(--amber);border-color:rgba(245,183,64,.5)" onclick="remAbrir(${r.id},true)">falta o porquê</span>`}</td><td><span class="arqbtn" onclick="remAbrir(${r.id})">abrir</span></td></tr>`;}).join('');
+    const ajustes=ehDono()?remAjustesHTML():'';
+    box.innerHTML=`<div class="note"><b>Remanejos</b> — quando o combinado não deu para cumprir. O Fluxo registra sozinho o que saiu a menos, a mais ou atrasado (comparando com o fixo dos Recorrentes ou com a média dos 3 meses). Atraso conta só dia útil: venceu no sábado, domingo ou feriado, vale o dia útil seguinte. Funcionários ficam de fora. É só completar o porquê. Só o gestor vê.</div>
+      ${REM_ERRO_TAB?`<div class="note" style="border-color:rgba(255,92,92,.4)">Para usar os Remanejos, rode o <b>SQL da v2.8.1</b> no projeto <b>sistema-financeiro</b>.</div>`:''}
+      ${seletorMes()}
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px">
+        ${tile(MESES_NOME[mi].toUpperCase(),doMes.length+(doMes.length===1?' remanejo':' remanejos'),semPq.length?`${semPq.length} sem porquê`:'todos com porquê',semPq.length?'':null)}
+        ${tile('A MENOS',BRL(somaMenos),menos.length+' vez(es)','var(--amber)')}
+        ${tile('A MAIS',BRL(somaMais),mais.length+' vez(es)','var(--blue)')}
+        ${tile('ATRASOS',atr.length+(atr.length===1?' conta':' contas'),atr.length?`em média ${mediaAtr} dias úteis`:'nenhum')}
+        ${tile('JUROS E TARIFAS',BRL(jurosTot),'pagos no mês','var(--red)')}
+        ${tile('DEVE AO GRUPO DE COMPRAS',BRL(divLista.reduce((t,d)=>t+d.v,0)),'somando os meses')}
+      </div>
+      ${tabLoja}
+      ${doMes.length?`<div class="grid two" style="margin-bottom:14px"><div class="card"><h3 style="font-size:14px;margin:0 0 6px">Por categoria</h3>${porCat}</div><div class="card"><h3 style="font-size:14px;margin:0 0 6px">Por contato</h3>${porCont}</div></div>`:''}
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><button class="btn" onclick="remAbrir(null)">+ Registrar remanejo</button><span style="width:10px"></span>${chip('','Todos',doMes.length)}${chip('semPq','Falta o porquê',semPq.length)}${chip('menos','A menos',doMes.filter(r=>r.tipo==='menos'||r.tipo==='manual').length)}${chip('mais','A mais',mais.length)}${chip('atraso','Atrasos',atr.length)}</div>
+      <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>Loja</th><th>Data</th><th>O que houve</th><th>Conta</th><th style="text-align:right">Previsto</th><th style="text-align:right">Feito</th><th style="text-align:right">Diferença</th><th>Por quê</th><th></th></tr></thead>
+      <tbody>${linhas||`<tr><td colspan="9" class="mut" style="padding:16px">Nenhum remanejo ${REM_FILTRO?'neste filtro':'em '+MESES_NOME[mi]}.</td></tr>`}</tbody></table></div>
+      ${ajustes}`;
+  }
+  function remAjustesHTML(){const despesa=CATS.filter(c=>!c.arquivada&&c.grupo!=='rec'&&c.grupo!=='neutra'&&_visivelNoModulo(c)).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+    const divs=CONTATOS.filter(k=>remContDivida(k)),foras=CONTATOS.filter(k=>k.rem_fora===true);
+    return `<details style="margin-top:16px" ${_remAjAberto?'open':''} ontoggle="_remAjAberto=this.open"><summary style="cursor:pointer;font-weight:700;font-size:14px">Ajustes do acompanhamento</summary>
+      <div class="grid two" style="margin-top:10px">
+        <div class="card"><h3 style="font-size:14px;margin:0 0 4px">Categorias que não entram</h3><div class="mut" style="font-size:12px;margin-bottom:8px">Marcadas aqui não viram remanejo. Funcionários, salários, férias, juros e tarifas já vêm marcadas.</div>
+          <div style="max-height:260px;overflow:auto;columns:2;font-size:13px">${despesa.map(c=>`<label style="display:block;break-inside:avoid;padding:2px 0;cursor:pointer"><input type="checkbox" ${remCatFora(c)?'checked':''} onchange="remMarcarCat(${c.id},this.checked)"> ${_remEsc(c.nome)}</label>`).join('')}</div></div>
+        <div class="card"><h3 style="font-size:14px;margin:0 0 4px">Contatos</h3><div class="mut" style="font-size:12px;margin-bottom:8px">Contato do tipo funcionário nunca entra. Pagar a menos para quem <b>acumula dívida</b> soma no "deve ao grupo de compras"; pagar a mais desconta.</div>
+          <div style="font-size:13px;margin-bottom:6px"><b>Acumulam dívida:</b> ${divs.map(k=>`${_remEsc(k.nome)}${k.rem_divida===true?` <span class="arqbtn" onclick="remMarcarCont(${k.id},'rem_divida',false)">tirar</span>`:''}`).join(' · ')||'<span class="mut">nenhum</span>'}</div>
+          <div style="font-size:13px;margin-bottom:10px"><b>Não entram:</b> ${foras.map(k=>`${_remEsc(k.nome)} <span class="arqbtn" onclick="remMarcarCont(${k.id},'rem_fora',false)">tirar</span>`).join(' · ')||'<span class="mut">nenhum</span>'}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><select id="remContSel" class="qin" style="flex:1;min-width:160px"><option value="">Escolha um contato…</option>${CONTATOS.filter(k=>_visivelNoModulo(k)&&k.tipo!=='funcionario').map(k=>`<option value="${k.id}">${_remEsc(k.nome)}</option>`).join('')}</select>
+            <button class="btn ghost" style="font-size:12px" onclick="const x=document.getElementById('remContSel').value;if(x)remMarcarCont(Number(x),'rem_divida',true)">acumula dívida</button><button class="btn ghost" style="font-size:12px" onclick="const x=document.getElementById('remContSel').value;if(x)remMarcarCont(Number(x),'rem_fora',true)">não entra</button></div></div>
+      </div></details>`;}
+  let _remAjAberto=false;
+  async function remMarcarCat(id,fora){const {error}=await sb.from('categorias').update({rem_fora:fora}).eq('id',id);if(error){toast(/rem_fora|column/i.test(error.message)?'Rode o SQL da v2.8.1 no sistema-financeiro primeiro.':'Erro: '+error.message,'erro');return;}
+    const c=CATS.find(x=>x.id===id);if(c)c.rem_fora=fora;toast(fora?'Essa categoria não entra mais nos remanejos.':'Essa categoria volta a entrar.','ok');_remAjAberto=true;_keepY=window.scrollY;render();}
+  async function remMarcarCont(id,campo,val){const {error}=await sb.from('contatos').update({[campo]:val}).eq('id',id);if(error){toast(/rem_|column/i.test(error.message)?'Rode o SQL da v2.8.1 no sistema-financeiro primeiro.':'Erro: '+error.message,'erro');return;}
+    const k=CONTATOS.find(x=>x.id===id);if(k)k[campo]=val;toast('Ajuste salvo.','ok');_remAjAberto=true;_keepY=window.scrollY;render();}
+  function remModal(r,focoMotivo){_remEd=r||{};const ids=idsDoModulo();const lojaSel=r&&r.loja_id||lojaAtual,auto=r&&/^auto/.test(r.origem||'');
+    const num=x=>x==null||x===''?'':Number(x).toFixed(2).replace('.',',');
+    const cat=r&&r.categoria_id?CATS.find(c=>c.id===r.categoria_id):null,ct=r&&r.contato_id?CONTATOS.find(c=>c.id===r.contato_id):null;
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(580px,94vw)">
+      <h3>${r&&r.id?(auto?'Remanejo que o Fluxo achou':'Remanejo'):'Registrar remanejo'}</h3>
+      ${r&&r.id&&auto?`<p style="font-size:13px;margin:0 0 4px">${_remEsc(remTexto(r))}</p><p class="mut" style="font-size:11.5px;margin:0 0 10px">${remTipoTxt(r)}${cat?' · '+_remEsc(cat.nome):''}${ct?' · '+_remEsc(ct.nome):''}${r.divida?' · soma no que deve ao grupo de compras':''}</p>`:''}
+      <div style="display:grid;grid-template-columns:1fr 150px;gap:8px">
+        <div><span class="qlabel">Loja</span><select id="rmLoja" class="qin" ${auto?'disabled':''}>${ids.map(id=>`<option value="${id}" ${id===lojaSel?'selected':''}>${lojaNomeCurto(id)}</option>`).join('')}</select></div>
+        <div><span class="qlabel">Data</span><input id="rmData" class="qin" type="date" value="${(r&&r.data)||_hojeLocal()}"></div></div>
+      <span class="qlabel" style="margin-top:8px;display:block">O que era para fazer</span><input id="rmDesc" class="qin maiusc" style="width:100%" placeholder="EX.: TRANSFERIR PARA OS ÓCULOS, CARTÃO FZ GRIFES" value="${_remEsc(r&&r.descricao)}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div><span class="qlabel">Previsto${auto?'':' (opcional)'}</span><input id="rmPrev" class="qin" inputmode="decimal" placeholder="17.000,00" value="${num(r&&r.previsto)}"></div>
+        <div><span class="qlabel">Feito${auto?'':' (opcional)'}</span><input id="rmFeito" class="qin" inputmode="decimal" placeholder="8.000,00" value="${num(r&&r.feito)}"></div></div>
+      <span class="qlabel" style="margin-top:8px;display:block">Por quê</span><textarea id="rmMotivo" class="qin maiusc" rows="3" style="width:100%" placeholder="EX.: VENDA FRACA NO MÊS, ESPEREI O CARTÃO CAIR">${_remEsc(r&&r.motivo)}</textarea>
+      ${r&&r.id&&auto&&ehDono()?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;font-size:12px"><span class="mut" style="align-self:center">Não quero acompanhar:</span>${cat?`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="fecharModal();remMarcarCat(${cat.id},true)">a categoria ${_remEsc(cat.nome)}</button>`:''}${ct?`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="fecharModal();remMarcarCont(${ct.id},'rem_fora',true)">o contato ${_remEsc(ct.nome)}</button>`:''}</div>`:''}
+      <div class="modal-btns">${r&&r.id?`<button class="btn ghost" style="margin-right:auto" onclick="remNaoFoi()">${auto?'Não foi remanejo':'Remover'}</button>`:''}<button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" id="rmOk" onclick="remSalvar()">Salvar</button></div></div></div>`;
+    setTimeout(()=>{const el=document.getElementById(focoMotivo||(r&&r.descricao)?'rmMotivo':'rmDesc');if(el)el.focus();},30);}
+  function remAbrir(id,foco){if(id==null){remModal(null);return;}const r=_remLista.find(x=>x.id===id);if(r)remModal(r,foco);}
+  async function remSalvar(){const g=id=>document.getElementById(id);const num=t=>{t=String(t||'').trim();if(!t)return null;const n=Number(t.replace(/\./g,'').replace(',','.'));return isNaN(n)?null:_r2(n);};
+    const reg={loja_id:Number(g('rmLoja').value),data:g('rmData').value,descricao:(g('rmDesc').value||'').trim().toUpperCase(),previsto:num(g('rmPrev').value),feito:num(g('rmFeito').value),motivo:(g('rmMotivo').value||'').trim().toUpperCase()||null};
+    if(!reg.descricao){toast('Escreva o que era para fazer.','erro');return;}if(!reg.motivo){toast('Escreva o porquê.','erro');return;}if(!reg.data){toast('Preencha a data.','erro');return;}
+    const btn=g('rmOk');if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+    let res;const ed=_remEd||{};
+    if(ed.id){const mudouValor=!(Math.abs((Number(ed.previsto)||0)-(reg.previsto||0))<0.005&&Math.abs((Number(ed.feito)||0)-(reg.feito||0))<0.005)||(ed.data!==reg.data);
+      if(mudouValor)reg.valores_manuais=true;res=await sb.from('remanejos').update(Object.assign(reg,{atualizado_por:USER.id,atualizado_em:new Date().toISOString()})).eq('id',ed.id);}
+    else res=await sb.from('remanejos').insert(Object.assign(reg,{origem:'manual',tipo:'manual',status:'registrado',criado_por_nome:PERFIL.nome||''}));
+    if(res.error){toast(/remanejos|relation|exist|schema|column/i.test(res.error.message)?'Rode o SQL da v2.8.1 no sistema-financeiro primeiro.':'Erro: '+res.error.message,'erro');if(btn){btn.disabled=false;btn.textContent='Salvar';}return;}
+    fecharModal();toast('Remanejo salvo.','ok');_keepY=window.scrollY;render();}
+  async function remNaoFoi(){const ed=_remEd||{};if(!ed.id)return;const auto=/^auto/.test(ed.origem||'');
+    if(!confirm(auto?'Não foi remanejo? Ele sai da lista e o Fluxo não pergunta mais.':'Remover este remanejo? Ele sai da lista (fica guardado no banco como removido).'))return;
+    const {error}=await sb.from('remanejos').update({status:auto?'ignorado':'removido',atualizado_por:USER.id,atualizado_em:new Date().toISOString()}).eq('id',ed.id);
+    if(error){toast('Erro: '+error.message,'erro');return;}fecharModal();toast(auto?'Certo, esse não aparece mais.':'Removido.','ok');render();}
+  // aviso discreto no Dashboard (só gestor): remanejos desta loja no mês, quantos sem porquê
+  let _remDashSeq=0;
+  async function preencherRemDash(){const box=document.getElementById('remDash');if(!box||!veRemanejos())return;const seq=++_remDashSeq,mi=mesSel,loja=lojaAtual,ym=`${ANO_FIXO}-${_mm(mi)}`;
+    try{await remSincronizar([loja],[ym]);}catch(e){return;}
+    const {data,error}=await sb.from('remanejos').select('id,status,motivo,data,tipo').eq('loja_id',loja).gte('data',ym+'-01').lte('data',_fimMes(ym)).limit(2000);if(error)return;
+    if(seq!==_remDashSeq||mi!==mesSel||loja!==lojaAtual||!document.getElementById('remDash'))return;
+    const at=(data||[]).filter(r=>r.status==='registrado'),sp=at.filter(r=>!r.motivo).length;
+    box.innerHTML=at.length?`<div class="note" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;${sp?'border-color:rgba(245,183,64,.5)':''}"><span><b>${at.length} remanejo(s)</b> nesta loja em ${MESES_NOME[mi]}${sp?` · <b>${sp} sem porquê</b>`:''}.</span><button class="btn ghost" style="margin-left:auto;padding:5px 12px;font-size:12.5px" onclick="REM_FILTRO='${sp?'semPq':''}';go('remanejos')">${sp?'Completar o porquê':'Ver'}</button></div>`:'';}
+
+  // ===================== EMPRÉSTIMOS — espelho do Caixinha, todas as lojas numa tela (v2.8) =====================
+  async function viewEmprestimos(){const c=document.getElementById('content');
+    c.innerHTML='<div class="loading"><span class="spin"></span> Lendo os empréstimos no Caixinha...</div>';
+    const nota=`<div class="note"><b>Empréstimos entre lojas</b> — espelho do Caixinha, todas as lojas numa tela só. Quem lança e dá baixa continua sendo o Caixinha; aqui só se olha.</div>`;
+    const sess=await cxSessao();if(!sess){c.innerHTML=nota+cxLoginHTML();return;}
+    const ok=await cxCarregar();
+    if(page!=='emprestimos')return;
+    if(!ok){c.innerHTML=nota+`<div class="card"><p style="color:var(--red);font-size:13px">Não consegui ler o Caixinha: ${CX.erro||'erro desconhecido'}.</p><button class="btn ghost" style="margin-top:10px" onclick="CX.carregado=false;render()">Tentar de novo</button></div>`;return;}
+    const mi=mesSel,pref=`${ANO_FIXO}-${_mm(mi)}`,ult=_fimMes(pref),hoje=_hojeLocal(),corte=hoje<ult?hoje:ult;
+    let totFalta=0,totEmpMes=0,totRepMes=0;
+    const lojas=CX.caixas.map(k=>{const r=cxCalcMes(k,ANO_FIXO,mi+1);totFalta+=r.fimEmp;totEmpMes+=r.emp;totRepMes+=r.rep;
+      const por={},semNome={v:0};k.mov.forEach(m=>{if((m.data||'')>ult)return;if(m.tipo!=='emprestimo'&&m.tipo!=='reposicao')return;const n=(m.para||'').trim().toUpperCase();
+        if(m.tipo==='reposicao'&&!n){semNome.v+=m.valor;return;}const key=n||'SEM NOME';por[key]=(por[key]||0)+(m.tipo==='emprestimo'?m.valor:-m.valor);});
+      const abertos=Object.entries(por).filter(([,v])=>v>0.004).sort((a,b)=>b[1]-a[1]);
+      return {nome:k.nome,falta:r.fimEmp,emp:r.emp,rep:r.rep,abertos,semNome:semNome.v};}).filter(x=>x.falta>0.004||x.emp>0||x.rep>0).sort((a,b)=>b.falta-a.falta);
+    const nomeCx=id=>(CX.caixas.find(k=>k.id===id)||{}).nome||'';
+    const banco=(CX.contas||[]).filter(ct=>ct.status==='estornar'&&ct.escopo!=='decimo').map(ct=>{const ab=_cxAbertoAte(ct,corte);return {ct,ab,voltou:Math.max((Number(ct.valor)||0)-ab,0)};}).filter(x=>x.ab>0.004).sort((a,b)=>(a.ct.data||'')<(b.ct.data||'')?1:-1);
+    const bT=cxBancoResumo(null,ANO_FIXO,mi+1);
+    const v=x=>BRL(x).replace('R$ ','');
+    const tile=(t,val,sub,cor)=>`<div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">${t}</div><div style="font-size:24px;font-weight:800;margin-top:6px;${cor?'color:'+cor:''}">${val}</div><div class="mut" style="font-size:11px;margin-top:3px">${sub}</div></div>`;
+    const rowsLoja=lojas.map(x=>`<tr><td style="white-space:nowrap"><b>${x.nome}</b></td><td class="amt" style="text-align:right;color:var(--amber)"><b>${x.falta>0.004?v(x.falta):'—'}</b></td><td style="font-size:12.5px">${x.abertos.map(([n,val])=>`${_remEsc(n)} <span class="mut">${v(val)}</span>`).join(' · ')||'<span class="mut">—</span>'}${x.semNome>0.004?` <span class="mut" style="font-size:11px">· voltou sem nome: ${v(x.semNome)}</span>`:''}</td><td class="amt" style="text-align:right">${x.emp?v(x.emp):'—'}</td><td class="amt green" style="text-align:right">${x.rep?v(x.rep):'—'}</td></tr>`).join('');
+    const rowsBanco=banco.map(x=>`<tr><td style="white-space:nowrap">${nomeCx(x.ct.caixinha_id)}</td><td class="mut">${isoParaBR(x.ct.data||'').slice(0,5)}</td><td>${_remEsc(x.ct.descricao||'')}${x.ct.contato?` <span class="mut" style="font-size:11.5px">· ${_remEsc(x.ct.contato)}</span>`:''}</td><td class="amt" style="text-align:right">${v(Number(x.ct.valor)||0)}</td><td class="amt green" style="text-align:right">${x.voltou?v(x.voltou):'—'}</td><td class="amt" style="text-align:right;color:var(--amber)"><b>${v(x.ab)}</b></td></tr>`).join('');
+    c.innerHTML=nota+seletorMes()+`
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:14px">
+        ${tile('LOJAS EMPRESTARAM · FALTA VOLTAR',BRL(totFalta),'dinheiro da gaveta emprestado','var(--amber)')}
+        ${tile(MESES_NOME[mi].toUpperCase(),BRL(totEmpMes),'emprestado no mês · voltou '+BRL(totRepMes))}
+        ${tile('BANCO CAIXINHA',BRL(bT.fim),'o escritório pagou, as lojas vão devolver','var(--blue)')}
+      </div>
+      <h3 style="font-size:14.5px;margin:4px 0 8px">Entre lojas (dinheiro da gaveta)</h3>
+      <div class="card" style="padding:0;overflow-x:auto;margin-bottom:16px"><table><thead><tr><th>Loja que emprestou</th><th style="text-align:right">Falta voltar</th><th>Para quem</th><th style="text-align:right">Emprestou no mês</th><th style="text-align:right">Voltou no mês</th></tr></thead>
+      <tbody>${rowsLoja||'<tr><td colspan="5" class="mut" style="padding:14px">Nenhum empréstimo em aberto.</td></tr>'}</tbody></table></div>
+      <h3 style="font-size:14.5px;margin:4px 0 8px">Banco Caixinha (o escritório pagou pela loja)</h3>
+      <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>Loja que deve</th><th>Data</th><th>O que foi pago</th><th style="text-align:right">Valor</th><th style="text-align:right">Já voltou</th><th style="text-align:right">Falta</th></tr></thead>
+      <tbody>${rowsBanco||'<tr><td colspan="6" class="mut" style="padding:14px">Nada em aberto no Banco Caixinha.</td></tr>'}</tbody></table></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:12px" class="mut"><span>Lido do Caixinha às ${CX.em?CX.em.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—'}</span>
+        <button class="btn ghost" style="padding:5px 10px;font-size:12px" onclick="CX.carregado=false;render()">Atualizar</button>
+        <a class="btn ghost" href="${CX_LINK}" target="_blank" rel="noopener" style="padding:5px 10px;font-size:12px;text-decoration:none">Abrir o Caixinha</a></div>`;
   }
 
   // ---- POR CONTATO (relatório) ----
@@ -3180,7 +3425,7 @@
         c.from('caixinhas').select('id,nome,tipo,arquivada,ordem').order('ordem'),
         cxSelectTudo('competencias','id,caixinha_id,ano,mes'),
         cxSelectTudo('lancamentos','id,competencia_id,data,tipo,valor,excluido,contraparte,recolhido,categoria,criado_por_nome'),
-        cxSelectTudo('contas','id,caixinha_id,status,escopo,data,valor,valor_pago,pagamentos,pago_data'),
+        cxSelectTudo('contas','id,caixinha_id,status,escopo,data,valor,valor_pago,pagamentos,pago_data,descricao,contato'),
       ]);
       const fe=[cx,comp,lan].find(r=>r.error);
       if(fe){CX.erro=fe.error.message||String(fe.error);return false;}
