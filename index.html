@@ -226,7 +226,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.2.1', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.3.1', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -687,6 +687,169 @@
     if(error){toast(/confirmado/i.test(error.message)&&/column|coluna|schema/i.test(error.message)?'Rode o SQL da v2.1 no sistema-financeiro primeiro.':'Erro: '+error.message,'erro');return;}
     toast(desfazer?'↩ Conferência desfeita.':`✅ ${alvo.length} depósito(s) conferido(s) no extrato.`,'ok');render();
   }
+
+  // =================== 🧭 RADAR DO MÊS ===================
+  // Previsão por categoria (média dos 3 meses anteriores, ou o valor do Recorrente = fixo). Não é conta a pagar:
+  // ninguém lança nem dá baixa, nunca acumula de um mês pro outro, e o "pago" vem sozinho do que entrou no extrato.
+  let RADAR_ESCOPO='loja',RADAR_CMP=null,_radarSeq=0;
+  const _mesAdd=(M,n)=>mesShift(M,n);
+  const _fimMes=M=>`${M}-${String(new Date(Number(M.slice(0,4)),Number(M.slice(5,7)),0).getDate()).padStart(2,'0')}`;
+  const _mesNomeM=M=>MESES_NOME[parseInt(M.slice(5,7),10)-1];
+  function radarIcone(c){const n=(c&&c.nome)||'';
+    if(/FUNCION|SAL[AÁ]RIO|FOLHA|PR[OÓ]-?LABORE|COMISS/i.test(n))return '👥';if(/IMPOSTO|SIMPLES|DAS\b|ICMS|ISS|TRIBUT/i.test(n))return '🧾';
+    if(/ALUGUEL|CONDOM/i.test(n))return '🏠';if(/LENTE|LABORAT/i.test(n))return '🔬';if(/FORNEC|ARMA[CÇ]|MERCADORIA|COMPRA/i.test(n))return '📦';
+    if(/CEMIG|ENERGIA|LUZ|SAAE|[AÁ]GUA|TELEF|INTERNET/i.test(n))return '⚡';if(/MARKETING|PROPAGANDA|AN[UÚ]NCIO/i.test(n))return '📣';
+    if(/JUROS|TARIFA|BANC/i.test(n))return '🏦';if(/CART[AÃ]O/i.test(n))return '💳';
+    return ({cmv:'📦',imp:'🧾',fixo:'🏢',nop:'💼'})[c&&c.grupo]||'•';}
+  async function radarCarregar(M,lojaIds){
+    const de=_mesAdd(M,-3)+'-01',ate=_fimMes(_mesAdd(M,3));let lancs=[];
+    for(let o=0;;o+=1000){let q=sb.from('lancamentos').select('id,loja_id,data,valor,categoria_id,contato_id,descricao,parcela,pago,vencimento').gte('data',de).lte('data',ate);
+      if(lojaIds)q=q.in('loja_id',lojaIds);const {data,error}=await q.order('id').range(o,o+999);if(error)throw error;lancs=lancs.concat(data||[]);if(!data||data.length<1000)break;}
+    let rq=sb.from('recorrentes').select('loja_id,categoria_id,valor,dia_vencimento,descricao');if(lojaIds)rq=rq.in('loja_id',lojaIds);
+    const {data:recs}=await rq;return {lancs,recs:recs||[]};
+  }
+  function radarCalcular(M,dados){
+    const hoje=new Date().toISOString().slice(0,10),mesHoje=hoje.slice(0,7);
+    const cat=id=>CATS.find(c=>c.id===id)||null;const grupo=l=>{const c=cat(l.categoria_id);return c?c.grupo:'adef';};
+    const mesDe=l=>String(l.data||'').slice(0,7);const vencDe=l=>String(l.vencimento||l.data||'').slice(0,7);
+    const passados=[_mesAdd(M,-1),_mesAdd(M,-2),_mesAdd(M,-3)];
+    const L=dados.lancs.filter(l=>grupo(l)!=='neutra');
+    const pagoOk=l=>l.pago!==false;
+    const mesesComDado=passados.filter(m=>dados.lancs.some(l=>mesDe(l)===m));const nM=Math.max(mesesComDado.length,1);
+    const C={};const pega=id=>{const k=id==null?'sem':id;if(!C[k])C[k]={id:k,cat:cat(id),media:0,fixo:0,dia:null,pago:0,aberto:0,fut:{},ct:{}};return C[k];};
+    let recMedia=0,recMes=0;
+    L.forEach(l=>{const v=Number(l.valor),m=mesDe(l);
+      if(v>0){if(!pagoOk(l))return;if(mesesComDado.includes(m))recMedia+=v/nM;if(m===M)recMes+=v;return;}
+      const x=pega(l.categoria_id),a=-v;
+      if(pagoOk(l)){const kc=l.contato_id||'sem',cc=x.ct[kc]||(x.ct[kc]={id:l.contato_id,media:0,pago:0});
+        if(mesesComDado.includes(m)){x.media+=a/nM;cc.media+=a/nM;}if(m===M){x.pago+=a;cc.pago+=a;}else if(m>M)x.fut[m]=(x.fut[m]||0)+a;}
+      else{const vm=vencDe(l);if(vm===M)x.aberto+=a;else if(vm>M)x.fut[vm]=(x.fut[vm]||0)+a;}});
+    // parcelas: "3/6" lançada → projeta 4ª, 5ª, 6ª nos meses seguintes (se ainda não foram lançadas)
+    const series={};
+    L.filter(l=>Number(l.valor)<0&&/^\s*\d+\s*\/\s*\d+\s*$/.test(l.parcela||'')).forEach(l=>{const [a,b]=l.parcela.split('/').map(n=>parseInt(n,10));if(!(a<b))return;
+      const k=[l.loja_id,l.categoria_id,normDesc(l.descricao).replace(/\b\d+ \d+\b/g,'').trim(),Math.round(-l.valor*100),b].join('|');
+      const s=series[k]||(series[k]={a:0,m:null,valor:-Number(l.valor),cat:l.categoria_id,b});if(a>s.a){s.a=a;s.m=vencDe(l);}
+      if(vencDe(l)===M){const x=pega(l.categoria_id);x.parcM=(x.parcM||0)+(-Number(l.valor));x.temParcela=true;}});
+    Object.values(series).forEach(s=>{for(let k=s.a+1;k<=s.b;k++){const fm=_mesAdd(s.m,k-s.a);if(fm<M)continue;const x=pega(s.cat);x.temParcela=true;if(fm===M){x.parcM=(x.parcM||0)+s.valor;continue;}x.fut[fm]=(x.fut[fm]||0)+s.valor;}});
+    // fixos = Recorrentes
+    dados.recs.forEach(r=>{const x=pega(r.categoria_id);x.fixo+=Math.abs(Number(r.valor)||0);if(r.dia_vencimento)x.dia=x.dia?Math.min(x.dia,r.dia_vencimento):r.dia_vencimento;x.recDesc=(x.recDesc?x.recDesc+', ':'')+(r.descricao||'');});
+    const pctMes=M<mesHoje?1:(M>mesHoje?0:Number(hoje.slice(8,10))/Number(_fimMes(M).slice(8,10)));
+    const passado=M<mesHoje;
+    const linhas=Object.values(C).map(x=>{const prev=Math.max(x.fixo>0?x.fixo:x.media,x.parcM||0);const deve=passado?x.pago:Math.max(prev,x.pago+x.aberto); // mês que já acabou: não sobra "deve sair" (nunca acumula)
+      let sit,cls;const diaHoje=Number(hoje.slice(8,10));
+      if(x.fixo>0&&x.dia&&M===mesHoje&&diaHoje>x.dia&&x.pago<prev*0.5){sit=`venceu dia ${x.dia} e não apareceu no extrato`;cls='wa';}
+      else if(prev>0&&x.pago>prev*1.1&&x.pago-prev>100){sit=`▲ ${Math.round((x.pago/prev-1)*100)}% acima do normal`;cls='wa';}
+      else if(prev<=0&&x.pago>0){sit='não costuma ter';cls='bl';}
+      else if(prev>0&&x.pago>=prev*0.95){sit=x.fixo>0?'✓ pago':'✓ já saiu o normal';cls='ok';}
+      else if(M<mesHoje&&prev>0&&x.pago<prev*0.9){sit=`▼ ${Math.round((1-x.pago/prev)*100)}% abaixo do normal`;cls='bl';}
+      else{sit='normal';cls='mu';}
+      return Object.assign(x,{prev,deve,falta:passado?0:Math.max(deve-x.pago,0),sit,cls});}).filter(x=>x.prev>0.5||x.pago>0.5||x.aberto>0.5||Object.keys(x.fut).length).sort((a,b)=>b.deve-a.deve);
+    const futuros=[1,2,3].map(n=>{const fm=_mesAdd(M,n);let tot=0,sab=0;linhas.forEach(x=>{const k=x.fut[fm]||0;sab+=k;tot+=Math.max(x.prev,k);});return {M:fm,tot,sab};});
+    return {linhas,recMedia,recMes,nM,mesesComDado,pctMes,futuros,passado,saidasPrev:linhas.reduce((t,x)=>t+x.deve,0),jaSaiu:linhas.reduce((t,x)=>t+x.pago,0)};
+  }
+  // cartões: antecipação que o Cartões Rocha diz que cai no mês × média do que caiu nos 3 meses anteriores
+  async function radarCartoes(M,soLoja){
+    try{const r=await cartoesLinhas(M,soLoja);if(r.erroSb||r.erroCt)return null;
+      const known=r.linhas.reduce((t,l)=>t+l.prevA+l.fut.filter(e=>e.t==='a').reduce((a,e)=>a+e.valor,0),0);
+      let soma=0,n=0;for(const pm of [_mesAdd(M,-1),_mesAdd(M,-2),_mesAdd(M,-3)]){const p=await cartoesLinhas(pm,soLoja);if(p.erroSb||p.erroCt)continue;const c=p.linhas.filter(l=>l.temExtrato);if(!c.length)continue;soma+=c.reduce((t,l)=>t+l.caiuA,0);n++;}
+      return {known,antMedia:n?soma/n:0,nAnt:n};}catch(e){return null;}
+  }
+  async function viewRadar(){
+    const box=document.getElementById('content');const seq=++_radarSeq;const mi=mesSel;
+    const M=`${ANO_FIXO}-${_mm(mi)}`,mesNome=MESES_NOME[mi],grupo=RADAR_ESCOPO==='grupo';
+    const lojaIds=grupo?null:[lojaAtual];const nomeEscopo=grupo?'Grupo todo (todas as lojas)':lojaNomeCurto(lojaAtual);
+    box.innerHTML=`<div class="loading"><span class="spin"></span> Montando o radar de ${mesNome}…</div>`;
+    let dados,ct;
+    try{[dados,ct]=await Promise.all([radarCarregar(M,lojaIds),radarCartoes(M,grupo?null:lojaAtual)]);}catch(e){box.innerHTML=`<div class="note" style="border-color:rgba(255,92,92,.4)">Não consegui montar o radar: ${e.message||e}</div>`;return;}
+    if(seq!==_radarSeq||mi!==mesSel||page!=='radar')return;
+    const R=radarCalcular(M,dados);
+    const usaCartao=ct&&ct.known>0&&ct.antMedia>0;
+    const entradasPrev=Math.max(R.recMes,usaCartao?(R.recMedia-ct.antMedia+ct.known):R.recMedia);
+    const sobra=entradasPrev-R.saidasPrev;
+    const pctE=entradasPrev>0?R.recMes/entradasPrev:0,pctS=R.saidasPrev>0?R.jaSaiu/R.saidasPrev:0;
+    let ritmo,ritmoCor;
+    if(R.pctMes>=1){ritmo=R.recMes-R.jaSaiu>=0?'mês fechado com sobra':'mês fechado no vermelho';ritmoCor=R.recMes-R.jaSaiu>=0?'var(--green)':'var(--red)';}
+    else if(R.pctMes<=0){ritmo='mês ainda não começou';ritmoCor='var(--muted)';}
+    else if(pctE<R.pctMes-0.15){ritmo='entradas abaixo do ritmo do mês — atenção';ritmoCor='var(--amber)';}
+    else if(pctS>R.pctMes+0.15){ritmo='saídas acima do ritmo do mês — atenção';ritmoCor='var(--amber)';}
+    else{ritmo='ritmo normal';ritmoCor='var(--green)';}
+    const pct=v=>Math.round(v*100)+'%';const n0=v=>BRL(v).replace('R$ ','').replace(/,\d\d$/,'');const n2=v=>BRL(v).replace('R$ ','');
+    const mesesTxt=R.mesesComDado.length?R.mesesComDado.slice().reverse().map(m=>_mesNomeM(m).slice(0,3).toLowerCase()).join(', '):'sem histórico ainda';
+    const pill=(t,c)=>`<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-weight:700;font-size:11.5px;white-space:nowrap;${({ok:'background:rgba(31,157,107,.13);color:var(--green)',wa:'background:rgba(199,134,26,.15);color:var(--amber)',bl:'background:rgba(59,99,217,.13);color:var(--blue)',mu:'background:var(--panel-2);color:var(--muted)'})[c]}">${t}</span>`;
+    const barra=(p,cor)=>`<span style="display:inline-block;height:7px;width:110px;background:var(--panel-2);border-radius:6px;position:relative;overflow:hidden;vertical-align:middle"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.min(100,Math.round(p*100))}%;background:${cor}"></i></span>`;
+    const tdN='style="text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap"';
+    const linhasHTML=R.linhas.map(x=>{const nome=x.cat?x.cat.nome:'Sem categoria';const det=x.fixo>0?`fixo${x.dia?' · vence dia '+x.dia:''}${Math.abs(x.media-x.fixo)>1&&x.media>0?' · média '+n0(x.media):''}`:(x.temParcela?'média · tem parcela':'média');
+      const fixar=!grupo&&ehDono()&&x.cat&&!(x.fixo>0)?` <span class="arqbtn" style="margin-left:4px;font-size:10.5px;padding:1px 7px" onclick="radarFixar(${x.cat.id})" title="Valor que não varia (ex.: aluguel): vale este valor em vez da média">📌 fixar</span>`:'';
+      const cts=Object.values(x.ct).filter(c=>c.media>0.5||c.pago>0.5).sort((a,b)=>Math.max(b.media,b.pago)-Math.max(a.media,a.pago));
+      const temCt=cts.some(c=>c.id);const rid='rc'+String(x.id).replace(/\W/g,'');
+      const nomeCt=c=>{if(!c.id)return '<span class="mut">sem contato</span>';const k=CONTATOS.find(z=>z.id===c.id);return k?k.nome:'contato #'+c.id;};
+      const subs=temCt?cts.slice(0,10).map(c=>{let sc='';if(c.media>0&&c.pago>c.media*1.1&&c.pago-c.media>100)sc=pill(`▲ ${Math.round((c.pago/c.media-1)*100)}% acima`,'wa');else if(c.media<=0&&c.pago>0)sc=pill('novo','bl');
+          return `<tr class="${rid}" style="display:none;background:var(--panel-2)"><td style="padding-left:34px;font-size:12.5px">↳ ${nomeCt(c)}</td><td ${tdN} class="mut">${n2(c.media)} <span style="font-size:10.5px">média</span></td><td ${tdN}>${n2(c.pago)}</td><td></td><td></td><td>${sc}</td></tr>`;}).join('')
+        +(cts.length>10?`<tr class="${rid}" style="display:none;background:var(--panel-2)"><td colspan="6" class="mut" style="padding-left:34px;font-size:12px">… e mais ${cts.length-10} contato(s)</td></tr>`:''):'';
+      const abre=temCt?` onclick="if(event.target.closest('.arqbtn'))return;document.querySelectorAll('.${rid}').forEach(t=>t.style.display=t.style.display==='none'?'':'none');this.querySelector('.seta').textContent=this.querySelector('.seta').textContent==='▸'?'▾':'▸'" style="cursor:pointer" title="Clique para ver por contato"`:'';
+      return `<tr${abre}><td>${temCt?'<span class="seta mut" style="display:inline-block;width:12px">▸</span>':'<span style="display:inline-block;width:12px"></span>'}<b>${radarIcone(x.cat)} ${nome}</b> <span class="mut" style="font-size:11px">${det}</span>${fixar}</td><td ${tdN}>${n2(x.prev)}</td><td ${tdN}>${n2(x.pago)}</td><td>${barra(x.prev>0?x.pago/x.prev:(x.pago>0?1:0),x.cls==='wa'&&x.pago>x.prev?'var(--amber)':'var(--green)')}</td><td ${tdN}>${x.falta>0.5?n2(x.falta):'—'}${x.aberto>0.5?`<div class="mut" style="font-size:10.5px">${n2(x.aberto)} no A pagar</div>`:''}</td><td>${pill(x.sit,x.cls)}</td></tr>${subs}`;}).join('');
+    const futHTML=R.futuros.map(f=>{const mm=parseInt(f.M.slice(5,7),10);return `<tr><td>${_mesNomeM(f.M)}${mm===11||mm===12?' '+pill('13º','bl'):''}</td><td ${tdN}>${n0(f.tot)}</td><td ${tdN} class="mut">${f.sab>0.5?'parcelas/abertos: '+n0(f.sab):'—'}</td></tr>`;}).join('');
+    const catsOpc=CATS.filter(c=>c.grupo!=='neutra'&&c.grupo!=='rec'&&!c.arquivada).sort((a,b)=>a.nome.localeCompare(b.nome));
+    if(!RADAR_CMP){const f=catsOpc.find(c=>/FUNCION/i.test(c.nome));RADAR_CMP=f?f.id:(catsOpc[0]&&catsOpc[0].id);}
+    box.innerHTML=`
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${seletorMes()}
+        <div style="display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:5px;margin-bottom:16px">
+          <button class="btn ${grupo?'ghost':''}" style="padding:6px 12px;font-size:12.5px" onclick="RADAR_ESCOPO='loja';render()">🏪 ${lojaNomeCurto(lojaAtual)}</button>
+          <button class="btn ${grupo?'':'ghost'}" style="padding:6px 12px;font-size:12.5px" onclick="RADAR_ESCOPO='grupo';render()">🏢 Grupo todo</button></div></div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:14px">
+        <div style="background:rgba(31,157,107,.07);border:1px solid rgba(31,157,107,.3);border-radius:12px;padding:10px 12px;font-size:12.5px">✅ <b>Não é conta a pagar.</b> A previsão é por categoria, pela média dos últimos 3 meses (${mesesTxt}). Ninguém lança nem dá baixa.</div>
+        <div style="background:rgba(31,157,107,.07);border:1px solid rgba(31,157,107,.3);border-radius:12px;padding:10px 12px;font-size:12.5px">✅ <b>Nunca acumula.</b> Cada mês começa do zero. O que não saiu em ${mesNome} não passa para o mês seguinte.</div>
+        <div style="background:rgba(31,157,107,.07);border:1px solid rgba(31,157,107,.3);border-radius:12px;padding:10px 12px;font-size:12.5px">✅ <b>Some sozinho.</b> Quando o extrato traz o pagamento, o "pago" sobe e o "ainda deve sair" desce. Pagou por outra conta? Vale também.</div></div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap"><h3 style="font-size:15px;margin:0">🧭 ${mesNome} em 3 números</h3><span class="mut" style="font-size:12px">${nomeEscopo}</span></div>
+        ${R.passado?(()=>{const prevS=R.linhas.reduce((t,x)=>t+x.prev,0),sob=R.recMes-R.jaSaiu;const bx=(t,v,c,sub)=>`<div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div class="mut" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">${t}</div><div style="font-size:22px;font-weight:800;color:${c};margin-top:3px">${v}</div><div class="mut" style="font-size:11.5px;margin-top:2px">${sub}</div></div>`;
+          return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">${bx('💰 Entrou em '+mesNome,BRL(R.recMes),'var(--green)','o radar previa '+BRL(entradasPrev))}${bx('💸 Saiu em '+mesNome,BRL(R.jaSaiu),'var(--red)','o radar previa '+BRL(prevS))}${bx(sob>=0?'🧭 Sobrou':'🧭 Faltou',(sob>=0?'+ ':'− ')+BRL(Math.abs(sob)),sob>=0?'var(--green)':'var(--red)','mês fechado — o que não saiu não passa para o mês seguinte')}</div>`;})():`
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+          <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div class="mut" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">💰 Deve entrar em ${mesNome}</div><div style="font-size:22px;font-weight:800;color:var(--green);margin-top:3px">${BRL(entradasPrev)}</div>
+            <div class="mut" style="font-size:11.5px;margin-top:2px">${usaCartao?`antecipação que o Cartões Rocha calculou (${BRL(ct.known)}) + média do resto (Pix, débito, dinheiro…)`:'média das entradas dos últimos 3 meses'}</div></div>
+          <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div class="mut" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">💸 Deve sair em ${mesNome}</div><div style="font-size:22px;font-weight:800;color:var(--red);margin-top:3px">${BRL(R.saidasPrev)}</div>
+            <div class="mut" style="font-size:11.5px;margin-top:2px">média das despesas (ou o fixo) por categoria${R.linhas.some(x=>x.aberto>0)?' + o que está no A pagar':''}</div></div>
+          <div style="border:1px solid ${sobra>=0?'rgba(31,157,107,.35)':'rgba(214,69,69,.35)'};background:${sobra>=0?'rgba(31,157,107,.06)':'rgba(214,69,69,.06)'};border-radius:12px;padding:12px 14px"><div class="mut" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">🧭 ${sobra>=0?'Sobra prevista':'Falta prevista'}</div><div style="font-size:22px;font-weight:800;color:${sobra>=0?'var(--green)':'var(--red)'};margin-top:3px">${sobra>=0?'+ ':'− '}${BRL(Math.abs(sobra))}</div>
+            <div class="mut" style="font-size:11.5px;margin-top:2px">já entrou ${BRL(R.recMes)} · já saiu ${BRL(R.jaSaiu)}</div></div></div>`}
+        <div style="height:8px;background:var(--panel-2);border-radius:8px;margin:14px 0 4px;position:relative;overflow:hidden"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.round(R.pctMes*100)}%;background:var(--blue);border-radius:8px"></i></div>
+        <div class="mut" style="font-size:12px">${R.pctMes>0&&R.pctMes<1?`mês ${pct(R.pctMes)} passado · as entradas estão em ${pct(pctE)} do previsto · as saídas em ${pct(pctS)}: `:''}<b style="color:${ritmoCor}">${ritmo}</b></div></div>
+      <div class="card" style="margin-bottom:14px;padding:0;overflow:auto">
+        <div style="padding:14px 16px 6px"><h3 style="font-size:15px;margin:0">Para onde vai o dinheiro <span class="mut" style="font-size:12px;font-weight:400">· previsto × pago até hoje · ${nomeEscopo} · clique na categoria (▸) para ver por contato</span></h3></div>
+        <table style="min-width:720px"><thead><tr><th>Categoria</th><th ${tdN}>Previsto no mês</th><th ${tdN}>${R.passado?'Pago no mês':'Pago até hoje'}</th><th>Andamento</th><th ${tdN}>${R.passado?'—':'Ainda deve sair'}</th><th>Situação</th></tr></thead>
+        <tbody>${linhasHTML||'<tr><td colspan="6" class="mut">Sem despesas nos últimos 3 meses nem neste mês.</td></tr>'}
+          <tr style="font-weight:800"><td>Total</td><td ${tdN}>${n2(R.linhas.reduce((t,x)=>t+x.prev,0))}</td><td ${tdN}>${n2(R.jaSaiu)}</td><td></td><td ${tdN}>${n2(R.linhas.reduce((t,x)=>t+x.falta,0))}</td><td></td></tr></tbody></table>
+        <div class="mut" style="font-size:11.5px;padding:8px 16px 14px">💡 <b>📌 fixar</b> (só dono): para valor que não varia, como o aluguel. Ele vira um Recorrente e passa a valer no lugar da média. Quando mudar, troque em <b>Recorrentes</b>, uma vez só.</div></div>
+      <div class="grid two" style="margin-bottom:14px">
+        <div class="card"><h3 style="font-size:14.5px;margin:0 0 8px">📅 Próximos 3 meses <span class="mut" style="font-size:12px;font-weight:400">· deve sair</span></h3>
+          <table><thead><tr><th>Mês</th><th ${tdN}>Deve sair</th><th ${tdN}>Já se sabe</th></tr></thead><tbody>${futHTML}</tbody></table>
+          <div class="mut" style="font-size:11.5px;margin-top:8px">Média (ou fixo) por categoria + parcelas já lançadas (3/6 → mostra a 4ª, a 5ª e a 6ª) + o que estiver no A pagar.</div></div>
+        <div class="card"><h3 style="font-size:14.5px;margin:0 0 8px">🏪 Comparar lojas <span class="mut" style="font-size:12px;font-weight:400">· média por mês (${mesesTxt})</span></h3>
+          <select onchange="RADAR_CMP=parseInt(this.value,10);radarComparar()" style="width:100%;margin-bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:6px 8px">${catsOpc.map(c=>`<option value="${c.id}" ${c.id===RADAR_CMP?'selected':''}>${radarIcone(c)} ${c.nome}</option>`).join('')}</select>
+          <div id="radarCmp" class="mut" style="font-size:12px">carregando…</div></div></div>`;
+    radarComparar();
+  }
+  async function radarComparar(){
+    const box=document.getElementById('radarCmp');if(!box||!RADAR_CMP)return;const M=`${ANO_FIXO}-${_mm(mesSel)}`;
+    const de=_mesAdd(M,-3)+'-01',ate=_fimMes(_mesAdd(M,-1));const alvo=RADAR_CMP;
+    let rows=[];for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('loja_id,data,valor,pago').eq('categoria_id',alvo).gte('data',de).lte('data',ate).lt('valor',0).range(o,o+999);if(error){box.textContent='Não consegui ler.';return;}rows=rows.concat(data||[]);if(!data||data.length<1000)break;}
+    if(alvo!==RADAR_CMP||!document.getElementById('radarCmp'))return;
+    const porLoja={},mesesLoja={};rows.filter(r=>r.pago!==false).forEach(r=>{porLoja[r.loja_id]=(porLoja[r.loja_id]||0)-Number(r.valor);(mesesLoja[r.loja_id]=mesesLoja[r.loja_id]||new Set()).add(String(r.data).slice(0,7));});
+    const lista=LOJAS.map(l=>({nome:lojaNomeCurto(l.id),id:l.id,v:porLoja[l.id]?porLoja[l.id]/3:0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+    if(!lista.length){box.textContent='Nenhuma loja teve essa despesa nos últimos 3 meses.';return;}
+    const max=lista[0].v;
+    box.innerHTML=lista.map(x=>`<div style="display:flex;align-items:center;gap:8px;margin:4px 0;color:var(--txt)"><span style="width:72px;${x.id===lojaAtual?'font-weight:800':''}">${x.nome}</span><span style="flex:1;height:12px;background:var(--panel-2);border-radius:4px;position:relative;overflow:hidden"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.round(x.v/max*100)}%;background:${x.id===lojaAtual?'var(--blue)':'rgba(31,157,107,.55)'}"></i></span><span style="width:86px;text-align:right;font-variant-numeric:tabular-nums">${BRL(x.v).replace(/,\d\d$/,'')}</span></div>`).join('')
+      +`<div class="mut" style="font-size:11px;margin-top:6px">média dos 3 meses anteriores (soma ÷ 3) · a loja escolhida aparece em azul</div>`;
+  }
+  async function radarFixar(catId){
+    if(!ehDono())return;const c=CATS.find(x=>x.id===catId);if(!c)return;
+    const v=prompt(`Valor fixo por mês de "${c.nome}" na ${lojaNomeCurto(lojaAtual)} (ex.: 5000,00):`);if(v==null)return;
+    const valor=Number(String(v).replace(/\./g,'').replace(',','.'));if(!(valor>0)){toast('Valor inválido.','erro');return;}
+    const d=prompt('Vence em que dia do mês? (1 a 31)','10');if(d==null)return;const dia=parseInt(d,10);if(!(dia>=1&&dia<=31)){toast('Dia inválido.','erro');return;}
+    const {error}=await sb.from('recorrentes').insert({loja_id:lojaAtual,descricao:c.nome.toUpperCase()+' (FIXO DO RADAR)',valor:-valor,categoria_id:catId,dia_vencimento:dia});
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    toast(`📌 ${c.nome} fixado em ${BRL(valor)} — vale no lugar da média.`,'ok');render();
+  }
+
   // copia pra conciliação os créditos de cartão que já estão lançados (OFX antigo, digitados e Lixeira), a partir de 01/06/2026
   async function sipagTrazerDigitados(){
     if(!podeExcluir())return;
@@ -906,7 +1069,7 @@
 
   const MENU=[
     ['__d','Dia a dia'],
-    ['visao','Dashboard','◫',true],['lanc','Lançamentos','≣',true],['import','Importar extrato','⤓',true],
+    ['visao','Dashboard','◫',true],['radar','Radar do mês','🧭',true],['lanc','Lançamentos','≣',true],['import','Importar extrato','⤓',true],
     ['apagar','A pagar','🧾',true],['caixa','Fechamento de caixa','🧮',true],['caixinha','Caixinha (espelho)','💵',true],
     ['__a','Análise'],
     ['dre','DRE','📊',true],['fechamento','Fechamento do mês','🔐',true],['concsipag','Cartão × Sipag','💳',true],
@@ -915,7 +1078,7 @@
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
     ['recorrentes','Recorrentes','🔁',true],['lixeira','Lixeira','🗑',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],['manualcx','Manual do Caixinha','🔗',true],
   ];
-  const TITLES={visao:'Dashboard',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag — conciliação',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
+  const TITLES={visao:'Dashboard',radar:'🧭 Radar do mês — o que deve entrar e sair',lanc:'Lançamentos',import:'Importar extrato',apagar:'A pagar',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag — conciliação',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
   function renderNav(){
     document.getElementById('nav').innerHTML=MENU.map(it=>{
       if(it[0].startsWith('__'))return `<div class="seclabel">${it[1]}</div>`;
@@ -1034,7 +1197,7 @@
   function isoParaBR(iso){if(!iso)return '';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;}
 
   function render(){
-    const V={visao:viewVisao,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
+    const V={visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
     const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao')preencherCartoesDash().catch(e=>console.error('cartoes dash',e));if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];

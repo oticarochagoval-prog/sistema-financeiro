@@ -237,6 +237,35 @@ Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito po
   - **Mês fechado com o Detalhado no Cartões:** confere dia a dia.
   - **Mês fechado sem o Detalhado:** compara pelo **total de débito do mês** que o Cartões já tem (marcado com **≈**). É aproximado, porque a venda do último dia cai no dia 1º do mês seguinte. Diferença pequena aparece como "≈ bateu (−R$ X)".
 
+## 🧭 Radar do mês (v2.3.0)
+
+Menu **🧭 Radar do mês**, logo abaixo do Dashboard. Mostra **o que deve entrar e sair** no mês, por loja ou do **Grupo todo**.
+
+**Três regras (por isso não dá trabalho):**
+- ✅ **Não é conta a pagar.** A previsão é **por categoria**, calculada sozinha pela **média dos últimos 3 meses**. Ninguém lança boleto nem dá baixa.
+- ✅ **Nunca acumula.** Cada mês começa do zero. O que não saiu num mês **não** passa para o seguinte.
+- ✅ **Some sozinho.** Quando o extrato traz o pagamento daquela categoria, o "pago" sobe e o "ainda deve sair" desce. Se pagou por outra conta, também vale.
+
+**O que aparece:**
+1. **3 números:**
+   - **Deve entrar:** a antecipação que o Cartões Rocha calculou, mais a média do resto.
+   - **Deve sair** e **sobra prevista.**
+   - Uma barra mostra quanto do mês já passou e se o **ritmo** está normal.
+   - Num mês que já acabou, mostra **Entrou / Saiu / Sobrou**, com o que o radar previa.
+2. **Para onde vai o dinheiro:** cada categoria com previsto, pago até hoje e ainda deve sair.
+   - ⚠️ Avisa quando uma categoria veio **acima do normal**.
+   - ⚠️ Avisa quando um fixo **venceu e não apareceu no extrato**.
+3. **Próximos 3 meses:** a média, mais as **parcelas já lançadas** (3/6 → 4ª, 5ª e 6ª), mais o que estiver no **A pagar**. Novembro e dezembro mostram o aviso de **13º**.
+4. **Comparar lojas:** escolha a categoria (ex.: Funcionários) e veja a média de cada loja lado a lado.
+5. **Por contato (v2.3.1):** clique numa categoria (▸) para abrir os contatos dela. Cada um mostra a média dos 3 meses, quanto saiu este mês e um aviso se subiu. Exemplo: em Lentes/Laboratório, de qual laboratório está comprando mais.
+
+**Se um valor mudar (ex.: o aluguel foi de 5.000 para 6.000):**
+- **Sem fixar:** a média se ajusta sozinha. O radar prevê 5.333 no 1º mês, 5.667 no 2º e 6.000 no 3º.
+- **Fixado:** fica no valor exato até alguém trocar em Recorrentes.
+- Fixe só o que precisa ser exato ou ter aviso de vencimento.
+
+**📌 Fixar (só dono):** para valor que não varia, como o aluguel. Ele vira um **Recorrente** e passa a valer no lugar da média. Quando mudar, troque em **Recorrentes**, uma vez só.
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -262,6 +291,8 @@ Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito po
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.3.1 | Radar: clique na categoria para ver **por contato** (média × este mês, aviso quando sobe) | Nenhum |
+| 22/10/2026 | 2.3.0 | Nova tela **🧭 Radar do mês**: deve entrar × deve sair × sobra prevista, previsto × pago por categoria (média de 3 meses ou fixo), próximos 3 meses com parcelas, comparar lojas e visão Grupo todo. Não é conta a pagar, não acumula | Nenhum (só mostra) |
 | 22/10/2026 | 2.2.1 | Dica na caixa "Parece não ser Sipag": CNPJ/razão social da própria loja = "provavelmente Stone"; de outra loja do grupo = "parece transferência" (nunca marca sozinho) | Nenhum |
 | 22/10/2026 | 2.2.0 | Conciliação de cartões: botão **É Stone** (sai da conta Sipag, caixa Stone com total); TED/STR/PIX/DOC/TRANSF na lista de cartões fica em "Parece não ser Sipag — confira"; a mais acima de R$ 500 fica amarelo "confira". Precisa do SQL v2.2 | Nenhum |
 | 22/10/2026 | 2.1.0 | Botão **✅ Conferi no extrato** na conciliação de cartões (só dono): aprova os depósitos digitados olhando o extrato, grava nome e hora; dá pra desfazer. Precisa do SQL v2.1 | Nenhum |
