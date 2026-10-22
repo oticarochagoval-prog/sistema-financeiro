@@ -210,6 +210,18 @@ Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito po
 - O que for **digitado na conferência do Cartões** aparece aqui como "aguardando extrato", mas **não vira lançamento** no Fluxo: dinheiro só entra pelo extrato.
 - **⤓ Trazer os cartões já lançados** copia pra conciliação os créditos de cartão já lançados desde 01/06 — inclusive os digitados à mão e os que estão na **Lixeira** (que aparecem num quadro vermelho: se algum é o que falta, restaure).
 
+### Cartões do mês: previsto × caiu (v2.0.3)
+
+**No Dashboard: só a loja escolhida lá em cima.** É um quadro pequeno, logo abaixo do **Saldo do dia 1º**:
+
+- **Antecipação automática** (vendas do mês anterior), **eventual** (só aparece se teve) e **débitos até hoje**.
+- ✅ **Igual ou a mais = ok** (verde ou azul). ⛔ **A menos, nunca**: aparece em **vermelho** com quanto faltou.
+- ⏳ **Falta importar o extrato**: a loja ainda não tem o OFX do mês.
+- ⚠️ **Débitos sem previsão**: o *Detalhado de vendas* não foi subido no Cartões Rocha. Não é falta de dinheiro.
+- 📅 No mês corrente, mostra **o que ainda vai cair** e o próximo depósito.
+
+**Na tela 💳 Cartão × Sipag: todas as lojas de uma vez**, no topo. Quem entra ali já vê qual loja está vermelha. Embaixo vem o **detalhe da loja**, depósito por depósito. **Clique numa loja** do quadro para ver o detalhe dela. O total só soma as lojas que já têm extrato do mês.
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -235,6 +247,8 @@ Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito po
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.0.3 | Cartões previsto × caiu: no **Dashboard só a loja escolhida** (quadro pequeno); **todas as lojas** ficam no topo da tela **Cartão × Sipag**, com o detalhe da loja embaixo | Nenhum (só mostra) |
+| 22/10/2026 | 2.0.2 | Dashboard ganhou o quadro **💳 Cartões do mês** (previsto × caiu; vermelho quando vem a menos) | Nenhum (só mostra) |
 | 22/10/2026 | 2.0.1 | Corrigido erro na tela Cartão × Sipag em meses de 30 dias ("date/time field value out of range") | Nenhum |
 | 22/10/2026 | 2.0 | Importação do OFX volta: liga ao que já foi digitado (não duplica), agrupa o que já está classificado, Pix/depósito/transferência entram sozinhos como neutros (nada ignorado); conciliação **Cartão × Sipag** com o Cartões Rocha; importação aprende ("Lembrar sempre") e busca de categoria/contato com setas e Enter; **Saldo em 01/MM** (Sicoob + gaveta + emprestado = total; Banco Caixinha à parte) no Dashboard, Lançamentos e Fechamento; quadro **Neutras do mês** no Dashboard; escada separa despesas de neutras; corrigida regra antiga que classificava "PAG…" como Cartão | O extrato volta a ser a fonte; a escada passa a bater sem excluir nada |
 | 21/10/2026 | 1.11 | O sistema passou a se chamar **Fluxo** (antes "Caixa Rocha"), pra não confundir com o Caixinha. Endereço, logins e dados continuam os mesmos | Nenhum |
