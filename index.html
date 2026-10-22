@@ -249,7 +249,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.7.6', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.7.7', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -2234,7 +2234,7 @@
   }
 
   // ---- IMPORTAR EXTRATO (OFX real do Sicoob) ----
-  let IMPORT=[];let IMPORT_ABERTO={};
+  let IMPORT=[];let IMPORT_ABERTO={};let IMP_MARC={modo:'todas',crit:[]};
   let importPeriodo={de:'',ate:''};
   let importObs='';
   // regras de categoria por texto (memo+name), baseadas no extrato real
@@ -2335,11 +2335,11 @@
       const data=`<td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td>`;
       if(r.grupo==='ja')return `<tr style="opacity:.7">${data}<td>${r.desc}<div class="mut" style="font-size:11px;margin-top:2px">${r.jaImportado?'já importado antes (mesmo código do banco)':`já digitado: <b>${r.jaExiste.descricao||''}</b> — vai só ganhar o código do banco`}</div></td><td colspan="2">${r.jaImportado?'<span class="mut" style="font-size:11px">nada a fazer</span>':`<span class="arqbtn" style="cursor:pointer" onclick="IMPORT[${i}].grupo='falta';IMPORT[${i}].jaExiste=null;IMPORT[${i}].catId='';_keepY=window.scrollY;render()">não é esse — lançar como novo</span>`}</td>${valorTd}</tr>`;
       if(r.grupo==='lentes')return `<tr style="opacity:.6">${data}<td>${r.desc}<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">🔗 já lançado pelas Lentes: ${r.jaLentes.descricao}</span></div></td><td colspan="2"><span class="arqbtn" onclick="IMPORT[${i}].jaLentes=null;IMPORT[${i}].grupo='falta';_keepY=window.scrollY;render()" style="cursor:pointer">⏭️ não lança de novo · <u>lançar mesmo assim</u></span></td>${valorTd}</tr>`;
-      const destaque=r.sel===false?'style="opacity:.45"':(r.corrigir?'style="background:rgba(245,183,64,.08)"':(r.estornar?'style="background:rgba(125,162,255,.07)"':''));
-      const dataSel=`<td class="mut" style="white-space:nowrap"><label style="display:flex;gap:6px;align-items:center;cursor:pointer" title="Lançar esta linha agora?"><input type="checkbox" tabindex="-1" ${r.sel!==false?'checked':''} onclick="event.stopPropagation();IMPORT[${i}].sel=this.checked;_keepY=window.scrollY;render()">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</label></td>`;
+      const destaque=!impSel(r)?'style="opacity:.45"':(r.corrigir?'style="background:rgba(245,183,64,.08)"':(r.estornar?'style="background:rgba(125,162,255,.07)"':''));
+      const dataSel=`<td class="mut" style="white-space:nowrap"><label style="display:flex;gap:6px;align-items:center;cursor:pointer" title="Lançar esta linha agora?"><input type="checkbox" tabindex="-1" ${impSel(r)?'checked':''} onclick="event.stopPropagation();IMPORT[${i}].selManual=this.checked;_keepY=window.scrollY;render()">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</label></td>`;
       const etqRegra=r.regra?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 regra "${r.regra}"</span>${r.estornar?` <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">🔁 a estornar → ${r.lojaEstorno||'qual loja?'}</span>`:''}</div>`:(r.sipag?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">💳 ${({antecipacao:'antecipação',debito:'débito',credito_parcela:'parcela de crédito',estorno:'estorno',outro:'Sipag'})[r.sipag.tipo]}${r.sipag.band?' · '+r.sipag.band:''}</span></div>`:(r.grupo==='adivinhado'?'<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">adivinhado</span></div>':''));
       const aprend=r.aprender?(r.aprender.salvo?`<div style="margin-top:4px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 vai lembrar "${palavraLegivel(r.aprender.palavra)}"</span></div>`:`<div style="margin-top:4px"><button class="catchip" style="font-size:10.5px;padding:2px 8px;cursor:pointer;border-color:var(--green);color:var(--green);background:rgba(61,214,140,.08)" onclick="lembrarRegraImport(${i})">🔑 Lembrar sempre: "${palavraLegivel(r.aprender.palavra)}" → ${(CATS.find(c=>String(c.id)===String(r.aprender.catId))||{}).nome||''}</button>${r.aprender.n?` <span class="mut" style="font-size:11px">· aplicado em mais ${r.aprender.n} linha(s) iguais</span>`:''}</div>`):(r.copiadoDe!=null?`<div class="mut" style="font-size:11px;margin-top:3px">↳ mesma categoria da linha parecida</div>`:'');
-      return `<tr ${destaque}${r.sel!==false&&r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${dataSel}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button>${(()=>{const t=catTransf();return t&&String(r.catId)===String(t.id)&&!r.corrigir?'':`<button class="miniadd" tabindex="-1" style="height:28px;font-size:11px;padding:0 7px;width:auto;white-space:nowrap" title="Não entra no resultado: vai como neutra (transferência/empréstimo). Fica guardada só para o saldo do banco bater — não precisa excluir." onclick="impNaoEntra(${i})">não entra</button>`;})()}</div>${r.obs||r._obsAberto?`<input class="qin maiusc" tabindex="-1" style="margin-top:4px;font-size:11.5px;padding:4px 8px;width:100%" value="${(r.obs||'').replace(/"/g,'&quot;')}" placeholder="observação (ex.: MARIA — PANFLETAGEM)" oninput="IMPORT[${i}].obs=this.value;IMPORT[${i}]._mexido=true">`:`<div style="margin-top:3px"><span tabindex="-1" onclick="IMPORT[${i}]._obsAberto=true;_keepY=window.scrollY;render()" style="cursor:pointer;font-size:11px;color:var(--muted)">+ obs</span></div>`}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||(r.obs?`<span class="mut">${String(r.obs).slice(0,22).replace(/</g,'&lt;')}</span>`:'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td>${valorTd}</tr>`;
+      return `<tr ${destaque}${impSel(r)&&r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${dataSel}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button>${(()=>{const t=catTransf();return t&&String(r.catId)===String(t.id)&&!r.corrigir?'':`<button class="miniadd" tabindex="-1" style="height:28px;font-size:11px;padding:0 7px;width:auto;white-space:nowrap" title="Não entra no resultado: vai como neutra (transferência/empréstimo). Fica guardada só para o saldo do banco bater — não precisa excluir." onclick="impNaoEntra(${i})">não entra</button>`;})()}</div>${r.obs||r._obsAberto?`<input class="qin maiusc" tabindex="-1" style="margin-top:4px;font-size:11.5px;padding:4px 8px;width:100%" value="${(r.obs||'').replace(/"/g,'&quot;')}" placeholder="observação (ex.: MARIA — PANFLETAGEM)" oninput="IMPORT[${i}].obs=this.value;IMPORT[${i}]._mexido=true">`:`<div style="margin-top:3px"><span tabindex="-1" onclick="IMPORT[${i}]._obsAberto=true;_keepY=window.scrollY;render()" style="cursor:pointer;font-size:11px;color:var(--muted)">+ obs</span></div>`}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||(r.obs?`<span class="mut">${String(r.obs).slice(0,22).replace(/</g,'&lt;')}</span>`:'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td>${valorTd}</tr>`;
     };
     const idx=IMPORT.map((r,i)=>i).filter(i=>IMPORT_TIPO==='ent'?IMPORT[i].amt>0:IMPORT_TIPO==='sai'?IMPORT[i].amt<0:true);
     const atencao=idx.filter(i=>{const r=IMPORT[i];return r.grupo==='falta'||!r.grupo||r.corrigir||r.estornar||r.resolvido||(!r.catId&&r.grupo!=='ja'&&r.grupo!=='lentes');});
@@ -2356,7 +2356,7 @@
     ];
     const blocos=GRUPOS_IMP.map(([g,tit,sub])=>{const ids=idx.filter(i=>IMPORT[i].grupo===g&&!atencao.includes(i));if(!ids.length)return '';
       const tot=ids.reduce((a,i)=>a+IMPORT[i].amt,0);const aberto=!!IMPORT_ABERTO[g];
-      return `<tr style="background:var(--bg);cursor:pointer" onclick="IMPORT_ABERTO['${g}']=!IMPORT_ABERTO['${g}'];_keepY=window.scrollY;render()"><td colspan="4"><b>${aberto?'▾':'▸'} ${tit}</b> <span class="mut">(${ids.length}${ids.some(i=>IMPORT[i].sel===false)?` · ${ids.filter(i=>IMPORT[i].sel!==false).length} marcadas`:''})</span>${g!=='ja'&&g!=='lentes'?` <span class="arqbtn" onclick="event.stopPropagation();impSelGrupo('${g}')">${ids.every(i=>IMPORT[i].sel!==false)?'desmarcar':'marcar'} o grupo</span>`:''}${sub?`<div class="mut" style="font-size:11px">${sub}</div>`:''}</td><td class="amt ${tot>=0?'green':'red'}" style="white-space:nowrap">${tot>=0?'+':'-'}${BRL(Math.abs(tot))}</td></tr>${aberto?ids.map(i=>linhaImp(IMPORT[i],i)).join(''):''}`;}).join('');
+      return `<tr style="background:var(--bg);cursor:pointer" onclick="IMPORT_ABERTO['${g}']=!IMPORT_ABERTO['${g}'];_keepY=window.scrollY;render()"><td colspan="4"><b>${aberto?'▾':'▸'} ${tit}</b> <span class="mut">(${ids.length}${ids.some(i=>!impSel(IMPORT[i]))?` · ${ids.filter(i=>impSel(IMPORT[i])).length} marcadas`:''})</span>${g!=='ja'&&g!=='lentes'?` <span class="arqbtn" onclick="event.stopPropagation();impSelGrupo('${g}')">${ids.every(i=>impSel(IMPORT[i]))?'desmarcar':'marcar'} o grupo</span>`:''}${sub?`<div class="mut" style="font-size:11px">${sub}</div>`:''}</td><td class="amt ${tot>=0?'green':'red'}" style="white-space:nowrap">${tot>=0?'+':'-'}${BRL(Math.abs(tot))}</td></tr>${aberto?ids.map(i=>linhaImp(IMPORT[i],i)).join(''):''}`;}).join('');
     const rowsAt=atencao.map(i=>linhaImp(IMPORT[i],i)).join('');
     const jaN=IMPORT.filter(r=>r.grupo==='ja').length,jaLentesN=IMPORT.filter(r=>r.grupo==='lentes').length;
     const novos=IMPORT.length-jaN-jaLentesN;
@@ -2370,14 +2370,18 @@
         <div class="tag" style="align-self:flex-end">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</div>
       </div>
       ${(()=>{const nT=IMPORT.filter(r=>r.grupo==='transf'&&r.corrigir).length;return nT?`<div class="note" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-color:rgba(199,134,26,.4)"><span>⇆ <b>${nT} saída(s) para outra conta/loja</b> marcadas "confira". Se for só dinheiro passando de uma loja para outra, confirme: vão como <b>Transferência entre lojas</b> (neutra). Se for <b>reembolso de conta</b> (internet, contabilidade, energia…), troque a categoria só daquela linha. Empréstimo que precisa voltar: <b>A ESTORNAR</b>.</span><button class="btn" style="margin-left:auto;padding:5px 12px;font-size:12.5px" onclick="IMPORT.forEach(r=>{if(r.grupo==='transf'&&r.corrigir){r.corrigir=false;r._mexido=true;}});_keepY=window.scrollY;render()">✓ Confirmar as ${nT}</button></div>`:'';})()}
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 6px"><span class="mut" style="font-size:12px;min-width:84px">Marcar para lançar:</span>${[['todas','Todas'],['ent','Só entradas'],['sai','Só saídas'],['entmexi','Entradas + o que eu mexi'],['mexi','Só o que eu mexi'],['class','Só as classificadas'],['nenhuma','Nenhuma']].map(([k,t])=>`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="impSelecionar('${k}')">${t}</button>`).join('')}</div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 10px"><span class="mut" style="font-size:12px;min-width:84px">Mostrar:</span>${[['','Todas'],['ent','Só entradas'],['sai','Só saídas']].map(([k,t])=>`<button class="btn ${IMPORT_TIPO===k?'':'ghost'}" style="padding:4px 11px;font-size:12px" onclick="IMPORT_TIPO='${k}';${k?`impSelecionar('${k}')`:'_keepY=window.scrollY;render()'}">${t} (${IMPORT.filter(r=>k==='ent'?r.amt>0:k==='sai'?r.amt<0:true).length})</button>`).join('')}</div>
+      ${(()=>{const nv=IMPORT.filter(r=>r.grupo!=='ja'&&r.grupo!=='lentes'),sl=nv.filter(r=>impSel(r)),e=sl.filter(r=>r.amt>0).length,mao=nv.some(r=>r.selManual!==undefined);
+        const ativo=k=>k==='todas'||k==='nenhuma'?IMP_MARC.modo===k:IMP_MARC.crit.includes(k);
+        const btns=[['todas','Todas',nv.length],['ent','Entradas',nv.filter(r=>impCrit(r,'ent')).length],['sai','Saídas',nv.filter(r=>impCrit(r,'sai')).length],['mexi','O que eu mexi',nv.filter(r=>impCrit(r,'mexi')).length],['class','Classificadas',nv.filter(r=>impCrit(r,'class')).length],['nenhuma','Nenhuma',null]];
+        return `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 6px"><span class="mut" style="font-size:12px;min-width:84px">Marcar para lançar:</span>${btns.map(([k,t,n])=>`<button class="btn ${ativo(k)?'':'ghost'}" style="padding:4px 11px;font-size:12px" onclick="impMarcar('${k}')">${t}${n!=null?` (${n})`:''}</button>`).join('')}<span style="font-size:12.5px;margin-left:6px"><b>${sl.length} marcadas</b> <span class="mut">(${e} entrada${e===1?'':'s'} · ${sl.length-e} saída${sl.length-e===1?'':'s'})${mao?' · ajustado à mão':''}</span></span></div>
+        <div class="mut" style="font-size:11px;margin:-2px 0 6px 90px">Pode escolher mais de um: Entradas + O que eu mexi = todas as entradas e as saídas em que você escolheu categoria, contato, obs ou "não entra".</div>`;})()}
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 10px"><span class="mut" style="font-size:12px;min-width:84px">Mostrar:</span>${[['','Todas'],['ent','Só entradas'],['sai','Só saídas']].map(([k,t])=>`<button class="btn ${IMPORT_TIPO===k?'':'ghost'}" style="padding:4px 11px;font-size:12px" onclick="IMPORT_TIPO='${k}';_keepY=window.scrollY;render()">${t} (${IMPORT.filter(r=>k==='ent'?r.amt>0:k==='sai'?r.amt<0:true).length})</button>`).join('')}</div>
       ${atencao.length?`<h3 style="font-size:14px;margin:6px 0 8px">${pend?`⚠️ Precisam de você — faltam ${pend} de ${atencao.length}`:`✅ Você resolveu as ${atencao.length} — é só confirmar`}</h3><div style="height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin:-2px 0 10px"><div style="height:100%;width:${Math.round((atencao.length-pend)/atencao.length*100)}%;background:var(--green)"></div></div><div class="card" style="padding:0;overflow:auto;margin-bottom:14px"><table><thead><tr><th>Data</th><th>Descrição (texto do banco)</th><th>Categoria</th><th>Contato</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rowsAt}</tbody></table></div>`:''}
       <h3 style="font-size:14px;margin:6px 0 8px">Já classificados — clique pra abrir</h3>
       <div class="card" style="padding:0;overflow:auto"><table><tbody>${blocos||'<tr><td class="mut">—</td></tr>'}</tbody></table></div>
       <div class="card" style="margin-top:16px;text-align:center;background:linear-gradient(100deg,var(--panel),var(--panel-2))">
         <div class="mut" style="font-size:12.5px;margin-bottom:12px">${pend?`👆 Ainda faltam ${pend} em amarelo. Pode confirmar assim mesmo (elas entram sem categoria e aparecem no Dia a dia), ou resolver antes:`:'🎉 Tudo resolvido. É só confirmar:'}</div>
-        ${(()=>{const nv=IMPORT.filter(r=>r.grupo!=='ja'&&r.grupo!=='lentes'),sel=nv.filter(r=>r.sel!==false);
+        ${(()=>{const nv=IMPORT.filter(r=>r.grupo!=='ja'&&r.grupo!=='lentes'),sel=nv.filter(r=>impSel(r));
           if(sel.length===nv.length)return `<button class="btn" id="btnConfImport" onclick="confirmarImport()" style="font-size:15px;padding:13px 32px">✓ Confirmar: lançar ${novos} novas${jaN?` e ligar ${jaN} já lançadas`:''}</button>`;
           const e=sel.filter(r=>r.amt>0).length,s2=sel.length-e;
           return `<button class="btn" id="btnConfImport" onclick="confirmarImport()" ${sel.length?'':'disabled'} style="font-size:15px;padding:13px 32px">✓ Lançar as ${sel.length} marcadas (${e} entrada${e===1?'':'s'} · ${s2} saída${s2===1?'':'s'})${jaN?` e ligar ${jaN} já lançadas`:''}</button><div class="mut" style="font-size:11.5px;margin-top:8px">As ${nv.length-sel.length} desmarcadas não entram agora: aparecem de novo na próxima importação deste extrato — nada se perde nem duplica.</div>`;})()}
@@ -2420,7 +2424,7 @@
       const cents=v=>Math.round(Math.abs(Number(v))*100);
       const porFitid={};EXIST.forEach(l=>{if(l.fitid)porFitid[l.fitid]=l;});
       const catCartao=catsAtivas().find(c=>c.nome==='Cartão'),cPix=catPorNome(CAT_PIX),cDep=catPorNome(CAT_DEPGAV),cTr=catTransf();
-      IMPORT=trans.map(t=>{
+      IMP_MARC={modo:'todas',crit:[]};IMPORT=trans.map(t=>{
         const full=[t.memo,t.name].filter(Boolean).join(' ');
         const descBanco=[...new Set([t.name,t.memo].filter(Boolean).map(x=>x.trim()))].join(' · ');
         const item={iso:t.iso,amt:t.amt,fitid:t.fitid,desc:descBanco||t.desc||t.memo,full};
@@ -2466,11 +2470,15 @@
 
 
   let IMPORT_TIPO='';
-  function impSelecionar(modo){const mexi=r=>!!(r.resolvido||r._mexido);
-    IMPORT.forEach(r=>{if(r.grupo==='ja'||r.grupo==='lentes')return;
-      r.sel=modo==='todas'?true:modo==='nenhuma'?false:modo==='ent'?r.amt>0:modo==='sai'?r.amt<0:modo==='entmexi'?(r.amt>0||mexi(r)):modo==='mexi'?mexi(r):modo==='class'?!!r.catId:true;});
+  // o que vai ser lançado: critérios da barra "Marcar para lançar" (podem somar) + ajustes à mão na caixinha
+  function impCrit(r,c){return c==='ent'?r.amt>0:c==='sai'?r.amt<0:c==='mexi'?!!(r.resolvido||r._mexido):c==='class'?!!r.catId:false;}
+  function impSel(r){if(!r)return false;if(r.grupo==='ja'||r.grupo==='lentes')return true;if(r.selManual!==undefined)return r.selManual;
+    if(IMP_MARC.modo==='nenhuma')return false;if(IMP_MARC.modo==='todas')return true;return IMP_MARC.crit.some(c=>impCrit(r,c));}
+  function impMarcar(k){IMPORT.forEach(r=>{delete r.selManual;});
+    if(k==='todas'||k==='nenhuma')IMP_MARC={modo:k,crit:[]};
+    else{const c=IMP_MARC.crit.includes(k)?IMP_MARC.crit.filter(x=>x!==k):[...IMP_MARC.crit,k];IMP_MARC={modo:c.length?'crit':'todas',crit:c};}
     _keepY=window.scrollY;render();}
-  function impSelGrupo(g){const its=IMPORT.filter(r=>r.grupo===g);const todos=its.every(r=>r.sel!==false);its.forEach(r=>{r.sel=!todos;});_keepY=window.scrollY;render();}
+  function impSelGrupo(g){const its=IMPORT.filter(r=>r.grupo===g);const todos=its.every(r=>impSel(r));its.forEach(r=>{r.selManual=!todos;});_keepY=window.scrollY;render();}
 
   function impNaoEntra(i){const r=IMPORT[i];const t=catTransf();if(!r||!t){toast('Crie a categoria neutra "Transferência entre lojas".','erro');return;}
     r.catId=t.id;r.corrigir=false;r.resolvido=true;r._mexido=true;r.estornar=false;r.aprender=null;_keepY=window.scrollY;render();}
@@ -2491,7 +2499,7 @@
     };
     for(const r of IMPORT){
       if(soTipo==='ent'&&!(r.amt>0)){pulados++;continue;}if(soTipo==='sai'&&!(r.amt<0)){pulados++;continue;}
-      if(r.sel===false&&r.grupo!=='ja'&&r.grupo!=='lentes'){pulados++;continue;}
+      if(!impSel(r)){pulados++;continue;}
       if(r.grupo==='ja'&&r.jaExiste){
         if(!r.jaImportado&&r.fitid){const {error}=await sb.from('lancamentos').update({fitid:r.fitid}).eq('id',r.jaExiste.id);if(!error)ligados++;}
         await gravarSipag(r,r.jaExiste.id);continue;}
@@ -2514,7 +2522,7 @@
       const {error:eh}=await sb.from('importacoes').insert(Object.assign({linhas_total:ok,linhas_auto_cat:nAutoCat,linhas_auto_contato:nAutoCt},hist));
       if(eh&&/linhas_|column|schema/i.test(eh.message||''))await sb.from('importacoes').insert(hist); // SQL da v2.4 ainda não rodou
     }catch(e){}
-    IMPORT=[];importObs='';importPeriodo={de:'',ate:''};IMPORT_TIPO='';
+    IMPORT=[];importObs='';importPeriodo={de:'',ate:''};IMPORT_TIPO='';IMP_MARC={modo:'todas',crit:[]};
     toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${pulados?` · ${pulados} ficaram para a próxima importação`:''}${sipErr?` · conciliação: ${sipErr}`:''}`, (erro>0||fech>0||sipErr)?'erro':'ok');
     go('lanc');
   }
