@@ -281,6 +281,23 @@ Na tela de **Importar extrato** aparece também: "🤖 Sozinho: X% das linhas no
 
 Cada vez que alguém classifica uma linha, o sistema aprende a palavra, e na próxima importação o número sobe sozinho.
 
+## 👤 Contato padrão das categorias do Caixinha (v2.5.0)
+
+O Caixinha não tem contato, então os lançamentos dele chegam no Fluxo só com a categoria. Agora **cada categoria do Caixinha tem um contato padrão**:
+
+| Categoria | Contato |
+|---|---|
+| MOTO TAXI | MOTO TAXI |
+| REP. CAIXINHA | CAIXINHA |
+| MIDIA | MIDIA |
+
+**Como usar:**
+1. Em **Lançamentos**, clique em **👤 Contato dos N do Caixinha sem contato**.
+2. O sistema já sugere o contato de **mesmo nome** ou o **mais usado** naquela categoria. Confira e clique em **Salvar**.
+3. Com **"lembrar"** marcado, **os próximos já vêm sozinhos**: toda vez que os Lançamentos abrem, o que chegou do Caixinha sem contato é preenchido pelo padrão.
+
+Nada que já tem contato muda. Mês fechado não é mexido. Para trocar um padrão, abra a mesma tela pelo botão **👤 Contato padrão por categoria** (aparece no filtro **Caixinha antiga**).
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -306,6 +323,7 @@ Cada vez que alguém classifica uma linha, o sistema aprende a palavra, e na pr�
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.5.0 | **Contato padrão por categoria** para o que vem do Caixinha: escolhe uma vez (o sistema sugere), preenche os sem contato e os próximos vêm sozinhos. Precisa do SQL v2.5 para lembrar | Nenhum |
 | 22/10/2026 | 2.4.2 | Medidor de automação também nos **Lançamentos** (atualiza a cada lançamento salvo) | Nenhum |
 | 22/10/2026 | 2.4.1 | Menu com ícones simples de traço, da mesma cor do texto (no claro e no escuro), no lugar dos emojis coloridos | Nenhum |
 | 22/10/2026 | 2.4.0 | **🤖 Medidor de automação** no Dashboard (categoria sozinha na importação, com categoria, despesas com contato, veio do extrato — mês × anterior) e na tela de importação. Precisa do SQL v2.4 para o 1º número | Nenhum (só mostra) |

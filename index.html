@@ -228,7 +228,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.4.2', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.5.0', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -883,6 +883,49 @@
       ${item('Veio do extrato',a.pExt,b&&b.pExt,'do mês, quantos lançamentos vieram do OFX — o resto foi digitado à mão')}
       <span class="mut" style="font-size:11px;margin-left:auto">meta: 99% · verde ≥ 90%</span></div>`;
   }
+
+  // ---- 👤 CONTATO PADRÃO POR CATEGORIA (Caixinha): cada categoria do Caixinha tem um contato; vem sozinho ----
+  function cxSemContato(){return LANC.filter(l=>contaEhCaixinha(l.conta_id)&&l.categoria_id&&!l.contato_id&&!mesFechadoISO(l.data));}
+  function contatoPadraoSugerido(catId){const c=CATS.find(x=>x.id===catId);if(!c)return null;
+    if(c.contato_padrao_id&&CONTATOS.some(k=>k.id===c.contato_padrao_id))return c.contato_padrao_id;
+    const igual=contatosAtivos().find(k=>normDesc(k.nome)===normDesc(c.nome));if(igual)return igual.id;
+    const cont={};LANC.filter(l=>l.categoria_id===catId&&l.contato_id).forEach(l=>{const peso=contaEhCaixinha(l.conta_id)?3:1;cont[l.contato_id]=(cont[l.contato_id]||0)+peso;});
+    const top=Object.entries(cont).sort((a,b)=>b[1]-a[1])[0];return top?Number(top[0]):null;}
+  async function autoContatoCaixinha(){
+    if(!podeEditar())return false;const porCt={};
+    cxSemContato().forEach(l=>{const c=CATS.find(x=>x.id===l.categoria_id);if(c&&c.contato_padrao_id&&CONTATOS.some(k=>k.id===c.contato_padrao_id))(porCt[c.contato_padrao_id]=porCt[c.contato_padrao_id]||[]).push(l.id);});
+    let n=0;for(const [ct,ids] of Object.entries(porCt)){const {error}=await sb.from('lancamentos').update({contato_id:Number(ct)}).in('id',ids);if(!error)n+=ids.length;}
+    if(n)toast(`👤 ${n} lançamento(s) do Caixinha ganharam contato pelo padrão da categoria.`,'ok');return n>0;}
+  function abrirContatoPadrao(){
+    const cx=LANC.filter(l=>contaEhCaixinha(l.conta_id)&&l.categoria_id);
+    const cats=[...new Set(cx.map(l=>l.categoria_id))].map(id=>({c:CATS.find(x=>x.id===id),falta:cx.filter(l=>l.categoria_id===id&&!l.contato_id&&!mesFechadoISO(l.data)).length,tot:cx.filter(l=>l.categoria_id===id).length})).filter(x=>x.c)
+      .sort((a,b)=>b.falta-a.falta||a.c.nome.localeCompare(b.c.nome));
+    if(!cats.length){toast('Nenhum lançamento do Caixinha com categoria.','ok');return;}
+    const opts=contatosAtivos().slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+    const linhas=cats.map((x,i)=>{const sug=contatoPadraoSugerido(x.c.id),salvo=!!x.c.contato_padrao_id;
+      return `<div style="display:grid;grid-template-columns:1fr 200px 70px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px">
+        <span><b>${x.c.nome}</b> <span class="mut" style="font-size:11px">${x.falta?`${x.falta} sem contato`:'tudo com contato'}${salvo?' · padrão salvo':''}</span></span>
+        <select data-cat="${x.c.id}" style="background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:5px 6px"><option value="">— escolher —</option>${opts.map(k=>`<option value="${k.id}" ${k.id===sug?'selected':''}>${k.nome}</option>`).join('')}</select>
+        <label style="font-size:11.5px;display:flex;gap:4px;align-items:center;cursor:pointer" title="Daqui pra frente, essa categoria do Caixinha já vem com esse contato"><input type="checkbox" data-lembrar="${x.c.id}" checked> lembrar</label></div>`;}).join('');
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(640px,94vw)">
+      <h3>👤 Contato de cada categoria do Caixinha</h3>
+      <p>O Caixinha não tem contato, então cada categoria ganha um contato padrão (ex.: MOTO TAXI → MOTO TAXI, REP. CAIXINHA → CAIXINHA). O sistema já sugere o contato de mesmo nome ou o mais usado. Confira e salve: preenche os que estão <b>sem contato</b> (meses abertos) e, com "lembrar", <b>os próximos já vêm sozinhos</b>. Nada que já tem contato muda.</p>
+      <div style="max-height:52vh;overflow:auto;margin-bottom:14px">${linhas}</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" id="btnCtPad" onclick="confirmarContatoPadrao()">Salvar</button></div></div></div>`;
+  }
+  async function confirmarContatoPadrao(){
+    const btn=document.getElementById('btnCtPad');if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+    let preench=0,lembr=0,semSQL=false;
+    for(const sel of document.querySelectorAll('#modalRoot select[data-cat]')){
+      const catId=Number(sel.dataset.cat),ct=sel.value?Number(sel.value):null;if(!ct)continue;
+      const lembrar=document.querySelector(`#modalRoot input[data-lembrar="${catId}"]`).checked;
+      if(lembrar){const c=CATS.find(x=>x.id===catId);if(c&&c.contato_padrao_id!==ct){const {error}=await sb.from('categorias').update({contato_padrao_id:ct}).eq('id',catId);
+        if(error){if(/contato_padrao|column|schema/i.test(error.message||''))semSQL=true;else toast('Erro: '+error.message,'erro');}else{c.contato_padrao_id=ct;lembr++;}}}
+      const ids=LANC.filter(l=>contaEhCaixinha(l.conta_id)&&l.categoria_id===catId&&!l.contato_id&&!mesFechadoISO(l.data)).map(l=>l.id);
+      if(ids.length){const {error}=await sb.from('lancamentos').update({contato_id:ct}).in('id',ids);if(!error)preench+=ids.length;}
+    }
+    fecharModal();toast(`👤 ${preench} lançamento(s) preenchido(s)${lembr?` · ${lembr} categoria(s) lembrada(s)`:''}${semSQL?' · para LEMBRAR, rode o SQL da v2.5 no sistema-financeiro':''}`,semSQL?'erro':'ok');_keepY=window.scrollY;render();
+  }
   // copia pra conciliação os créditos de cartão que já estão lançados (OFX antigo, digitados e Lixeira), a partir de 01/06/2026
   async function sipagTrazerDigitados(){
     if(!podeExcluir())return;
@@ -1242,7 +1285,7 @@
   }
 
   // Lançamentos: depois de desenhar (inclusive após salvar/editar/excluir), atualiza o saldo do dia 1º e os cartões da loja
-  async function viewLanc(){await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
+  async function viewLanc(){await viewLancBase();if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
   async function viewLancBase(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando lançamentos...</div>';
     await carregarLancamentos();
@@ -1374,7 +1417,9 @@
     const nCx=LANC.filter(l=>contaEhCaixinha(l.conta_id)&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
     const chip=(v,txt)=>`<button class="btn ghost" style="padding:4px 10px;font-size:12px;${filtroConta===v?'border-color:var(--green);color:var(--green)':''}" onclick="filtroConta='${v}';render()">${txt}</button>`;
     const nSemCat=LANC.filter(l=>!l.categoria_id&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
-    return `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">${chip('','Todos')}${chip('banco','🏦 Sicoob')}${chip('caixinha',`💵 Caixinha antiga${nCx?` (${nCx})`:''}`)}${podeEditar()&&nSemCat?`<button class="btn" style="padding:4px 10px;font-size:12px;margin-left:auto" onclick="aplicarRegrasNoMes()">🔑 Aplicar regras nos ${nSemCat} sem categoria</button>`:''}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">lançados na aba Caixinha antiga do Fluxo — conferir categoria e contato; o dinheiro físico agora mora no sistema Caixinha</span>':''}<span style="margin-left:auto;display:flex;gap:8px;align-items:center">${lentesStatusHTML()}</span></div>${(()=>{const pend=LANC.filter(l=>{const n=String((l.categorias&&l.categorias.nome)||'').toUpperCase();const r=l.ref_externa||'';return (n===CAT_ESTORNAR&&!r.startsWith('cxb:'))||(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'));});return pend.length?`<div class="note" style="border-color:rgba(245,183,64,.45);margin-bottom:10px">🔁 <b>${pend.length} lançamento(s) do Banco Caixinha ainda não ligado(s)</b> — clique no botão amarelo de cada um ("Mandar pro Banco Caixinha" ou "Marcar devolução"). É isso que mantém o em aberto das lojas certo sem ninguém apagar nada.</div>`:'';})()}
+    return `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">${chip('','Todos')}${chip('banco','🏦 Sicoob')}${chip('caixinha',`💵 Caixinha antiga${nCx?` (${nCx})`:''}`)}${podeEditar()&&nSemCat?`<button class="btn" style="padding:4px 10px;font-size:12px;margin-left:auto" onclick="aplicarRegrasNoMes()">🔑 Aplicar regras nos ${nSemCat} sem categoria</button>`:''}${(()=>{if(!podeEditar())return '';const n=cxSemContato().length;
+      return n?`<button class="btn" style="padding:4px 10px;font-size:12px" onclick="abrirContatoPadrao()" title="Escolha uma vez o contato de cada categoria do Caixinha; daí pra frente ele vem sozinho">👤 Contato dos ${n} do Caixinha sem contato</button>`
+        :(filtroConta==='caixinha'?`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="abrirContatoPadrao()">👤 Contato padrão por categoria</button>`:'');})()}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">lançados na aba Caixinha antiga do Fluxo — conferir categoria e contato; o dinheiro físico agora mora no sistema Caixinha</span>':''}<span style="margin-left:auto;display:flex;gap:8px;align-items:center">${lentesStatusHTML()}</span></div>${(()=>{const pend=LANC.filter(l=>{const n=String((l.categorias&&l.categorias.nome)||'').toUpperCase();const r=l.ref_externa||'';return (n===CAT_ESTORNAR&&!r.startsWith('cxb:'))||(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'));});return pend.length?`<div class="note" style="border-color:rgba(245,183,64,.45);margin-bottom:10px">🔁 <b>${pend.length} lançamento(s) do Banco Caixinha ainda não ligado(s)</b> — clique no botão amarelo de cada um ("Mandar pro Banco Caixinha" ou "Marcar devolução"). É isso que mantém o em aberto das lojas certo sem ninguém apagar nada.</div>`:'';})()}
       <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12.5px;flex-wrap:wrap">
         <span class="mut">${rows.length} lançamento(s)</span>
         <span style="color:var(--green)">Entradas: ${BRL(somaE)}</span>
