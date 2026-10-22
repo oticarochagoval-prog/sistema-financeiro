@@ -231,7 +231,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.6.3', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.6.4', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -2676,11 +2676,14 @@
       if(gr[g]!==undefined)gr[g]+=Math.abs(Number(l.valor));
     });
     const margem=gr.rec-gr.cmv;const resultOp=margem-gr.imp-gr.fixo;const resultFinal=resultOp-gr.nop;
-    // contas a pagar (em aberto) por categoria
-    const {data:apagar}=await sb.from('lancamentos').select('valor, categorias(nome)').eq('loja_id',lojaAtual).eq('pago',false);
-    const apagarCat={};let totalApagar=0;
-    (apagar||[]).forEach(l=>{const n=(l.categorias&&l.categorias.nome)||'Sem categoria';const v=Math.abs(Number(l.valor));apagarCat[n]=(apagarCat[n]||0)+v;totalApagar+=v;});
-    try{const {data:cps}=await sb.from('contas_pagar').select('valor,categoria_id').eq('loja_id',lojaAtual).eq('status','aberto');(cps||[]).forEach(c=>{const k=CATS.find(x=>x.id===c.categoria_id);const n=k?k.nome:'Sem categoria';const v=Number(c.valor);apagarCat[n]=(apagarCat[n]||0)+v;totalApagar+=v;});}catch(e){}
+    // a pagar NO MÊS escolhido (pelo vencimento) — não acumula: vencido de mês anterior fica à parte, na Agenda
+    try{await agBaixaAutomatica([lojaAtual]);}catch(e){}
+    const mIni=`${ANO_FIXO}-${_mm(mesSel)}-01`,mFim=_fimMes(`${ANO_FIXO}-${_mm(mesSel)}`);
+    const {data:apagar}=await sb.from('lancamentos').select('valor,vencimento,data, categorias(nome)').eq('loja_id',lojaAtual).eq('pago',false);
+    const apagarCat={};let totalApagar=0,vencidoAntes=0;
+    const somaAp=(nome,v,venc)=>{if(venc<mIni){vencidoAntes+=v;return;}if(venc>mFim)return;apagarCat[nome]=(apagarCat[nome]||0)+v;totalApagar+=v;};
+    (apagar||[]).forEach(l=>somaAp((l.categorias&&l.categorias.nome)||'Sem categoria',Math.abs(Number(l.valor)),String(l.vencimento||l.data)));
+    try{const {data:cps}=await sb.from('contas_pagar').select('valor,categoria_id,vencimento').eq('loja_id',lojaAtual).eq('status','aberto').lte('vencimento',mFim);(cps||[]).forEach(c=>{const k=CATS.find(x=>x.id===c.categoria_id);somaAp(k?k.nome:'Sem categoria',Number(c.valor),c.vencimento);});}catch(e){}
     const apagarLista=Object.entries(apagarCat).map(([nome,valor])=>({nome,valor})).sort((a,b)=>b.valor-a.valor);
     const mesNome=MESES_NOME[mesSel];
 
@@ -2723,12 +2726,12 @@
         ${card('Saídas do mês',saidaMes,'var(--red)','pago em '+mesNome)}
         ${card('Entradas do mês',entradaMes,'var(--green)','recebido em '+mesNome)}
         ${card('Resultado do mês',resultMes,resultMes>=0?'var(--green)':'var(--red)','entradas − saídas')}
-        ${card('A pagar (aberto)',totalApagar,'var(--amber)','na Agenda de pagamentos')}
+        ${card('A pagar em '+mesNome,totalApagar,'var(--amber)',vencidoAntes>0.5?`vence neste mês · + ${BRL(vencidoAntes)} vencido de meses anteriores (na Agenda)`:'vence neste mês · Agenda de pagamentos')}
       </div>
       <div class="grid two">
         ${graficoCard('💸 Despesas pagas',despesas,saidaMes,'var(--red)',mesNome,'des')}
         ${graficoCard('💰 Receitas / Entradas',receitas,entradaMes,'var(--green)',mesNome,'rec')}
-        ${graficoCard('🧾 Contas a pagar (aberto)',apagarLista,totalApagar,'var(--amber)','')}
+        ${graficoCard('🧾 A pagar em '+mesNome,apagarLista,totalApagar,'var(--amber)','')}
         ${dreCard}
         ${fechCard}
       </div>

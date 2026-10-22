@@ -315,7 +315,9 @@ O antigo **A pagar** virou **Agenda de pagamentos**. As contas ficam numa tabela
 - os **fixos dos Recorrentes** (aluguel, Simples…), que ficam pagos quando sai um lançamento parecido perto do dia;
 - os **boletos de lentes previstos no Caixinha**, quando você está conectado no Caixinha.
 
-Clique em qualquer conta para ver os detalhes ou resolver. A Agenda também alimenta o **Radar do mês** e o card **A pagar** do Dashboard.
+Clique em qualquer conta para ver os detalhes ou resolver. A Agenda também alimenta o **Radar do mês** e o card **A pagar em (mês)** do Dashboard.
+
+**No Dashboard, o A pagar não acumula (v2.6.4):** o card e o gráfico mostram só o que **vence no mês escolhido**. O que venceu em meses anteriores e não foi resolvido aparece numa linha à parte ("+ R$ X vencido de meses anteriores") e fica na caixa de vencidos da Agenda.
 
 **Funcionário com salário que varia (v2.6.1):** cadastre em **Recorrentes** com o **contato** do funcionário e o dia do pagamento. A Agenda mostra a **média dos últimos 3 meses** pagos a ele e marca como **pago** quando sai qualquer pagamento para ele no mês, de qualquer valor.
 
@@ -346,6 +348,7 @@ Clique em qualquer conta para ver os detalhes ou resolver. A Agenda também alim
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.6.4 | Dashboard: "A pagar em (mês)" mostra só o que vence no mês escolhido; vencido de meses anteriores aparece à parte e fica na Agenda (não acumula). A baixa automática também roda ao abrir o Dashboard | Nenhum |
 | 22/10/2026 | 2.6.3 | O papel **dono** aparece como **gestor** na tela (rodapé, Configurações, avisos). Por dentro continua o mesmo, nada muda de acesso | Nenhum |
 | 22/10/2026 | 2.6.2 | Menu que abre e fecha: clique em DIA A DIA, ANÁLISE ou GESTÃO para recolher; o sistema lembra, e o grupo da tela aberta fica sempre aberto | Nenhum |
 | 22/10/2026 | 2.6.1 | Agenda: recorrente com contato (funcionário) usa a média dele e fica pago com qualquer pagamento no mês; parcela lançada (1/6) manda as próximas para a Agenda sozinha | Nenhum |
