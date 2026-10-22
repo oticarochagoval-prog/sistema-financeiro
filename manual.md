@@ -348,6 +348,7 @@ Clique em qualquer conta para ver os detalhes ou resolver. A Agenda também alim
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.6.5 | Card "A pagar em (mês)" avisa em letra pequena: "só o que vence neste mês · não acumula de um mês pro outro" | Nenhum |
 | 22/10/2026 | 2.6.4 | Dashboard: "A pagar em (mês)" mostra só o que vence no mês escolhido; vencido de meses anteriores aparece à parte e fica na Agenda (não acumula). A baixa automática também roda ao abrir o Dashboard | Nenhum |
 | 22/10/2026 | 2.6.3 | O papel **dono** aparece como **gestor** na tela (rodapé, Configurações, avisos). Por dentro continua o mesmo, nada muda de acesso | Nenhum |
 | 22/10/2026 | 2.6.2 | Menu que abre e fecha: clique em DIA A DIA, ANÁLISE ou GESTÃO para recolher; o sistema lembra, e o grupo da tela aberta fica sempre aberto | Nenhum |

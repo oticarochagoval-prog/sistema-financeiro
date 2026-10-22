@@ -231,7 +231,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.6.4', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.6.5', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -2726,7 +2726,7 @@
         ${card('Saídas do mês',saidaMes,'var(--red)','pago em '+mesNome)}
         ${card('Entradas do mês',entradaMes,'var(--green)','recebido em '+mesNome)}
         ${card('Resultado do mês',resultMes,resultMes>=0?'var(--green)':'var(--red)','entradas − saídas')}
-        ${card('A pagar em '+mesNome,totalApagar,'var(--amber)',vencidoAntes>0.5?`vence neste mês · + ${BRL(vencidoAntes)} vencido de meses anteriores (na Agenda)`:'vence neste mês · Agenda de pagamentos')}
+        ${card('A pagar em '+mesNome,totalApagar,'var(--amber)',vencidoAntes>0.5?`só o que vence neste mês · não acumula · + ${BRL(vencidoAntes)} vencido antes (fica na Agenda)`:'só o que vence neste mês · não acumula de um mês pro outro')}
       </div>
       <div class="grid two">
         ${graficoCard('💸 Despesas pagas',despesas,saidaMes,'var(--red)',mesNome,'des')}
