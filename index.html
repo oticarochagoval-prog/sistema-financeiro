@@ -226,7 +226,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.0.3', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.0.4', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -373,8 +373,17 @@
     }
     if(!ecs.length)avisos.push('Essa loja não tem maquininha Sipag ligada no Cartões (mapa EC → loja).');
     else{if(!temAntec)avisos.push('Sem previsão de antecipação para este mês no Cartões (relatório de antecipações não subido, ou a loja não antecipa).');
-      if(!temAgenda)avisos.push('Sem agenda de débitos no Cartões (o Detalhado de vendas não foi subido) — débitos aparecem como "sem previsão".');}
-    return {E,extras,avisos,ecs};
+      if(!temAgenda)avisos.push('__SEMAGENDA__');}
+    // total de débito líquido das vendas de M (arquivo da Sipag subido no Cartões) — usado quando não tem a agenda dia a dia
+    let debTotal=0;try{const oM=await ctMes('_CONC_'+M);const pe=(oM&&oM.sipag&&oM.sipag.porEC)||{};
+      ecs.forEach(ec=>{const v=pe[ec];if(!v)return;const cb=Object.entries(v.combos||{});
+        const cred=typeof v.credito==='number'?v.credito:cb.reduce((a,[k,c])=>/cr[eé]dito/i.test(k.split('|')[1]||'')?a+(c.bruto||0)+(c.estorno||0):a,0);
+        const tDeb=cb.reduce((a,[k,c])=>/d[eé]bito/i.test(k.split('|')[1]||'')?a+(c.desconto||0):a,0);
+        debTotal+=Number(v.bruto||0)-cred-tDeb;});}catch(e){}
+    const mesHojeE=new Date().toISOString().slice(0,7);
+    const iSA=avisos.indexOf('__SEMAGENDA__');if(iSA>=0)avisos[iSA]=M>=mesHojeE?'Débitos do mês corrente: conferem quando o mês fechar (o Detalhado de vendas só sai depois). Por enquanto aparecem como "caiu sem estar previsto" — é normal.'
+      :(debTotal>0?`Sem a agenda dia a dia dos débitos (Detalhado de vendas não subido no Cartões). O quadro de cima compara pelo total do mês: ${BRL(Math.round(debTotal*100)/100)} (aproximado).`:'Sem valor de débito no Cartões (arquivo da Sipag / Detalhado não subido) — débitos aparecem como "caiu sem estar previsto".');
+    return {E,extras,avisos,ecs,debTotal};
   }
   // casa previsto × caiu: 1 a 1 (valor ±5 centavos, data ±3 dias); depois soma do dia (a Sipag junta/separa depósitos); antecipação: soma do mês
   function conciliarSipag(E,R){
@@ -409,12 +418,12 @@
     const Ea=esp.E.filter(e=>e.t==='a'),Ed=esp.E.filter(e=>e.t==='d');
     const Ra=R.filter(r=>r.tipo==='antecipacao'),Rd=R.filter(r=>r.tipo==='debito'),Ro=R.filter(r=>!['antecipacao','debito'].includes(r.tipo));
     const faltaVenc=res.eSobra.filter(e=>e.data<=hoje),faltaFut=res.eSobra.filter(e=>e.data>hoje);
-    const naoPrev=res.rSobra.filter(r=>['antecipacao','debito'].includes(r.tipo));
+    const naoPrev=res.rSobra.filter(r=>r.tipo==='antecipacao'||(r.tipo==='debito'&&Ed.length)); // débito sem agenda não conta como erro
     let status,cor;
     if(erroSb){status='rode o SQL da v2.0';cor='var(--red)';}
     else if(!esp.E.length&&!R.length){status='sem dados';cor='var(--muted)';}
     else if(!R.length){status='falta o extrato';cor='var(--amber)';}
-    else if(!faltaVenc.length&&!naoPrev.length){status=faltaFut.length?'em dia (falta cair o que vence depois)':'FECHOU ✓';cor='var(--green)';}
+    else if(!faltaVenc.length&&!naoPrev.length){status=faltaFut.length?'em dia (falta cair o que vence depois)':(!Ed.length&&Rd.length?'antecipação FECHOU ✓':'FECHOU ✓');cor='var(--green)';}
     else{const dif=soma(naoPrev)-soma(faltaVenc);status=`não bateu ${dif>=0?'+':'−'}${BRL(Math.abs(dif))}`;cor='var(--red)';}
     const subA={automatica:'automática',eventual:'eventual'};
     const marcaTxt=(e)=>e.marca&&(e.marca.ok||e.marca.valor)?`<span class="catchip" style="font-size:10px;padding:1px 6px;border-color:var(--blue);color:var(--blue)" title="marcado na conferência do Cartões">✓ Cartões${e.marca.valor?' '+e.marca.valor:''}</span>`:'';
@@ -425,8 +434,8 @@
         +fs.map(e=>`<tr style="background:${e.data>hoje?'transparent':'rgba(255,92,92,.07)'}"><td>${eTxt(e)}</td><td style="text-align:center">${e.data>hoje?'<span class="mut">⏳</span>':'<b style="color:var(--red)">✕</b>'}</td><td class="mut">${e.data>hoje?'ainda vai cair':'<b style="color:var(--red)">esperava e não caiu</b>'}</td></tr>`).join('')
         +ns.map(r=>`<tr style="background:rgba(245,183,64,.08)"><td class="mut"><b style="color:var(--amber)">caiu sem estar previsto</b></td><td style="text-align:center"><b style="color:var(--amber)">?</b></td><td>${rTxt(r)}</td></tr>`).join('');
       const pe=soma(esp.E.filter(e=>e.t===t)),cr=soma(R.filter(r=>t==='a'?r.tipo==='antecipacao':r.tipo==='debito'));
-      return `<div class="card" style="margin-bottom:12px;padding:0;overflow:auto"><div style="display:flex;gap:14px;align-items:center;padding:12px 14px;flex-wrap:wrap"><b style="font-size:14px">${titulo}</b><span class="mut" style="font-size:12.5px">previsto ${BRL(pe)} · caiu ${BRL(cr)}</span>${Math.abs(pe-cr)>=0.05&&pe&&cr?`<span style="font-size:12.5px;color:${cr>pe?'var(--amber)':'var(--red)'};font-weight:700">diferença ${cr-pe>=0?'+':'−'}${BRL(Math.abs(cr-pe))}</span>`:''}</div>
-        <table><thead><tr><th>Previsto (Cartões Rocha)</th><th></th><th>Caiu no Sicoob (extrato)</th></tr></thead><tbody>${linhas||'<tr><td colspan="3" class="mut">Nada neste mês.</td></tr>'}</tbody></table></div>`;};
+      return `<div class="card" style="margin-bottom:12px;padding:0;overflow:auto"><div style="display:flex;gap:14px;align-items:center;padding:12px 14px;flex-wrap:wrap"><b style="font-size:14px">${titulo}</b><span class="mut" style="font-size:12.5px">tem que cair ${BRL(pe)} · caiu ${BRL(cr)}</span>${Math.abs(pe-cr)>=0.05&&pe&&cr?`<span style="font-size:12.5px;color:${cr>pe?'var(--amber)':'var(--red)'};font-weight:700">diferença ${cr-pe>=0?'+':'−'}${BRL(Math.abs(cr-pe))}</span>`:''}</div>
+        <table><thead><tr><th>Tem que cair (Cartões Rocha)</th><th></th><th>Caiu no Sicoob (extrato)</th></tr></thead><tbody>${linhas||'<tr><td colspan="3" class="mut">Nada neste mês.</td></tr>'}</tbody></table></div>`;};
     const outros=Ro.length?`<div class="card" style="margin-bottom:12px"><b style="font-size:13.5px">Outros créditos Sipag do mês</b> <span class="mut" style="font-size:12px">(parcelas de crédito, estornos — o Cartões não prevê esses)</span><div style="margin-top:6px;font-size:12.5px;line-height:1.8">${Ro.map(r=>`${({credito_parcela:'parcela de crédito',estorno:'estorno',outro:'Sipag'})[r.tipo]||r.tipo} · ${rTxt(r)}`).join('<br>')}</div></div>`:'';
     const lixHTML=lix.length?`<div class="card" style="margin-bottom:12px;border-color:rgba(255,92,92,.35)"><b style="font-size:13.5px;color:var(--red)">🗑 Créditos de cartão que estão na Lixeira</b> <span class="mut" style="font-size:12px">— se algum desses é o que está faltando acima, restaure na Lixeira</span><div style="margin-top:6px;font-size:12.5px;line-height:1.8">${lix.map(r=>`${isoParaBR(r.data).slice(0,5)} · <b>${BRL(Number(r.valor))}</b> <span class="mut">${(r.descricao||'').replace('[NA LIXEIRA] ','').slice(0,60)}</span>`).join('<br>')}</div></div>`:'';
     const extrasHTML=esp.extras.length?`<div class="card" style="margin-bottom:12px"><b style="font-size:13.5px">✍️ Digitados na conferência do Cartões</b> <span class="mut" style="font-size:12px">— aparecem aqui como "aguardando extrato"; não viram lançamento no Fluxo</span><div style="margin-top:6px;font-size:12.5px;line-height:1.8">${esp.extras.map(x=>x.legado?`antecipação inteira marcada ✓${x.valor?' ('+x.valor+')':''} · vendas de ${x.mesV}`:`${x.data?isoParaBR(x.data).slice(0,5):'—'} · ${x.tipo==='d'?'débito':'antecipação'} <b>${x.valor}</b> · aguardando extrato`).join('<br>')}</div></div>`:'';
@@ -452,9 +461,9 @@
   function abrirConcLoja(id){lojaAtual=id;const sel=document.getElementById('store');if(sel)sel.value=String(id);
     Promise.resolve(carregarContas()).then(()=>carregarFechamentos()).then(()=>go('concsipag')).catch(()=>go('concsipag'));}
   const _ctSoma=a=>a.reduce((t,x)=>t+Number(x.valor||0),0);
-  // calcula, por loja, previsto × caiu do mês M (soLoja = id para calcular uma loja só)
+  // calcula, por loja, "tem que cair" × caiu do mês M (soLoja = id para calcular uma loja só)
   async function cartoesLinhas(M,soLoja){
-    const hoje=new Date().toISOString().slice(0,10);
+    const hoje=new Date().toISOString().slice(0,10),mesHoje=hoje.slice(0,7);
     const fimM=`${M}-${String(new Date(Number(M.slice(0,4)),Number(M.slice(5,7)),0).getDate()).padStart(2,'0')}`;
     let q=sb.from('sipag_lancamentos').select('id,loja_id,data,valor,tipo,origem_ref').gte('data',M+'-01').lte('data',fimM);
     if(soLoja)q=q.eq('loja_id',soLoja);
@@ -465,7 +474,7 @@
       try{esp=await sipagEsperado(curta,M);}catch(e){return {erroCt:e.message||String(e),linhas:[]};}
       if(!esp.ecs.length)continue;
       const R=(R0||[]).filter(r=>r.loja_id===L.id&&!String(r.origem_ref||'').startsWith('lix:')).map(r=>Object.assign({},r,{valor:Number(r.valor)}));
-      const E=esp.E;if(!E.length&&!R.length)continue;
+      const E=esp.E;if(!E.length&&!R.length&&!(esp.debTotal>0))continue;
       const res=conciliarSipag(E,R);
       const ev=e=>e.sub==='eventual';
       const Ea=E.filter(e=>e.t==='a'&&e.data<=hoje),Ed=E.filter(e=>e.t==='d'&&e.data<=hoje);
@@ -473,44 +482,70 @@
       const caiuA=soma(R.filter(r=>r.tipo==='antecipacao')),caiuD=soma(R.filter(r=>r.tipo==='debito'));
       let autoM=0,evM=0;res.pares.filter(p=>p.t==='a').forEach(p=>{const v=soma(p.r.filter(r=>r.tipo==='antecipacao'));if(ev(p.e[0]))evM+=v;else autoM+=v;});
       let sobra=Math.max(0,caiuA-autoM-evM);const a1=Math.min(sobra,Math.max(0,prevAuto-autoM));sobra-=a1;const e1=Math.min(sobra,Math.max(0,prevEv-evM));sobra-=e1;
+      // débitos: agenda dia a dia (Detalhado) › total do mês do Cartões (mês já fechado, aproximado) › mês corrente (confere no fim) › sem nada
+      const temAgenda=E.some(e=>e.t==='d');
+      let modoD,prevD=0;
+      if(temAgenda){modoD='agenda';prevD=soma(Ed);}
+      else if(M<mesHoje&&esp.debTotal>0){modoD='total';prevD=Math.round(esp.debTotal*100)/100;}
+      else if(M>=mesHoje){modoD='corrente';}
+      else modoD='sem';
       linhas.push({id:L.id,nome:curta,temExtrato:R.length>0,prevAuto,prevEv,caiuAuto:autoM+a1+sobra,caiuEv:evM+e1,prevA:prevAuto+prevEv,caiuA,
-        temAgenda:E.some(e=>e.t==='d'),prevD:soma(Ed),caiuD,fut:E.filter(e=>e.data>hoje),vencido:E.some(e=>e.data<=hoje)});
+        modoD,temAgenda,prevD,caiuD,fut:E.filter(e=>e.data>hoje),vencido:E.some(e=>e.data<=hoje)||modoD==='total'});
     }
-    return {linhas};
+    return {linhas,mesCorrente:M>=mesHoje};
   }
   const _CT_T=0.05;
+  const _ctTolD=l=>l.modoD==='total'?Math.max(0.02*l.prevD,50):_CT_T; // total do mês: a venda do último dia cai no dia 1º do mês seguinte
   function _ctPill(txt,cls){const c={ok:['rgba(31,157,107,.13)','var(--green)'],no:['rgba(214,69,69,.13)','var(--red)'],wa:['rgba(199,134,26,.15)','var(--amber)'],bl:['rgba(59,99,217,.13)','var(--blue)'],mu:['var(--panel-2)','var(--muted)']}[cls];
     return `<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-weight:700;font-size:11.5px;background:${c[0]};color:${c[1]};white-space:nowrap;margin:1px 4px 1px 0">${txt}</span>`;}
   // situação de uma loja → {pills, falta, semExtrato}
   function _ctSituacao(l){const T=_CT_T,pill=_ctPill;let pills=[],falta=false,semExtrato=false;
     if(!l.temExtrato){if(l.vencido){pills.push(pill('⏳ falta importar o extrato','mu'));semExtrato=true;}else pills.push(pill('⏳ ainda vai cair','mu'));}
-    else{const difA=l.prevA>0?l.caiuA-l.prevA:null,difD=l.temAgenda?l.caiuD-l.prevD:null;
+    else{const comparaD=l.modoD==='agenda'||l.modoD==='total',tolD=_ctTolD(l);
+      const difA=l.prevA>0?l.caiuA-l.prevA:null,difD=comparaD?l.caiuD-l.prevD:null;
       if(difA!=null&&difA<-T){pills.push(pill('▼ faltou '+BRL(-difA)+' na antecipação','no'));falta=true;}
-      if(difD!=null&&difD<-T){pills.push(pill('▼ faltou '+BRL(-difD)+' nos débitos','no'));falta=true;}
-      if(!falta){const mais=(difA>T?difA:0)+(difD>T?difD:0);
-        if(mais>T)pills.push(pill('▲ +'+BRL(mais)+' — ok','bl'));else if(l.prevA>0||l.temAgenda)pills.push(pill('✓ bateu','ok'));}
-      if(l.prevA<=0&&l.caiuA>T)pills.push(pill('⚠ antecipação sem previsão no Cartões','wa'));
-      if(!l.temAgenda&&l.caiuD>T)pills.push(pill('⚠ débitos sem previsão (subir Detalhado no Cartões)','wa'));}
+      if(difD!=null&&difD<-tolD){pills.push(pill('▼ faltou '+(l.modoD==='total'?'~':'')+BRL(-difD)+' nos débitos','no'));falta=true;}
+      if(!falta){const mais=(difA>T?difA:0)+(difD>tolD?difD:0);
+        if(mais>T)pills.push(pill('▲ +'+BRL(mais)+' — ok','bl'));else if(l.prevA>0||comparaD)pills.push(pill('✓ bateu','ok'));}
+      if(l.prevA<=0&&l.caiuA>T)pills.push(pill('⚠ antecipação sem valor no Cartões','wa'));
+      if(l.modoD==='sem'&&l.caiuD>T)pills.push(pill('⚠ débitos sem valor no Cartões (subir o arquivo da Sipag/Detalhado)','wa'));}
     return {pills,falta,semExtrato};}
-  function _ctTile(titulo,prev,caiu,obs,vazio){const T=_CT_T,d=caiu-prev;let r,cls,bg,bd;
-    if(prev<=0&&caiu<=0){r=vazio||'nada previsto';cls='var(--muted)';bg='transparent';bd='var(--line)';}
-    else if(prev<=0){r='sem previsão no Cartões';cls='var(--amber)';bg='rgba(199,134,26,.06)';bd='rgba(199,134,26,.35)';}
-    else if(d<-T){r='▼ faltaram '+BRL(-d);cls='var(--red)';bg='rgba(214,69,69,.06)';bd='rgba(214,69,69,.35)';}
+  // um quadrinho: tqAll = tem que cair (todas as lojas) · caiu = só lojas com extrato · tqCom = tem que cair das lojas com extrato
+  function _ctTile(titulo,o){const T=o.tol||_CT_T;let r,cls,bg,bd;const d=o.caiu-o.tqCom;
+    const cinza=()=>{cls='var(--muted)';bg='transparent';bd='var(--line)';};
+    if(o.especial){r=o.especial;cinza();}
+    else if(o.tqAll<=0&&o.caiu<=0){r=o.vazio||'nada neste mês';cinza();}
+    else if(o.tqCom<=0&&o.caiu<=0){r='⏳ aguardando o extrato';cinza();}
+    else if(o.tqCom<=0){r='caiu sem valor no Cartões';cls='var(--amber)';bg='rgba(199,134,26,.06)';bd='rgba(199,134,26,.35)';}
+    else if(d<-T){r='▼ faltaram '+(o.aprox?'~':'')+BRL(-d)+(o.nPend&&o.nCom?(o.nCom>1?` (nas ${o.nCom} com extrato)`:' (na loja com extrato)'):'');cls='var(--red)';bg='rgba(214,69,69,.06)';bd='rgba(214,69,69,.35)';}
     else if(d>T){r='▲ veio '+BRL(d)+' a mais — ok';cls='var(--green)';bg='rgba(31,157,107,.06)';bd='rgba(31,157,107,.35)';}
-    else{r='✓ bateu';cls='var(--green)';bg='rgba(31,157,107,.06)';bd='rgba(31,157,107,.35)';}
+    else{r=o.aprox&&Math.abs(d)>=_CT_T?`≈ bateu (${d<0?'−':'+'}${BRL(Math.abs(d))})`:'✓ bateu';if(o.nPend&&o.nCom)r+=o.nCom>1?` nas ${o.nCom} lojas com extrato`:' na loja com extrato';cls='var(--green)';bg='rgba(31,157,107,.06)';bd='rgba(31,157,107,.35)';}
+    const obs=[o.nPend?`aguardando extrato de ${o.nPend} loja${o.nPend>1?'s':''} (${BRL(o.sumPend)})`:'',o.obs||''].filter(Boolean).join(' · ');
     return `<div style="border:1px solid ${bd};background:${bg};border-radius:12px;padding:10px 13px"><div class="mut" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">${titulo}</div>
-      <div class="mut" style="font-size:12.5px;margin-top:4px">previsto <b style="color:var(--txt)">${BRL(prev)}</b> · caiu <b style="color:var(--txt)">${BRL(caiu)}</b></div>
+      <div class="mut" style="font-size:12.5px;margin-top:4px">${o.semTq?'':`tem que cair <b style="color:var(--txt)">${BRL(o.tqAll)}</b> · `}caiu <b style="color:var(--txt)">${BRL(o.caiu)}</b></div>
       <div style="font-weight:800;font-size:14px;margin-top:5px;color:${cls}">${r}</div>${obs?`<div class="mut" style="font-size:11px;margin-top:3px">${obs}</div>`:''}</div>`;}
-  function _ctTotais(C){const s=k=>C.reduce((t,l)=>t+(l[k]||0),0);const CA=C.filter(l=>l.temAgenda);
-    return {prevAuto:s('prevAuto'),caiuAuto:s('caiuAuto'),prevEv:s('prevEv'),caiuEv:s('caiuEv'),prevA:s('prevA'),caiuA:s('caiuA'),prevD:CA.reduce((t,l)=>t+l.prevD,0),caiuD:CA.reduce((t,l)=>t+l.caiuD,0)};}
-  function _ctTiles(tot,mesAntNome,obsDeb,escondeEvVazio){return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
-      ${_ctTile('⚡ Antecipação automática · vendas de '+mesAntNome,tot.prevAuto,tot.caiuAuto,'','o Cartões ainda não tem a previsão')}
-      ${escondeEvVazio&&tot.prevEv<=0&&tot.caiuEv<=0?'':_ctTile('⚡ Antecipação eventual (pedida no mês)',tot.prevEv,tot.caiuEv,'','nenhuma pedida')}
-      ${_ctTile('🧾 Débitos (D+1) · previsto até hoje',tot.prevD,tot.caiuD,obsDeb||'')}</div>`;}
+  function _ctTiles(linhas,mesAntNome,mesCorrente,escondeEvVazio){
+    const s=(arr,k)=>arr.reduce((t,l)=>t+(l[k]||0),0);const C=linhas.filter(l=>l.temExtrato),P=linhas.filter(l=>!l.temExtrato);
+    const grupo=(kTq,kCaiu,filtro)=>{const all=linhas.filter(filtro||(()=>true)),com=all.filter(l=>l.temExtrato),pend=all.filter(l=>!l.temExtrato&&(l[kTq]||0)>0);
+      return {tqAll:s(all,kTq),caiu:s(com,kCaiu),tqCom:s(com,kTq),nPend:pend.length,sumPend:s(pend,kTq),nCom:com.filter(l=>(l[kTq]||0)>0||(l[kCaiu]||0)>0).length};};
+    const auto=grupo('prevAuto','caiuAuto'),ev=grupo('prevEv','caiuEv');
+    const compD=l=>l.modoD==='agenda'||l.modoD==='total';
+    const deb=grupo('prevD','caiuD',compD);const temTotal=linhas.some(l=>l.modoD==='total'&&compD(l));
+    let debTile;
+    if(!linhas.some(compD)){const caiuTodos=s(C,'caiuD');
+      debTile=_ctTile('🧾 Débitos (D+1)',mesCorrente?{semTq:true,caiu:caiuTodos,especial:'confere quando o mês fechar',obs:'o Detalhado de vendas só sai depois que o mês acaba'}
+        :{semTq:true,caiu:caiuTodos,especial:'sem valor de débito no Cartões',obs:'suba o arquivo da Sipag / Detalhado no Cartões Rocha'});}
+    else{const semComp=C.filter(l=>!compD(l)&&l.caiuD>_CT_T).length;
+      debTile=_ctTile('🧾 Débitos (D+1)'+(temTotal?' · total do mês':' · até hoje'),Object.assign(deb,{aprox:temTotal,tol:temTotal?Math.max(0.02*deb.tqCom,50):_CT_T,
+        obs:[temTotal?'aproximado: a venda do último dia cai no dia 1º seguinte':'',semComp?`${semComp} loja(s) sem valor de débito ficam fora`:''].filter(Boolean).join(' · ')}));}
+    return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+      ${_ctTile('⚡ Antecipação automática · vendas de '+mesAntNome,Object.assign(auto,{vazio:'o Cartões ainda não tem o valor'}))}
+      ${escondeEvVazio&&ev.tqAll<=0&&ev.caiu<=0?'':_ctTile('⚡ Antecipação eventual (pedida no mês)',Object.assign(ev,{vazio:'nenhuma pedida'}))}
+      ${debTile}</div>`;}
   function _ctProx(linhas,mesNome){const hoje=new Date().toISOString().slice(0,10);const futAll=[].concat(...linhas.map(l=>l.fut));if(!futAll.length)return '';
     const porDia={};futAll.forEach(e=>{porDia[e.data]=(porDia[e.data]||0)+e.valor;});const d1=Object.keys(porDia).sort()[0];
     const fa=_ctSoma(futAll.filter(e=>e.t==='a')),fd=_ctSoma(futAll.filter(e=>e.t==='d'));
-    return `<div class="mut" style="font-size:12.5px;margin-top:10px">📅 Ainda vai cair em ${mesNome} (previsão do Cartões): <b style="color:var(--txt)">${BRL(fa+fd)}</b>${fa&&fd?` (${BRL(fa)} antecipação · ${BRL(fd)} débitos)`:fa?' de antecipação':' em débitos'} · próximo: ${d1===addDias(hoje,1)?'amanhã':isoParaBR(d1).slice(0,5)}, ${BRL(porDia[d1])}</div>`;}
+    return `<div class="mut" style="font-size:12.5px;margin-top:10px">📅 Ainda vai cair em ${mesNome}: <b style="color:var(--txt)">${BRL(fa+fd)}</b>${fa&&fd?` (${BRL(fa)} antecipação · ${BRL(fd)} débitos)`:fa?' de antecipação':' em débitos'} · próximo: ${d1===addDias(hoje,1)?'amanhã':isoParaBR(d1).slice(0,5)}, ${BRL(porDia[d1])}</div>`;}
   const _CT_REGRA=(extra)=>`<div style="margin-top:10px;background:rgba(245,183,64,.09);border:1px solid rgba(245,183,64,.35);border-radius:10px;padding:8px 12px;font-size:12.5px">📌 <b>Regra:</b> pode vir igual ou a mais. <b>A menos, nunca</b> — se aparecer vermelho, abra a conciliação da loja e avise o Lucas.${extra?` <span class="mut">${extra}</span>`:''}</div>`;
 
   // DASHBOARD — só a loja escolhida, compacto
@@ -526,8 +561,9 @@
     const l=r.linhas[0];if(!l){box.innerHTML='';return;}  // loja sem maquininha Sipag ou sem nada no mês
     const st=_ctSituacao(l);
     let corpo;
-    if(!l.temExtrato&&l.vencido)corpo=`<div style="font-size:13px">⏳ <b>Falta importar o extrato de ${mesNome}</b> desta loja. <span class="mut">Previsto pelo Cartões: antecipação ${BRL(l.prevA)}${l.temAgenda?` · débitos até hoje ${BRL(l.prevD)}`:''}.</span></div>`;
-    else{const tot=_ctTotais([l]);if(!l.temAgenda)tot.caiuD=l.caiuD;corpo=_ctTiles(tot,mesAntNome,(!l.temAgenda&&l.caiuD>_CT_T)?'o Detalhado de vendas não foi subido no Cartões — não é falta de dinheiro':'',true);}
+    if(!l.temExtrato&&l.vencido){const tqD=(l.modoD==='agenda'||l.modoD==='total')&&l.prevD>0?` · débitos ${l.modoD==='total'?'do mês':'até hoje'} ${BRL(l.prevD)}`:'';
+      corpo=`<div style="font-size:13px">⏳ <b>Falta importar o extrato de ${mesNome}</b> desta loja. <span class="mut">Tem que cair: antecipação ${BRL(l.prevA)}${tqD}.</span></div>`;}
+    else corpo=_ctTiles([l],mesAntNome,r.mesCorrente,true);
     box.innerHTML=`<div class="card" style="margin-bottom:16px;padding:14px 18px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px"><h3 style="font-size:14.5px;margin:0">💳 Cartões de ${mesNome} · ${l.nome}</h3>${st.pills.join('')}
         <button class="btn ghost" style="margin-left:auto;padding:5px 12px;font-size:12.5px" onclick="go('concsipag')">Ver todas as lojas / conciliação →</button></div>
@@ -546,19 +582,21 @@
     if(r.erroSb||r.erroCt||!r.linhas.length){box.innerHTML='';return;}
     const linhas=r.linhas;let comFalta=0,semExtrato=0;
     const n=v=>v>0?BRL(v).replace('R$ ',''):'—';const tdN='style="text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap"';
+    const compD=l=>l.modoD==='agenda'||l.modoD==='total';
     const tr=linhas.map(l=>{const st=_ctSituacao(l);if(st.falta)comFalta++;if(st.semExtrato)semExtrato++;
       const atual=l.id===lojaAtual?'background:rgba(125,162,255,.10);':'';
-      return `<tr style="cursor:pointer;${atual}" onclick="abrirConcLoja(${l.id})" title="Ver a conciliação da ${l.nome} aqui embaixo"><td><b>${l.nome}</b></td><td ${tdN}>${n(l.prevA)}</td><td ${tdN}>${l.temExtrato?n(l.caiuA):'—'}</td><td ${tdN}>${l.temAgenda?n(l.prevD):'—'}</td><td ${tdN}>${l.temExtrato?n(l.caiuD):'—'}</td><td>${st.pills.join('')}</td></tr>`;}).join('');
-    const C=linhas.filter(l=>l.temExtrato),tot=_ctTotais(C);
-    const semAg=C.filter(l=>!l.temAgenda&&l.caiuD>_CT_T).length;
-    const resumo=[comFalta?_ctPill(comFalta+(comFalta>1?' lojas':' loja')+' com falta','no'):'',semExtrato?_ctPill(semExtrato+' sem extrato (fica fora da conta)','mu'):''].join('')||_ctPill('✓ tudo certo','ok');
+      return `<tr style="cursor:pointer;${atual}" onclick="abrirConcLoja(${l.id})" title="Ver a conciliação da ${l.nome} aqui embaixo"><td><b>${l.nome}</b></td><td ${tdN}>${n(l.prevA)}</td><td ${tdN}>${l.temExtrato?n(l.caiuA):'—'}</td><td ${tdN}>${compD(l)?n(l.prevD)+(l.modoD==='total'?' <span class="mut" style="font-size:10.5px" title="total do mês, aproximado">≈</span>':''):'—'}</td><td ${tdN}>${l.temExtrato?n(l.caiuD):'—'}</td><td>${st.pills.join('')}</td></tr>`;}).join('');
+    const s=(arr,k)=>arr.reduce((t,l)=>t+(l[k]||0),0),C=linhas.filter(l=>l.temExtrato);
+    const resumo=[comFalta?_ctPill(comFalta+(comFalta>1?' lojas':' loja')+' com falta','no'):'',semExtrato?_ctPill(semExtrato+' sem extrato','mu'):''].join('')||_ctPill('✓ tudo certo','ok');
     const sR=v=>BRL(v).replace('R$ ','');
+    const debNota=r.mesCorrente&&!linhas.some(compD)?'Débitos do mês corrente: conferem quando o mês fechar e o Detalhado de vendas subir no Cartões.':(linhas.some(l=>l.modoD==='total')?'≈ = débito pelo total do mês que o Cartões tem (aproximado: a venda do último dia cai no dia 1º seguinte).':'');
     box.innerHTML=`<div class="card" style="margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><h3 style="font-size:15px;margin:0">💳 Todas as lojas · ${mesNome}</h3><span class="mut" style="font-size:12px">o que o Cartões Rocha previu × o que caiu no Sicoob · clique numa loja pra ver o detalhe dela aqui embaixo</span></div>
-      ${_ctTiles(tot,mesAntNome,semAg?`${semAg} loja(s) sem previsão de débitos ficam fora desta conta`:'')}
-      <div style="overflow-x:auto;margin-top:12px"><table style="min-width:640px"><thead><tr><th>Loja</th><th ${tdN}>Antecipação prevista</th><th ${tdN}>caiu</th><th ${tdN}>Débitos previstos</th><th ${tdN}>caiu</th><th>Situação</th></tr></thead>
-        <tbody>${tr}<tr style="font-weight:800"><td>Total</td><td ${tdN}>${sR(tot.prevA)}</td><td ${tdN}>${sR(tot.caiuA)}</td><td ${tdN}>${sR(tot.prevD)}</td><td ${tdN}>${sR(tot.caiuD)}</td><td>${resumo}</td></tr></tbody></table></div>
-      ${_ctProx(linhas,mesNome)}${_CT_REGRA('O total só soma as lojas que já têm extrato do mês.')}</div>`;
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><h3 style="font-size:15px;margin:0">💳 Todas as lojas · o que cai em ${mesNome}</h3><span class="mut" style="font-size:12px">o que o Cartões Rocha calculou × o que caiu no Sicoob · clique numa loja pra ver o detalhe dela aqui embaixo</span></div>
+      ${_ctTiles(linhas,mesAntNome,r.mesCorrente,false)}
+      <div style="overflow-x:auto;margin-top:12px"><table style="min-width:640px"><thead><tr><th>Loja</th><th ${tdN}>Antecipação · tem que cair</th><th ${tdN}>caiu</th><th ${tdN}>Débitos · tem que cair</th><th ${tdN}>caiu</th><th>Situação</th></tr></thead>
+        <tbody>${tr}<tr style="font-weight:800"><td>Total</td><td ${tdN}>${sR(s(linhas,'prevA'))}</td><td ${tdN}>${sR(s(C,'caiuA'))}</td><td ${tdN}>${sR(s(linhas.filter(compD),'prevD'))}</td><td ${tdN}>${sR(s(C,'caiuD'))}</td><td>${resumo}</td></tr></tbody></table></div>
+      ${debNota?`<div class="mut" style="font-size:11.5px;margin-top:6px">${debNota}</div>`:''}
+      ${_ctProx(linhas,mesNome)}${_CT_REGRA('A comparação só conta as lojas que já têm o extrato do mês importado.')}</div>`;
   }
   // copia pra conciliação os créditos de cartão que já estão lançados (OFX antigo, digitados e Lixeira), a partir de 01/06/2026
   async function sipagTrazerDigitados(){

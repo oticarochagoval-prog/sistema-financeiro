@@ -210,17 +210,20 @@ Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito po
 - O que for **digitado na conferência do Cartões** aparece aqui como "aguardando extrato", mas **não vira lançamento** no Fluxo: dinheiro só entra pelo extrato.
 - **⤓ Trazer os cartões já lançados** copia pra conciliação os créditos de cartão já lançados desde 01/06 — inclusive os digitados à mão e os que estão na **Lixeira** (que aparecem num quadro vermelho: se algum é o que falta, restaure).
 
-### Cartões do mês: previsto × caiu (v2.0.3)
+### Cartões do mês: tem que cair × caiu (v2.0.4)
 
-**No Dashboard: só a loja escolhida lá em cima.** É um quadro pequeno, logo abaixo do **Saldo do dia 1º**:
+**Cada mês mostra o que cai no banco naquele mês.** Em **Outubro** aparece a antecipação das **vendas de setembro** (cai em 01/10). Em **Setembro**, a das vendas de agosto. O valor da antecipação não é previsão: é o que **tem que cair**.
 
-- **Antecipação automática** (vendas do mês anterior), **eventual** (só aparece se teve) e **débitos até hoje**.
+**No Dashboard: só a loja escolhida lá em cima.** É um quadro pequeno, abaixo do **Saldo do dia 1º**.
+
+**Na tela 💳 Cartão × Sipag: todas as lojas de uma vez**, no topo. Embaixo vem o **detalhe da loja**. **Clique numa loja** para ver o detalhe dela.
+
 - ✅ **Igual ou a mais = ok** (verde ou azul). ⛔ **A menos, nunca**: aparece em **vermelho** com quanto faltou.
-- ⏳ **Falta importar o extrato**: a loja ainda não tem o OFX do mês.
-- ⚠️ **Débitos sem previsão**: o *Detalhado de vendas* não foi subido no Cartões Rocha. Não é falta de dinheiro.
-- 📅 No mês corrente, mostra **o que ainda vai cair** e o próximo depósito.
-
-**Na tela 💳 Cartão × Sipag: todas as lojas de uma vez**, no topo. Quem entra ali já vê qual loja está vermelha. Embaixo vem o **detalhe da loja**, depósito por depósito. **Clique numa loja** do quadro para ver o detalhe dela. O total só soma as lojas que já têm extrato do mês.
+- ⏳ **Falta importar o extrato**: o dinheiro já caiu no banco, mas o Fluxo só fica sabendo quando entra o OFX. **Não precisa esperar o mês acabar**: dá para importar o OFX até hoje e importar de novo depois (não duplica). A comparação só conta as lojas que já têm extrato.
+- 🧾 **Débitos:**
+  - **Mês corrente:** "confere quando o mês fechar", porque o Detalhado de vendas só sai depois.
+  - **Mês fechado com o Detalhado no Cartões:** confere dia a dia.
+  - **Mês fechado sem o Detalhado:** compara pelo **total de débito do mês** que o Cartões já tem (marcado com **≈**). É aproximado, porque a venda do último dia cai no dia 1º do mês seguinte. Diferença pequena aparece como "≈ bateu (−R$ X)".
 
 ## Perguntas que sempre aparecem
 
@@ -247,6 +250,7 @@ Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito po
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.0.4 | Cartões: "previsto" virou **"tem que cair"**; quadrinhos somam todas as lojas e avisam quantas aguardam extrato; débito do mês corrente "confere quando o mês fechar"; mês fechado sem Detalhado compara pelo **total de débito** do Cartões (≈); débito sem previsão não deixa mais a loja em "não bateu" | Nenhum (só mostra) |
 | 22/10/2026 | 2.0.3 | Cartões previsto × caiu: no **Dashboard só a loja escolhida** (quadro pequeno); **todas as lojas** ficam no topo da tela **Cartão × Sipag**, com o detalhe da loja embaixo | Nenhum (só mostra) |
 | 22/10/2026 | 2.0.2 | Dashboard ganhou o quadro **💳 Cartões do mês** (previsto × caiu; vermelho quando vem a menos) | Nenhum (só mostra) |
 | 22/10/2026 | 2.0.1 | Corrigido erro na tela Cartão × Sipag em meses de 30 dias ("date/time field value out of range") | Nenhum |
