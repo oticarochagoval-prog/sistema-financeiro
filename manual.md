@@ -323,6 +323,28 @@ Clique em qualquer conta para ver os detalhes ou resolver. A Agenda também alim
 
 **Parcela lançada → as próximas vão sozinhas (v2.6.1):** ao lançar nos Lançamentos uma despesa com parcela (ex.: 1/6 do cartão da loja), as parcelas 2/6 a 6/6 entram sozinhas na Agenda, uma por mês, no mesmo dia. Quando cada uma sair no extrato, ela é baixada sozinha.
 
+## 🧩 Módulos: Óticas · Laboratório · Grupo de compras · Casa (v2.7.0)
+
+No alto da tela, ao lado da escolha da loja, ficam os **módulos**. Ao trocar de módulo, a lista de lojas/empresas e o menu mudam:
+
+| Módulo | Empresas |
+|---|---|
+| **Óticas Rocha** | as 11 lojas (como sempre) |
+| **Laboratório** | GV Lentes |
+| **Grupo de compras** | FZ Grifes e Grupo VR |
+| **🔒 Casa** | só Lucas, Heloísa e Flávia enxergam |
+
+- **Cada módulo soma só o que é dele.** "Grupo todo" (ou "Todas as empresas"), Radar, Agenda e Dashboard nunca misturam módulos.
+- **Cartão × Sipag, Caixinha, Fechamento de caixa e Juros por loja** aparecem só nas Óticas.
+- **Cada empresa nova tem uma "CONTA PRINCIPAL"** para importar o extrato do banco dela, e tem Agenda, Radar e palavras-chave iguais às das lojas.
+- **A Casa tem categorias próprias** (CASA · MERCADO, ESCOLA, CARTÃO DE CRÉDITO…) e contatos e palavras-chave próprios. Nada disso aparece nas lojas, e o que é das lojas não aparece na Casa. Categoria ou contato criado dentro da Casa fica da Casa.
+- **A tranca da Casa é no banco de dados.** Quem não tem acesso não vê a Casa nem pelo sistema nem pelo banco.
+
+**Próximas fases:**
+- **Repasse das lojas × meta** no Grupo de compras.
+- **Conferências do Laboratório.**
+- **Uso pelo celular.**
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -348,6 +370,7 @@ Clique em qualquer conta para ver os detalhes ou resolver. A Agenda também alim
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.7.0 | **Módulos** no alto da tela: Óticas Rocha, Laboratório (GV Lentes), Grupo de compras (FZ Grifes, Grupo VR) e Casa trancada (Lucas, Heloísa, Flávia). Cada módulo soma só o que é dele; categorias/contatos/palavras-chave da Casa separados. Precisa do SQL v2.7 | Nenhum nas lojas |
 | 22/10/2026 | 2.6.5 | Card "A pagar em (mês)" avisa em letra pequena: "só o que vence neste mês · não acumula de um mês pro outro" | Nenhum |
 | 22/10/2026 | 2.6.4 | Dashboard: "A pagar em (mês)" mostra só o que vence no mês escolhido; vencido de meses anteriores aparece à parte e fica na Agenda (não acumula). A baixa automática também roda ao abrir o Dashboard | Nenhum |
 | 22/10/2026 | 2.6.3 | O papel **dono** aparece como **gestor** na tela (rodapé, Configurações, avisos). Por dentro continua o mesmo, nada muda de acesso | Nenhum |
