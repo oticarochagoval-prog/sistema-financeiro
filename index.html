@@ -249,7 +249,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.8.1', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.8.3', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1288,7 +1288,7 @@
     return null;}
   function palavraLegivel(p){const m=String(p||'').match(/^#DOC:(\d+)$/);if(!m)return p;const d=m[1];
     if(d.length===14)return `CNPJ ${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;if(d.length===6)return `CPF ***.${d.slice(0,3)}.${d.slice(3)}-**`;return 'documento '+d;}
-  function chaveAprender(desc){if(empresaDoGrupo(desc))return '';const _doc=docDaDesc(desc);if(_doc&&/PIX|TED|TRANSF|DOC\b|PAGAMENTO/i.test(String(desc)))return '#DOC:'+_doc;return _chaveAprenderTexto(desc);}
+  function chaveAprender(desc){if(empresaDoGrupo(desc)){const c=complementoFavorecido(desc);return c?_chaveAprenderTexto(c):'';}const _doc=docDaDesc(desc);if(_doc&&/PIX|TED|TRANSF|DOC\b|PAGAMENTO/i.test(String(desc)))return '#DOC:'+_doc;return _chaveAprenderTexto(desc);}
   function _chaveAprenderTexto(desc){const STOP=new Set(['PGTO','PAGTO','PAGAMENTO','PIX','TED','DOC','DEB','DEBITO','CRED','CREDITO','TRANSF','TRANSFERENCIA','COMPRA','BOLETO','TITULO','TIT','INT','OUTRA','IF','EMIT','RECEB','RECEBIMENTO','REF','DE','DA','DO','PARA','LTDA','ME','EIRELI','SA','EPP','CONTAS','DIF','TITULARIDADE','FAV','REM','CONV','CONVENIO','DIVERSO']);
     const toks=normDesc(desc).split(' ').filter(t=>t.length>=3&&!STOP.has(t)&&!/^\d+$/.test(t));return toks.slice(0,2).join(' ');}
   function abrirComboCatImport(el,i){_abrirCombo(el,_comboItemsCat(),v=>{const r=IMPORT[i];r.catId=v||'';r.corrigir=false;r.resolvido=!!v;
@@ -2276,6 +2276,55 @@
     return 'confere';
   }
 
+
+  // ---- o que vem depois do nome do favorecido/remetente (o Sicoob reserva 34 letras pro nome). Só o PDF traz. ----
+  function complementoFavorecido(txt){const m=String(txt||'').match(/(?:FAV|REM)\.:\s?(.{34})\s+(\S.*)$/);return m?m[2].trim():'';}
+  // ---- extrato do Sicoob em PDF (v2.8.3): lê o texto e monta um OFX igual ao do banco (mesmo código de cada linha → não duplica) ----
+  let _pdfjsP=null;
+  function _carregarPdfJs(){if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);if(_pdfjsP)return _pdfjsP;
+    _pdfjsP=new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      sc.onload=()=>{try{window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';ok(window.pdfjsLib);}catch(e){err(e);}};
+      sc.onerror=()=>{_pdfjsP=null;err(new Error('não consegui abrir o leitor de PDF (internet?)'));};document.head.appendChild(sc);});
+    return _pdfjsP;}
+  async function pdfExtratoLinhas(file){const lib=await _carregarPdfJs();const buf=await file.arrayBuffer();const doc=await lib.getDocument({data:new Uint8Array(buf)}).promise;const pags=[];
+    for(let p=1;p<=doc.numPages;p++){const pg=await doc.getPage(p);const tc=await pg.getTextContent();const linhas=[];
+      tc.items.forEach(it=>{const t=String(it.str||'');if(!t.trim())return;const x=it.transform[4],y=it.transform[5];let L=linhas.find(l=>Math.abs(l.y-y)<2.5);if(!L){L={y,itens:[]};linhas.push(L);}L.itens.push({x,w:it.width||0,s:t});});
+      linhas.sort((a,b)=>b.y-a.y);
+      linhas.forEach(l=>{l.itens.sort((a,b)=>a.x-b.x);let out='',fimAnt=null;l.itens.forEach(i=>{if(fimAnt!=null&&i.x-fimAnt>1.2&&!/\s$/.test(out)&&!/^\s/.test(i.s))out+=' ';out+=i.s;fimAnt=i.x+i.w;});l.txt=out.replace(/\s+/g,' ').trim();});
+      pags.push(linhas);}
+    return pags;}
+  async function pdfExtratoParaOFX(file){const pags=await pdfExtratoLinhas(file);
+    const tudo=pags.map(p=>p.map(l=>l.txt).join('\n')).join('\n');
+    if(!/EXTRATO DE CONTA CORRENTE|HIST[ÓO]RICO DE MOVIMENTA/i.test(tudo))throw new Error('esse PDF não parece um extrato de conta corrente do Sicoob');
+    const per=tudo.match(/Per[ií]odo:?\s*(\d\d)\/(\d\d)\/(\d{4})\s*-\s*(\d\d)\/(\d\d)\/(\d{4})/i);if(!per)throw new Error('não achei o período do extrato no PDF');
+    const de=`${per[3]}${per[2]}${per[1]}`,ate=`${per[6]}${per[5]}${per[4]}`,anoDe=Number(per[3]),anoAte=Number(per[6]);
+    const conta=((tudo.match(/Conta:?\s*[\d.\-]+\s*\/\s*([^\n]+)/i)||[])[1]||'').trim();
+    const tx=[];let fim=false;
+    const ehCabecalho=t=>/^Data\b.*Hist[óo]rico|SISTEMA DE COOPERATIVAS|PLATAFORMA DE SERVI|EXTRATO DE CONTA|HIST[ÓO]RICO DE MOVIMENTA|^Cooperativa:?|^Conta:?|^Per[ií]odo|^P[áa]gina\b|OUVIDORIA|^SAC\b|^\d+\s*\/\s*\d+$/i.test(t);
+    pags.forEach(linhas=>{if(fim)return;let histX=null,cur=null;
+      const h=linhas.find(l=>/^Data\b/.test(l.txt)&&/Hist[óo]rico/.test(l.txt));if(h){const it=h.itens.find(i=>/Hist[óo]rico/.test(i.s));if(it)histX=it.x;}
+      for(const l of linhas){const t=l.txt;
+        if(/^RESUMO\b/i.test(t)){fim=true;break;}
+        const m=t.match(/^(\d\d)\/(\d\d)\s+(.*?)\s*R\$\s*([\d.]+,\d\d)\s*([CD])\s*\*?$/);
+        if(m){cur=null;if(/SALDO/i.test(m[3]))continue;
+          let hist=m[3];
+          if(histX!=null){const its=l.itens.filter(i=>i.x>=histX-3&&!/R\$|^\s*[\d.]+,\d\d\s*[CD]?\s*$/.test(i.s));if(its.length)hist=its.map(i=>i.s).join(' ').replace(/\s+/g,' ').trim();}
+          let docT='';if(histX!=null)docT=l.itens.filter(i=>i.x<histX-3&&!/^\d\d\/\d\d/.test(i.s)).map(i=>i.s).join(' ').replace(/\s+/g,' ').trim();
+          const ano=(anoDe!==anoAte&&m[2]>ate.slice(4,6))?anoDe:anoAte,dt=`${ano}${m[2]}${m[1]}`;
+          if(dt<de||dt>ate)continue; // lançamento futuro (depois do período) fica de fora
+          cur={dt,v:Number(m[4].replace(/\./g,'').replace(',','.'))*(m[5]==='C'?1:-1),hist,doc:(docT&&!/^\d+$/.test(docT)&&!/^pix$/i.test(docT))?docT:'',comp:[]};tx.push(cur);continue;}
+        if(!cur)continue;
+        if(ehCabecalho(t)||/^\d\d\/\d\d\b/.test(t)){cur=null;continue;}
+        cur.comp.push(t);}
+    });
+    if(!tx.length)throw new Error('não achei lançamentos no PDF');
+    // mesmo código de linha que o Sicoob usa no OFX: data + valor em centavos + ordem (quando repete no dia)
+    const seq={},limpa=x=>String(x||'').replace(/[<>\r\n]/g,' ').replace(/\s+/g,' ').trim();
+    let ofx=`OFXHEADER:100\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>\n<DTSTART>${de}\n<DTEND>${ate}\n`;
+    tx.forEach(t=>{const c=Math.round(Math.abs(t.v)*100),k=t.dt+'|'+c;seq[k]=(seq[k]||0)+1;
+      ofx+=`<STMTTRN>\n<TRNTYPE>${t.v<0?'DEBIT':'CREDIT'}\n<DTPOSTED>${t.dt}\n<TRNAMT>${t.v.toFixed(2)}\n<FITID>${t.dt}${c}${seq[k]}\n<MEMO>${limpa(t.hist)}\n<NAME>${limpa(t.comp.join(' ')||t.doc)}\n</STMTTRN>\n`;});
+    ofx+='</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>';
+    return {ofx,conta,n:tx.length};}
   function parseOFX(txt){
     // separa cada transação
     const trans=[];
@@ -2323,9 +2372,9 @@
       <div class="card"><div class="cardhead"><h3>Selecionar arquivo .OFX</h3><span class="tag">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</span></div>
         <div style="border:1.5px dashed #38465a;border-radius:14px;padding:34px;text-align:center;margin-top:12px">
           <div style="font-size:30px;margin-bottom:10px">⤓</div>
-          <input type="file" id="ofxFile" accept=".ofx" onchange="lerArquivoOFX(this)" style="display:none">
-          <button class="btn" onclick="document.getElementById('ofxFile').click()">Escolher arquivo OFX</button>
-          <div class="mut" style="margin-top:10px;font-size:12px">Baixe o extrato do Sicoob em OFX e selecione aqui</div>
+          <input type="file" id="ofxFile" accept=".ofx,.pdf" onchange="lerArquivoOFX(this)" style="display:none">
+          <button class="btn" onclick="document.getElementById('ofxFile').click()">Escolher extrato (OFX ou PDF)</button>
+          <div class="mut" style="margin-top:10px;font-size:12px">Baixe o extrato do Sicoob em OFX ou em PDF e selecione aqui. O PDF traz o texto completo de cada linha (ex.: SALARIO HELOISA nas transferências para a DVL).</div>
         </div></div>`;
       mostrarUltimasImportacoes();
       return;
@@ -2394,16 +2443,24 @@
   }
   function cicloDestino(i,next){_keepY=window.scrollY;IMPORT[i].destino=next;render();}
 
-  function lerArquivoOFX(input){
+  async function lerArquivoOFX(input){
     const file=input.files[0];if(!file)return;
-    // só aceita OFX (protege contra PDF/Excel por engano)
-    if(!file.name.toLowerCase().endsWith('.ofx')){
-      toast('⚠️ Só aceita arquivo OFX! Baixe o extrato no formato OFX no Sicoob.','erro');
+    const nomeArq=file.name.toLowerCase();
+    // PDF do Sicoob: traz o texto inteiro de cada linha (o OFX corta em 32 letras)
+    if(nomeArq.endsWith('.pdf')){let r;try{toast('Lendo o PDF do extrato…','ok');r=await pdfExtratoParaOFX(file);}catch(e){toast('Não consegui ler o PDF: '+(e.message||e),'erro');input.value='';return;}
+      const L=LOJAS.find(l=>l.id===lojaAtual),ch=L?cxChaveLoja(L.nome):'',nomes=(LOJA_CNPJ[ch]||[]).slice(1);
+      if(r.conta&&nomes.length&&!nomes.some(n=>normDesc(r.conta).includes(normDesc(n)))&&!confirm(`Esse PDF é da conta "${r.conta}".\nVocê está na ${L?L.nome:''}.\n\nImportar mesmo assim?`)){input.value='';return;}
+      if(!importObs)importObs='EXTRATO EM PDF';
+      return _processarOFX(r.ofx,input);}
+    if(!nomeArq.endsWith('.ofx')){
+      toast('⚠️ Escolha o extrato do Sicoob em OFX ou PDF.','erro');
       input.value='';return;
     }
     const reader=new FileReader();
-    reader.onload=async function(e){
-      let txt=e.target.result;
+    reader.onload=e=>_processarOFX(e.target.result,input);
+    reader.readAsText(file,'ISO-8859-1'); // Sicoob usa Latin1
+  }
+  async function _processarOFX(txt,input){
       // confere se é mesmo um OFX por dentro
       if(!/<STMTTRN>|OFXHEADER|<OFX>/i.test(txt)){
         toast('⚠️ Esse arquivo não parece um extrato OFX válido.','erro');
@@ -2450,7 +2507,10 @@
           item.grupo='falta';item.catId='';return item;
         }
         // 4) saídas: transferência pra outra loja (neutra, mas confira), palavras-chave, regras antigas
-        if(ehTransferenciaRocha(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;item.paraLoja=empresaDoGrupo(full);return item;}
+        if(ehTransferenciaRocha(full)){const comp=empresaDoGrupo(full)?complementoFavorecido(full):'';
+          if(comp){const rc=aplicarRegrasP(comp,lojaAtual);if(rc&&rc.categoria_id&&rc.categoria_id!==catEstornarId()){item.catId=rc.categoria_id;item.contatoId=rc.contato_id||null;item.regra=rc.palavra;item.grupo='regra';item.complemento=comp;return item;}
+            if(rc&&rc.contato_id)item.contatoId=rc.contato_id;}
+          item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;item.paraLoja=empresaDoGrupo(full);item.complemento=comp;return item;}
         const rp=aplicarRegrasP(full,lojaAtual);
         if(rp&&rp.categoria_id){item.catId=rp.categoria_id;item.contatoId=rp.contato_id||null;item.regra=rp.palavra;item.grupo='regra';
           if(rp.categoria_id===catEstornarId()){item.estornar=true;item.lojaEstorno=lojaDaDescricao(full);item.grupo='falta';}
@@ -2466,8 +2526,6 @@
       IMPORT_ABERTO={};
       toast(trans.length+' transações lidas!','ok');
       render();
-    };
-    reader.readAsText(file,'ISO-8859-1'); // Sicoob usa Latin1
   }
 
 
@@ -2935,13 +2993,14 @@
   function diasUteisDepois(a,b){let n=0,x=a,g=0;while(x<b&&g<400){x=addDias(x,1);g++;if(ehDiaUtil(x))n++;}return n;} // de a (fora) até b (dentro)
   // ---- o que fica de fora / o que vira dívida ----
   const REM_MIN=300,REM_TOL_FIXO=0.10,REM_TOL_MEDIA=0.25,REM_ATRASO=2;
+  const REM_USA_MEDIA=false; // v2.8.2: só acompanha o que está nos Recorrentes e na Agenda (contas sem fixo ficam de fora)
   const REM_RE_FORA=/funcion|sal[aá]ri|folha|f[ée]rias|rescis|pr[oó].?labore|d[ée]cimo|juros|tarifa|cheque especial|\biof\b/i;
   function remCatFora(c){if(!c)return false;if(c.rem_fora===true)return true;if(c.rem_fora===false)return false;return REM_RE_FORA.test(c.nome||'');}
   function remContFora(k){return !!(k&&(k.tipo==='funcionario'||k.rem_fora===true));}
   function remContDivida(k){if(!k)return false;if(k.rem_divida===true)return true;const n=String(k.nome||'').toUpperCase();
     return /FZ\s*GRIF|GRUPO\s*VR/.test(n)||LOJAS.some(l=>_modDe(l)==='compras'&&n.includes(String(l.nome||'').split(' — ')[0].toUpperCase()));}
   // ---- detectar: a menos, a mais, atraso ----
-  function remDetectar(lancs,recs,ym,hoje){
+  function remDetectar(lancs,recs,ym,hoje,cob){cob=cob||{};
     if(ym>hoje.slice(0,7))return [];
     const mesAtual=hoje.slice(0,7)===ym,prev=[1,2,3].map(k=>mesShift(ym,-k)),G={},out=[];
     lancs.forEach(l=>{const v=Number(l.valor);if(!(v<0))return;const m=String(l.data).slice(0,7);if(m!==ym&&!prev.includes(m))return;
@@ -2950,30 +3009,35 @@
       const k=l.loja_id+'|'+(ct?'c'+ct.id:'k'+cat.id);
       if(!G[k])G[k]={k,loja_id:l.loja_id,ct,cat,nome:ct?ct.nome:cat.nome,mes:{},datas:{}};
       const g=G[k];g.mes[m]=(g.mes[m]||0)+Math.abs(v);(g.datas[m]=g.datas[m]||[]).push(String(l.data));if(!g.cat&&cat)g.cat=cat;});
+    (recs||[]).forEach(r=>{if(!r.loja_id||!(Math.abs(Number(r.valor)||0)>0))return;const ct=r.contato_id?CONTATOS.find(c=>c.id===r.contato_id):null,cat=CATS.find(c=>c.id===r.categoria_id);
+      if(remContFora(ct)||remCatFora(cat)||(!ct&&!cat))return;const k=r.loja_id+'|'+(ct?'c'+ct.id:'k'+cat.id);
+      if(!G[k])G[k]={k,loja_id:r.loja_id,ct,cat,nome:ct?ct.nome:(cat?cat.nome:(r.descricao||'—')),mes:{},datas:{}};});
     Object.values(G).forEach(g=>{
       const rec=(recs||[]).find(r=>r.loja_id==g.loja_id&&(g.ct?r.contato_id===g.ct.id:(!r.contato_id&&g.cat&&r.categoria_id===g.cat.id)));
       const fixo=rec?Math.abs(Number(rec.valor)||0):0,vals=prev.map(m=>g.mes[m]||0);let ref,tol,base;
       if(fixo>0){ref=fixo;tol=REM_TOL_FIXO;base='o fixo dos Recorrentes';}
-      else{if(vals.some(v=>!(v>0)))return;ref=vals.reduce((a,b)=>a+b,0)/3;tol=REM_TOL_MEDIA;base='a média dos 3 meses';}
+      else{if(!REM_USA_MEDIA||vals.some(v=>!(v>0)))return;ref=vals.reduce((a,b)=>a+b,0)/3;tol=REM_TOL_MEDIA;base='a média dos 3 meses';}
       if(ref<REM_MIN)return;
       const feito=g.mes[ym]||0,diff=feito-ref,ult=Number(_fimMes(ym).slice(8,10));
       const diaV=rec&&rec.dia_vencimento?rec.dia_vencimento:Math.max(0,...prev.flatMap(m=>(g.datas[m]||[]).map(d=>Number(d.slice(8,10)))));
       const venc=diaV?proxDiaUtil(`${ym}-${String(Math.min(diaV,ult)).padStart(2,'0')}`):_fimMes(ym);
-      const passou=!mesAtual||diasUteisDepois(venc,hoje)>=REM_ATRASO;
+      const passou=(!mesAtual||diasUteisDepois(venc,hoje)>=REM_ATRASO)&&!!cob[g.loja_id]&&diasUteisDepois(venc,cob[g.loja_id])>=REM_ATRASO;
       const L=lojaNomeCurto(g.loja_id),comum={loja_id:g.loja_id,contato_id:g.ct?g.ct.id:null,categoria_id:g.cat?g.cat.id:null,descricao:g.nome,previsto:_r2(ref),feito:_r2(feito),divida:remContDivida(g.ct),data:venc,base};
-      if(diff<0&&-diff>=Math.max(REM_MIN,ref*tol)&&passou)out.push({...comum,chave:`v:${g.k}:${ym}`,origem:'auto_valor',tipo:'menos'});
+      // "não pagou nada" só vale se a conta já vinha sendo paga (ou o Recorrente já existia naquele mês) — evita acusar meses de antes do cadastro
+      const criado=String((rec&&(rec.created_at||rec.criado_em))||'').slice(0,7),temHist=prev.some(m=>(g.mes[m]||0)>0)||(criado&&criado<=ym);
+      if(diff<0&&-diff>=Math.max(REM_MIN,ref*tol)&&passou&&(feito>0||temHist))out.push({...comum,chave:`v:${g.k}:${ym}`,origem:'auto_valor',tipo:'menos'});
       else if(diff>0&&diff>=Math.max(REM_MIN,ref*tol))out.push({...comum,chave:`m:${g.k}:${ym}`,origem:'auto_valor',tipo:'mais'});
       if(rec&&rec.dia_vencimento&&(g.datas[ym]||[]).length){const pg=g.datas[ym].slice().sort()[0],d=diasUteisDepois(venc,pg);
         if(d>=REM_ATRASO)out.push({...comum,divida:false,data:pg,chave:`t:${g.k}:${ym}`,origem:'auto_valor',tipo:'atraso',dias_atraso:d});}
     });
     return out;}
-  function remDetectarAgenda(cps,ym,hoje){return (cps||[]).filter(c=>String(c.vencimento).slice(0,7)===ym).map(c=>{
+  function remDetectarAgenda(cps,ym,hoje,cob){cob=cob||{};return (cps||[]).filter(c=>String(c.vencimento).slice(0,7)===ym).map(c=>{
       if(remCatFora(CATS.find(x=>x.id===c.categoria_id))||remContFora(CONTATOS.find(x=>x.id===c.contato_id)))return null;
       const venc=proxDiaUtil(c.vencimento),v=_r2(c.valor);
       const b={loja_id:c.loja_id,contato_id:c.contato_id||null,categoria_id:c.categoria_id||null,descricao:c.descricao+(c.parcela?' '+c.parcela:''),previsto:v,chave:'a:'+c.id,origem:'auto_agenda',conta_pagar_id:c.id,divida:false};
       if(c.status==='cancelado')return {...b,tipo:'menos',feito:0,data:c.vencimento,motivo:c.motivo||null};
       if(c.status==='pago'&&c.pago_em){const n=diasUteisDepois(venc,c.pago_em);return n>=REM_ATRASO?{...b,tipo:'atraso',feito:v,dias_atraso:n,data:c.pago_em}:null;}
-      if(c.status==='aberto'&&venc<hoje){const n=diasUteisDepois(venc,hoje);return n>=REM_ATRASO?{...b,tipo:'atraso',feito:0,dias_atraso:n,data:venc,aberto:true}:null;}
+      if(c.status==='aberto'&&venc<hoje&&cob[c.loja_id]&&diasUteisDepois(venc,cob[c.loja_id])>=REM_ATRASO){const n=diasUteisDepois(venc,hoje);return n>=REM_ATRASO?{...b,tipo:'atraso',feito:0,dias_atraso:n,data:venc,aberto:true}:null;}
       return null;}).filter(Boolean);}
   // ---- grava sozinho (só quando um gestor abre a tela ou o Dashboard) ----
   async function remSincronizar(ids,meses){const hoje=_hojeLocal();meses=meses.filter(m=>m<=hoje.slice(0,7));if(!meses.length||!ids.length)return true;
@@ -2982,8 +3046,10 @@
     const {data:recs}=await sb.from('recorrentes').select('*').in('loja_id',ids);
     const {data:cps}=await sb.from('contas_pagar').select('*').in('loja_id',ids).gte('vencimento',meses[0]+'-01').lte('vencimento',ate);
     const {data:ex,error:e2}=await sb.from('remanejos').select('*').in('loja_id',ids).limit(20000);if(e2){REM_ERRO_TAB=true;return false;}
+    const cob={};try{const {data:im}=await sb.from('importacoes').select('loja_id,periodo_ate').in('loja_id',ids).limit(20000);(im||[]).forEach(r=>{if(r.periodo_ate&&(!cob[r.loja_id]||r.periodo_ate>cob[r.loja_id]))cob[r.loja_id]=r.periodo_ate;});}catch(e){}
+    try{const {data:fc}=await sb.from('fechamentos').select('loja_id,ano,mes,fechado').in('loja_id',ids).limit(5000);(fc||[]).forEach(r=>{if(!r.fechado)return;const f=_fimMes(`${r.ano}-${String(r.mes).padStart(2,'0')}`);if(!cob[r.loja_id]||f>cob[r.loja_id])cob[r.loja_id]=f;});}catch(e){}
     const porChave={};(ex||[]).forEach(r=>{if(r.chave)porChave[r.chave]=r;});
-    let det=[];meses.forEach(m=>{det=det.concat(remDetectar(lancs,recs||[],m,hoje),remDetectarAgenda(cps,m,hoje));});
+    let det=[];meses.forEach(m=>{det=det.concat(remDetectar(lancs,recs||[],m,hoje,cob),remDetectarAgenda(cps,m,hoje,cob));});
     const igual=(a,b)=>(a==null&&b==null)||(a!=null&&b!=null&&(typeof b==='number'?Math.abs(Number(a)-b)<0.005:String(a)===String(b)));
     const novos=[],vistos=new Set();
     for(const d of det){vistos.add(d.chave);const e=porChave[d.chave];
@@ -3013,7 +3079,7 @@
     if(!veRemanejos()){box.innerHTML='<div class="note">Esta tela é só do gestor.</div>';return;}
     box.innerHTML='<div class="loading"><span class="spin"></span> Conferindo os remanejos do mês…</div>';
     const mi=mesSel,ym=`${ANO_FIXO}-${_mm(mi)}`,ids=idsDoModulo();
-    const meses=[];for(let k=5;k>=0;k--){const m=mesShift(ym,-k);if(m>=`${ANO_FIXO}-06`||m>='2026-06')meses.push(m);}
+    const meses=[];for(let k=2;k>=0;k--){const m=mesShift(ym,-k);if(m>=`${ANO_FIXO}-06`||m>='2026-06')meses.push(m);}
     try{await remSincronizar(ids,meses);}catch(e){console.error('rem sync',e);}
     const {data:todos,error}=await sb.from('remanejos').select('*').in('loja_id',ids).limit(20000);REM_ERRO_TAB=!!error;
     const cf=_remCatsFin();let juros=[];
@@ -3044,7 +3110,7 @@
     const chip=(k,t,n)=>`<button class="btn ${REM_FILTRO===k?'':'ghost'}" style="padding:4px 11px;font-size:12px" onclick="REM_FILTRO='${k}';_keepY=window.scrollY;render()">${t}${n!=null?` (${n})`:''}</button>`;
     const linhas=listaFiltrada.map(r=>{const d=remDif(r);return `<tr><td style="white-space:nowrap">${lojaNomeCurto(r.loja_id)}</td><td class="mut" style="white-space:nowrap">${isoParaBR(r.data).slice(0,5)}</td><td style="white-space:nowrap;font-size:12.5px">${remTipoTxt(r)}</td><td>${_remEsc(r.descricao)}</td><td class="amt" style="text-align:right">${v(r.previsto)}</td><td class="amt" style="text-align:right">${v(r.feito)}</td><td class="amt" style="text-align:right;color:${d<0?'var(--amber)':d>0?'var(--blue)':'inherit'}">${d&&r.tipo!=='atraso'?(d<0?'− ':'+ ')+v(d):'—'}</td><td>${r.motivo?_remEsc(r.motivo):`<span class="arqbtn" style="color:var(--amber);border-color:rgba(245,183,64,.5)" onclick="remAbrir(${r.id},true)">falta o porquê</span>`}</td><td><span class="arqbtn" onclick="remAbrir(${r.id})">abrir</span></td></tr>`;}).join('');
     const ajustes=ehDono()?remAjustesHTML():'';
-    box.innerHTML=`<div class="note"><b>Remanejos</b> — quando o combinado não deu para cumprir. O Fluxo registra sozinho o que saiu a menos, a mais ou atrasado (comparando com o fixo dos Recorrentes ou com a média dos 3 meses). Atraso conta só dia útil: venceu no sábado, domingo ou feriado, vale o dia útil seguinte. Funcionários ficam de fora. É só completar o porquê. Só o gestor vê.</div>
+    box.innerHTML=`<div class="note"><b>Remanejos</b> — quando o combinado não deu para cumprir. O Fluxo registra sozinho o que saiu a menos, a mais ou atrasado nas contas cadastradas nos <b>Recorrentes</b> (comparando com o valor fixo) e na <b>Agenda</b>. Só avisa "a menos" depois que o extrato da loja foi importado até aquela data. Atraso conta só dia útil: venceu no sábado, domingo ou feriado, vale o dia útil seguinte. Funcionários ficam de fora. É só completar o porquê. Só o gestor vê.</div>
       ${REM_ERRO_TAB?`<div class="note" style="border-color:rgba(255,92,92,.4)">Para usar os Remanejos, rode o <b>SQL da v2.8.1</b> no projeto <b>sistema-financeiro</b>.</div>`:''}
       ${seletorMes()}
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px">

@@ -187,6 +187,16 @@ O lançamento do Sicoob volta a ser **pelo extrato**. Ninguém precisa redigitar
 
 > ⚠️ Linha que não é dessa loja (cliente pagou na conta errada, Pix devolvido, troca por cartão) **não se exclui**: entrada como **Pix de cliente** e saída como **Transferência entre lojas** ou **Devolução a cliente**. As duas se anulam.
 
+### Extrato em PDF (v2.8.3)
+
+- Em **Importar extrato** dá para escolher o **OFX ou o PDF** do Sicoob. O PDF traz o texto inteiro de cada linha; o OFX corta em 32 letras.
+- Exemplo: no OFX chega só "FAV.: OTICA ROCHA DVL PRODUTOS O". No PDF chega "FAV.: OTICA ROCHA DVL PRODUTOS OPTICOS L **SALARIO HELOISA**", "… **CEMIG ESCRITÓRIO**", "… **VIVO CELULARES**".
+- **Não duplica:** o Fluxo dá a cada linha do PDF o mesmo código que o Sicoob usa no OFX. Linha que já entrou por OFX aparece como "já lançada", e dá para importar o mesmo período nos dois formatos.
+- **Transferência para a DVL (ou outra loja do grupo):** o que vem depois do nome da empresa vale para classificar. Classifique uma vez "SALARIO HELOISA" e clique em lembrar: nos próximos extratos em PDF ela já vem classificada. Sem regra, continua "confira" como antes.
+- Lançamentos futuros que aparecem no fim do PDF (depois do período) ficam de fora.
+- Se o PDF for de outra conta (outra empresa), o Fluxo avisa antes de importar.
+- A observação da importação já vem como "EXTRATO EM PDF".
+
 ### Transferências e Pix na importação (v2.7.1)
 
 - **Saída para outra loja do grupo** (ex.: "FAV.: OTICA ROCHA DVL…" = Rocha 2) vem como **Transferência entre lojas** com **"confira"**, porque pode ser reembolso de conta (internet, contabilidade, energia…). Se for só dinheiro passando, confirme. Se for reembolso, troque a categoria daquela linha.
@@ -369,13 +379,13 @@ No alto da tela, ao lado da escolha da loja, ficam os **módulos**. Ao trocar de
 Quando o combinado não deu para cumprir: a loja pagou menos do que costuma, pagou mais, atrasou ou não pagou. Exemplo: a Rocha 1 transferia R$ 17.000 por mês para os óculos e este mês mandou R$ 8.000.
 
 - **Quem vê:** só o gestor (Lucas, Heloísa) e a Flávia. Para as outras pessoas o menu nem aparece, e o banco também não deixa ler.
-- **Entra sozinho:** quando o gestor abre a tela (ou o Dashboard), o Fluxo confere os últimos meses e registra:
-  - **A menos:** saiu menos que o normal (ou não saiu). Ele espera passar 2 dias úteis do vencimento antes de registrar.
-  - **A mais:** saiu mais que o normal (custo subiu, ou pagou um atraso).
-  - **Atraso:** a conta tem dia de vencimento nos Recorrentes (ou na Agenda) e saiu 2 dias úteis depois ou mais.
-  - **Agenda:** conta vencida e em aberto, ou marcada "não vou pagar" (o motivo da Agenda já vem preenchido).
-- **Com o que ele compara:** com o **valor fixo dos Recorrentes**, quando tem (avisa a partir de 10% de diferença). Sem fixo, com a **média dos 3 meses** (avisa a partir de 25%). Diferença menor que R$ 300 não entra.
-  - **Dica:** cadastre nos Recorrentes os repasses com o valor combinado (ex.: repasse da Rocha 1 para o grupo de compras, R$ 17.000, dia 5). Assim ele sempre compara com o combinado, e não com uma média que vai caindo.
+- **Entra sozinho (v2.8.2):** quando o gestor abre a tela (ou o Dashboard), o Fluxo confere o mês e os 2 anteriores, **só nas contas cadastradas nos Recorrentes** (com valor fixo) **e na Agenda**:
+  - **A menos:** saiu menos que o fixo, ou não saiu. Só registra depois que o **extrato daquela loja foi importado** (importação completa) até 2 dias úteis depois do vencimento — ou quando o mês está fechado. Loja sem extrato importado não gera "a menos".
+  - **A mais:** saiu mais que o fixo (custo subiu, ou pagou um atraso).
+  - **Atraso:** saiu 2 dias úteis depois do vencimento ou mais.
+  - **Agenda:** conta vencida e em aberto (também só depois do extrato importado), ou marcada "não vou pagar" (o motivo da Agenda já vem preenchido).
+- **Com o que ele compara:** com o **valor fixo dos Recorrentes** (avisa a partir de 10% de diferença; menos de R$ 300 não entra). Contas que não estão nos Recorrentes não entram — para acompanhar uma conta, cadastre ela lá.
+  - **Dica:** cadastre nos Recorrentes os repasses com o valor combinado (ex.: repasse da Rocha 1 para o grupo de compras, R$ 17.000, dia 5).
 - **Dia útil:** sábado, domingo e feriado nacional não contam. Venceu no sábado e pagou na segunda = em dia.
 - **Ficam de fora:** contato do tipo funcionário e as categorias de funcionário, salário, férias, juros e tarifas. Em **Ajustes do acompanhamento** (no fim da tela, só o gestor) dá para marcar outras categorias ou contatos que não devem entrar.
 - **Completar o porquê:** cada registro sem motivo mostra **"falta o porquê"**. É só abrir e escrever. **Não foi remanejo** tira da lista e o Fluxo não pergunta mais.
@@ -420,6 +430,8 @@ Os empréstimos continuam sendo lançados e baixados no **Caixinha**. No Fluxo, 
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.8.3 | Importar extrato aceita o PDF do Sicoob, com o texto completo (ex.: SALARIO HELOISA nas transferências para a DVL); não duplica com o OFX; transferência para loja do grupo é classificada pelo texto que vem depois do nome | Nenhum |
+| 22/10/2026 | 2.8.2 | Remanejos: só acompanha o que está nos Recorrentes e na Agenda; "a menos" só depois que o extrato da loja foi importado até aquela data (os avisos falsos de lojas sem extrato somem sozinhos) | Nenhum |
 | 22/10/2026 | 2.8.1 | Remanejos entram sozinhos: a menos, a mais e atraso (só dia útil, feriado nacional não conta), comparando com o fixo dos Recorrentes ou a média dos 3 meses; funcionários ficam de fora. Resumo do mês por loja, categoria e contato, juros e o que as lojas devem ao grupo de compras. Ajustes de categorias e contatos | Rodar o SQL v2.8.1 no sistema-financeiro |
 | 22/10/2026 | 2.8.0 | Remanejos: registro de quando o combinado não deu para cumprir (só gestor e Flávia), com o Fluxo avisando pagamento bem abaixo do normal e conta da Agenda vencida. Empréstimos (espelho): todas as lojas do Caixinha numa tela. Importação: aviso de amarelos conta só as marcadas | Rodar o SQL v2.8.1 no sistema-financeiro (já inclui a v2.8) |
 | 22/10/2026 | 2.7.7 | Importação: botões de "Marcar para lançar" acendem em verde, mostram quantas linhas são e podem ser somados (ex.: Entradas + O que eu mexi); total de marcadas ao lado. "Mostrar" só muda a tela | Nenhum |
