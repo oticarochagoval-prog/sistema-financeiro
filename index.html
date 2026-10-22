@@ -226,7 +226,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.1.0', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.2.1', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -410,13 +410,14 @@
     try{const lido=await sipagLerMes(M,lojaAtual);if(lido.erro)throw new Error(lido.erro);R0=lido.R;}catch(e){erroSb=e.message||String(e);R0=[];}
     const lix=R0.filter(r=>String(r.origem_ref||'').startsWith('lix:'));
     const R=sipagClassificar(R0.filter(r=>!String(r.origem_ref||'').startsWith('lix:')),esp.E);
-    const res=conciliarSipag(esp.E,R);_concSip={M,res,R};
+    const res=conciliarSipag(esp.E,R);_concSip={M,res,R,E:esp.E};
     // grava a conferência na tabela (o Cartões Rocha lê daqui)
     if(podeEditar()&&!erroSb){const casou={};res.pares.forEach(p=>{const ks=p.e.map(e=>e.k).join(',');p.r.forEach(r=>{casou[r.id]=ks;});});
       for(const r of R){const novo=casou[r.id]||null;if((r.conferido_com||null)!==novo||!!r.conferido!==!!novo){try{await sb.from('sipag_lancamentos').update({conferido:!!novo,conferido_com:novo}).eq('id',r.id);}catch(e){}}}}
     const soma=(arr)=>arr.reduce((a,x)=>a+Number(x.valor||0),0);
     const Ea=esp.E.filter(e=>e.t==='a'),Ed=esp.E.filter(e=>e.t==='d');
-    const Ra=R.filter(r=>r.tipo==='antecipacao'),Rd=R.filter(r=>r.tipo==='debito'),Ro=R.filter(r=>!['antecipacao','debito'].includes(r.tipo));
+    const Ra=R.filter(r=>r.tipo==='antecipacao'),Rd=R.filter(r=>r.tipo==='debito'),Ro=R.filter(r=>!['antecipacao','debito','stone','suspeito'].includes(r.tipo));
+    const Rst=R.filter(r=>r.tipo==='stone'),Rsu=R.filter(r=>r.tipo==='suspeito');
     const faltaVenc=res.eSobra.filter(e=>e.data<=hoje),faltaFut=res.eSobra.filter(e=>e.data>hoje);
     const naoPrev=res.rSobra.filter(r=>r.tipo==='antecipacao'||(r.tipo==='debito'&&Ed.length)); // débito sem agenda não conta como erro
     let status,cor;
@@ -424,11 +425,16 @@
     else if(!esp.E.length&&!R.length){status='sem dados';cor='var(--muted)';}
     else if(!R.length){status='falta o extrato';cor='var(--amber)';}
     else if(!faltaVenc.length&&!naoPrev.length){status=faltaFut.length?'em dia (falta cair o que vence depois)':(!Ed.length&&Rd.length?'antecipação FECHOU ✓':'FECHOU ✓');cor='var(--green)';}
-    else{const dif=soma(naoPrev)-soma(faltaVenc);status=`não bateu ${dif>=0?'+':'−'}${BRL(Math.abs(dif))}`;cor='var(--red)';}
+    else{const dif=soma(naoPrev)-soma(faltaVenc);
+      if(dif<-0.05){status=`faltou ${BRL(-dif)}`;cor='var(--red)';}
+      else if(dif>_CT_AMAIS){status=`veio ${BRL(dif)} a mais — confira`;cor='var(--amber)';}
+      else if(dif>0.05){status=`veio ${BRL(dif)} a mais — ok`;cor='var(--blue)';}
+      else{status='bateu no total ✓';cor='var(--green)';}}
+    if(Rsu.length&&!erroSb)status+=` · ${Rsu.length} crédito(s) pra conferir`;
     const subA={automatica:'automática',eventual:'eventual'};
     const marcaTxt=(e)=>e.marca&&(e.marca.ok||e.marca.valor)?`<span class="catchip" style="font-size:10px;padding:1px 6px;border-color:var(--blue);color:var(--blue)" title="marcado na conferência do Cartões">✓ Cartões${e.marca.valor?' '+e.marca.valor:''}</span>`:'';
     const eTxt=(e)=>`${isoParaBR(e.data).slice(0,5)} · ${e.t==='a'?(e.total?'antecipação (total do mês)':'antecipação '+(subA[e.sub]||'')):'débito do dia'} <b>${BRL(e.valor)}</b> ${marcaTxt(e)}`;
-    const rTxt=(r)=>`${isoParaBR(r.data).slice(0,5)} · <b>${BRL(r.valor)}</b> <span class="mut" style="font-size:11px">${(r.descricao||'').slice(0,60)}</span>${r.origem==='digitado'?' <span class="catchip" style="font-size:10px;padding:1px 6px;border-color:var(--amber);color:var(--amber)" title="veio de lançamento digitado, não do arquivo do banco">digitado</span>':''}${r.confirmado_em?` <span class="catchip" style="font-size:10px;padding:1px 6px;border-color:var(--green);color:var(--green)" title="${r.origem==='digitado'?'aprovado olhando o extrato do Sicoob':'aprovado à mão antes; agora já veio do banco'}">✔ conferido no extrato por ${(r.confirmado_por||'?')} · ${isoParaBR(String(r.confirmado_em).slice(0,10)).slice(0,5)}</span>`:''}`;
+    const rTxt=(r)=>`${isoParaBR(r.data).slice(0,5)} · <b>${BRL(r.valor)}</b> <span class="mut" style="font-size:11px">${(r.descricao||'').slice(0,60)}</span>${r.origem==='digitado'?' <span class="catchip" style="font-size:10px;padding:1px 6px;border-color:var(--amber);color:var(--amber)" title="veio de lançamento digitado, não do arquivo do banco">digitado</span>':''}${r.confirmado_em?` <span class="catchip" style="font-size:10px;padding:1px 6px;border-color:var(--green);color:var(--green)" title="${r.origem==='digitado'?'aprovado olhando o extrato do Sicoob':'aprovado à mão antes; agora já veio do banco'}">✔ conferido no extrato por ${(r.confirmado_por||'?')} · ${isoParaBR(String(r.confirmado_em).slice(0,10)).slice(0,5)}</span>`:''}${sipagMarcadoAMao(r)?' <span class="catchip" style="font-size:10px;padding:1px 6px;border-color:var(--blue);color:var(--blue)" title="não tem SIPAG na descrição; alguém confirmou que é Sipag">Sipag (marcado à mão)</span>':''}${podeEditar()&&r.id&&!['stone','suspeito'].includes(r.tipo)?` <span class="arqbtn" style="margin-left:4px;font-size:10.5px;padding:1px 7px" onclick="sipagMarcar('${r.id}','stone')" title="Esse crédito não é da Sipag (é da Stone): tira da conta">É Stone</span>`:''}`;
     const tabela=(t,titulo)=>{const ps=res.pares.filter(p=>p.t===t);const fs=res.eSobra.filter(e=>e.t===t);const ns=res.rSobra.filter(r=>t==='a'?r.tipo==='antecipacao':r.tipo==='debito');
       const linhas=ps.map(p=>`<tr><td>${p.e.map(eTxt).join('<br>')}</td><td style="color:var(--green);font-weight:800;text-align:center">✓</td><td>${p.r.map(rTxt).join('<br>')}</td></tr>`).join('')
         +fs.map(e=>`<tr style="background:${e.data>hoje?'transparent':'rgba(255,92,92,.07)'}"><td>${eTxt(e)}</td><td style="text-align:center">${e.data>hoje?'<span class="mut">⏳</span>':'<b style="color:var(--red)">✕</b>'}</td><td class="mut">${e.data>hoje?'ainda vai cair':'<b style="color:var(--red)">esperava e não caiu</b>'}</td></tr>`).join('')
@@ -436,6 +442,10 @@
       const pe=soma(esp.E.filter(e=>e.t===t)),cr=soma(R.filter(r=>t==='a'?r.tipo==='antecipacao':r.tipo==='debito'));
       return `<div class="card" style="margin-bottom:12px;padding:0;overflow:auto"><div style="display:flex;gap:14px;align-items:center;padding:12px 14px;flex-wrap:wrap"><b style="font-size:14px">${titulo}</b><span class="mut" style="font-size:12.5px">tem que cair ${BRL(pe)} · caiu ${BRL(cr)}</span>${Math.abs(pe-cr)>=0.05&&pe&&cr?`<span style="font-size:12.5px;color:${cr>pe?'var(--amber)':'var(--red)'};font-weight:700">diferença ${cr-pe>=0?'+':'−'}${BRL(Math.abs(cr-pe))}</span>`:''}</div>
         <table><thead><tr><th>Tem que cair (Cartões Rocha)</th><th></th><th>Caiu no Sicoob (extrato)</th></tr></thead><tbody>${linhas||'<tr><td colspan="3" class="mut">Nada neste mês.</td></tr>'}</tbody></table></div>`;};
+    const suspHTML=Rsu.length?`<div class="card" style="margin-bottom:12px;border-color:rgba(199,134,26,.45)"><b style="font-size:13.5px;color:var(--amber)">⚠️ Parece não ser Sipag — confira</b> <span class="mut" style="font-size:12px">— tem TED/PIX/STR/DOC/TRANSF/STONE na descrição. Fica fora da conta até alguém marcar.</span>
+      <div style="margin-top:6px;font-size:12.5px;line-height:2">${Rsu.map(r=>{const dc=stoneDica(r,lojaAtual);return `${isoParaBR(r.data).slice(0,5)} · <b>${BRL(r.valor)}</b> <span class="mut" style="font-size:11px">${(r.descricao||'').slice(0,90)}</span>${dc?(dc.tipo==='stone'?' <span class="catchip" style="font-size:10px;padding:1px 6px;border-color:#8b5cf6;color:#8b5cf6" title="veio com o CNPJ/razão social da própria loja — é como a Stone manda o dinheiro">💡 provavelmente Stone (CNPJ da própria loja)</span>':` <span class="catchip" style="font-size:10px;padding:1px 6px;border-color:var(--blue);color:var(--blue)" title="veio de outra empresa do grupo">💡 parece transferência da ${dc.loja} — não é cartão</span>`):''}${podeEditar()?` <span class="arqbtn" style="margin-left:6px" onclick="sipagMarcar('${r.id}','stone')">🟣 É Stone</span><span class="arqbtn" style="margin-left:4px" onclick="sipagMarcar('${r.id}','sipag')">✓ É Sipag</span>`:''}`;}).join('<br>')}</div></div>`:'';
+    const stoneHTML=Rst.length?`<div class="card" style="margin-bottom:12px;border-color:rgba(150,110,230,.45)"><b style="font-size:13.5px;color:#8b5cf6">🟣 Stone — não é Sipag</b> <span class="mut" style="font-size:12px">— caiu de Stone em ${mesNome}: <b style="color:var(--txt)">${BRL(soma(Rst))}</b> (fora da conta Sipag)</span>
+      <div style="margin-top:6px;font-size:12.5px;line-height:2">${Rst.map(r=>`${isoParaBR(r.data).slice(0,5)} · <b>${BRL(r.valor)}</b> <span class="mut" style="font-size:11px">${(r.descricao||'').slice(0,60)}</span>${podeEditar()?` <span class="arqbtn" style="margin-left:6px" onclick="sipagMarcar('${r.id}','desfazer')">↩ não é Stone</span>`:''}`).join('<br>')}</div></div>`:'';
     const outros=Ro.length?`<div class="card" style="margin-bottom:12px"><b style="font-size:13.5px">Outros créditos Sipag do mês</b> <span class="mut" style="font-size:12px">(parcelas de crédito, estornos — o Cartões não prevê esses)</span><div style="margin-top:6px;font-size:12.5px;line-height:1.8">${Ro.map(r=>`${({credito_parcela:'parcela de crédito',estorno:'estorno',outro:'Sipag'})[r.tipo]||r.tipo} · ${rTxt(r)}`).join('<br>')}</div></div>`:'';
     const lixHTML=lix.length?`<div class="card" style="margin-bottom:12px;border-color:rgba(255,92,92,.35)"><b style="font-size:13.5px;color:var(--red)">🗑 Créditos de cartão que estão na Lixeira</b> <span class="mut" style="font-size:12px">— se algum desses é o que está faltando acima, restaure na Lixeira</span><div style="margin-top:6px;font-size:12.5px;line-height:1.8">${lix.map(r=>`${isoParaBR(r.data).slice(0,5)} · <b>${BRL(Number(r.valor))}</b> <span class="mut">${(r.descricao||'').replace('[NA LIXEIRA] ','').slice(0,60)}</span>`).join('<br>')}</div></div>`:'';
     const extrasHTML=esp.extras.length?`<div class="card" style="margin-bottom:12px"><b style="font-size:13.5px">✍️ Digitados na conferência do Cartões</b> <span class="mut" style="font-size:12px">— aparecem aqui como "aguardando extrato"; não viram lançamento no Fluxo</span><div style="margin-top:6px;font-size:12.5px;line-height:1.8">${esp.extras.map(x=>x.legado?`antecipação inteira marcada ✓${x.valor?' ('+x.valor+')':''} · vendas de ${x.mesV}`:`${x.data?isoParaBR(x.data).slice(0,5):'—'} · ${x.tipo==='d'?'débito':'antecipação'} <b>${x.valor}</b> · aguardando extrato`).join('<br>')}</div></div>`:'';
@@ -456,7 +466,7 @@
       ${!R.length&&!erroSb?`<div class="note">Nenhum crédito de cartão do extrato em ${mesNome} nesta loja. Importe o OFX do mês — ou, pra conferir o que já foi digitado à mão, clique em <b>⤓ Trazer os cartões já lançados</b>.</div>`:''}
       ${tabela('a',`⚡ Antecipação (vendas de ${mesAntNome})`)}
       ${tabela('d','🧾 Débitos (D+1, dia a dia)')}
-      ${outros}${lixHTML}${extrasHTML}
+      ${suspHTML}${stoneHTML}${outros}${lixHTML}${extrasHTML}
       <p class="mut" style="font-size:11.5px">✓ = bateu (mesmo valor, até 3 dias de diferença; ou a soma do dia, porque a Sipag junta e separa depósitos) · ✕ = esperava e não caiu · ? = caiu sem estar previsto · ⏳ = ainda vai cair. A marcação fica gravada e o Cartões Rocha pode ler.</p>`;    preencherCartoesTodas().catch(e=>console.error('cartoes todas',e));
   }
 
@@ -488,8 +498,33 @@
       R.push(Object.assign({},r,{valor:Number(r.valor)}));});
     return {R:R.filter(r=>r.data>=M+'-01'&&r.data<=fimM)};
   }
-  function sipagClassificar(R,E){const datasA=E.filter(e=>e.t==='a').map(e=>e.data);
-    return R.map(r=>r.tipo!=='outro'?r:Object.assign({},r,{tipo:datasA.some(d=>_dias(d,r.data)<=3)?'antecipacao':'debito'}));}
+  const NAO_SIPAG_RE=/\b(TED|STR|PIX|DOC|STONE)\b|TRANSF/i;   // crédito com isso na descrição não é Sipag até alguém confirmar
+  const _CT_AMAIS=500;   // veio a mais até R$ 500 = ok (azul); acima = confira (amarelo)
+  function sipagTipoPelaData(r,E){return E.filter(e=>e.t==='a').some(e=>_dias(e.data,r.data)<=3)?'antecipacao':'debito';}
+  function sipagClassificar(R,E){
+    return R.map(r=>{if(r.tipo!=='outro')return r;
+      if(NAO_SIPAG_RE.test(r.descricao||''))return Object.assign({},r,{tipo:'suspeito'});
+      return Object.assign({},r,{tipo:sipagTipoPelaData(r,E)});});}
+  // CNPJ e razão social de cada loja (como aparecem na Stone e no TED do Sicoob) — usado só como DICA, nunca marca sozinho
+  const LOJA_CNPJ={r1:['11117883000130','OTICA ROCHA COMERCIO'],r2:['26028871000107','OTICA ROCHA DVL'],r3:['27208094000145','OTICA ROCHA PRIME'],
+    r4:['31171991000107','OTICA ROCHA DTR'],r5:['32827047000110','OTICA ROCHA MERCADO','OTICA ROCHA MM'],r6:['34609281000104','OTICAS ROCHA AV MG','ROCHA PRODUTOS'],
+    r7:['43487165000142','OTICA ROCHA IPT'],r8:['44508831000144','OTICA ROCHA PREMIUM'],r9:['51070556000195','OTICA ROCHA CP'],
+    r10:['53023045000148','OTICA ROCHA CM'],r11:['62212594000151','OTICA ROCHA VILA ISA']};
+  // de quem veio o TED? mesma loja (CNPJ/razão social dela) = provável Stone · outra loja do grupo = provável transferência entre lojas
+  function stoneDica(r,lojaId){const d=String(r.descricao||''),dig=d.replace(/\D/g,''),txt=normDesc(d);const minha=cxChaveLoja(lojaNomeCurto(lojaId));
+    for(const [k,[cnpj,...nomes]] of Object.entries(LOJA_CNPJ)){if(dig.includes(cnpj)||nomes.some(n=>new RegExp('(^|\\s)'+n+'(\\s|$)').test(txt))){
+      return k===minha?{tipo:'stone'}:{tipo:'irma',loja:'Rocha '+k.slice(1)};}}
+    return null;}
+  function sipagMarcadoAMao(r){return ['antecipacao','debito'].includes(r.tipo)&&NAO_SIPAG_RE.test(r.descricao||'')&&!/SIPAG/i.test(r.descricao||'');}
+  // botões "É Stone" / "É Sipag" / "não é Stone" (dono e quem lança)
+  async function sipagMarcar(id,acao){
+    if(!podeEditar()){toast('Seu acesso não marca créditos.','erro');return;}
+    const r=_concSip&&_concSip.R.find(x=>String(x.id)===String(id));if(!r){render();return;}
+    const tipo=acao==='stone'?'stone':acao==='sipag'?sipagTipoPelaData(r,_concSip.E||[]):'outro';
+    const {error}=await sb.from('sipag_lancamentos').update({tipo}).eq('id',r.id);
+    if(error){toast(/check|tipo/i.test(error.message)?'Rode o SQL da v2.2 no sistema-financeiro primeiro.':'Erro: '+error.message,'erro');return;}
+    toast(acao==='stone'?'🟣 Marcado como Stone — saiu da conta Sipag.':acao==='sipag'?'✓ Marcado como Sipag.':'↩ Desfeito.','ok');render();
+  }
   // ---- CARTÕES DO MÊS: previsto (Cartões Rocha) × caiu (extrato) ----
   // Dashboard = só a loja escolhida · tela Cartão × Sipag = todas as lojas
   let _ctDashSeq=0,_ctTodasSeq=0;
@@ -523,13 +558,14 @@
       else if(M<mesHoje&&esp.debTotal>0){modoD='total';prevD=Math.round(esp.debTotal*100)/100;}
       else if(M>=mesHoje){modoD='corrente';}
       else modoD='sem';
-      linhas.push({id:L.id,nome:curta,temExtrato:R.length>0,prevAuto,prevEv,caiuAuto:autoM+a1+sobra,caiuEv:evM+e1,prevA:prevAuto+prevEv,caiuA,
+      const nSusp=R.filter(r=>r.tipo==='suspeito').length,stoneTot=soma(R.filter(r=>r.tipo==='stone'));
+      linhas.push({id:L.id,nome:curta,nSusp,stoneTot,temExtrato:R.length>0,prevAuto,prevEv,caiuAuto:autoM+a1+sobra,caiuEv:evM+e1,prevA:prevAuto+prevEv,caiuA,
         modoD,temAgenda,prevD,caiuD,fut:E.filter(e=>e.data>hoje),vencido:E.some(e=>e.data<=hoje)||modoD==='total'});
     }
     return {linhas,mesCorrente:M>=mesHoje};
   }
   const _CT_T=0.05;
-  const _ctTolD=l=>l.modoD==='total'?Math.max(0.02*l.prevD,50):_CT_T; // total do mês: a venda do último dia cai no dia 1º do mês seguinte
+  const _ctTolD=l=>l.modoD==='total'?_CT_AMAIS:_CT_T; // total do mês: a venda do último dia cai no dia 1º do mês seguinte
   function _ctPill(txt,cls){const c={ok:['rgba(31,157,107,.13)','var(--green)'],no:['rgba(214,69,69,.13)','var(--red)'],wa:['rgba(199,134,26,.15)','var(--amber)'],bl:['rgba(59,99,217,.13)','var(--blue)'],mu:['var(--panel-2)','var(--muted)']}[cls];
     return `<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-weight:700;font-size:11.5px;background:${c[0]};color:${c[1]};white-space:nowrap;margin:1px 4px 1px 0">${txt}</span>`;}
   // situação de uma loja → {pills, falta, semExtrato}
@@ -540,7 +576,9 @@
       if(difA!=null&&difA<-T){pills.push(pill('▼ faltou '+BRL(-difA)+' na antecipação','no'));falta=true;}
       if(difD!=null&&difD<-tolD){pills.push(pill('▼ faltou '+(l.modoD==='total'?'~':'')+BRL(-difD)+' nos débitos','no'));falta=true;}
       if(!falta){const mais=(difA>T?difA:0)+(difD>tolD?difD:0);
-        if(mais>T)pills.push(pill('▲ +'+BRL(mais)+' — ok','bl'));else if(l.prevA>0||comparaD)pills.push(pill('✓ bateu','ok'));}
+        if(mais>_CT_AMAIS)pills.push(pill('▲ veio '+BRL(mais)+' a mais — confira','wa'));
+        else if(mais>T)pills.push(pill('▲ +'+BRL(mais)+' — ok','bl'));else if(l.prevA>0||comparaD)pills.push(pill('✓ bateu','ok'));}
+      if(l.nSusp)pills.push(pill(`⚠ ${l.nSusp} crédito(s) pra conferir (parece não ser Sipag)`,'wa'));
       if(l.prevA<=0&&l.caiuA>T)pills.push(pill('⚠ antecipação sem valor no Cartões','wa'));
       if(l.modoD==='sem'&&l.caiuD>T)pills.push(pill('⚠ débitos sem valor no Cartões (subir o arquivo da Sipag/Detalhado)','wa'));}
     return {pills,falta,semExtrato};}
@@ -552,7 +590,8 @@
     else if(o.tqCom<=0&&o.caiu<=0){r='⏳ aguardando o extrato';cinza();}
     else if(o.tqCom<=0){r='caiu sem valor no Cartões';cls='var(--amber)';bg='rgba(199,134,26,.06)';bd='rgba(199,134,26,.35)';}
     else if(d<-T){r='▼ faltaram '+(o.aprox?'~':'')+BRL(-d)+(o.nPend&&o.nCom?(o.nCom>1?` (nas ${o.nCom} com extrato)`:' (na loja com extrato)'):'');cls='var(--red)';bg='rgba(214,69,69,.06)';bd='rgba(214,69,69,.35)';}
-    else if(d>T){r='▲ veio '+BRL(d)+' a mais — ok';cls='var(--green)';bg='rgba(31,157,107,.06)';bd='rgba(31,157,107,.35)';}
+    else if(d>_CT_AMAIS){r='▲ veio '+BRL(d)+' a mais — confira';cls='var(--amber)';bg='rgba(199,134,26,.06)';bd='rgba(199,134,26,.35)';}
+    else if(d>T){r='▲ veio '+BRL(d)+' a mais — ok';cls='var(--blue)';bg='rgba(59,99,217,.06)';bd='rgba(59,99,217,.35)';}
     else{r=o.aprox&&Math.abs(d)>=_CT_T?`≈ bateu (${d<0?'−':'+'}${BRL(Math.abs(d))})`:'✓ bateu';if(o.nPend&&o.nCom)r+=o.nCom>1?` nas ${o.nCom} lojas com extrato`:' na loja com extrato';cls='var(--green)';bg='rgba(31,157,107,.06)';bd='rgba(31,157,107,.35)';}
     const obs=[o.nPend?`aguardando extrato de ${o.nPend} loja${o.nPend>1?'s':''} (${BRL(o.sumPend)})`:'',o.obs||''].filter(Boolean).join(' · ');
     return `<div style="border:1px solid ${bd};background:${bg};border-radius:12px;padding:10px 13px"><div class="mut" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">${titulo}</div>
@@ -570,7 +609,7 @@
       debTile=_ctTile('🧾 Débitos (D+1)',mesCorrente?{semTq:true,caiu:caiuTodos,especial:'confere quando o mês fechar',obs:'o Detalhado de vendas só sai depois que o mês acaba'}
         :{semTq:true,caiu:caiuTodos,especial:'sem valor de débito no Cartões',obs:'suba o arquivo da Sipag / Detalhado no Cartões Rocha'});}
     else{const semComp=C.filter(l=>!compD(l)&&l.caiuD>_CT_T).length;
-      debTile=_ctTile('🧾 Débitos (D+1)'+(temTotal?' · total do mês':' · até hoje'),Object.assign(deb,{aprox:temTotal,tol:temTotal?Math.max(0.02*deb.tqCom,50):_CT_T,
+      debTile=_ctTile('🧾 Débitos (D+1)'+(temTotal?' · total do mês':' · até hoje'),Object.assign(deb,{aprox:temTotal,tol:temTotal?_CT_AMAIS:_CT_T,
         obs:[temTotal?'aproximado: a venda do último dia cai no dia 1º seguinte':'',semComp?`${semComp} loja(s) sem valor de débito ficam fora`:''].filter(Boolean).join(' · ')}));}
     return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
       ${_ctTile('⚡ Antecipação automática · vendas de '+mesAntNome,Object.assign(auto,{vazio:'o Cartões ainda não tem o valor'}))}
@@ -2096,7 +2135,8 @@
       if(!r.sipag||!r.fitid)return;
       const row={loja:lojaCurta,loja_id:lojaAtual,data:r.iso,valor:r.amt,descricao:(r.desc||'').slice(0,300),tipo:r.sipag.tipo,origem:'ofx',origem_ref:r.fitid,lancamento_id:lancId||null,criado_por:USER.id};
       try{
-        if(lancId){const {data:up}=await sb.from('sipag_lancamentos').update({origem:'ofx',origem_ref:r.fitid,descricao:row.descricao,tipo:row.tipo,data:row.data,valor:row.valor}).eq('origem_ref','lanc:'+lancId).select('id');if(up&&up.length){sip++;return;}}
+        if(lancId){const {data:ex}=await sb.from('sipag_lancamentos').select('id,tipo').eq('origem_ref','lanc:'+lancId).maybeSingle();
+          if(ex){await sb.from('sipag_lancamentos').update({origem:'ofx',origem_ref:r.fitid,descricao:row.descricao,tipo:ex.tipo==='stone'?'stone':row.tipo,data:row.data,valor:row.valor}).eq('id',ex.id);sip++;return;}}
         const {error}=await sb.from('sipag_lancamentos').insert(row);
         if(error){if(!(error.code==='23505'||/duplicate/i.test(error.message||'')))sipErr=sipErr||error.message;}else sip++;
       }catch(e){sipErr=sipErr||String(e.message||e);}

@@ -209,6 +209,13 @@ Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito po
 - O resultado fica gravado (com a mesma chave do Cartões), e o Cartões Rocha pode ler pra marcar sozinho.
 - O que for **digitado na conferência do Cartões** aparece aqui como "aguardando extrato", mas **não vira lançamento** no Fluxo: dinheiro só entra pelo extrato.
 - **⤓ Trazer os cartões já lançados** copia pra conciliação os créditos de cartão já lançados desde 01/06 — inclusive os digitados à mão e os que estão na **Lixeira** (que aparecem num quadro vermelho: se algum é o que falta, restaure).
+- **🟣 É Stone:** cada crédito tem o botão **É Stone**. Ele tira o crédito da conta Sipag e o põe na caixa **Stone**, que mostra o total de Stone do mês. **↩ não é Stone** desfaz. **Nada vira Stone sozinho**: só pelo botão.
+- **⚠️ Parece não ser Sipag — confira:** vale só para crédito que **já está na lista de cartões** (descrição de cartão ou categoria Cartão) e tem TED, STR, PIX, DOC, TRANSF ou STONE na descrição. Ele fica fora da conta até alguém clicar em **É Stone** ou **É Sipag**. Pix de cliente (categoria "PIX DE CLIENTE") nunca entra nessa lista.
+  - 💡 **Dica pela razão social (v2.2.1):** o Fluxo lê o CNPJ ou a razão social que vem no extrato.
+    - Se for **da própria loja**, aparece "provavelmente Stone": é assim que a Stone manda o dinheiro.
+    - Se for **de outra loja do grupo**, aparece "parece transferência da Rocha X — não é cartão".
+    - A dica nunca marca sozinha: quem decide é o botão.
+- **Cores:** 🟢 fechou · 🔵 veio a mais até R$ 500 (ok) · 🟡 veio **mais de R$ 500** a mais (confira: quase sempre é Stone ou TED misturado) · 🔴 faltou · ⚪ aguardando extrato. Débito pelo total do mês (≈): diferença de até R$ 500, para mais ou para menos, é normal, porque a venda do último dia cai no dia 1º seguinte.
 - **✅ Conferi no extrato (só Lucas e Heloísa):** depósito **digitado** fica amarelo no Cartões Rocha ("falta o banco confirmar"). Olhe o extrato do Sicoob e clique em **Conferi no extrato**: fica gravado **quem conferiu e quando**, e aparece "✔ conferido no extrato por …" em cada depósito. **↩ Desfazer conferência** tira a aprovação. Quando o OFX entrar, a linha do banco passa a valer e a aprovação fica como histórico.
 
 ### Cartões do mês: tem que cair × caiu (v2.0.4)
@@ -255,6 +262,8 @@ Menu **💳 Cartão × Sipag** (e o atalho no Fechamento). Compara, depósito po
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.2.1 | Dica na caixa "Parece não ser Sipag": CNPJ/razão social da própria loja = "provavelmente Stone"; de outra loja do grupo = "parece transferência" (nunca marca sozinho) | Nenhum |
+| 22/10/2026 | 2.2.0 | Conciliação de cartões: botão **É Stone** (sai da conta Sipag, caixa Stone com total); TED/STR/PIX/DOC/TRANSF na lista de cartões fica em "Parece não ser Sipag — confira"; a mais acima de R$ 500 fica amarelo "confira". Precisa do SQL v2.2 | Nenhum |
 | 22/10/2026 | 2.1.0 | Botão **✅ Conferi no extrato** na conciliação de cartões (só dono): aprova os depósitos digitados olhando o extrato, grava nome e hora; dá pra desfazer. Precisa do SQL v2.1 | Nenhum |
 | 22/10/2026 | 2.0.6 | Tela Cartão × Sipag explica no topo: "Junho no Fluxo = antecipação das vendas de maio + débitos das vendas de junho" | Nenhum |
 | 22/10/2026 | 2.0.5 | Quadro de cartões também nos **Lançamentos** (abaixo do saldo do dia 1º, atualiza ao salvar); cartões lançados entram **sozinhos** na conferência (descrição ou categoria Cartão); digitado corrigido/apagado acompanha | Nenhum (só mostra) |
