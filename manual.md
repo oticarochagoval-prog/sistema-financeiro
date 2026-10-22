@@ -187,6 +187,23 @@ O lançamento do Sicoob volta a ser **pelo extrato**. Ninguém precisa redigitar
 
 > ⚠️ Linha que não é dessa loja (cliente pagou na conta errada, Pix devolvido, troca por cartão) **não se exclui**: entrada como **Pix de cliente** e saída como **Transferência entre lojas** ou **Devolução a cliente**. As duas se anulam.
 
+### Transferências e Pix na importação (v2.7.1)
+
+- **Saída para outra loja do grupo** (ex.: "FAV.: OTICA ROCHA DVL…" = Rocha 2) vem como **Transferência entre lojas** com **"confira"**, porque pode ser reembolso de conta (internet, contabilidade, energia…). Se for só dinheiro passando, confirme. Se for reembolso, troque a categoria daquela linha.
+  - O sistema **não aprende pelo nome da outra loja**, porque o nome não diz qual conta foi paga.
+  - Transferência entre lojas é **neutra**: não entra em receita, despesa nem DRE. Só entra na escada do banco, para o saldo bater.
+- O botão **✓ Confirmar as N** confirma de uma vez todas as que são só transferência. Empréstimo que precisa voltar vai em **A ESTORNAR**.
+- **Botão "não entra" (v2.7.3):** em cada linha da importação. A linha vai como **neutra** (transferência/empréstimo): não entra em receita, despesa, DRE nem Radar. Fica guardada só para o saldo do banco bater. **Não precisa excluir.**
+- **Mostrar: Todas / Só entradas / Só saídas** na importação, para conferir por partes.
+- **Lançar só as já classificadas:** lança o que já tem categoria. As outras **aparecem de novo na próxima importação**, então nada se perde nem duplica.
+- **Observação no lugar do contato (v2.7.4):** para quem não precisa virar contato (panfletagem, blogueira, ajuda de um dia), clique em **"+ obs"**, embaixo da categoria, e escreva (ex.: MARIA — PANFLETAGEM VILA ISA). Funciona na importação e nos Lançamentos.
+  - A observação aparece no lugar do contato e a linha **não fica vermelha**.
+  - No medidor de automação, ela conta como "com contato".
+- **Lançamentos → "esconder as neutras":** tira da lista as transferências, os Pix de cliente e os depósitos da gaveta. O sistema lembra a escolha.
+- **Só no teclado (v2.7.2):** use **Tab** para ir de campo em campo (categoria → contato → próxima linha). Comece a **digitar** ou aperte **Enter** para abrir a busca, e **Enter** de novo para escolher: o cursor pula sozinho para o próximo campo. **Esc** fecha sem mudar. Vale na importação e nos Lançamentos.
+- **Lançamentos:** clique em **Entradas** ou **Saídas**, em cima da lista, para ver só as entradas ou só as saídas. Clique de novo para voltar a ver tudo.
+- **Pix e TED sem nome** (ex.: "Pagamento Pix 06.981.180 0001-16"): na primeira vez, alguém escolhe a categoria. O sistema oferece **"🔑 Lembrar sempre: CNPJ 06.981.180/0001-16"** e, da próxima vez, aquele Pix vem classificado sozinho. Funciona também com CPF mascarado (***.502.576-**).
+
 ## Neutras: dinheiro que passa, mas não é venda nem despesa
 
 | Categoria neutra | Quando |
@@ -370,6 +387,10 @@ No alto da tela, ao lado da escolha da loja, ficam os **módulos**. Ao trocar de
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.7.4 | "+ obs" embaixo da categoria (importação e Lançamentos): observação no lugar de cadastrar contato (panfletagem, blogueira); não fica vermelho e conta no medidor | Nenhum |
+| 22/10/2026 | 2.7.3 | Importação: botão "não entra" (neutra, sem excluir), filtro Todas/Só entradas/Só saídas e "Lançar só as já classificadas" (o resto volta na próxima). Lançamentos: "esconder as neutras" | Nenhum |
+| 22/10/2026 | 2.7.2 | Teclado: Tab de campo em campo, digitar abre a busca, Enter escolhe e pula para o próximo (importação e Lançamentos). Lançamentos: filtro só Entradas / só Saídas. Saída para outra loja volta a pedir "confira" (pode ser reembolso) e não aprende pelo nome da loja | Nenhum |
+| 22/10/2026 | 2.7.1 | Importação: transferência para loja do grupo (razão social/CNPJ) já vai como Transferência entre lojas sem "confira"; botão "Confirmar as N" para as outras; Pix/TED aprende pelo CNPJ/CPF do favorecido | Nenhum |
 | 22/10/2026 | 2.7.0 | **Módulos** no alto da tela: Óticas Rocha, Laboratório (GV Lentes), Grupo de compras (FZ Grifes, Grupo VR) e Casa trancada (Lucas, Heloísa, Flávia). Cada módulo soma só o que é dele; categorias/contatos/palavras-chave da Casa separados. Precisa do SQL v2.7 | Nenhum nas lojas |
 | 22/10/2026 | 2.6.5 | Card "A pagar em (mês)" avisa em letra pequena: "só o que vence neste mês · não acumula de um mês pro outro" | Nenhum |
 | 22/10/2026 | 2.6.4 | Dashboard: "A pagar em (mês)" mostra só o que vence no mês escolhido; vencido de meses anteriores aparece à parte e fica na Agenda (não acumula). A baixa automática também roda ao abrir o Dashboard | Nenhum |

@@ -163,6 +163,7 @@
   .btn{background:var(--green);color:var(--accent-ink);border:none;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer}
   .btn.ghost{background:var(--panel);color:var(--txt);border:1px solid var(--line)}
   .rlinha .rfixar{visibility:hidden}.rlinha:hover .rfixar{visibility:visible}
+  .combo:focus{outline:2px solid var(--blue);outline-offset:1px}
   .arqbtn{margin-left:12px;font-size:11.5px;color:var(--muted);cursor:pointer;padding:3px 9px;border-radius:20px;border:1px solid var(--line);white-space:nowrap}
   .arqbtn:hover{color:var(--amber);border-color:var(--amber)}.arqbtn.ativar:hover{color:var(--green);border-color:var(--green)}
   .note{background:rgba(125,162,255,.08);border:1px solid rgba(125,162,255,.2);border-radius:12px;padding:13px 15px;font-size:12.5px;color:#aec2ff;margin-bottom:16px;line-height:1.5}
@@ -240,13 +241,15 @@
   let lojaAtual=null;
   let page='visao', tipo='des', q='', busy=false;
   let filtroDia=''; // '' = todos os dias; senão 'YYYY-MM-DD'
+  let ocultarNeutras=false;try{ocultarNeutras=localStorage.getItem('fluxo_ocultar_neutras')==='1';}catch(e){}
+  let filtroTipoLanc=''; // '' · 'ent' (só entradas) · 'sai' (só saídas)
   let filtroConta=''; // '' = todas · 'banco' · 'caixinha' (lançamentos antigos da aba Caixinha)
 
   const BRL=n=>(n<0?'-':'')+'R$ '+Math.abs(Number(n)).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.7.0', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.7.4', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -890,10 +893,10 @@
   let _autoSeq=0;
   async function autoMedir(M,loja){
     const fim=`${M}-${String(new Date(Number(M.slice(0,4)),Number(M.slice(5,7)),0).getDate()).padStart(2,'0')}`;
-    let ls=[];for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('id,valor,categoria_id,contato_id,fitid').eq('loja_id',loja).gte('data',M+'-01').lte('data',fim).range(o,o+999);if(error)return null;ls=ls.concat(data||[]);if(!data||data.length<1000)break;}
+    let ls=[];for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('id,valor,categoria_id,contato_id,fitid,documento').eq('loja_id',loja).gte('data',M+'-01').lte('data',fim).range(o,o+999);if(error)return null;ls=ls.concat(data||[]);if(!data||data.length<1000)break;}
     const grp=l=>{const c=CATS.find(x=>x.id===l.categoria_id);return c?c.grupo:null;};
     const tot=ls.length,comCat=ls.filter(l=>{const g=grp(l);return g&&g!=='adef';}).length;
-    const desp=ls.filter(l=>Number(l.valor)<0&&grp(l)!=='neutra'),comCt=desp.filter(l=>l.contato_id).length,ext=ls.filter(l=>l.fitid).length;
+    const desp=ls.filter(l=>Number(l.valor)<0&&grp(l)!=='neutra'),comCt=desp.filter(l=>l.contato_id||(l.documento&&String(l.documento).trim())).length,ext=ls.filter(l=>l.fitid).length;
     let imp={tot:0,auto:0};try{const {data}=await sb.from('importacoes').select('*').eq('loja_id',loja).limit(500);
       (data||[]).forEach(r=>{const d=String(r.criado_em||r.created_at||r.periodo_ate||'').slice(0,7);if(d!==M||!(r.linhas_total>0))return;imp.tot+=r.linhas_total;imp.auto+=r.linhas_auto_cat||0;});}catch(e){}
     return {tot,pCat:tot?comCat/tot:null,pCt:desp.length?comCt/desp.length:null,pExt:tot?ext/tot:null,pAuto:imp.tot?imp.auto/imp.tot:null};
@@ -912,7 +915,7 @@
       <b style="font-size:13px;white-space:nowrap">🤖 Automação · ${MESES_NOME[mi]}</b>
       ${item('Categoria sozinha na importação',a.pAuto,b&&b.pAuto,'das linhas novas do extrato, quantas já vieram com categoria sem ninguém escolher')}
       ${item('Lançamentos com categoria',a.pCat,b&&b.pCat,'do mês, quantos lançamentos têm categoria (o DRE e o Radar dependem disso)')}
-      ${item('Despesas com contato',a.pCt,b&&b.pCt,'das despesas do mês, quantas têm contato (fornecedor, laboratório, funcionário)')}
+      ${item('Despesas com contato',a.pCt,b&&b.pCt,'das despesas do mês, quantas têm contato (fornecedor, laboratório, funcionário) ou observação')}
       ${item('Veio do extrato',a.pExt,b&&b.pExt,'do mês, quantos lançamentos vieram do OFX — o resto foi digitado à mão')}
       <span class="mut" style="font-size:11px;margin-left:auto">meta: 99% · verde ≥ 90%</span></div>`;
   }
@@ -1070,7 +1073,11 @@
   function aplicarRegrasP(desc,lojaId){if(MODULO_ATUAL==='casa'||REGRAS_P.some(r=>r.modulo==='casa')){const _orig=REGRAS_P;REGRAS_P=_orig.filter(r=>(r.modulo==='casa')===(MODULO_ATUAL==='casa'));try{return _aplicarRegrasP(desc,lojaId);}finally{REGRAS_P=_orig;}}return _aplicarRegrasP(desc,lojaId);}
   function _aplicarRegrasP(desc,lojaId){
     const n=' '+normDesc(desc)+' ';let bc=null,bk=null; // melhor regra com categoria, melhor com contato
-    REGRAS_P.forEach(r=>{if(r.loja_id&&lojaId&&r.loja_id!==lojaId)return;const pw=' '+normDesc(r.palavra)+' ';if(!pw.trim())return;
+    const _dig=String(desc||'').replace(/\D/g,'');
+    REGRAS_P.forEach(r=>{if(r.loja_id&&lojaId&&r.loja_id!==lojaId)return;
+      const _md=String(r.palavra||'').match(/^#DOC:(\d+)$/);
+      if(_md){if(_dig.includes(_md[1])){const score=10000;if(r.categoria_id&&(!bc||score>bc.score))bc={r,score};if(r.contato_id&&(!bk||score>bk.score))bk={r,score};}return;}
+      const pw=' '+normDesc(r.palavra)+' ';if(!pw.trim())return;
       if(n.includes(pw)){const score=pw.length*10+(r.loja_id?1:0);
         if(r.categoria_id&&(!bc||score>bc.score))bc={r,score};
         if(r.contato_id&&(!bk||score>bk.score))bk={r,score};}});
@@ -1229,8 +1236,16 @@
   function _comboOutside(e){const p=document.getElementById('comboPanel');if(p&&!p.contains(e.target))fecharCombo();}
   function _comboItemsCat(){return catsAtivas().slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(c=>({id:String(c.id),nome:c.nome,sub:(GRUPOS[c.grupo]?GRUPOS[c.grupo].nome:'')}));}
   function _comboItemsCont(){return contatosAtivos().slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(c=>({id:String(c.id),nome:c.nome,sub:(c.tipo==='funcionario'?'👤':'🏢')}));}
+  let _comboOrigIdx=-1,_comboPrefill='';
+  function _focarCombo(idx,tent){const all=[...document.querySelectorAll('.combo')];const el=all[idx];
+    if(el&&document.body.contains(el)){el.setAttribute('tabindex','0');el.focus({preventScroll:true});if(el.scrollIntoView)el.scrollIntoView({block:'nearest'});}
+    if((tent||0)<4)setTimeout(()=>{const a2=[...document.querySelectorAll('.combo')];if(a2[idx]&&document.activeElement!==a2[idx])_focarCombo(idx,(tent||0)+1);},250);}
+  // os campos de categoria/contato entram no Tab; letra, Enter ou ↓ abre a busca
+  document.addEventListener('keydown',e=>{const el=document.activeElement;if(!el||!el.classList||!el.classList.contains('combo'))return;
+    if(e.key==='Enter'||e.key==='ArrowDown'||e.key===' '||(e.key.length===1&&!e.ctrlKey&&!e.metaKey&&!e.altKey)){e.preventDefault();_comboPrefill=(e.key.length===1&&e.key!==' ')?e.key:'';el.click();}});
+  new MutationObserver(()=>{document.querySelectorAll('.combo:not([tabindex])').forEach(c=>c.setAttribute('tabindex','0'));document.querySelectorAll('.combo ~ button:not([tabindex])').forEach(x=>x.setAttribute('tabindex','-1'));}).observe(document.documentElement,{childList:true,subtree:true});
   function _abrirCombo(el,items,apply){
-    fecharCombo();_comboItems=items;_comboApply=apply;_comboSel=0;
+    fecharCombo();_comboItems=items;_comboApply=apply;_comboSel=0;_comboOrigIdx=[...document.querySelectorAll('.combo')].indexOf(el);
     const r=el.getBoundingClientRect();
     const panel=document.createElement('div');panel.className='combopanel';panel.id='comboPanel';
     panel.innerHTML='<input id="comboSearch" placeholder="Digite para buscar..." autocomplete="off"><div class="combolist" id="comboList"></div>';
@@ -1241,13 +1256,13 @@
     const si=document.getElementById('comboSearch');
     si.addEventListener('input',()=>{_comboSel=0;_comboRender(si.value);});
     si.addEventListener('keydown',e=>{
-      if(e.key==='Escape'){fecharCombo();}
+      if(e.key==='Escape'){fecharCombo();if(_comboOrigIdx>=0)_focarCombo(_comboOrigIdx,4);}
       else if(e.key==='ArrowDown'){e.preventDefault();if(_comboF.length){_comboSel=Math.min(_comboSel+1,_comboF.length-1);_comboRender(si.value);}}
       else if(e.key==='ArrowUp'){e.preventDefault();if(_comboF.length){_comboSel=Math.max(_comboSel-1,0);_comboRender(si.value);}}
       else if(e.key==='Enter'||e.key==='Tab'){if(_comboF.length){e.preventDefault();_comboPick(_comboF[Math.min(_comboSel,_comboF.length-1)].id);}else if(e.key==='Enter'){e.preventDefault();}}
     });
-    _comboRender('');
-    setTimeout(()=>si.focus(),20);
+    const pre=_comboPrefill;_comboPrefill='';si.value=pre;_comboRender(pre);
+    setTimeout(()=>{si.focus();try{si.setSelectionRange(si.value.length,si.value.length);}catch(e){}},20);
     setTimeout(()=>document.addEventListener('mousedown',_comboOutside,true),0);
   }
   function _comboRender(q){
@@ -1260,20 +1275,29 @@
     if(!f.length)html+='<div class="comboitem" style="color:var(--muted);cursor:default">nada encontrado</div>';
     list.innerHTML=html;const selEl=list.querySelector('.comboitem.sel');if(selEl&&selEl.scrollIntoView)selEl.scrollIntoView({block:'nearest'});
   }
-  function _comboPick(id){const fn=_comboApply;fecharCombo();if(fn)fn(id||null);}
+  function _comboPick(id){const fn=_comboApply,ix=_comboOrigIdx;fecharCombo();if(fn)fn(id||null);if(ix>=0)setTimeout(()=>_focarCombo(ix+1,0),120);}
   function abrirComboCatLanc(el,id){_abrirCombo(el,_comboItemsCat(),async v=>{await mudarCampoLanc(id,'categoria_id',v);_keepY=window.scrollY;render();});}
   function abrirComboContLanc(el,id){_abrirCombo(el,_comboItemsCont(),async v=>{await mudarCampoLanc(id,'contato_id',v);_keepY=window.scrollY;render();});}
   // chave pra "aprender": as 2 primeiras palavras que importam da descrição do banco
-  function chaveAprender(desc){const STOP=new Set(['PGTO','PAGTO','PAGAMENTO','PIX','TED','DOC','DEB','DEBITO','CRED','CREDITO','TRANSF','TRANSFERENCIA','COMPRA','BOLETO','TITULO','TIT','INT','OUTRA','IF','EMIT','RECEB','RECEBIMENTO','REF','DE','DA','DO','PARA','LTDA','ME','EIRELI','SA','EPP','CONTAS','DIF','TITULARIDADE','FAV','REM','CONV','CONVENIO','DIVERSO']);
+  // CNPJ (14 dígitos) ou CPF mascarado (***.502.576-**) que vem na descrição do Pix/TED
+  function docDaDesc(desc){const t=String(desc||'');
+    const cnpj=t.match(/\d{2}\.?\d{3}\.?\d{3}[\/\s]?\d{4}-?\d{2}/);if(cnpj){const d=cnpj[0].replace(/\D/g,'');if(d.length===14)return d;}
+    const cpfM=t.match(/\*{3}\.?(\d{3})\.?(\d{3})-?\*{2}/);if(cpfM)return cpfM[1]+cpfM[2];
+    const cpf=t.match(/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/);if(cpf)return cpf[0].replace(/\D/g,'');
+    return null;}
+  function palavraLegivel(p){const m=String(p||'').match(/^#DOC:(\d+)$/);if(!m)return p;const d=m[1];
+    if(d.length===14)return `CNPJ ${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;if(d.length===6)return `CPF ***.${d.slice(0,3)}.${d.slice(3)}-**`;return 'documento '+d;}
+  function chaveAprender(desc){if(empresaDoGrupo(desc))return '';const _doc=docDaDesc(desc);if(_doc&&/PIX|TED|TRANSF|DOC\b|PAGAMENTO/i.test(String(desc)))return '#DOC:'+_doc;return _chaveAprenderTexto(desc);}
+  function _chaveAprenderTexto(desc){const STOP=new Set(['PGTO','PAGTO','PAGAMENTO','PIX','TED','DOC','DEB','DEBITO','CRED','CREDITO','TRANSF','TRANSFERENCIA','COMPRA','BOLETO','TITULO','TIT','INT','OUTRA','IF','EMIT','RECEB','RECEBIMENTO','REF','DE','DA','DO','PARA','LTDA','ME','EIRELI','SA','EPP','CONTAS','DIF','TITULARIDADE','FAV','REM','CONV','CONVENIO','DIVERSO']);
     const toks=normDesc(desc).split(' ').filter(t=>t.length>=3&&!STOP.has(t)&&!/^\d+$/.test(t));return toks.slice(0,2).join(' ');}
   function abrirComboCatImport(el,i){_abrirCombo(el,_comboItemsCat(),v=>{const r=IMPORT[i];r.catId=v||'';r.corrigir=false;r.resolvido=!!v;
     if(v&&!r.regra){const k=chaveAprender(r.full||r.desc);if(k){let n=0;IMPORT.forEach((x,j)=>{if(j===i||x.grupo==='ja'||x.grupo==='lentes'||x.catId)return;if(Math.sign(x.amt)!==Math.sign(r.amt))return;if(chaveAprender(x.full||x.desc)===k){x.catId=v;x.resolvido=true;x.copiadoDe=i;n++;}});
-      const ja=REGRAS_P.some(rg=>normDesc(rg.palavra)===k&&String(rg.categoria_id)===String(v));r.aprender=ja?null:{palavra:k,catId:v,n};}}
+      const ja=REGRAS_P.some(rg=>(rg.palavra===k||normDesc(rg.palavra)===k)&&String(rg.categoria_id)===String(v));r.aprender=ja?null:{palavra:k,catId:v,n};}}
     _keepY=window.scrollY;render();});}
   async function lembrarRegraImport(i){const r=IMPORT[i];if(!r||!r.aprender)return;
     const {error}=await sb.from('regras_palavras').insert({palavra:r.aprender.palavra,categoria_id:Number(r.aprender.catId)||r.aprender.catId,origem:'importacao',criado_por:USER.id});
     if(error){toast('Não consegui salvar a palavra: '+error.message,'erro');return;}
-    await carregarRegrasP();r.aprender.salvo=true;toast(`🔑 Pronto: "${r.aprender.palavra}" vai vir classificado sozinho daqui pra frente.`,'ok');_keepY=window.scrollY;render();}
+    await carregarRegrasP();r.aprender.salvo=true;toast(`🔑 Pronto: "${palavraLegivel(r.aprender.palavra)}" vai vir classificado sozinho daqui pra frente.`,'ok');_keepY=window.scrollY;render();}
   function abrirComboContImport(el,i){_abrirCombo(el,_comboItemsCont(),v=>{IMPORT[i].contatoId=v||null;IMPORT[i].corrigir=false;_keepY=window.scrollY;render();});}
   function podeEditar(){return ['dono','operador','lancador'].includes(PERFIL.papel);}
   function podeExcluir(){return ['dono','operador'].includes(PERFIL.papel);} // excluir, restaurar, fechar mês, corrigir saldo do mês
@@ -1339,6 +1363,8 @@
       if(filtroDia && l.data!==filtroDia)return false;
       if(filtroConta==='caixinha'&&!contaEhCaixinha(l.conta_id))return false;
       if(filtroConta==='banco'&&contaEhCaixinha(l.conta_id))return false;
+      if(filtroTipoLanc==='ent'&&!(Number(l.valor)>0))return false;if(filtroTipoLanc==='sai'&&!(Number(l.valor)<0))return false;
+      if(ocultarNeutras&&l.categorias&&l.categorias.grupo==='neutra')return false;
       if(!q)return true;
       const cat=(l.categorias&&l.categorias.nome)||'';const cont=(l.contatos&&l.contatos.nome)||'';
       const txt=(l.descricao||'').toLowerCase().includes(q.toLowerCase())||cat.toLowerCase().includes(q.toLowerCase())||cont.toLowerCase().includes(q.toLowerCase());
@@ -1438,10 +1464,12 @@
       const cat=l.categorias||{};const cont=l.contatos||{};const neutra=cat.grupo==='neutra';
       const saida=l.valor<0;
       // seletor de categoria inline
-      const selCat=editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatLanc(this,${l.id})"><span>${cat.nome||'⚠ categoria'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`;
+      const obsTxt=(l.documento||'').replace(/</g,'&lt;');
+      const obsLinha=editavel?`<div style="margin-top:3px"><span tabindex="-1" onclick="editarObsLanc(${l.id})" title="Observação (ex.: quem fez a panfletagem). Não precisa cadastrar contato." style="cursor:pointer;font-size:11px;color:var(--muted)">${obsTxt?'📝 '+obsTxt:'+ obs'}</span></div>`:(obsTxt?`<div class="mut" style="font-size:11px;margin-top:3px">📝 ${obsTxt}</div>`:'');
+      const selCat=(editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatLanc(this,${l.id})"><span>${cat.nome||'⚠ categoria'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`)+obsLinha;
       // seletor de contato inline (vermelho se saída sem contato)
-      const faltaContato=saida&&!l.contato_id;
-      const selCont=editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(saida?'⚠ contato':'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—');
+      const faltaContato=saida&&!l.contato_id&&!obsTxt&&!neutra;
+      const selCont=editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(obsTxt?`<span class="mut" title="sem contato cadastrado — vale a observação">${obsTxt.slice(0,22)}</span>`:(saida?'⚠ contato':'— contato'))}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—');
       // seletor de conta inline
       // conta: sempre Sicoob (banco), não precisa mostrar/editar na lista
       const ehCx=contaEhCaixinha(l.conta_id);const quem=nomeDe(l.criado_por);
@@ -1463,9 +1491,10 @@
         :(filtroConta==='caixinha'?`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="abrirContatoPadrao()">👤 Contato padrão por categoria</button>`:'');})()}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">lançados na aba Caixinha antiga do Fluxo — conferir categoria e contato; o dinheiro físico agora mora no sistema Caixinha</span>':''}<span style="margin-left:auto;display:flex;gap:8px;align-items:center">${lentesStatusHTML()}</span></div>${(()=>{const pend=LANC.filter(l=>{const n=String((l.categorias&&l.categorias.nome)||'').toUpperCase();const r=l.ref_externa||'';return (n===CAT_ESTORNAR&&!r.startsWith('cxb:'))||(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'));});return pend.length?`<div class="note" style="border-color:rgba(245,183,64,.45);margin-bottom:10px">🔁 <b>${pend.length} lançamento(s) do Banco Caixinha ainda não ligado(s)</b> — clique no botão amarelo de cada um ("Mandar pro Banco Caixinha" ou "Marcar devolução"). É isso que mantém o em aberto das lojas certo sem ninguém apagar nada.</div>`:'';})()}
       <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12.5px;flex-wrap:wrap">
         <span class="mut">${rows.length} lançamento(s)</span>
-        <span style="color:var(--green)">Entradas: ${BRL(somaE)}</span>
-        <span style="color:var(--red)">Saídas: ${BRL(somaS)}</span>
+        <span onclick="filtroTipoLanc=filtroTipoLanc==='ent'?'':'ent';_keepY=window.scrollY;render()" title="Clique para ver só as entradas" style="cursor:pointer;color:var(--green);padding:1px 8px;border-radius:20px;border:1px solid ${filtroTipoLanc==='ent'?'var(--green)':'transparent'}">Entradas: ${BRL(somaE)}${filtroTipoLanc==='ent'?' ✕':''}</span>
+        <span onclick="filtroTipoLanc=filtroTipoLanc==='sai'?'':'sai';_keepY=window.scrollY;render()" title="Clique para ver só as saídas" style="cursor:pointer;color:var(--red);padding:1px 8px;border-radius:20px;border:1px solid ${filtroTipoLanc==='sai'?'var(--red)':'transparent'}">Saídas: ${BRL(somaS)}${filtroTipoLanc==='sai'?' ✕':''}</span>
         <span style="font-weight:700">Saldo: ${BRL(somaE-somaS)}</span>
+        <span onclick="ocultarNeutras=!ocultarNeutras;try{localStorage.setItem('fluxo_ocultar_neutras',ocultarNeutras?'1':'0')}catch(e){};_keepY=window.scrollY;render()" title="Neutras = transferências entre lojas, Pix de cliente, depósito da gaveta: não entram no resultado" style="cursor:pointer;margin-left:auto;padding:1px 9px;border-radius:20px;border:1px solid var(--line);color:var(--muted)">${ocultarNeutras?'mostrar as neutras':'esconder as neutras'}</span>
       </div>
       <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Contato</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${tr}</tbody></table>${rows.length===0?'<div class="empty"><div class="big">📭</div>Nenhum lançamento'+(filtroDia?' nesse dia.':' ainda. Lance o primeiro acima!')+'</div>':''}</div>`;
   }
@@ -1480,6 +1509,10 @@
     l.descricao=desc;toast('Descrição salva!','ok');
   }
   // muda um campo direto na linha e salva no banco
+
+  async function editarObsLanc(id){const l=LANC.find(x=>x.id===id);if(!l)return;if(bloqueadoPorFechamento(l.data,l.conta_id))return;
+    const v=prompt('Observação deste lançamento (ex.: MARIA — PANFLETAGEM VILA ISA). Deixe vazio para apagar.',l.documento||'');if(v==null)return;
+    await mudarCampoLanc(id,'documento',v.trim()?v.trim().toUpperCase():null);_keepY=window.scrollY;render();}
   async function mudarCampoLanc(id,campo,valor){
     const l=LANC.find(x=>x.id===id);if(!l)return;
     if(bloqueadoPorFechamento(l.data,l.conta_id))return;
@@ -1504,6 +1537,8 @@
       if(filtroDia && l.data!==filtroDia)return false;
       if(filtroConta==='caixinha'&&!contaEhCaixinha(l.conta_id))return false;
       if(filtroConta==='banco'&&contaEhCaixinha(l.conta_id))return false;
+      if(filtroTipoLanc==='ent'&&!(Number(l.valor)>0))return false;if(filtroTipoLanc==='sai'&&!(Number(l.valor)<0))return false;
+      if(ocultarNeutras&&l.categorias&&l.categorias.grupo==='neutra')return false;
       if(!q)return true;
       const cat=(l.categorias&&l.categorias.nome)||'';const cont=(l.contatos&&l.contatos.nome)||'';
       const txt=(l.descricao||'').toLowerCase().includes(q.toLowerCase())||cat.toLowerCase().includes(q.toLowerCase())||cont.toLowerCase().includes(q.toLowerCase());
@@ -2227,6 +2262,9 @@
   function adivinhaCat(txt){for(const[rx,c]of REGRAS_CAT)if(rx.test(txt))return c;return null;}
   function adivinhaContato(txt){for(const[rx,c]of REGRAS_CONTATO)if(rx.test(txt))return c;return null;}
   // detecta transferência entre lojas (contas Rocha)
+  // favorecido/remetente é uma das lojas do grupo? (razão social ou CNPJ da lista das lojas)
+  function empresaDoGrupo(txt){const d=String(txt||''),dig=d.replace(/\D/g,''),n=' '+normDesc(d)+' ';
+    for(const [k,[cnpj,...nomes]] of Object.entries(LOJA_CNPJ)){if(dig.includes(cnpj)||nomes.some(x=>n.includes(' '+x+' ')))return 'Rocha '+k.slice(1);}return null;}
   function ehTransferenciaRocha(txt){return /TRANSF\.CONTAS|OTICA ROCHA|REM\.:|FAV\.:/i.test(txt);}
   // classifica recebimento pro fluxo misto do Lucas
   function tipoRecebimento(memo,name){
@@ -2299,10 +2337,10 @@
       if(r.grupo==='lentes')return `<tr style="opacity:.6">${data}<td>${r.desc}<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">🔗 já lançado pelas Lentes: ${r.jaLentes.descricao}</span></div></td><td colspan="2"><span class="arqbtn" onclick="IMPORT[${i}].jaLentes=null;IMPORT[${i}].grupo='falta';_keepY=window.scrollY;render()" style="cursor:pointer">⏭️ não lança de novo · <u>lançar mesmo assim</u></span></td>${valorTd}</tr>`;
       const destaque=r.corrigir?'style="background:rgba(245,183,64,.08)"':(r.estornar?'style="background:rgba(125,162,255,.07)"':'');
       const etqRegra=r.regra?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 regra "${r.regra}"</span>${r.estornar?` <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">🔁 a estornar → ${r.lojaEstorno||'qual loja?'}</span>`:''}</div>`:(r.sipag?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">💳 ${({antecipacao:'antecipação',debito:'débito',credito_parcela:'parcela de crédito',estorno:'estorno',outro:'Sipag'})[r.sipag.tipo]}${r.sipag.band?' · '+r.sipag.band:''}</span></div>`:(r.grupo==='adivinhado'?'<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">adivinhado</span></div>':''));
-      const aprend=r.aprender?(r.aprender.salvo?`<div style="margin-top:4px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 vai lembrar "${r.aprender.palavra}"</span></div>`:`<div style="margin-top:4px"><button class="catchip" style="font-size:10.5px;padding:2px 8px;cursor:pointer;border-color:var(--green);color:var(--green);background:rgba(61,214,140,.08)" onclick="lembrarRegraImport(${i})">🔑 Lembrar sempre: "${r.aprender.palavra}" → ${(CATS.find(c=>String(c.id)===String(r.aprender.catId))||{}).nome||''}</button>${r.aprender.n?` <span class="mut" style="font-size:11px">· aplicado em mais ${r.aprender.n} linha(s) iguais</span>`:''}</div>`):(r.copiadoDe!=null?`<div class="mut" style="font-size:11px;margin-top:3px">↳ mesma categoria da linha parecida</div>`:'');
-      return `<tr ${destaque}${r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${data}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button></div></td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||'— contato'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td>${valorTd}</tr>`;
+      const aprend=r.aprender?(r.aprender.salvo?`<div style="margin-top:4px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 vai lembrar "${palavraLegivel(r.aprender.palavra)}"</span></div>`:`<div style="margin-top:4px"><button class="catchip" style="font-size:10.5px;padding:2px 8px;cursor:pointer;border-color:var(--green);color:var(--green);background:rgba(61,214,140,.08)" onclick="lembrarRegraImport(${i})">🔑 Lembrar sempre: "${palavraLegivel(r.aprender.palavra)}" → ${(CATS.find(c=>String(c.id)===String(r.aprender.catId))||{}).nome||''}</button>${r.aprender.n?` <span class="mut" style="font-size:11px">· aplicado em mais ${r.aprender.n} linha(s) iguais</span>`:''}</div>`):(r.copiadoDe!=null?`<div class="mut" style="font-size:11px;margin-top:3px">↳ mesma categoria da linha parecida</div>`:'');
+      return `<tr ${destaque}${r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${data}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button>${(()=>{const t=catTransf();return t&&String(r.catId)===String(t.id)&&!r.corrigir?'':`<button class="miniadd" tabindex="-1" style="height:28px;font-size:11px;padding:0 7px;width:auto;white-space:nowrap" title="Não entra no resultado: vai como neutra (transferência/empréstimo). Fica guardada só para o saldo do banco bater — não precisa excluir." onclick="impNaoEntra(${i})">não entra</button>`;})()}</div>${r.obs||r._obsAberto?`<input class="qin maiusc" tabindex="-1" style="margin-top:4px;font-size:11.5px;padding:4px 8px;width:100%" value="${(r.obs||'').replace(/"/g,'&quot;')}" placeholder="observação (ex.: MARIA — PANFLETAGEM)" oninput="IMPORT[${i}].obs=this.value">`:`<div style="margin-top:3px"><span tabindex="-1" onclick="IMPORT[${i}]._obsAberto=true;_keepY=window.scrollY;render()" style="cursor:pointer;font-size:11px;color:var(--muted)">+ obs</span></div>`}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||(r.obs?`<span class="mut">${String(r.obs).slice(0,22).replace(/</g,'&lt;')}</span>`:'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td>${valorTd}</tr>`;
     };
-    const idx=IMPORT.map((r,i)=>i);
+    const idx=IMPORT.map((r,i)=>i).filter(i=>IMPORT_TIPO==='ent'?IMPORT[i].amt>0:IMPORT_TIPO==='sai'?IMPORT[i].amt<0:true);
     const atencao=idx.filter(i=>{const r=IMPORT[i];return r.grupo==='falta'||!r.grupo||r.corrigir||r.estornar||r.resolvido||(!r.catId&&r.grupo!=='ja'&&r.grupo!=='lentes');});
     const pend=atencao.filter(i=>{const r=IMPORT[i];return !r.catId||r.corrigir;}).length;
     const GRUPOS_IMP=[
@@ -2330,12 +2368,15 @@
         <div style="flex:1;min-width:220px"><span class="qlabel">Observação desta importação (opcional)</span><input class="qin" placeholder="Ex: Extrato Sicoob conta principal — junho" value="${importObs}" oninput="importObs=this.value"></div>
         <div class="tag" style="align-self:flex-end">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</div>
       </div>
+      ${(()=>{const nT=IMPORT.filter(r=>r.grupo==='transf'&&r.corrigir).length;return nT?`<div class="note" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-color:rgba(199,134,26,.4)"><span>⇆ <b>${nT} saída(s) para outra conta/loja</b> marcadas "confira". Se for só dinheiro passando de uma loja para outra, confirme: vão como <b>Transferência entre lojas</b> (neutra). Se for <b>reembolso de conta</b> (internet, contabilidade, energia…), troque a categoria só daquela linha. Empréstimo que precisa voltar: <b>A ESTORNAR</b>.</span><button class="btn" style="margin-left:auto;padding:5px 12px;font-size:12.5px" onclick="IMPORT.forEach(r=>{if(r.grupo==='transf'&&r.corrigir)r.corrigir=false;});_keepY=window.scrollY;render()">✓ Confirmar as ${nT}</button></div>`:'';})()}
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 10px"><span class="mut" style="font-size:12px">Mostrar:</span>${[['','Todas'],['ent','Só entradas'],['sai','Só saídas']].map(([k,t])=>`<button class="btn ${IMPORT_TIPO===k?'':'ghost'}" style="padding:4px 11px;font-size:12px" onclick="IMPORT_TIPO='${k}';_keepY=window.scrollY;render()">${t} (${IMPORT.filter(r=>k==='ent'?r.amt>0:k==='sai'?r.amt<0:true).length})</button>`).join('')}</div>
       ${atencao.length?`<h3 style="font-size:14px;margin:6px 0 8px">${pend?`⚠️ Precisam de você — faltam ${pend} de ${atencao.length}`:`✅ Você resolveu as ${atencao.length} — é só confirmar`}</h3><div style="height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin:-2px 0 10px"><div style="height:100%;width:${Math.round((atencao.length-pend)/atencao.length*100)}%;background:var(--green)"></div></div><div class="card" style="padding:0;overflow:auto;margin-bottom:14px"><table><thead><tr><th>Data</th><th>Descrição (texto do banco)</th><th>Categoria</th><th>Contato</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rowsAt}</tbody></table></div>`:''}
       <h3 style="font-size:14px;margin:6px 0 8px">Já classificados — clique pra abrir</h3>
       <div class="card" style="padding:0;overflow:auto"><table><tbody>${blocos||'<tr><td class="mut">—</td></tr>'}</tbody></table></div>
       <div class="card" style="margin-top:16px;text-align:center;background:linear-gradient(100deg,var(--panel),var(--panel-2))">
         <div class="mut" style="font-size:12.5px;margin-bottom:12px">${pend?`👆 Ainda faltam ${pend} em amarelo. Pode confirmar assim mesmo (elas entram sem categoria e aparecem no Dia a dia), ou resolver antes:`:'🎉 Tudo resolvido. É só confirmar:'}</div>
         <button class="btn" id="btnConfImport" onclick="confirmarImport()" style="font-size:15px;padding:13px 32px">✓ Confirmar: lançar ${novos} novas${jaN?` e ligar ${jaN} já lançadas`:''}</button>
+        ${(()=>{const nC=IMPORT.filter(r=>r.grupo!=='ja'&&r.grupo!=='lentes'&&r.catId).length;return pend&&nC&&nC<novos?`<div style="margin-top:10px"><button class="btn ghost" onclick="confirmarImport(true)" title="Lança só as linhas que já têm categoria. As outras ficam para depois e aparecem de novo na próxima importação — nada se perde nem duplica.">Lançar só as ${nC} já classificadas</button> <span class="mut" style="font-size:11.5px">· as outras voltam na próxima importação</span></div>`:'';})()}
         <button class="btn ghost" onclick="IMPORT=[];importObs='';render()" style="margin-left:10px">Cancelar</button>
       </div>`;
     if(_keepY!=null){const y=_keepY;_keepY=null;requestAnimationFrame(()=>window.scrollTo(0,y));}
@@ -2398,7 +2439,7 @@
           item.grupo='falta';item.catId='';return item;
         }
         // 4) saídas: transferência pra outra loja (neutra, mas confira), palavras-chave, regras antigas
-        if(ehTransferenciaRocha(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;return item;}
+        if(ehTransferenciaRocha(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;item.paraLoja=empresaDoGrupo(full);return item;}
         const rp=aplicarRegrasP(full,lojaAtual);
         if(rp&&rp.categoria_id){item.catId=rp.categoria_id;item.contatoId=rp.contato_id||null;item.regra=rp.palavra;item.grupo='regra';
           if(rp.categoria_id===catEstornarId()){item.estornar=true;item.lojaEstorno=lojaDaDescricao(full);item.grupo='falta';}
@@ -2418,11 +2459,15 @@
     reader.readAsText(file,'ISO-8859-1'); // Sicoob usa Latin1
   }
 
-  async function confirmarImport(){
+
+  let IMPORT_TIPO='';
+  function impNaoEntra(i){const r=IMPORT[i];const t=catTransf();if(!r||!t){toast('Crie a categoria neutra "Transferência entre lojas".','erro');return;}
+    r.catId=t.id;r.corrigir=false;r.resolvido=true;r.estornar=false;r.aprender=null;_keepY=window.scrollY;render();}
+  async function confirmarImport(soClassificados){
     const btn=document.getElementById('btnConfImport');if(btn){btn.disabled=true;btn.textContent='Lançando...';}
     const contaSicoob=CONTAS.find(c=>/sicoob/i.test(c.nome))||CONTAS.find(c=>!/caixinha/i.test(c.nome))||null;
     const lojaCurta=lojaNomeCurto(lojaAtual);
-    let ok=0,dup=0,erro=0,fech=0,ligados=0,sip=0,sipErr='',nAutoCat=0,nAutoCt=0;
+    let ok=0,dup=0,erro=0,fech=0,ligados=0,sip=0,sipErr='',nAutoCat=0,nAutoCt=0,pulados=0;
     const gravarSipag=async(r,lancId)=>{ // um crédito de cartão do extrato → tabela da conciliação (não duplica pelo código do banco)
       if(!r.sipag||!r.fitid)return;
       const row={loja:lojaCurta,loja_id:lojaAtual,data:r.iso,valor:r.amt,descricao:(r.desc||'').slice(0,300),tipo:r.sipag.tipo,origem:'ofx',origem_ref:r.fitid,lancamento_id:lancId||null,criado_por:USER.id};
@@ -2438,10 +2483,11 @@
         if(!r.jaImportado&&r.fitid){const {error}=await sb.from('lancamentos').update({fitid:r.fitid}).eq('id',r.jaExiste.id);if(!error)ligados++;}
         await gravarSipag(r,r.jaExiste.id);continue;}
       if(r.grupo==='lentes'&&r.jaLentes){if(r.fitid&&!r.jaLentes.fitid){try{await sb.from('lancamentos').update({fitid:r.fitid}).eq('id',r.jaLentes.id);}catch(e){}}ligados++;continue;}
+      if(soClassificados&&!r.catId){pulados++;continue;}
       if(mesFechadoISO(r.iso)){fech++;continue;}
       const reg={loja_id:lojaAtual,conta_id:contaSicoob?contaSicoob.id:null,data:r.iso,descricao:(r.desc||'').toUpperCase().slice(0,200),
         valor:r.amt,tipo:r.amt>0?'receita':'despesa',categoria_id:r.catId||null,contato_id:r.contatoId||null,
-        pago:true,origem:'ofx',fitid:r.fitid||null,criado_por:USER.id};
+        pago:true,origem:'ofx',fitid:r.fitid||null,criado_por:USER.id};if(r.obs&&r.obs.trim())reg.documento=r.obs.trim().toUpperCase();
       const {data:ins,error}=await sb.from('lancamentos').insert(reg).select('id').single();
       if(error){if(error.message.includes('duplicate')||error.code==='23505')dup++;else erro++;continue;}
       ok++;if(r.catId&&!r.resolvido)nAutoCat++;if(r.contatoId)nAutoCt++;await gravarSipag(r,ins&&ins.id);
@@ -2456,7 +2502,7 @@
       if(eh&&/linhas_|column|schema/i.test(eh.message||''))await sb.from('importacoes').insert(hist); // SQL da v2.4 ainda não rodou
     }catch(e){}
     IMPORT=[];importObs='';importPeriodo={de:'',ate:''};
-    toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${sipErr?` · conciliação: ${sipErr}`:''}`, (erro>0||fech>0||sipErr)?'erro':'ok');
+    toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${pulados?` · ${pulados} sem categoria ficaram para a próxima importação`:''}${sipErr?` · conciliação: ${sipErr}`:''}`, (erro>0||fech>0||sipErr)?'erro':'ok');
     go('lanc');
   }
 
