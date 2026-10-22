@@ -249,7 +249,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.7.4', APP_DATA='22/10/2026';
+  const APP_VERSAO='2.7.6', APP_DATA='22/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1175,7 +1175,7 @@
   }
   let LANC_ANO=[];
   async function carregarLancAno(){
-    const {data}=await sb.from('lancamentos').select('data,valor,conta_id,categorias(nome,grupo)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').limit(5000);
+    const {data}=await sb.from('lancamentos').select('data,valor,conta_id,contato_id,documento,categorias(nome,grupo),contatos(nome,tipo)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').limit(5000);
     LANC_ANO=data||[];
   }
   async function trocarLoja(){
@@ -1298,7 +1298,7 @@
     const {error}=await sb.from('regras_palavras').insert({palavra:r.aprender.palavra,categoria_id:Number(r.aprender.catId)||r.aprender.catId,origem:'importacao',criado_por:USER.id});
     if(error){toast('Não consegui salvar a palavra: '+error.message,'erro');return;}
     await carregarRegrasP();r.aprender.salvo=true;toast(`🔑 Pronto: "${palavraLegivel(r.aprender.palavra)}" vai vir classificado sozinho daqui pra frente.`,'ok');_keepY=window.scrollY;render();}
-  function abrirComboContImport(el,i){_abrirCombo(el,_comboItemsCont(),v=>{IMPORT[i].contatoId=v||null;IMPORT[i].corrigir=false;_keepY=window.scrollY;render();});}
+  function abrirComboContImport(el,i){_abrirCombo(el,_comboItemsCont(),v=>{IMPORT[i].contatoId=v||null;IMPORT[i].corrigir=false;IMPORT[i]._mexido=true;_keepY=window.scrollY;render();});}
   function podeEditar(){return ['dono','operador','lancador'].includes(PERFIL.papel);}
   function podeExcluir(){return ['dono','operador'].includes(PERFIL.papel);} // excluir, restaurar, fechar mês, corrigir saldo do mês
   function ehDono(){return PERFIL.papel==='dono';} // contas, saldo inicial, reabrir mês
@@ -1409,10 +1409,10 @@
         <div><span class="qlabel">Conta</span><div class="qin" style="display:flex;align-items:center;color:var(--muted);background:var(--bg2)">🏦 Sicoob (banco)</div></div>
       </div>
       <div class="quickrow" style="grid-template-columns:1fr 150px;margin-top:10px">
-        <div><span class="qlabel">Nº documento / Observação (opcional)</span><input id="qDoc" class="qin maiusc" placeholder="Ex: boleto 169097165"></div>
+        <div><span class="qlabel">Nº documento / Observação (opcional)</span><input id="qDoc" class="qin maiusc" placeholder="Ex: boleto 169097165 · ou LUÍSA — PANFLETAGEM (vale no lugar do contato)"></div>
         <button class="addbtn" id="btnLancar" onclick="salvarLanc()">+ Lançar</button>
       </div>
-      <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho</span><span>👥 Categoria e contato obrigatórios</span></div>
+      <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho</span><span>👥 Categoria obrigatória · sem contato cadastrado? escreva quem foi na observação</span></div>
     </div>`:'<div class="note">👁️ Seu acesso é somente leitura (contador). Você pode ver e exportar, mas não lançar.</div>';
     const diaLabel=filtroDia?isoParaBR(filtroDia):'Todos os dias';
     document.getElementById('content').innerHTML='<div id="ultimaImportLanc"></div>'+saldoBanco+formHTML+`
@@ -1469,7 +1469,7 @@
       const selCat=(editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatLanc(this,${l.id})"><span>${cat.nome||'⚠ categoria'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`)+obsLinha;
       // seletor de contato inline (vermelho se saída sem contato)
       const faltaContato=saida&&!l.contato_id&&!obsTxt&&!neutra;
-      const selCont=editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(obsTxt?`<span class="mut" title="sem contato cadastrado — vale a observação">${obsTxt.slice(0,22)}</span>`:(saida?'⚠ contato':'— contato'))}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—');
+      const selCont=editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(obsTxt?`<span class="mut" title="sem contato cadastrado — vale a observação">${obsTxt.slice(0,22)}</span>`:(saida?'⚠ contato ou obs':'— contato'))}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—');
       // seletor de conta inline
       // conta: sempre Sicoob (banco), não precisa mostrar/editar na lista
       const ehCx=contaEhCaixinha(l.conta_id);const quem=nomeDe(l.criado_por);
@@ -2335,10 +2335,11 @@
       const data=`<td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td>`;
       if(r.grupo==='ja')return `<tr style="opacity:.7">${data}<td>${r.desc}<div class="mut" style="font-size:11px;margin-top:2px">${r.jaImportado?'já importado antes (mesmo código do banco)':`já digitado: <b>${r.jaExiste.descricao||''}</b> — vai só ganhar o código do banco`}</div></td><td colspan="2">${r.jaImportado?'<span class="mut" style="font-size:11px">nada a fazer</span>':`<span class="arqbtn" style="cursor:pointer" onclick="IMPORT[${i}].grupo='falta';IMPORT[${i}].jaExiste=null;IMPORT[${i}].catId='';_keepY=window.scrollY;render()">não é esse — lançar como novo</span>`}</td>${valorTd}</tr>`;
       if(r.grupo==='lentes')return `<tr style="opacity:.6">${data}<td>${r.desc}<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">🔗 já lançado pelas Lentes: ${r.jaLentes.descricao}</span></div></td><td colspan="2"><span class="arqbtn" onclick="IMPORT[${i}].jaLentes=null;IMPORT[${i}].grupo='falta';_keepY=window.scrollY;render()" style="cursor:pointer">⏭️ não lança de novo · <u>lançar mesmo assim</u></span></td>${valorTd}</tr>`;
-      const destaque=r.corrigir?'style="background:rgba(245,183,64,.08)"':(r.estornar?'style="background:rgba(125,162,255,.07)"':'');
+      const destaque=r.sel===false?'style="opacity:.45"':(r.corrigir?'style="background:rgba(245,183,64,.08)"':(r.estornar?'style="background:rgba(125,162,255,.07)"':''));
+      const dataSel=`<td class="mut" style="white-space:nowrap"><label style="display:flex;gap:6px;align-items:center;cursor:pointer" title="Lançar esta linha agora?"><input type="checkbox" tabindex="-1" ${r.sel!==false?'checked':''} onclick="event.stopPropagation();IMPORT[${i}].sel=this.checked;_keepY=window.scrollY;render()">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</label></td>`;
       const etqRegra=r.regra?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 regra "${r.regra}"</span>${r.estornar?` <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">🔁 a estornar → ${r.lojaEstorno||'qual loja?'}</span>`:''}</div>`:(r.sipag?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">💳 ${({antecipacao:'antecipação',debito:'débito',credito_parcela:'parcela de crédito',estorno:'estorno',outro:'Sipag'})[r.sipag.tipo]}${r.sipag.band?' · '+r.sipag.band:''}</span></div>`:(r.grupo==='adivinhado'?'<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">adivinhado</span></div>':''));
       const aprend=r.aprender?(r.aprender.salvo?`<div style="margin-top:4px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 vai lembrar "${palavraLegivel(r.aprender.palavra)}"</span></div>`:`<div style="margin-top:4px"><button class="catchip" style="font-size:10.5px;padding:2px 8px;cursor:pointer;border-color:var(--green);color:var(--green);background:rgba(61,214,140,.08)" onclick="lembrarRegraImport(${i})">🔑 Lembrar sempre: "${palavraLegivel(r.aprender.palavra)}" → ${(CATS.find(c=>String(c.id)===String(r.aprender.catId))||{}).nome||''}</button>${r.aprender.n?` <span class="mut" style="font-size:11px">· aplicado em mais ${r.aprender.n} linha(s) iguais</span>`:''}</div>`):(r.copiadoDe!=null?`<div class="mut" style="font-size:11px;margin-top:3px">↳ mesma categoria da linha parecida</div>`:'');
-      return `<tr ${destaque}${r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${data}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button>${(()=>{const t=catTransf();return t&&String(r.catId)===String(t.id)&&!r.corrigir?'':`<button class="miniadd" tabindex="-1" style="height:28px;font-size:11px;padding:0 7px;width:auto;white-space:nowrap" title="Não entra no resultado: vai como neutra (transferência/empréstimo). Fica guardada só para o saldo do banco bater — não precisa excluir." onclick="impNaoEntra(${i})">não entra</button>`;})()}</div>${r.obs||r._obsAberto?`<input class="qin maiusc" tabindex="-1" style="margin-top:4px;font-size:11.5px;padding:4px 8px;width:100%" value="${(r.obs||'').replace(/"/g,'&quot;')}" placeholder="observação (ex.: MARIA — PANFLETAGEM)" oninput="IMPORT[${i}].obs=this.value">`:`<div style="margin-top:3px"><span tabindex="-1" onclick="IMPORT[${i}]._obsAberto=true;_keepY=window.scrollY;render()" style="cursor:pointer;font-size:11px;color:var(--muted)">+ obs</span></div>`}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||(r.obs?`<span class="mut">${String(r.obs).slice(0,22).replace(/</g,'&lt;')}</span>`:'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td>${valorTd}</tr>`;
+      return `<tr ${destaque}${r.sel!==false&&r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${dataSel}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button>${(()=>{const t=catTransf();return t&&String(r.catId)===String(t.id)&&!r.corrigir?'':`<button class="miniadd" tabindex="-1" style="height:28px;font-size:11px;padding:0 7px;width:auto;white-space:nowrap" title="Não entra no resultado: vai como neutra (transferência/empréstimo). Fica guardada só para o saldo do banco bater — não precisa excluir." onclick="impNaoEntra(${i})">não entra</button>`;})()}</div>${r.obs||r._obsAberto?`<input class="qin maiusc" tabindex="-1" style="margin-top:4px;font-size:11.5px;padding:4px 8px;width:100%" value="${(r.obs||'').replace(/"/g,'&quot;')}" placeholder="observação (ex.: MARIA — PANFLETAGEM)" oninput="IMPORT[${i}].obs=this.value;IMPORT[${i}]._mexido=true">`:`<div style="margin-top:3px"><span tabindex="-1" onclick="IMPORT[${i}]._obsAberto=true;_keepY=window.scrollY;render()" style="cursor:pointer;font-size:11px;color:var(--muted)">+ obs</span></div>`}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||(r.obs?`<span class="mut">${String(r.obs).slice(0,22).replace(/</g,'&lt;')}</span>`:'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td>${valorTd}</tr>`;
     };
     const idx=IMPORT.map((r,i)=>i).filter(i=>IMPORT_TIPO==='ent'?IMPORT[i].amt>0:IMPORT_TIPO==='sai'?IMPORT[i].amt<0:true);
     const atencao=idx.filter(i=>{const r=IMPORT[i];return r.grupo==='falta'||!r.grupo||r.corrigir||r.estornar||r.resolvido||(!r.catId&&r.grupo!=='ja'&&r.grupo!=='lentes');});
@@ -2355,7 +2356,7 @@
     ];
     const blocos=GRUPOS_IMP.map(([g,tit,sub])=>{const ids=idx.filter(i=>IMPORT[i].grupo===g&&!atencao.includes(i));if(!ids.length)return '';
       const tot=ids.reduce((a,i)=>a+IMPORT[i].amt,0);const aberto=!!IMPORT_ABERTO[g];
-      return `<tr style="background:var(--bg);cursor:pointer" onclick="IMPORT_ABERTO['${g}']=!IMPORT_ABERTO['${g}'];_keepY=window.scrollY;render()"><td colspan="4"><b>${aberto?'▾':'▸'} ${tit}</b> <span class="mut">(${ids.length})</span>${sub?`<div class="mut" style="font-size:11px">${sub}</div>`:''}</td><td class="amt ${tot>=0?'green':'red'}" style="white-space:nowrap">${tot>=0?'+':'-'}${BRL(Math.abs(tot))}</td></tr>${aberto?ids.map(i=>linhaImp(IMPORT[i],i)).join(''):''}`;}).join('');
+      return `<tr style="background:var(--bg);cursor:pointer" onclick="IMPORT_ABERTO['${g}']=!IMPORT_ABERTO['${g}'];_keepY=window.scrollY;render()"><td colspan="4"><b>${aberto?'▾':'▸'} ${tit}</b> <span class="mut">(${ids.length}${ids.some(i=>IMPORT[i].sel===false)?` · ${ids.filter(i=>IMPORT[i].sel!==false).length} marcadas`:''})</span>${g!=='ja'&&g!=='lentes'?` <span class="arqbtn" onclick="event.stopPropagation();impSelGrupo('${g}')">${ids.every(i=>IMPORT[i].sel!==false)?'desmarcar':'marcar'} o grupo</span>`:''}${sub?`<div class="mut" style="font-size:11px">${sub}</div>`:''}</td><td class="amt ${tot>=0?'green':'red'}" style="white-space:nowrap">${tot>=0?'+':'-'}${BRL(Math.abs(tot))}</td></tr>${aberto?ids.map(i=>linhaImp(IMPORT[i],i)).join(''):''}`;}).join('');
     const rowsAt=atencao.map(i=>linhaImp(IMPORT[i],i)).join('');
     const jaN=IMPORT.filter(r=>r.grupo==='ja').length,jaLentesN=IMPORT.filter(r=>r.grupo==='lentes').length;
     const novos=IMPORT.length-jaN-jaLentesN;
@@ -2368,15 +2369,19 @@
         <div style="flex:1;min-width:220px"><span class="qlabel">Observação desta importação (opcional)</span><input class="qin" placeholder="Ex: Extrato Sicoob conta principal — junho" value="${importObs}" oninput="importObs=this.value"></div>
         <div class="tag" style="align-self:flex-end">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</div>
       </div>
-      ${(()=>{const nT=IMPORT.filter(r=>r.grupo==='transf'&&r.corrigir).length;return nT?`<div class="note" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-color:rgba(199,134,26,.4)"><span>⇆ <b>${nT} saída(s) para outra conta/loja</b> marcadas "confira". Se for só dinheiro passando de uma loja para outra, confirme: vão como <b>Transferência entre lojas</b> (neutra). Se for <b>reembolso de conta</b> (internet, contabilidade, energia…), troque a categoria só daquela linha. Empréstimo que precisa voltar: <b>A ESTORNAR</b>.</span><button class="btn" style="margin-left:auto;padding:5px 12px;font-size:12.5px" onclick="IMPORT.forEach(r=>{if(r.grupo==='transf'&&r.corrigir)r.corrigir=false;});_keepY=window.scrollY;render()">✓ Confirmar as ${nT}</button></div>`:'';})()}
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 10px"><span class="mut" style="font-size:12px">Mostrar:</span>${[['','Todas'],['ent','Só entradas'],['sai','Só saídas']].map(([k,t])=>`<button class="btn ${IMPORT_TIPO===k?'':'ghost'}" style="padding:4px 11px;font-size:12px" onclick="IMPORT_TIPO='${k}';_keepY=window.scrollY;render()">${t} (${IMPORT.filter(r=>k==='ent'?r.amt>0:k==='sai'?r.amt<0:true).length})</button>`).join('')}</div>
+      ${(()=>{const nT=IMPORT.filter(r=>r.grupo==='transf'&&r.corrigir).length;return nT?`<div class="note" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-color:rgba(199,134,26,.4)"><span>⇆ <b>${nT} saída(s) para outra conta/loja</b> marcadas "confira". Se for só dinheiro passando de uma loja para outra, confirme: vão como <b>Transferência entre lojas</b> (neutra). Se for <b>reembolso de conta</b> (internet, contabilidade, energia…), troque a categoria só daquela linha. Empréstimo que precisa voltar: <b>A ESTORNAR</b>.</span><button class="btn" style="margin-left:auto;padding:5px 12px;font-size:12.5px" onclick="IMPORT.forEach(r=>{if(r.grupo==='transf'&&r.corrigir){r.corrigir=false;r._mexido=true;}});_keepY=window.scrollY;render()">✓ Confirmar as ${nT}</button></div>`:'';})()}
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 6px"><span class="mut" style="font-size:12px;min-width:84px">Marcar para lançar:</span>${[['todas','Todas'],['ent','Só entradas'],['sai','Só saídas'],['entmexi','Entradas + o que eu mexi'],['mexi','Só o que eu mexi'],['class','Só as classificadas'],['nenhuma','Nenhuma']].map(([k,t])=>`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="impSelecionar('${k}')">${t}</button>`).join('')}</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 10px"><span class="mut" style="font-size:12px;min-width:84px">Mostrar:</span>${[['','Todas'],['ent','Só entradas'],['sai','Só saídas']].map(([k,t])=>`<button class="btn ${IMPORT_TIPO===k?'':'ghost'}" style="padding:4px 11px;font-size:12px" onclick="IMPORT_TIPO='${k}';${k?`impSelecionar('${k}')`:'_keepY=window.scrollY;render()'}">${t} (${IMPORT.filter(r=>k==='ent'?r.amt>0:k==='sai'?r.amt<0:true).length})</button>`).join('')}</div>
       ${atencao.length?`<h3 style="font-size:14px;margin:6px 0 8px">${pend?`⚠️ Precisam de você — faltam ${pend} de ${atencao.length}`:`✅ Você resolveu as ${atencao.length} — é só confirmar`}</h3><div style="height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin:-2px 0 10px"><div style="height:100%;width:${Math.round((atencao.length-pend)/atencao.length*100)}%;background:var(--green)"></div></div><div class="card" style="padding:0;overflow:auto;margin-bottom:14px"><table><thead><tr><th>Data</th><th>Descrição (texto do banco)</th><th>Categoria</th><th>Contato</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rowsAt}</tbody></table></div>`:''}
       <h3 style="font-size:14px;margin:6px 0 8px">Já classificados — clique pra abrir</h3>
       <div class="card" style="padding:0;overflow:auto"><table><tbody>${blocos||'<tr><td class="mut">—</td></tr>'}</tbody></table></div>
       <div class="card" style="margin-top:16px;text-align:center;background:linear-gradient(100deg,var(--panel),var(--panel-2))">
         <div class="mut" style="font-size:12.5px;margin-bottom:12px">${pend?`👆 Ainda faltam ${pend} em amarelo. Pode confirmar assim mesmo (elas entram sem categoria e aparecem no Dia a dia), ou resolver antes:`:'🎉 Tudo resolvido. É só confirmar:'}</div>
-        <button class="btn" id="btnConfImport" onclick="confirmarImport()" style="font-size:15px;padding:13px 32px">✓ Confirmar: lançar ${novos} novas${jaN?` e ligar ${jaN} já lançadas`:''}</button>
-        ${(()=>{const nC=IMPORT.filter(r=>r.grupo!=='ja'&&r.grupo!=='lentes'&&r.catId).length;return pend&&nC&&nC<novos?`<div style="margin-top:10px"><button class="btn ghost" onclick="confirmarImport(true)" title="Lança só as linhas que já têm categoria. As outras ficam para depois e aparecem de novo na próxima importação — nada se perde nem duplica.">Lançar só as ${nC} já classificadas</button> <span class="mut" style="font-size:11.5px">· as outras voltam na próxima importação</span></div>`:'';})()}
+        ${(()=>{const nv=IMPORT.filter(r=>r.grupo!=='ja'&&r.grupo!=='lentes'),sel=nv.filter(r=>r.sel!==false);
+          if(sel.length===nv.length)return `<button class="btn" id="btnConfImport" onclick="confirmarImport()" style="font-size:15px;padding:13px 32px">✓ Confirmar: lançar ${novos} novas${jaN?` e ligar ${jaN} já lançadas`:''}</button>`;
+          const e=sel.filter(r=>r.amt>0).length,s2=sel.length-e;
+          return `<button class="btn" id="btnConfImport" onclick="confirmarImport()" ${sel.length?'':'disabled'} style="font-size:15px;padding:13px 32px">✓ Lançar as ${sel.length} marcadas (${e} entrada${e===1?'':'s'} · ${s2} saída${s2===1?'':'s'})${jaN?` e ligar ${jaN} já lançadas`:''}</button><div class="mut" style="font-size:11.5px;margin-top:8px">As ${nv.length-sel.length} desmarcadas não entram agora: aparecem de novo na próxima importação deste extrato — nada se perde nem duplica.</div>`;})()}
+
         <button class="btn ghost" onclick="IMPORT=[];importObs='';render()" style="margin-left:10px">Cancelar</button>
       </div>`;
     if(_keepY!=null){const y=_keepY;_keepY=null;requestAnimationFrame(()=>window.scrollTo(0,y));}
@@ -2461,9 +2466,15 @@
 
 
   let IMPORT_TIPO='';
+  function impSelecionar(modo){const mexi=r=>!!(r.resolvido||r._mexido);
+    IMPORT.forEach(r=>{if(r.grupo==='ja'||r.grupo==='lentes')return;
+      r.sel=modo==='todas'?true:modo==='nenhuma'?false:modo==='ent'?r.amt>0:modo==='sai'?r.amt<0:modo==='entmexi'?(r.amt>0||mexi(r)):modo==='mexi'?mexi(r):modo==='class'?!!r.catId:true;});
+    _keepY=window.scrollY;render();}
+  function impSelGrupo(g){const its=IMPORT.filter(r=>r.grupo===g);const todos=its.every(r=>r.sel!==false);its.forEach(r=>{r.sel=!todos;});_keepY=window.scrollY;render();}
+
   function impNaoEntra(i){const r=IMPORT[i];const t=catTransf();if(!r||!t){toast('Crie a categoria neutra "Transferência entre lojas".','erro');return;}
-    r.catId=t.id;r.corrigir=false;r.resolvido=true;r.estornar=false;r.aprender=null;_keepY=window.scrollY;render();}
-  async function confirmarImport(soClassificados){
+    r.catId=t.id;r.corrigir=false;r.resolvido=true;r._mexido=true;r.estornar=false;r.aprender=null;_keepY=window.scrollY;render();}
+  async function confirmarImport(soClassificados,soTipo){
     const btn=document.getElementById('btnConfImport');if(btn){btn.disabled=true;btn.textContent='Lançando...';}
     const contaSicoob=CONTAS.find(c=>/sicoob/i.test(c.nome))||CONTAS.find(c=>!/caixinha/i.test(c.nome))||null;
     const lojaCurta=lojaNomeCurto(lojaAtual);
@@ -2479,6 +2490,8 @@
       }catch(e){sipErr=sipErr||String(e.message||e);}
     };
     for(const r of IMPORT){
+      if(soTipo==='ent'&&!(r.amt>0)){pulados++;continue;}if(soTipo==='sai'&&!(r.amt<0)){pulados++;continue;}
+      if(r.sel===false&&r.grupo!=='ja'&&r.grupo!=='lentes'){pulados++;continue;}
       if(r.grupo==='ja'&&r.jaExiste){
         if(!r.jaImportado&&r.fitid){const {error}=await sb.from('lancamentos').update({fitid:r.fitid}).eq('id',r.jaExiste.id);if(!error)ligados++;}
         await gravarSipag(r,r.jaExiste.id);continue;}
@@ -2495,14 +2508,14 @@
     // salva o histórico da importação
     try{
       const hist={loja_id:lojaAtual,
-        periodo_de:importPeriodo.de?importPeriodo.de.split('/').reverse().join('-'):null,
-        periodo_ate:importPeriodo.ate?importPeriodo.ate.split('/').reverse().join('-'):null,
-        qtd_lancamentos:ok,observacao:importObs||null,importado_por:USER.id};
+        periodo_de:(importPeriodo.de&&!pulados)?importPeriodo.de.split('/').reverse().join('-'):null,
+        periodo_ate:(importPeriodo.ate&&!pulados)?importPeriodo.ate.split('/').reverse().join('-'):null, // importação parcial não conta como "extrato em dia"
+        qtd_lancamentos:ok,observacao:((pulados?`[parcial: ${pulados} linha(s) ficaram para depois] `:'')+(importObs||''))||null,importado_por:USER.id};
       const {error:eh}=await sb.from('importacoes').insert(Object.assign({linhas_total:ok,linhas_auto_cat:nAutoCat,linhas_auto_contato:nAutoCt},hist));
       if(eh&&/linhas_|column|schema/i.test(eh.message||''))await sb.from('importacoes').insert(hist); // SQL da v2.4 ainda não rodou
     }catch(e){}
-    IMPORT=[];importObs='';importPeriodo={de:'',ate:''};
-    toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${pulados?` · ${pulados} sem categoria ficaram para a próxima importação`:''}${sipErr?` · conciliação: ${sipErr}`:''}`, (erro>0||fech>0||sipErr)?'erro':'ok');
+    IMPORT=[];importObs='';importPeriodo={de:'',ate:''};IMPORT_TIPO='';
+    toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${pulados?` · ${pulados} ficaram para a próxima importação`:''}${sipErr?` · conciliação: ${sipErr}`:''}`, (erro>0||fech>0||sipErr)?'erro':'ok');
     go('lanc');
   }
 
@@ -2862,36 +2875,35 @@
     // busca lançamentos financeiros de TODAS as lojas no ano
     const {data}=await sb.from('lancamentos').select('loja_id,valor,data,descricao,categoria_id,categorias(nome)').gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').in('categoria_id',catsFin.length?catsFin:[-1]).limit(5000);
     const lancs=data||[];
-    // soma por loja
-    const porLoja={};
+    // soma por loja e por mês (valor exato de cada mês; o mês atual vai somando dia a dia)
+    const hoje=new Date(),mAtual=hoje.getFullYear()===ANO_FIXO?hoje.getMonth():11;
+    const porLoja={},porMesG=Array(12).fill(0);
     lancs.forEach(l=>{
-      if(!porLoja[l.loja_id])porLoja[l.loja_id]={total:0,qtd:0,porCat:{}};
-      const v=Math.abs(Number(l.valor));
-      porLoja[l.loja_id].total+=v;porLoja[l.loja_id].qtd++;
+      if(!porLoja[l.loja_id])porLoja[l.loja_id]={total:0,qtd:0,porCat:{},mes:Array(12).fill(0),mesCat:Array.from({length:12},()=>({}))};
+      const v=Math.abs(Number(l.valor)),m=parseInt(l.data.slice(5,7),10)-1,d=porLoja[l.loja_id];
       const cat=(l.categorias&&l.categorias.nome)||'—';
-      porLoja[l.loja_id].porCat[cat]=(porLoja[l.loja_id].porCat[cat]||0)+v;
+      d.total+=v;d.qtd++;d.porCat[cat]=(d.porCat[cat]||0)+v;d.mes[m]+=v;d.mesCat[m][cat]=(d.mesCat[m][cat]||0)+v;
     });
-    const linhas=lojasDoModulo().map(loja=>{
-      const d=porLoja[loja.id];if(!d)return null;
-      return {nome:loja.nome,id:loja.id,...d};
-    }).filter(Boolean).sort((a,b)=>b.total-a.total);
+    const linhas=lojasDoModulo().map(loja=>{const d=porLoja[loja.id];if(!d)return null;porLoja[loja.id].mes.forEach((v,m)=>porMesG[m]+=v);return {nome:loja.nome,id:loja.id,...d};}).filter(Boolean).sort((a,b)=>b.total-a.total);
     const totalGeral=linhas.reduce((s,l)=>s+l.total,0);
     if(linhas.length===0){
-      document.getElementById('content').innerHTML=`<div class="note">🏦 <b>Juros por loja</b> — mostra quanto cada loja pagou de custo financeiro (juros de cheque especial, empréstimo, tarifas) no ano. Ajuda a decidir onde vale trocar cheque especial por empréstimo.</div><div class="card empty"><div class="big">🏦</div><b>Nenhum custo financeiro lançado ainda</b><div style="margin-top:6px">Conforme você importar os extratos e classificar os juros/tarifas, eles aparecem aqui.</div></div>`;
+      document.getElementById('content').innerHTML=`<div class="note">🏦 <b>Juros por loja</b> — quanto cada loja pagou de custo financeiro (juros de cheque especial, empréstimo, tarifas), mês a mês.</div><div class="card empty"><div class="big">🏦</div><b>Nenhum custo financeiro lançado ainda</b><div style="margin-top:6px">Lance os juros e tarifas do extrato com uma categoria que tenha "juros", "cheque especial", "empréstimo" ou "tarifa" no nome.</div></div>`;
       return;
     }
-    const rows=linhas.map((l,i)=>{
-      const detalhe=Object.entries(l.porCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`${c}: ${BRL(v)}`).join(' · ');
-      const media=l.total/12;
-      return `<tr><td><b>${l.nome}</b></td><td class="amt red" style="text-align:right">${BRL(l.total)}</td><td class="amt" style="text-align:right">${BRL(media)}</td><td class="mut" style="font-size:11px">${detalhe}</td></tr>`;
-    }).join('');
-    document.getElementById('content').innerHTML=`<div class="note">🏦 <b>Juros por loja — ${ANO_FIXO}.</b> Quanto cada loja pagou de custo financeiro (cheque especial, empréstimo, tarifas). Quanto maior, mais vale trocar o cheque especial por um empréstimo mais barato.</div>
+    const meses=Array.from({length:mAtual+1},(_,m)=>m);
+    const cel=(v,cats,m)=>`<td class="amt" style="text-align:right;white-space:nowrap${v?';color:var(--red)':''}${m===mAtual?';background:rgba(245,183,64,.06)':''}" title="${cats?Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,x])=>c+': '+BRL(x)).join(' · '):''}">${v?BRL(v):'—'}</td>`;
+    const rows=linhas.map(l=>`<tr><td style="white-space:nowrap"><b>${l.nome}</b></td>${meses.map(m=>cel(l.mes[m],l.mesCat[m],m)).join('')}<td class="amt" style="text-align:right;white-space:nowrap"><b>${BRL(l.total)}</b></td></tr>`).join('')
+      +`<tr style="border-top:2px solid var(--line)"><td><b>Grupo</b></td>${meses.map(m=>`<td class="amt" style="text-align:right;white-space:nowrap${m===mAtual?';background:rgba(245,183,64,.06)':''}"><b>${porMesG[m]?BRL(porMesG[m]):'—'}</b></td>`).join('')}<td class="amt" style="text-align:right;white-space:nowrap"><b style="color:var(--red)">${BRL(totalGeral)}</b></td></tr>`;
+    const mPass=mAtual-1;
+    document.getElementById('content').innerHTML=`<div class="note">🏦 <b>Juros por loja — ${ANO_FIXO}, mês a mês.</b> Quanto cada loja pagou de custo financeiro (cheque especial, empréstimo, tarifas) em cada mês. O mês atual vai somando conforme os extratos são importados; quando o mês acaba, o valor fica guardado. Passe o mouse no valor para ver o detalhe.</div>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:16px">
-        <div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">TOTAL DE JUROS/TARIFAS (todas as lojas)</div><div style="font-size:28px;font-weight:800;color:var(--red);margin-top:8px">${BRL(totalGeral)}</div><div class="mut" style="font-size:11px;margin-top:4px">no ano de ${ANO_FIXO}</div></div>
-        <div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">MÉDIA POR MÊS</div><div style="font-size:28px;font-weight:800;color:var(--amber);margin-top:8px">${BRL(totalGeral/12)}</div><div class="mut" style="font-size:11px;margin-top:4px">custo financeiro mensal do grupo</div></div>
+        <div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">${MESES_NOME[mAtual].toUpperCase()} (ATÉ AGORA)</div><div style="font-size:28px;font-weight:800;color:var(--amber);margin-top:8px">${BRL(porMesG[mAtual])}</div><div class="mut" style="font-size:11px;margin-top:4px">vai somando até o fim do mês</div></div>
+        ${mPass>=0?`<div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">${MESES_NOME[mPass].toUpperCase()}</div><div style="font-size:28px;font-weight:800;color:var(--red);margin-top:8px">${BRL(porMesG[mPass])}</div><div class="mut" style="font-size:11px;margin-top:4px">mês fechado</div></div>`:''}
+        <div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">TOTAL NO ANO</div><div style="font-size:28px;font-weight:800;color:var(--red);margin-top:8px">${BRL(totalGeral)}</div><div class="mut" style="font-size:11px;margin-top:4px">${nomeTodas()} · ${ANO_FIXO}</div></div>
       </div>
-      <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Loja</th><th style="text-align:right">Total no ano</th><th style="text-align:right">Média/mês</th><th>Detalhe</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <div class="note" style="margin-top:16px;background:rgba(61,220,145,.06);border-color:rgba(61,220,145,.2)">💡 <b>Dica:</b> as lojas com maior custo financeiro no topo são as que mais se beneficiam de trocar o cheque especial por um empréstimo. Compare os juros do empréstimo com esse valor mensal — se o empréstimo sair mais barato, vale a troca (como você fez no laboratório).</div>`;
+      <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>Loja</th>${meses.map(m=>`<th style="text-align:right">${MESES_NOME[m].slice(0,3)}${m===mAtual?' *':''}</th>`).join('')}<th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="mut" style="font-size:11.5px;margin-top:6px">* ${MESES_NOME[mAtual]} ainda está correndo.</div>
+      <div class="note" style="margin-top:16px;background:rgba(61,220,145,.06);border-color:rgba(61,220,145,.2)">💡 <b>Dica:</b> as lojas no topo são as que mais pagam custo financeiro. Compare o valor de um mês com a parcela de um empréstimo — se o empréstimo sair mais barato, vale trocar o cheque especial (como você fez no laboratório).</div>`
   }
 
   // ---- POR CONTATO (relatório) ----
@@ -2902,11 +2914,13 @@
     const porContato={};
     LANC_ANO.forEach(l=>{
       const m=parseInt(l.data.split('-')[1],10)-1;if(m!==mesSel)return;
-      const nome=(l.contatos&&l.contatos.nome)||'(sem contato)';
+      const obs=!(l.contatos&&l.contatos.nome)&&l.documento&&String(l.documento).trim()?String(l.documento).trim().toUpperCase():'';
+      const nome=(l.contatos&&l.contatos.nome)||obs||'(sem contato)';
       const tipo=(l.contatos&&l.contatos.tipo)||'';
-      const v=Number(l.valor);
-      if(!porContato[nome])porContato[nome]={nome,tipo,entrada:0,saida:0};
-      if(v>0)porContato[nome].entrada+=v;else porContato[nome].saida+=Math.abs(v);
+      const v=Number(l.valor),chave=(obs?'obs:':'c:')+nome;
+      if(!porContato[chave])porContato[chave]={nome,tipo,obs:!!obs,cats:new Set(),entrada:0,saida:0,qtd:0};
+      const pc=porContato[chave];pc.qtd++;if(l.categorias&&l.categorias.nome)pc.cats.add(l.categorias.nome);
+      if(v>0)pc.entrada+=v;else pc.saida+=Math.abs(v);
     });
     const lista=Object.values(porContato).sort((a,b)=>(b.saida+b.entrada)-(a.saida+a.entrada));
     const seletor=`<div style="display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 14px;width:fit-content;margin-bottom:16px">
@@ -2914,8 +2928,9 @@
       <span style="font-weight:700;font-size:14px;min-width:130px;text-align:center">${MESES_NOME[mesSel]} ${ANO_FIXO}</span>
       <button class="burger" style="width:32px;height:32px" onclick="navMes(1)">›</button></div>`;
     if(lista.length===0){document.getElementById('content').innerHTML=seletor+'<div class="card empty"><div class="big">👥</div>Nenhum lançamento neste mês</div>';return;}
-    const rows=lista.map(c=>`<tr><td>${c.tipo?`<span class="contchip ${c.tipo==='funcionario'?'func':'emp'}">${c.tipo==='funcionario'?'👤':'🏢'} ${c.nome}</span>`:c.nome}</td><td class="amt green">${c.entrada>0?'+'+BRL(c.entrada):'—'}</td><td class="amt red">${c.saida>0?'-'+BRL(c.saida):'—'}</td><td class="amt"><b>${BRL(c.entrada-c.saida)}</b></td></tr>`).join('');
-    document.getElementById('content').innerHTML=seletor+`<div class="note">👥 Quanto entrou e saiu por contato em ${MESES_NOME[mesSel]}. Útil pra ver quanto cada funcionário ganhou ou quanto pagou a cada fornecedor.</div>
+    const esc=t=>String(t).replace(/</g,'&lt;');
+    const rows=lista.map(c=>`<tr><td>${c.obs?`<span title="Sem contato cadastrado — identificado pela observação" style="font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:0 7px;margin-right:6px">obs</span>${esc(c.nome)} <span class="mut" style="font-size:11.5px">· ${[...c.cats].join(', ')||'—'} · ${c.qtd} lanç.</span>`:(c.tipo?`<span class="contchip ${c.tipo==='funcionario'?'func':'emp'}">${c.tipo==='funcionario'?'👤':'🏢'} ${c.nome}</span>`:c.nome)}</td><td class="amt green">${c.entrada>0?'+'+BRL(c.entrada):'—'}</td><td class="amt red">${c.saida>0?'-'+BRL(c.saida):'—'}</td><td class="amt"><b>${BRL(c.entrada-c.saida)}</b></td></tr>`).join('');
+    document.getElementById('content').innerHTML=seletor+`<div class="note">👥 Quanto entrou e saiu por contato em ${MESES_NOME[mesSel]}. Útil pra ver quanto cada funcionário ganhou ou quanto pagou a cada fornecedor. Quem não tem contato cadastrado mas tem <b>observação</b> (ex.: LUÍSA — PANFLETAGEM) aparece pela observação, marcado <b>obs</b>.</div>
       <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Contato</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Saldo</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 

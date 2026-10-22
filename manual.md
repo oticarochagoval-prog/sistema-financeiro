@@ -194,10 +194,11 @@ O lançamento do Sicoob volta a ser **pelo extrato**. Ninguém precisa redigitar
   - Transferência entre lojas é **neutra**: não entra em receita, despesa nem DRE. Só entra na escada do banco, para o saldo bater.
 - O botão **✓ Confirmar as N** confirma de uma vez todas as que são só transferência. Empréstimo que precisa voltar vai em **A ESTORNAR**.
 - **Botão "não entra" (v2.7.3):** em cada linha da importação. A linha vai como **neutra** (transferência/empréstimo): não entra em receita, despesa, DRE nem Radar. Fica guardada só para o saldo do banco bater. **Não precisa excluir.**
-- **Mostrar: Todas / Só entradas / Só saídas** na importação, para conferir por partes.
-- **Lançar só as já classificadas:** lança o que já tem categoria. As outras **aparecem de novo na próxima importação**, então nada se perde nem duplica.
+- **Mostrar: Todas / Só entradas / Só saídas** na importação, para conferir por partes. Clicar em "Só entradas" (ou "Só saídas") também já deixa marcado só aquele tipo para lançar.
+- **Escolher o que lançar agora (v2.7.6):** cada linha tem uma caixinha ao lado da data. A barra **"Marcar para lançar"** marca de uma vez: Todas, Só entradas, Só saídas, **Entradas + o que eu mexi** (todas as entradas mais as saídas em que você escolheu categoria, contato, observação ou "não entra"), Só o que eu mexi, Só as classificadas ou Nenhuma. Cada grupo também tem "marcar/desmarcar o grupo". O botão mostra quantas vão: **"Lançar as N marcadas (X entradas · Y saídas)"**. As desmarcadas **aparecem de novo na próxima importação** do mesmo extrato — nada se perde nem duplica. Importação parcial não marca o extrato como "em dia".
 - **Observação no lugar do contato (v2.7.4):** para quem não precisa virar contato (panfletagem, blogueira, ajuda de um dia), clique em **"+ obs"**, embaixo da categoria, e escreva (ex.: MARIA — PANFLETAGEM VILA ISA). Funciona na importação e nos Lançamentos.
   - A observação aparece no lugar do contato e a linha **não fica vermelha**.
+  - No relatório **Por contato**, quem não tem contato mas tem observação aparece pela observação (marcado **obs**), com a categoria e quantos lançamentos — ex.: LUÍSA — PANFLETAGEM · Marketing · 2 lanç. Na tela de lançar, o campo vazio diz **"⚠ contato ou obs"**, para a equipe saber que a observação vale no lugar do contato.
   - No medidor de automação, ela conta como "com contato".
 - **Lançamentos → "esconder as neutras":** tira da lista as transferências, os Pix de cliente e os depósitos da gaveta. O sistema lembra a escolha.
 - **Só no teclado (v2.7.2):** use **Tab** para ir de campo em campo (categoria → contato → próxima linha). Comece a **digitar** ou aperte **Enter** para abrir a busca, e **Enter** de novo para escolher: o cursor pula sozinho para o próximo campo. **Esc** fecha sem mudar. Vale na importação e nos Lançamentos.
@@ -353,6 +354,7 @@ No alto da tela, ao lado da escolha da loja, ficam os **módulos**. Ao trocar de
 
 - **Cada módulo soma só o que é dele.** "Grupo todo" (ou "Todas as empresas"), Radar, Agenda e Dashboard nunca misturam módulos.
 - **Cartão × Sipag, Caixinha, Fechamento de caixa e Juros por loja** aparecem só nas Óticas.
+- **Juros por loja (v2.7.6):** mostra o valor exato de cada mês, por loja (Jan até o mês atual), com a linha do Grupo e o total do ano. O mês atual vai somando conforme os extratos entram e fica guardado quando o mês acaba. Em cima: o mês atual (até agora), o mês passado e o total no ano. Passe o mouse num valor para ver o detalhe (juros, tarifa…).
 - **Cada empresa nova tem uma "CONTA PRINCIPAL"** para importar o extrato do banco dela, e tem Agenda, Radar e palavras-chave iguais às das lojas.
 - **A Casa tem categorias próprias** (CASA · MERCADO, ESCOLA, CARTÃO DE CRÉDITO…) e contatos e palavras-chave próprios. Nada disso aparece nas lojas, e o que é das lojas não aparece na Casa. Categoria ou contato criado dentro da Casa fica da Casa.
 - **A tranca da Casa é no banco de dados.** Quem não tem acesso não vê a Casa nem pelo sistema nem pelo banco.
@@ -387,6 +389,8 @@ No alto da tela, ao lado da escolha da loja, ficam os **módulos**. Ao trocar de
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.7.6 | Importação: caixinha em cada linha e barra "Marcar para lançar" (Entradas + o que eu mexi, Só o que eu mexi…); o resto volta na próxima importação. Por contato: mostra a observação quando não há contato (e passou a trazer os contatos certinho). Juros por loja: valor de cada mês por loja, sem média | Nenhum |
+| 22/10/2026 | 2.7.5 | Importação: com "Só entradas"/"Só saídas", o botão lança só aquele tipo; o resto volta na próxima importação. Importação parcial não marca o extrato como em dia. Neutras não ficam vermelhas por falta de contato | Nenhum |
 | 22/10/2026 | 2.7.4 | "+ obs" embaixo da categoria (importação e Lançamentos): observação no lugar de cadastrar contato (panfletagem, blogueira); não fica vermelho e conta no medidor | Nenhum |
 | 22/10/2026 | 2.7.3 | Importação: botão "não entra" (neutra, sem excluir), filtro Todas/Só entradas/Só saídas e "Lançar só as já classificadas" (o resto volta na próxima). Lançamentos: "esconder as neutras" | Nenhum |
 | 22/10/2026 | 2.7.2 | Teclado: Tab de campo em campo, digitar abre a busca, Enter escolhe e pula para o próximo (importação e Lançamentos). Lançamentos: filtro só Entradas / só Saídas. Saída para outra loja volta a pedir "confira" (pode ser reembolso) e não aprende pelo nome da loja | Nenhum |
