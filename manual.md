@@ -48,7 +48,7 @@ Cada linha em Lançamentos mostra uma etiqueta: **OFX** (veio da importação do
 
 ## Mês fechado
 
-Depois de fechar, ninguém consegue lançar, editar ou excluir nada com data daquele mês na conta do banco. Se tentar, o sistema avisa. Só o dono reabre, em Fechamento do mês, com motivo. A caixinha não trava.
+Depois de fechar, ninguém consegue lançar, editar ou excluir nada com data daquele mês na conta do banco. Se tentar, o sistema avisa. Só o gestor reabre, em Fechamento do mês, com motivo. A caixinha não trava.
 
 ## Saldo negativo: o que colocar
 
@@ -143,9 +143,9 @@ Cada pessoa entra com o **próprio nome e senha** (tela "Quem é você?"). Tudo 
 
 | Papel | Quem | Pode | Não pode |
 | --- | --- | --- | --- |
-| Dono | Lucas, Heloísa | Tudo: lançar, importar, excluir, restaurar, fechar e reabrir mês, contas e saldo inicial | — |
+| Gestor | Lucas, Heloísa | Tudo: lançar, importar, excluir, restaurar, fechar e reabrir mês, contas e saldo inicial | — |
 | Lançador | Rhaiane, Carol | Lançar, corrigir categoria/contato, importar extrato, ver Lixeira | Excluir, restaurar, fechar mês, Configurações |
-| Operador | (ninguém hoje) | Igual ao dono, menos contas/saldo inicial e reabrir mês | Contas, reabrir mês |
+| Operador | (ninguém hoje) | Igual ao gestor, menos contas/saldo inicial e reabrir mês | Contas, reabrir mês |
 | Contador | (ninguém hoje) | Só olhar | Qualquer alteração |
 
 Não é só botão escondido: o banco também recusa (por exemplo, um lançador não consegue excluir nem pelo navegador). A **Lixeira** mostra quem excluiu, quando, e quem restaurou. Para trocar o papel de alguém, o Lucas roda uma linha no banco.
@@ -264,7 +264,7 @@ Menu **🧭 Radar do mês**, logo abaixo do Dashboard. Mostra **o que deve entra
 - **Fixado:** fica no valor exato até alguém trocar em Recorrentes.
 - Fixe só o que precisa ser exato ou ter aviso de vencimento.
 
-**📌 Fixar (só dono):** para valor que não varia, como o aluguel. Ele vira um **Recorrente** e passa a valer no lugar da média. Quando mudar, troque em **Recorrentes**, uma vez só.
+**📌 Fixar (só gestor):** para valor que não varia, como o aluguel. Ele vira um **Recorrente** e passa a valer no lugar da média. Quando mudar, troque em **Recorrentes**, uma vez só.
 
 ## 🤖 Medidor de automação (v2.4.0)
 
@@ -298,6 +298,29 @@ O Caixinha não tem contato, então os lançamentos dele chegam no Fluxo só com
 
 Nada que já tem contato muda. Mês fechado não é mexido. Para trocar um padrão, abra a mesma tela pelo botão **👤 Contato padrão por categoria** (aparece no filtro **Caixinha antiga**).
 
+## 📅 Agenda de pagamentos (v2.6.0)
+
+O antigo **A pagar** virou **Agenda de pagamentos**. As contas ficam numa tabela própria e **não mexem em saldo, DRE nem fechamento**. Elas só mostram o que vem pela frente.
+
+**A semana é de sábado a sexta.** O que vence no sábado ou no domingo aparece na **segunda**. Cada dia mostra as contas e o total. Em cima aparecem o total da semana, quanto **já foi pago**, quanto **falta** e quanto vem na **próxima semana**. Dá para ver por **loja** ou o **Grupo todo**.
+
+**Três regras:**
+- ✅ **Baixa sozinha.** Quando o pagamento aparece no extrato (mesmo valor, de 7 dias antes a 10 dias depois do vencimento), a conta vira **paga**. Se o lançamento do extrato estiver sem categoria ou contato, ele ganha os da conta.
+- ✅ **Lançar é rápido.** Cole o **código de barras / linha digitável**: o valor e o vencimento entram sozinhos. A categoria e o contato são sugeridos pelas palavras-chave. Se for parcelado, escolha as vezes e ele cria todas, uma por mês, no mesmo dia.
+- ✅ **Não amontoa.** O vencido de semanas anteriores fica numa caixa separada e não soma na semana.
+  - **"Já paguei"** pergunta como foi pago (Sicoob, outra conta, dinheiro).
+  - **"Não vou pagar"** tira da agenda e guarda o motivo.
+
+**Aparece sozinho, sem ninguém lançar:**
+- os **fixos dos Recorrentes** (aluguel, Simples…), que ficam pagos quando sai um lançamento parecido perto do dia;
+- os **boletos de lentes previstos no Caixinha**, quando você está conectado no Caixinha.
+
+Clique em qualquer conta para ver os detalhes ou resolver. A Agenda também alimenta o **Radar do mês** e o card **A pagar** do Dashboard.
+
+**Funcionário com salário que varia (v2.6.1):** cadastre em **Recorrentes** com o **contato** do funcionário e o dia do pagamento. A Agenda mostra a **média dos últimos 3 meses** pagos a ele e marca como **pago** quando sai qualquer pagamento para ele no mês, de qualquer valor.
+
+**Parcela lançada → as próximas vão sozinhas (v2.6.1):** ao lançar nos Lançamentos uma despesa com parcela (ex.: 1/6 do cartão da loja), as parcelas 2/6 a 6/6 entram sozinhas na Agenda, uma por mês, no mesmo dia. Quando cada uma sair no extrato, ela é baixada sozinha.
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -317,12 +340,16 @@ Nada que já tem contato muda. Mês fechado não é mexido. Para trocar um padr�
 | A aba Caixinha pediu e-mail e senha. | É o login do sistema Caixinha (o mesmo de lá). Só pede uma vez por computador. |
 | Como mudo para o tema claro? | Botão 🌙 / ☀️ na barra de cima. Cada pessoa escolhe o seu. |
 | Não aparece o botão de excluir. | Seu acesso é de lançador. Peça ao Lucas ou à Heloísa; vai pra Lixeira com o nome de quem excluiu. |
-| Cadê Configurações? | Só o dono vê. Saldo inicial de conta não se mexe no dia a dia; o ✎ do Fechamento resolve mês a mês. |
+| Cadê Configurações? | Só o gestor vê. Saldo inicial de conta não se mexe no dia a dia; o ✎ do Fechamento resolve mês a mês. |
 
 ## Histórico de mudanças
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 22/10/2026 | 2.6.3 | O papel **dono** aparece como **gestor** na tela (rodapé, Configurações, avisos). Por dentro continua o mesmo, nada muda de acesso | Nenhum |
+| 22/10/2026 | 2.6.2 | Menu que abre e fecha: clique em DIA A DIA, ANÁLISE ou GESTÃO para recolher; o sistema lembra, e o grupo da tela aberta fica sempre aberto | Nenhum |
+| 22/10/2026 | 2.6.1 | Agenda: recorrente com contato (funcionário) usa a média dele e fica pago com qualquer pagamento no mês; parcela lançada (1/6) manda as próximas para a Agenda sozinha | Nenhum |
+| 22/10/2026 | 2.6.0 | **Agenda de pagamentos** no lugar do A pagar: semana sáb–sex, baixa sozinha pelo extrato, lançar pelo código de barras (valor e vencimento sozinhos), parcelas de uma vez, vencidos separados, fixos e lentes do Caixinha aparecendo sozinhos. Tabela própria (não mexe no saldo). Precisa do SQL v2.6 | Nenhum (só mostra) |
 | 22/10/2026 | 2.5.0 | **Contato padrão por categoria** para o que vem do Caixinha: escolhe uma vez (o sistema sugere), preenche os sem contato e os próximos vêm sozinhos. Precisa do SQL v2.5 para lembrar | Nenhum |
 | 22/10/2026 | 2.4.2 | Medidor de automação também nos **Lançamentos** (atualiza a cada lançamento salvo) | Nenhum |
 | 22/10/2026 | 2.4.1 | Menu com ícones simples de traço, da mesma cor do texto (no claro e no escuro), no lugar dos emojis coloridos | Nenhum |
