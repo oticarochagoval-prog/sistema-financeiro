@@ -417,7 +417,7 @@ Os empréstimos continuam sendo lançados e baixados no **Caixinha**. No Fluxo, 
 
 ## Diversas: a conta dividida (v2.9.0)
 
-Quinto módulo, lá em cima: **Óticas Rocha · Laboratório · Grupo de compras · Casa · Diversas**. A Diversas é a conta dividida (DVL): os boletos que ela paga ficam lá, e cada empresa paga a sua parte transferindo para ela.
+Lá em cima, na ordem: **Óticas Rocha · Diversas · Grupo de compras · Laboratório · Casa**. A Diversas é a conta dividida (DVL): os boletos que ela paga ficam lá, e cada empresa paga a sua parte transferindo para ela.
 
 - **Lançar e dividir:** na Agenda da Diversas, lance o boleto (pode usar **Ler boleto**). Marque **"Dividir entre as empresas"** e escolha:
   - **Por %:** a porcentagem fixa de cada empresa (a mesma ideia da Diversas do FaturaFácil);
@@ -473,6 +473,7 @@ Quinto módulo, lá em cima: **Óticas Rocha · Laboratório · Grupo de compras
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 23/10/2026 | 2.9.3 | Botões dos módulos na nova ordem: Óticas Rocha · Diversas · Grupo de compras · Laboratório · Casa | Nenhum |
 | 23/10/2026 | 2.9.2 | Plano B: de novembro/2026 em diante o Pix de cliente entra como VENDA PIX (conta no dia); no fim do mês lança-se só o dinheiro à vista da Linx. Card de Entradas mostra cartão · Pix · dinheiro | Rodar o SQL v2.9.2 no sistema-financeiro |
 | 23/10/2026 | 2.9.1 | Lançamentos: marcar várias linhas e mandar para a Lixeira de uma vez; quem lança também pode (só o gestor restaura); restaurar da Lixeira corrigido para linhas que vieram das Lentes | Rodar o SQL v2.9.1 no sistema-financeiro |
 | 23/10/2026 | 2.9.0 | Módulo Diversas (conta dividida): dividir boleto entre as empresas por %, por lente, por igual ou à mão, com regras salvas; cada empresa recebe a parte na Agenda e dá baixa pelo extrato. "Não pode atrasar" em qualquer conta. Quadro do que cada empresa deve à Diversas | Rodar o SQL v2.9 no sistema-financeiro |

@@ -229,7 +229,7 @@
   let USER=null, PERFIL={nome:'',papel:''};
   let LOJAS=[], CATS=[], CONTATOS=[], CONTAS=[], LANC=[];
   // MÓDULOS (v2.7): Óticas Rocha · Laboratório · Grupo de compras · Casa — cada um soma só o que é dele
-  const MODULOS=[['oticas','Óticas Rocha'],['laboratorio','Laboratório'],['compras','Grupo de compras'],['casa','Casa'],['diversas','Diversas']];
+  const MODULOS=[['oticas','Óticas Rocha'],['diversas','Diversas'],['compras','Grupo de compras'],['laboratorio','Laboratório'],['casa','Casa']]; // ordem dos botões lá em cima
   let MODULO_ATUAL='oticas';try{MODULO_ATUAL=localStorage.getItem('fluxo_modulo')||'oticas';}catch(e){}
   const _modDe=l=>(l&&l.modulo)||'oticas';
   function lojasDoModulo(){return LOJAS.filter(l=>_modDe(l)===MODULO_ATUAL);}
@@ -249,7 +249,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.2', APP_DATA='23/10/2026';
+  const APP_VERSAO='2.9.3', APP_DATA='23/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
