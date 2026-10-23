@@ -417,7 +417,7 @@ Os empréstimos continuam sendo lançados e baixados no **Caixinha**. No Fluxo, 
 
 ## Diversas: a conta dividida (v2.9.0)
 
-Lá em cima, na ordem: **Óticas Rocha · Diversas · Grupo de compras · Laboratório · Casa**. A Diversas é a conta dividida (DVL): os boletos que ela paga ficam lá, e cada empresa paga a sua parte transferindo para ela.
+Lá em cima, na ordem: **Óticas Rocha · Diversas · Grupo de compras · GV Lentes · Casa**. A Diversas é a conta dividida (DVL): os boletos que ela paga ficam lá, e cada empresa paga a sua parte transferindo para ela.
 
 - **Lançar e dividir:** na Agenda da Diversas, lance o boleto (pode usar **Ler boleto**). Marque **"Dividir entre as empresas"** e escolha:
   - **Por %:** a porcentagem fixa de cada empresa (a mesma ideia da Diversas do FaturaFácil);
@@ -437,14 +437,14 @@ Lá em cima, na ordem: **Óticas Rocha · Diversas · Grupo de compras · Labora
 - Em **Lançamentos**, cada linha tem uma caixinha ao lado da data. Marque as que devem sair (ou a caixinha do cabeçalho, que marca todas que estão aparecendo) e clique em **Mandar para a Lixeira**.
 - **Quem lança também pode** (Rhaiane, Carol...). Nada é apagado de vez: vai para a Lixeira com o nome de quem tirou. **Só o gestor restaura.**
 - Mês fechado não deixa tirar. Reabra o mês primeiro.
-- **Pix de cliente não precisa sair.** Até outubro ele é neutro (não soma na venda; para não ver, use **esconder as neutras**). De novembro em diante ele conta como venda (veja abaixo).
+- **Pix de cliente não precisa sair.** Até setembro ele é neutro; desde outubro conta como venda (veja abaixo).
 
-## Pix de cliente vira venda (v2.9.2 — vale de novembro/2026 em diante)
+## Pix de cliente vira venda (v2.9.2 · desde a v2.9.6 vale já em outubro/2026)
 
-- **De 01/11/2026 em diante**, o Pix recebido de cliente entra na categoria **VENDA PIX** e **conta como venda no dia em que cai** (no Dashboard, na DRE e no resultado).
+- **De 01/10/2026 em diante**, o Pix recebido de cliente entra na categoria **VENDA PIX** e **conta como venda no dia em que cai** (no Dashboard, na DRE e no resultado).
 - **No fim do mês, lance só o DINHEIRO à vista** da Linx, **sem o Pix** (a Linx mostra os dois separados). Se lançar o total com o Pix, a venda fica duplicada.
-- **Até outubro** continua do jeito antigo: o Pix é neutro e o total à vista do fim do mês entra inteiro.
-- O card **Entradas do mês** mostra junto: **cartão · Pix · dinheiro e outras**.
+- **Até setembro** fica do jeito antigo: o Pix é neutro e o total à vista do fim do mês entra inteiro. **Já no fim de outubro**, lance só o dinheiro.
+- O card **Entradas do mês** mostra **À vista + Pix** já somados na mesma linha (com o detalhe: à vista X + Pix Y), depois o **Cartão** e as **outras entradas**. A lista de Receitas mostra a mesma linha. Antes do fim do mês, o à vista aparece como "lança no fim do mês".
 - Pix de outra loja do grupo, do Lucas (empréstimo) ou de devolução **não** vira venda: continua separado pelas regras. Depósito do dinheiro da gaveta continua neutro.
 - Com o extrato caindo todo dia (API), **não precisa escolher o que entra**: entra tudo (para o saldo do banco bater) e a categoria decide se é venda, despesa ou neutra.
 
@@ -464,6 +464,27 @@ O extrato do Sicoob não precisa mais ser baixado. Um robô busca o extrato dire
 - Loja que ainda não está ligada à API continua com o OFX ou PDF, como antes.
 
 **Certificado vencendo:** renovar o e-CNPJ A1 da empresa, tirar a chave pública (.cer) e trocar no portal developers.sicoob.com.br, no aplicativo FLUXO daquela loja. Depois o Lucas troca o certificado no cofre do GitHub.
+
+## Conferência de Pix: banco × Linx (v2.9.5 · desde outubro/2026)
+
+- **Só o gestor** (Lucas, Heloísa) vê e preenche.
+- **No Dashboard de cada loja** aparece o quadro "Pix de [mês]": quanto caiu de Pix no banco e um campo para digitar o **Pix da Linx**. Bateu (diferença até R$ 1,00): fica verde. Não bateu: fica amarelo, com **"olhar com a [loja]"** e quanto falta ou sobra.
+- **Menu Análise → Conferência de Pix:** todas as lojas do mês numa tabela (no módulo Óticas Rocha ou GV Lentes), para digitar de uma vez e ver quem tem diferença e quem falta digitar.
+- **Quem digitou e quem mudou:** cada valor guarda o nome e a hora. Se mudar depois, aparece "mudou 1x"; clicando, mostra o valor antes, o depois, quem mudou e quando.
+- "Faltam" = a Linx tem mais Pix do que caiu no banco. "Sobram" = caiu mais no banco do que a Linx registrou.
+- Vale também para a **GV Lentes**: o Pix que o laboratório registrou é conferido com o banco.
+
+## Ler boleto também em Lançamentos (v2.9.5)
+
+- Em **Lançamentos → Novo lançamento**, botão **Ler boleto (foto ou PDF)**: preenche descrição, valor, data (o vencimento — **confira a data do pagamento**), parcela, nº do documento e, pela empresa já aprendida, categoria e contato. As próximas parcelas vão sozinhas para a Agenda.
+
+## Regras das entradas (v2.9.5)
+
+- **Pix de cliente pelo Sicoob** ("TRANSF.RECEBIDA - PIX SICOOB · REM.: MARIA…") entra como **Pix de cliente** (venda desde outubro), não mais como transferência.
+- **Transferência ou Pix de outra loja do grupo** (REM.: OTICA ROCHA…, GV OPTICAL) continua como **Transferência entre lojas**.
+- **Pix do Lucas** (LUCAS GOMES ROCHA) **não vira venda**: entra como transferência marcada "confira" (normalmente é empréstimo do sócio).
+- Em **Lançamentos** e **Importar extrato** aparece até o fim de novembro o aviso: desde 1º de outubro o Pix é venda, não exclua os Pix, e no fim do mês lance só o dinheiro da Linx.
+- O botão **Laboratório**, lá em cima, agora se chama **GV Lentes**.
 
 ## Perguntas que sempre aparecem
 
@@ -490,6 +511,8 @@ O extrato do Sicoob não precisa mais ser baixado. Um robô busca o extrato dire
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 23/10/2026 | 2.9.6 | Pix como venda e conferência de Pix já valem em outubro; Dashboard mostra À vista + Pix somados na mesma linha (e no Receitas); aviso para a equipe atualizado | Nenhum (tabela da conferência criada pelo Claude) |
+| 23/10/2026 | 2.9.5 | Conferência de Pix banco × Linx (de novembro em diante, só gestor, no Dashboard de cada loja e em Análise, com histórico de quem mudou); Ler boleto também em Lançamentos; Pix de cliente pelo Sicoob vira Pix, Pix do Lucas fica "confira"; aviso de 1º de novembro; Laboratório vira GV Lentes | Tabela criada pelo Claude no Supabase |
 | 23/10/2026 | 2.9.4 | Extrato automático do Sicoob: robô busca o extrato pela API do banco 3 vezes por dia; em Importar, botão "Puxar do Sicoob" (sem baixar arquivo, texto completo, não duplica com OFX/PDF). Aviso de certificado vencendo e de robô parado. Começa pela Rocha 1 | Rocha 1 não precisa mais baixar o extrato |
 | 23/10/2026 | 2.9.3 | Botões dos módulos na nova ordem: Óticas Rocha · Diversas · Grupo de compras · Laboratório · Casa | Nenhum |
 | 23/10/2026 | 2.9.2 | Plano B: de novembro/2026 em diante o Pix de cliente entra como VENDA PIX (conta no dia); no fim do mês lança-se só o dinheiro à vista da Linx. Card de Entradas mostra cartão · Pix · dinheiro | Rodar o SQL v2.9.2 no sistema-financeiro |

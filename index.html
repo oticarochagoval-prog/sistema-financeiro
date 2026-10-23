@@ -230,7 +230,7 @@
   let USER=null, PERFIL={nome:'',papel:''};
   let LOJAS=[], CATS=[], CONTATOS=[], CONTAS=[], LANC=[];
   // MÓDULOS (v2.7): Óticas Rocha · Laboratório · Grupo de compras · Casa — cada um soma só o que é dele
-  const MODULOS=[['oticas','Óticas Rocha'],['diversas','Diversas'],['compras','Grupo de compras'],['laboratorio','Laboratório'],['casa','Casa']]; // ordem dos botões lá em cima
+  const MODULOS=[['oticas','Óticas Rocha'],['diversas','Diversas'],['compras','Grupo de compras'],['laboratorio','GV Lentes'],['casa','Casa']]; // ordem dos botões lá em cima
   let MODULO_ATUAL='oticas';try{MODULO_ATUAL=localStorage.getItem('fluxo_modulo')||'oticas';}catch(e){}
   const _modDe=l=>(l&&l.modulo)||'oticas';
   function lojasDoModulo(){return LOJAS.filter(l=>_modDe(l)===MODULO_ATUAL);}
@@ -250,7 +250,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.4', APP_DATA='23/10/2026';
+  const APP_VERSAO='2.9.6', APP_DATA='23/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -380,7 +380,7 @@
   function lojaNomeCurto(id){const L=LOJAS.find(l=>l.id===id);return L?L.nome.split(' — ')[0].trim():'';}
   // categorias neutras usadas na importação
   // v2.9.2 (plano B): de novembro/2026 em diante o Pix de cliente conta como VENDA no dia; no fim do mês entra só o dinheiro da Linx
-  const CAT_PIX_VENDA='VENDA PIX', PIX_VENDA_DESDE='2026-11-01';
+  const CAT_PIX_VENDA='VENDA PIX', PIX_VENDA_DESDE='2026-10-01'; // v2.9.6: já vale em outubro
   const CAT_PIX='PIX DE CLIENTE — VENDA NA LINX', CAT_DEPGAV='DEPÓSITO DA GAVETA (CAIXINHA)', CAT_DEVOL='DEVOLUÇÃO A CLIENTE';
   function catPorNome(n){const u=String(n).toUpperCase();return catsAtivas().find(c=>String(c.nome).toUpperCase()===u)||null;}
   function catTransf(){return catsAtivas().find(c=>c.grupo==='neutra'&&/TRANSFER/i.test(c.nome)&&/LOJA/i.test(c.nome))||null;}
@@ -1194,14 +1194,14 @@
     ['apagar','Agenda de pagamentos','🧾',true],['remanejos','Remanejos','↹',true],['caixa','Fechamento de caixa','🧮',true],['caixinha','Caixinha (espelho)','💵',true],['emprestimos','Empréstimos (espelho)','⇄',true],
     ['__a','Análise'],
     ['dre','DRE','📊',true],['fechamento','Fechamento do mês','🔐',true],['concsipag','Cartão × Sipag','💳',true],
-    ['comparativo','Comparativo','📈',true],['relcontato','Por contato','👥',true],['juros','Juros por loja','🏦',true],
+    ['comparativo','Comparativo','📈',true],['relcontato','Por contato','👥',true],['juros','Juros por loja','🏦',true],['confpix','Conferência de Pix','🔎',true],
     ['__g','Gestão'],
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
     ['recorrentes','Recorrentes','🔁',true],['lixeira','Lixeira','🗑',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],['manualcx','Manual do Caixinha','🔗',true],
   ];
-  const TITLES={visao:'Dashboard',radar:'Radar do mês',lanc:'Lançamentos',import:'Importar extrato',apagar:'Agenda de pagamentos',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',remanejos:'Remanejos',emprestimos:'Empréstimos entre lojas — espelho do Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
+  const TITLES={confpix:'Conferência de Pix · banco × Linx',visao:'Dashboard',radar:'Radar do mês',lanc:'Lançamentos',import:'Importar extrato',apagar:'Agenda de pagamentos',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',remanejos:'Remanejos',emprestimos:'Empréstimos entre lojas — espelho do Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
   // ícones do menu: traço simples, da mesma cor do texto (claro e escuro), no estilo do Microvix
-  const NAV_ICON={remanejos:'<path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/>',emprestimos:'<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',visao:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',radar:'<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.8 5.41a2 2 0 0 1-1.27 1.27L7.76 16.24l1.8-5.41a2 2 0 0 1 1.27-1.27z"/>',lanc:'<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',import:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',apagar:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',caixa:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M16 14v4M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/>',caixinha:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',dre:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',fechamento:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',concsipag:'<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>',comparativo:'<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',relcontato:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',juros:'<path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"/>',categorias:'<path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',cadcontatos:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',recorrentes:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',lixeira:'<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',config:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',manual:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',manualcx:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'};
+  const NAV_ICON={confpix:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',remanejos:'<path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/>',emprestimos:'<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',visao:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',radar:'<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.8 5.41a2 2 0 0 1-1.27 1.27L7.76 16.24l1.8-5.41a2 2 0 0 1 1.27-1.27z"/>',lanc:'<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',import:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',apagar:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',caixa:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M16 14v4M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/>',caixinha:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',dre:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',fechamento:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',concsipag:'<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>',comparativo:'<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',relcontato:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',juros:'<path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"/>',categorias:'<path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',cadcontatos:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',recorrentes:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',lixeira:'<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',config:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',manual:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',manualcx:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'};
   // menu que abre e fecha por grupo (Dia a dia / Análise / Gestão); lembra no navegador; o grupo da tela aberta fica sempre aberto
   let NAV_FECHADO={};try{NAV_FECHADO=JSON.parse(localStorage.getItem('fluxo_menu_fechado')||'{}')||{};}catch(e){NAV_FECHADO={};}
   function navDobrar(sec){NAV_FECHADO[sec]=!NAV_FECHADO[sec];try{localStorage.setItem('fluxo_menu_fechado',JSON.stringify(NAV_FECHADO));}catch(e){}renderNav();}
@@ -1213,6 +1213,7 @@
       const [id,l,ic,pronto]=it;
       if(id==='config'&&!ehDono())return '';
       if(id==='remanejos'&&!veRemanejos())return '';
+      if(id==='confpix'&&(!ehDono()||!['oticas','laboratorio'].includes(MODULO_ATUAL)))return '';
       if(MODULO_ATUAL!=='oticas'&&['concsipag','caixinha','caixa','juros','manualcx','emprestimos'].includes(id))return '';
       if(NAV_FECHADO[secDe[id]]&&secDe[page]!==secDe[id])return '';
       return `<div class="nav ${id===page?'active':''}" data-label="${l}" onclick="go('${id}')"><span class="ic">${NAV_ICON[id]?`<svg viewBox="0 0 24 24" aria-hidden="true">${NAV_ICON[id]}</svg>`:ic}</span><span class="navtxt">${l}</span>${pronto?'':'<span class="soon">em breve</span>'}</div>`;
@@ -1345,8 +1346,8 @@
   function isoParaBR(iso){if(!iso)return '';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;}
 
   function render(){
-    const V={visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,remanejos:viewRemanejos,emprestimos:viewEmprestimos,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
-    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));preencherRemDash().catch(e=>console.error('rem dash',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
+    const V={confpix:viewConfPix,visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,remanejos:viewRemanejos,emprestimos:viewEmprestimos,recorrentes:viewRecorrentes,lixeira:viewLixeira,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
+    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));preencherRemDash().catch(e=>console.error('rem dash',e));preencherPixDash().catch(e=>console.error('pix dash',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   let mesSel=new Date().getMonth();let _keepY=null;
@@ -1399,8 +1400,10 @@
     const formHTML=podeEditar()?`<div class="quickbar">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
         <span style="font-size:13px;font-weight:700;color:var(--green);display:flex;align-items:center;gap:7px">➕ NOVO LANÇAMENTO</span>
-        <button class="btn ghost" style="margin-left:auto;padding:7px 12px;font-size:12px" onclick="go('recorrentes')">🔁 Recorrentes</button>
+        <input type="file" id="lancArq" accept="image/*,application/pdf" style="display:none" onchange="lancLerArquivo(this)"><button class="btn" style="margin-left:auto;padding:7px 12px;font-size:12px" onclick="document.getElementById('lancArq').click()">Ler boleto (foto ou PDF)</button>
+        <button class="btn ghost" style="padding:7px 12px;font-size:12px" onclick="go('recorrentes')">🔁 Recorrentes</button>
       </div>
+      <div id="lancLidoInfo" class="mut" style="font-size:12px;margin:-4px 0 10px;min-height:0"></div>
       <div class="quickrow l1">
         <div><span class="qlabel">Tipo</span><div class="tipo-toggle"><button id="tDes" class="${tipo==='des'?'des':''}" onclick="setTipo('des')">Despesa</button><button id="tRec" class="${tipo==='rec'?'rec':''}" onclick="setTipo('rec')">Receita</button><button id="tTra" class="${tipo==='tra'?'tra':''}" onclick="setTipo('tra')">Transf.</button></div></div>
         <div><span class="qlabel">Data (dia/mês · ${ANO_FIXO})</span><input id="qData" class="qin" placeholder="dd/mm" data-dm="" onkeydown="maskData(this,event)" onfocus="this.select()"></div>
@@ -1420,7 +1423,7 @@
       <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho</span><span>👥 Categoria obrigatória · sem contato cadastrado? escreva quem foi na observação</span></div>
     </div>`:'<div class="note">👁️ Seu acesso é somente leitura (contador). Você pode ver e exportar, mas não lançar.</div>';
     const diaLabel=filtroDia?isoParaBR(filtroDia):'Todos os dias';
-    document.getElementById('content').innerHTML='<div id="ultimaImportLanc"></div>'+saldoBanco+formHTML+`
+    document.getElementById('content').innerHTML=avisoPixNovembro()+'<div id="ultimaImportLanc"></div>'+saldoBanco+formHTML+`
       <div style="font-size:13px;font-weight:700;color:var(--txt);margin:22px 0 12px;display:flex;align-items:center;gap:7px;border-top:1px solid var(--line);padding-top:18px">🔍 LANÇAMENTOS CADASTRADOS <span class="mut" style="font-weight:400;font-size:12px">— consultar e editar</span></div>
       <div style="display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 14px;width:fit-content;margin-bottom:12px">
         <button class="burger" style="width:32px;height:32px" title="Mês anterior" onclick="navMes(-1)">‹</button>
@@ -1598,6 +1601,7 @@
       for(let k=a+1;k<=b;k++){if(tem.has(`${k}/${b}`))continue;const m=mesShift(iso.slice(0,7),k-a);const ult=Number(_fimMes(m).slice(8,10));
         rows.push({loja_id:lojaAtual,descricao:desc.toUpperCase(),valor:v,vencimento:`${m}-${String(Math.min(Number(iso.slice(8,10)),ult)).padStart(2,'0')}`,categoria_id:catId?Number(catId):null,contato_id:contatoId?Number(contatoId):null,parcela:`${k}/${b}`,status:'aberto'});}
       if(rows.length){const {error:e2}=await sb.from('contas_pagar').insert(rows);if(!e2)nAg=rows.length;}}}catch(e){}}
+    await agAprenderBoleto(catId,contatoId);
     toast(nAg?`Lançamento salvo! 📅 As próximas ${nAg} parcelas foram para a Agenda de pagamentos.`:'Lançamento salvo!','ok');await viewLanc();
   }
   // ---- Lixeira (v2.9.1): todo mundo que lança pode mandar para a Lixeira (uma ou várias); só o gestor restaura ----
@@ -2387,7 +2391,7 @@
 
   function viewImport(){
     if(IMPORT.length===0){
-      document.getElementById('content').innerHTML=`<div class="note">⤓ <b>Importar extrato OFX do Sicoob</b> — lê o arquivo, preenche data/descrição/valor, adivinha categoria e contato, separa transferências entre lojas e marca o que é cartão (conta) ou depósito (ignora, a Linx já contou). Você confere antes de lançar.</div>
+      document.getElementById('content').innerHTML=avisoPixNovembro()+`<div class="note">⤓ <b>Importar extrato OFX do Sicoob</b> — lê o arquivo, preenche data/descrição/valor, adivinha categoria e contato, separa transferências entre lojas e marca o que é cartão (conta) ou depósito (ignora, a Linx já contou). Você confere antes de lançar.</div>
       <div id="ultimaImport"></div>
       ${sicoobCardImport()}
       <div class="card"><div class="cardhead"><h3>Selecionar arquivo .OFX</h3><span class="tag">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</span></div>
@@ -2418,7 +2422,7 @@
     const GRUPOS_IMP=[
       ['ja','✓ Já estavam lançados','não entram de novo — os digitados à mão só ganham o código do banco'],
       ['cartao','💳 Cartão (Sipag)','vão como Cartão; a conciliação confere com o Cartões Rocha'],
-      ['pix','💸 Pix de clientes','de novembro/2026 em diante conta como VENDA no dia (no fim do mês entra só o dinheiro da Linx); antes disso, neutro'],
+      ['pix','💸 Pix de clientes','desde outubro/2026 conta como VENDA no dia (no fim do mês entra só o dinheiro da Linx) — não exclua'],
       ['dep','🏧 Depósitos da gaveta','neutro: dinheiro da caixinha levado ao banco'],
       ['transf','⇆ Transferências entre lojas','neutro: dinheiro passando de uma loja pra outra'],
       ['lentes','🔗 Boletos de lentes','já vieram do Caixinha'],
@@ -2572,8 +2576,11 @@
         // 3) entradas: cartão, transferência de outra loja, Pix de cliente, depósito da gaveta — nada é ignorado
         if(t.amt>0){
           if(CARTAO_RE.test(full)){item.grupo='cartao';item.catId=catCartao?catCartao.id:'';return item;}
-          if(/OTICA ROCHA|ROCHA COMERCIO|REM\.:|CRED\.?TRANSF|CR[EÉ]D\.TRANSF|CRED\.TR\.CT|TRANSF\.RECEB/i.test(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';if(!/OTICA ROCHA|ROCHA COMERCIO/i.test(full))item.corrigir=true;return item;}
+          // v2.9.5: loja do grupo → transferência; Pix do sócio (Lucas) → confira (empréstimo, não é venda); Pix de cliente (inclusive "TRANSF.RECEBIDA - PIX SICOOB") → Pix
+          if(/OTICA ROCHA|ROCHA COMERCIO|GV OPTICAL/i.test(full)||empresaDoGrupo(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';return item;}
+          if(/LUCAS GOMES ROCH/i.test(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;item.socio=true;return item;}
           if(/PIX/i.test(full)){item.grupo='pix';const cv=t.iso>=PIX_VENDA_DESDE?(catPorNome(CAT_PIX_VENDA)||cPix):cPix;item.catId=cv?cv.id:'';return item;}
+          if(/REM\.:|CRED\.?TRANSF|CR[EÉ]D\.TRANSF|CRED\.TR\.CT|TRANSF\.RECEB/i.test(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;return item;}
           if(/DEP\.? ?DIN|DEP\.?DINHEIRO|DEPOSITO|DEP[ÓO]SITO|ENVELOPE/i.test(full)){item.grupo='dep';item.catId=cDep?cDep.id:'';return item;}
           const rpE=aplicarRegrasP(full,lojaAtual);
           if(rpE&&rpE.categoria_id){item.grupo='regra';item.catId=rpE.categoria_id;item.contatoId=rpE.contato_id||null;item.regra=rpE.palavra;return item;}
@@ -3119,15 +3126,20 @@
       <div id="cartoesDash"></div>
       <div id="autoDash"></div>
       <div id="remDash"></div>
+      <div id="pixDash"></div>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:16px">
         ${card('Saídas do mês',saidaMes,'var(--red)','pago em '+mesNome)}
-        ${card('Entradas do mês',entradaMes,'var(--green)',(()=>{const ct=receitasCat['Cartão']||0,px=receitasCat[CAT_PIX_VENDA]||0,ou=entradaMes-ct-px;return px?`cartão ${BRL(ct)} · Pix ${BRL(px)} · dinheiro e outras ${BRL(ou)}`:'recebido em '+mesNome;})())}
+        ${(()=>{const R=_recPartes(receitasCat,entradaMes,mesSel);return `<div class="card" style="grid-column:span 2"><div class="mut" style="font-size:12px;font-weight:600">Entradas do mês</div><div style="font-size:22px;font-weight:800;color:var(--green);margin-top:6px;font-variant-numeric:tabular-nums">${BRL(entradaMes)}</div>
+          <div style="background:rgba(61,214,140,.07);border:1px solid rgba(61,214,140,.25);border-radius:10px;padding:8px 11px;margin:8px 0 6px"><div style="display:flex;justify-content:space-between;gap:8px"><span><b>À vista + Pix</b></span><b style="color:var(--green);font-variant-numeric:tabular-nums">${BRL(R.av+R.px)}</b></div>
+          <div class="mut" style="font-size:11.5px;margin-top:2px">${R.av?'à vista '+BRL(R.av):(R.mesCorrendo?'à vista: lança no fim do mês':'à vista R$ 0,00')} + Pix ${BRL(R.px)}</div></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px"><span>Cartão</span><b style="font-variant-numeric:tabular-nums">${BRL(R.ct)}</b></div>
+          ${R.ou>0.004?`<div style="display:flex;justify-content:space-between;font-size:12.5px;margin-top:3px"><span class="mut">Outras entradas</span><span class="mut">${BRL(R.ou)}</span></div>`:''}</div>`;})()}
         ${card('Resultado do mês',resultMes,resultMes>=0?'var(--green)':'var(--red)','entradas − saídas')}
         ${card('A pagar em '+mesNome,totalApagar,'var(--amber)',vencidoAntes>0.5?`só o que vence neste mês · não acumula · + ${BRL(vencidoAntes)} vencido antes (fica na Agenda)`:'só o que vence neste mês · não acumula de um mês pro outro')}
       </div>
       <div class="grid two">
         ${graficoCard('💸 Despesas pagas',despesas,saidaMes,'var(--red)',mesNome,'des')}
-        ${graficoCard('💰 Receitas / Entradas',receitas,entradaMes,'var(--green)',mesNome,'rec')}
+        ${graficoCard('💰 Receitas / Entradas',_recLista(receitas,receitasCat,entradaMes,mesSel),entradaMes,'var(--green)',mesNome,'rec')}
         ${graficoCard('🧾 A pagar em '+mesNome,apagarLista,totalApagar,'var(--amber)','')}
         ${dreCard}
         ${fechCard}
@@ -3215,6 +3227,88 @@
   }
 
 
+
+
+  // ---- v2.9.6: à vista + Pix somados na mesma linha (Dashboard) ----
+  function _recPartes(cat,total,mi){const pega=n=>Object.entries(cat).filter(([k])=>String(k).toUpperCase()===n).reduce((t,[,v])=>t+v,0);
+    const av=pega('À VISTA'),px=pega(CAT_PIX_VENDA),ct=pega('CARTÃO'),hoje=_hojeLocal();
+    return {av,px,ct,ou:Math.max(total-av-px-ct,0),mesCorrendo:hoje.slice(0,7)===`${ANO_FIXO}-${_mm(mi)}`};}
+  function _recLista(lista,cat,total,mi){const R=_recPartes(cat,total,mi);if(!(R.av+R.px))return lista;
+    const fora=new Set(['À VISTA',CAT_PIX_VENDA]);const resto=lista.filter(x=>!fora.has(String(x.nome).toUpperCase()));
+    const junto={nome:'À vista + Pix',valor:R.av+R.px,sub:`${R.av?'à vista '+BRL(R.av).replace('R$ ',''):(R.mesCorrendo?'à vista no fim do mês':'à vista 0,00')} + Pix ${BRL(R.px).replace('R$ ','')}`,semClique:true};
+    return [junto,...resto].sort((a,b)=>b.valor-a.valor);}
+  // ===================== v2.9.5 =====================
+  // aviso para a equipe: o Pix muda em 1º de novembro
+  function avisoPixNovembro(){const h=_hojeLocal();if(h>'2026-11-30')return '';
+    return `<div class="note" style="border-color:rgba(59,99,217,.45)"><b>Já vale desde 1º de outubro:</b> o Pix de cliente conta como <b>venda</b> no dia em que cai. <b>Não exclua os Pix.</b> No fim do mês (já em outubro), lance só o <b>dinheiro</b> à vista da Linx, sem o Pix. Dúvida: fale com o Lucas.</div>`;}
+  // ---- ler boleto também em Lançamentos ----
+  async function lancLerArquivo(input){const f=input.files&&input.files[0];if(!f)return;const info=document.getElementById('lancLidoInfo');const set=h=>{if(info)info.innerHTML=h;};
+    set('<span class="spin"></span> Lendo o boleto…');let r={};
+    try{if(/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)){r=await boletoDoPDF(f).catch(()=>({}));if(!(String(r.linha_digitavel||'').length>=44))r=Object.assign({},await boletoPelaIA(f,'application/pdf'),stripVazio(r));}
+      else r=await boletoPelaIA(await reduzirImagem(f),'image/jpeg');}
+    catch(e){set(`<span style="color:var(--red)">Não consegui ler o boleto: ${_remEsc(e.message||e)}</span>`);input.value='';return;}
+    input.value='';if(tipo!=='des'){tipo='des';await viewLanc();}lancPreencherLido(r||{});}
+  function lancPreencherLido(r){const g=id=>document.getElementById(id);const info=g('lancLidoInfo');
+    const linha=String(r.linha_digitavel||'').replace(/\D/g,''),cod=linha.length>=44?lerCodigoBoleto(linha):null;
+    const valor=(cod&&cod.valor)||Number(r.valor)||0,venc=(cod&&cod.venc)||(/^\d{4}-\d{2}-\d{2}$/.test(r.vencimento||'')?r.vencimento:'');
+    const benef=String(r.beneficiario||'').toUpperCase().replace(/\s+/g,' ').trim(),cnpj=String(r.cnpj||'').replace(/\D/g,''),parc=Number(r.parcela)||0,tot=Number(r.parcelas)||0;
+    if(benef&&g('qDesc'))g('qDesc').value=benef.slice(0,40);
+    if(valor>0&&g('qVal')){const c=Math.round(valor*100);g('qVal').dataset.cents=String(c);g('qVal').value=(c/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+    const dt=venc&&venc.slice(0,4)===String(ANO_FIXO)?venc:_hojeLocal();if(g('qData')){g('qData').dataset.dm=dt.slice(8,10)+dt.slice(5,7);g('qData').value=`${dt.slice(8,10)}/${dt.slice(5,7)}/${dt.slice(0,4)}`;}
+    if(tot>1&&parc>=1&&parc<=tot){if(g('qParcA'))g('qParcA').value=String(parc);if(g('qParcB'))g('qParcB').value=String(tot);}
+    if(g('qDoc')&&!g('qDoc').value)g('qDoc').value=(r.numero_documento?'BOLETO '+String(r.numero_documento).toUpperCase():(linha?'BOLETO '+linha.slice(-14):'')).slice(0,60);
+    const rg=aplicarRegrasP(`${benef} ${cnpj}`,lojaAtual);if(rg&&rg.categoria_id&&g('qCat'))g('qCat').value=String(rg.categoria_id);if(rg&&rg.contato_id&&g('qContato'))g('qContato').value=String(rg.contato_id);
+    if(g('qContato')&&!g('qContato').value&&benef){const ct=CONTATOS.find(x=>x.nome&&String(x.nome).length>=4&&benef.includes(String(x.nome).toUpperCase()));if(ct)g('qContato').value=String(ct.id);}
+    _agLido={cnpj,benef};
+    const fal=[];if(!valor)fal.push('valor');if(!benef)fal.push('empresa');
+    if(info)info.innerHTML=`<span style="color:var(--green)">Li o boleto:</span> ${benef?'<b>'+_remEsc(benef)+'</b>':''}${valor?' · <b>'+BRL(valor)+'</b>':''}${venc?' · vence '+isoParaBR(venc):''}${tot>1?` · parcela ${parc} de ${tot} (as próximas vão para a Agenda)`:''}${rg&&rg.categoria_id?' · categoria e contato pelo que já aprendi':''}. <b>Confira a data do pagamento</b>${fal.length?` <span style="color:var(--amber)">· não achei: ${fal.join(', ')}</span>`:''} e clique em Lançar.`;}
+  // ---- Conferência de Pix: banco × Linx (de novembro/2026 em diante; só o gestor) ----
+  const PIX_CONF_DESDE='2026-10';
+  async function pixBancoMes(ids,ym){const cats=CATS.filter(c=>[CAT_PIX_VENDA,CAT_PIX].includes(String(c.nome).toUpperCase())||String(c.nome).toUpperCase()===CAT_PIX.toUpperCase()).map(c=>c.id);const o={};if(!cats.length||!ids.length)return o;
+    let rows=[];for(let k=0;;k+=1000){const {data,error}=await sb.from('lancamentos').select('loja_id,valor').in('loja_id',ids).in('categoria_id',cats).gt('valor',0).gte('data',ym+'-01').lte('data',_fimMes(ym)).order('id').range(k,k+999);if(error)break;rows=rows.concat(data||[]);if(!data||data.length<1000)break;}
+    rows.forEach(r=>{o[r.loja_id]=(o[r.loja_id]||0)+Number(r.valor);});return o;}
+  async function pixConfMes(ids,ym){const [a,m]=ym.split('-').map(Number);const {data,error}=await sb.from('conferencia_pix').select('*').in('loja_id',ids).eq('ano',a).eq('mes',m);if(error)return null;const o={};(data||[]).forEach(r=>o[r.loja_id]=r);return o;}
+  const _pixDif=(banco,linx)=>linx==null?null:Math.round((Number(banco||0)-Number(linx))*100)/100;
+  function _pixSit(d){return d==null?'<span class="mut">falta digitar</span>':Math.abs(d)<=1?'<span style="color:var(--green)">bateu</span>':'<b style="color:var(--amber)">olhar com a loja</b>';}
+  function _pixDifTxt(d){return d==null||Math.abs(d)<=1?'—':`<b style="color:var(--amber)">${d<0?'faltam':'sobram'} ${BRL(Math.abs(d))}</b>`;}
+  function _pixQuem(r){if(!r)return '—';const h=Array.isArray(r.historico)?r.historico:[];const em=r.digitado_em?new Date(r.digitado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    return `${_remEsc(r.digitado_por_nome||'')}${em?' · '+em:''}${h.length?` · <span class="arqbtn" onclick="pixHistorico(${r.id})">mudou ${h.length}x</span>`:''}`;}
+  let _pixRegs={};
+  async function pixSalvar(lojaId,ym,val){if(!ehDono())return;const v=_numBR(val);const [a,m]=ym.split('-').map(Number);const agora=new Date().toISOString(),nome=PERFIL.nome||'';
+    const {data:ex,error:e0}=await sb.from('conferencia_pix').select('*').eq('loja_id',lojaId).eq('ano',a).eq('mes',m).limit(1);
+    if(e0){toast(/conferencia_pix|relation|schema/i.test(e0.message)?'Rode o SQL da v2.9.5 no sistema-financeiro primeiro.':'Erro: '+e0.message,'erro');return;}
+    let res;if(ex&&ex[0]){const r=ex[0];if(Math.abs(Number(r.pix_linx)-v)<0.005)return;const h=(Array.isArray(r.historico)?r.historico:[]).concat([{de:Number(r.pix_linx),para:v,por:nome,em:agora}]);
+      res=await sb.from('conferencia_pix').update({pix_linx:v,historico:h,digitado_por_nome:nome,digitado_em:agora}).eq('id',r.id);}
+    else res=await sb.from('conferencia_pix').insert({loja_id:lojaId,ano:a,mes:m,pix_linx:v,digitado_por_nome:nome,digitado_em:agora,historico:[]});
+    if(res.error){toast('Erro: '+res.error.message,'erro');return;}toast('Pix da Linx salvo.','ok');_keepY=window.scrollY;render();}
+  function pixHistorico(id){const r=Object.values(_pixRegs).find(x=>x&&x.id===id);if(!r)return;const h=Array.isArray(r.historico)?r.historico:[];
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(480px,94vw)"><h3>Pix da Linx · ${lojaNomeCurto(r.loja_id)} · ${MESES_NOME[r.mes-1]}</h3>
+      <table><thead><tr><th>Quando</th><th>Quem</th><th style="text-align:right">Antes</th><th style="text-align:right">Depois</th></tr></thead><tbody>${h.map(x=>`<tr><td class="mut">${new Date(x.em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</td><td>${_remEsc(x.por||'')}</td><td class="amt" style="text-align:right">${BRL(Number(x.de))}</td><td class="amt" style="text-align:right">${BRL(Number(x.para))}</td></tr>`).join('')}</tbody></table>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Fechar</button></div></div></div>`;}
+  async function viewConfPix(){const box=document.getElementById('content');
+    if(!ehDono()){box.innerHTML='<div class="note">Esta tela é só do gestor.</div>';return;}
+    const ym=`${ANO_FIXO}-${_mm(mesSel)}`,ids=idsDoModulo();
+    if(ym<PIX_CONF_DESDE){box.innerHTML=seletorMes()+`<div class="note">A conferência de Pix começa em <b>outubro/2026</b>, junto com o Pix contando como venda. Escolha outubro ou depois.</div>`;return;}
+    box.innerHTML='<div class="loading"><span class="spin"></span> Conferindo o Pix…</div>';
+    const [banco,regs]=await Promise.all([pixBancoMes(ids,ym),pixConfMes(ids,ym)]);if(page!=='confpix')return;
+    if(regs===null){box.innerHTML=seletorMes()+`<div class="note" style="border-color:rgba(255,92,92,.4)">Para usar a conferência, rode o <b>SQL da v2.9.5</b> no projeto <b>sistema-financeiro</b>.</div>`;return;}
+    _pixRegs=regs;let tb=0,tl=0,nDif=0,nFalta=0;
+    const linhas=lojasDoModulo().map(l=>{const b=banco[l.id]||0,r=regs[l.id],lx=r?Number(r.pix_linx):null,d=_pixDif(b,lx);tb+=b;if(lx!=null)tl+=lx;if(d==null)nFalta++;else if(Math.abs(d)>1)nDif++;
+      return `<tr><td><b>${lojaNomeCurto(l.id)}</b></td><td class="amt" style="text-align:right">${BRL(b).replace('R$ ','')}</td><td style="text-align:right"><input class="qin" style="width:120px;padding:5px 9px;text-align:right" inputmode="decimal" placeholder="digitar" value="${lx!=null?lx.toFixed(2).replace('.',','):''}" onchange="pixSalvar(${l.id},'${ym}',this.value)"></td><td class="amt" style="text-align:right">${_pixDifTxt(d)}</td><td>${_pixSit(d)}</td><td class="mut" style="font-size:12px">${_pixQuem(r)}</td></tr>`;}).join('');
+    box.innerHTML=`<div class="note">No fim do mês, digite o total de Pix da Linx de cada loja. O Fluxo compara com o Pix que caiu no banco. Deu diferença: aparece aqui e no Dashboard da loja para conversar com ela. Fica registrado quem digitou e quem mudou.</div>
+      ${seletorMes()}
+      <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>Loja</th><th style="text-align:right">Pix no banco</th><th style="text-align:right">Pix na Linx</th><th style="text-align:right">Diferença</th><th>Situação</th><th>Quem digitou</th></tr></thead><tbody>${linhas}
+      <tr><td><b>Total</b></td><td class="amt" style="text-align:right"><b>${BRL(tb).replace('R$ ','')}</b></td><td class="amt" style="text-align:right"><b>${BRL(tl).replace('R$ ','')}</b></td><td></td><td class="mut" style="font-size:12px">${nDif} com diferença · ${nFalta} falta digitar</td><td></td></tr></tbody></table></div>
+      <div class="mut" style="font-size:11.5px;margin-top:8px">Diferença de até R$ 1,00 conta como "bateu". "Faltam" = a Linx tem mais Pix do que caiu no banco.</div>`;}
+  let _pixDashSeq=0;
+  async function preencherPixDash(){const box=document.getElementById('pixDash');if(!box||!ehDono())return;const ym=`${ANO_FIXO}-${_mm(mesSel)}`;if(ym<PIX_CONF_DESDE)return;
+    const seq=++_pixDashSeq,loja=lojaAtual;const [banco,regs]=await Promise.all([pixBancoMes([loja],ym),pixConfMes([loja],ym)]);
+    if(seq!==_pixDashSeq||loja!==lojaAtual||!document.getElementById('pixDash')||regs===null)return;_pixRegs=Object.assign({},_pixRegs,regs);
+    const b=banco[loja]||0,r=regs[loja],lx=r?Number(r.pix_linx):null,d=_pixDif(b,lx),ruim=d!=null&&Math.abs(d)>1;
+    box.innerHTML=`<div class="note" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;${ruim?'border-color:rgba(245,183,64,.6);background:rgba(245,183,64,.08)':''}">
+      <span><b>Pix de ${MESES_NOME[mesSel]}${ruim?` não bateu com a Linx: olhar com a ${lojaNomeCurto(loja)}`:''}</b> · no banco ${BRL(b)}</span>
+      <span style="display:flex;align-items:center;gap:6px">na Linx <input class="qin" style="width:120px;padding:4px 8px;text-align:right" inputmode="decimal" placeholder="digitar" value="${lx!=null?lx.toFixed(2).replace('.',','):''}" onchange="pixSalvar(${loja},'${ym}',this.value)"></span>
+      <span>${d==null?'<span class="mut">falta digitar o Pix da Linx</span>':ruim?_pixDifTxt(d):'<span style="color:var(--green)">bateu</span>'}</span><span class="mut" style="font-size:12px;margin-left:auto">${r?_pixQuem(r):''}</span></div>`;}
   // ===================== REMANEJOS (v2.8.1) =====================
   // Quando o combinado não deu para cumprir: pagou menos, pagou mais, atrasou, não pagou.
   // Entra SOZINHO (comparando com o fixo dos Recorrentes ou a média dos 3 meses); a pessoa só completa o porquê.
@@ -3880,7 +3974,7 @@
       // rótulo de % na fatia (só se >5%)
       let lbl='';
       if(frac>0.05){const mid=(ang+ (ang-frac*Math.PI*2))/2;const lx=cx+(R+r)/2*Math.cos(mid),ly=cy+(R+r)/2*Math.sin(mid);lbl=`<text x="${lx}" y="${ly}" fill="#04130c" font-size="10" font-weight="800" text-anchor="middle" dominant-baseline="middle" style="pointer-events:none">${(frac*100).toFixed(1).replace('.',',')}%</text>`;}
-      const clique=tipo?`onclick="abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')" style="cursor:pointer"`:'';
+      const clique=tipo&&!it.semClique?`onclick="abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')" style="cursor:pointer"`:'';
       return `<path d="${path}" fill="${cor}" ${clique}><title>${it.nome}: ${BRL(it.valor)}</title></path>${lbl}`;
     }).join('');
     return `<svg viewBox="0 0 180 180" style="width:180px;height:180px;flex-shrink:0">${arcs}</svg>`;
@@ -3888,10 +3982,10 @@
   function legenda(itens,total,tipo){
     return itens.map((it,i)=>{
       const cor=CORES_GRAF[i%CORES_GRAF.length];const pct=total>0?(it.valor/total*100):0;
-      const clique=tipo?`onclick="abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')" style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='transparent'"`:'style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"';
+      const clique=tipo&&!it.semClique?`onclick="abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')" style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='transparent'"`:'style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"';
       return `<div ${clique}>
         <span style="width:11px;height:11px;border-radius:3px;background:${cor};flex-shrink:0"></span>
-        <span style="flex:1">${it.nome} <span class="mut" style="font-size:11px">${pct.toFixed(1).replace('.',',')}%</span></span>
+        <span style="flex:1">${it.nome}${it.sub?` <span class="mut" style="font-size:11px">· ${it.sub}</span>`:''} <span class="mut" style="font-size:11px">${pct.toFixed(1).replace('.',',')}%</span></span>
         <b style="font-variant-numeric:tabular-nums">${BRL(it.valor)}</b>${tipo?'<span class="mut" style="font-size:11px;margin-left:4px">›</span>':''}</div>`;
     }).join('');
   }
