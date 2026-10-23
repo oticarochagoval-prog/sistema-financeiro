@@ -250,7 +250,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.9', APP_DATA='23/10/2026';
+  const APP_VERSAO='2.9.10', APP_DATA='23/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1477,7 +1477,7 @@
       const selCat=(editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatLanc(this,${l.id})"><span>${cat.nome||'⚠ categoria'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`)+obsLinha;
       // seletor de contato inline (vermelho se saída sem contato)
       const faltaContato=saida&&!l.contato_id&&!obsTxt&&!neutra;
-      const selCont=editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(obsTxt?`<span class="mut" title="sem contato cadastrado — vale a observação">${obsTxt.slice(0,22)}</span>`:(saida?'⚠ contato ou obs':'— contato'))}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—');
+      const selCont=!saida?(contatoEntradaVale(cont.nome)?`<span class="mut" style="font-size:12px">${cont.nome}</span>`:''):editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(obsTxt?`<span class="mut" title="sem contato cadastrado — vale a observação">${obsTxt.slice(0,22)}</span>`:(saida?'⚠ contato ou obs':'— contato'))}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—');
       // seletor de conta inline
       // conta: sempre Sicoob (banco), não precisa mostrar/editar na lista
       const ehCx=contaEhCaixinha(l.conta_id);const quem=nomeDe(l.criado_por);
@@ -2344,6 +2344,7 @@
     if(/GV OPTICAL/.test(n))return (contatoGV()||{}).id||null;
     if(/\bFZ (COMERCIO|GRIFES)/.test(n))return (ach(/^FZ GRIFES$/)||{}).id||null;
     return null;}
+  function contatoEntradaVale(nome){return /^(LUCAS GOMES ROCHA|GV OPTICAL|GV LENTES|FZ GRIFES)$/.test(normDesc(nome||''));}
   function catFuncionarios(){return catPorNome('Funcionários')||catsAtivas().find(c=>/^FUNCIONARIOS$/.test(normDesc(c.nome)))||null;}
   function contatoGV(){const cs=contatosAtivos();return cs.find(c=>/^GV LENTES$/.test(normDesc(c.nome)))||cs.find(c=>/^GV OPTICAL$/.test(normDesc(c.nome)))||cs.find(c=>/^GV\b/.test(normDesc(c.nome)))||null;}
   function catLentes(){return catPorNome('Lentes/Laboratório')||catsAtivas().find(c=>/^LENTES ?LABORATORIO$/.test(normDesc(c.nome)))||null;}
