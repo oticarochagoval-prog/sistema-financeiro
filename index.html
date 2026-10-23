@@ -250,7 +250,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.7', APP_DATA='23/10/2026';
+  const APP_VERSAO='2.9.8', APP_DATA='23/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -2323,6 +2323,21 @@
   function catEhFuncionario(catId){const c=CATS.find(x=>String(x.id)===String(catId));if(!c)return false;const n=normDesc(c.nome);return /FUNCION|BONIFICA|FERIAS/.test(n)&&!/IMPOSTO/.test(n);}
   // categoria é de funcionário e ficou sem contato? procura a pessoa pelo nome
   function _preencheFuncionario(item,txt){if(item.contatoId||!catEhFuncionario(item.catId))return;const p=funcionarioNoTexto(txt);if(p&&p.contato){item.contatoId=p.contato.id;item.pessoa=p.contato.nome;}}
+  // ---- v2.9.8: aprende o funcionário pelo pedaço do CPF que o banco manda no Pix (***.891.666-**) ----
+  function cpfMascarado(txt){const m=String(txt||'').match(/\*{3}\.?(\d{3})\.?(\d{3})-?\*{2}/);return m?m[1]+m[2]:'';}
+  async function aprenderCpfFuncionarios(linhas){let n=0;const novos={};
+    for(const r of linhas){if(!(r.amt<0)||!r.contatoId||!catEhFuncionario(r.catId))continue;
+      const cpf=cpfMascarado(r.full||r.desc);if(!cpf)continue;
+      const ct=CONTATOS.find(c=>String(c.id)===String(r.contatoId));if(!ct||ct.tipo!=='funcionario'||/IONARI/.test(normDesc(ct.nome)))continue;
+      // só quando o Pix é pago À pessoa (salário, vale, bônus…). "EXAME DEMISSIONAL VICTOR" vai para a clínica, não para o Victor
+      if(!/\b(SALARIO|SALRIO|VALE|BONIF\w*|BONUS|FERIAS|RESCISAO|ADIANTAMENTO|ADIANT|COMISSAO|DECIMO|PREMIO|ACERTO)\b/.test(normDesc(r.full||r.desc)))continue;
+      const pal='#DOC:'+cpf;if(REGRAS_P.some(x=>x.palavra===pal&&x.contato_id))continue; // já sabe (nunca troca a pessoa que já estava ligada)
+      if(novos[pal]&&novos[pal]!==ct.id){novos[pal]=-1;continue;} // mesmo CPF com duas pessoas: não aprende
+      novos[pal]=ct.id;}
+    Object.keys(novos).forEach(k=>{if(novos[k]===-1)delete novos[k];});
+    for(const [pal,cid] of Object.entries(novos)){const {error}=await sb.from('regras_palavras').insert({palavra:pal,categoria_id:null,contato_id:cid,origem:'cpf_funcionario',ativa:true,criado_por:USER.id});if(!error)n++;}
+    if(n){try{await carregarRegrasP();}catch(e){}}
+    return n;}
   function catFuncionarios(){return catPorNome('Funcionários')||catsAtivas().find(c=>/^FUNCIONARIOS$/.test(normDesc(c.nome)))||null;}
   function contatoGV(){const cs=contatosAtivos();return cs.find(c=>/^GV LENTES$/.test(normDesc(c.nome)))||cs.find(c=>/^GV OPTICAL$/.test(normDesc(c.nome)))||cs.find(c=>/^GV\b/.test(normDesc(c.nome)))||null;}
   function catLentes(){return catPorNome('Lentes/Laboratório')||catsAtivas().find(c=>/^LENTES ?LABORATORIO$/.test(normDesc(c.nome)))||null;}
@@ -2697,7 +2712,10 @@
         const catNome=adivinhaCat(full);
         if(catNome&&catNome!=='__IGNORAR__'&&catNome!=='Cartão'){const c=catsAtivas().find(c=>c.nome===catNome);item.catId=c?c.id:'';}else item.catId='';
         const contNome=adivinhaContato(full);
-        if(contNome){const c=contatosAtivos().find(c=>c.nome===contNome);item.contatoId=c?c.id:null;}
+        if(contNome&&!item.contatoId){const c=contatosAtivos().find(c=>c.nome===contNome);item.contatoId=c?c.id:null;}
+        // (v2.9.8) funcionário: completa o contato pelo nome; e se o CPF já ligou a pessoa, a categoria é Funcionários
+        _preencheFuncionario(item,full);
+        if(!item.catId&&item.contatoId){const ct=CONTATOS.find(c=>String(c.id)===String(item.contatoId)),cf=catFuncionarios();if(ct&&ct.tipo==='funcionario'&&cf){item.catId=cf.id;item.corrigir=true;}}
         item.grupo=item.catId?'adivinhado':'falta';
         return item;
       });
@@ -2728,7 +2746,7 @@
     const btn=document.getElementById('btnConfImport');if(btn){btn.disabled=true;btn.textContent='Lançando...';}
     const contaSicoob=CONTAS.find(c=>/sicoob/i.test(c.nome))||CONTAS.find(c=>!/caixinha/i.test(c.nome))||null;
     const lojaCurta=lojaNomeCurto(lojaAtual);
-    let ok=0,dup=0,erro=0,fech=0,ligados=0,sip=0,sipErr='',nAutoCat=0,nAutoCt=0,pulados=0,cxCriou=0,cxLigou=0,cxErr='';
+    let ok=0,dup=0,erro=0,fech=0,ligados=0,sip=0,sipErr='',nAutoCat=0,nAutoCt=0,pulados=0,cxCriou=0,cxLigou=0,cxErr='';const lancadasAgora=[];
     const gravarSipag=async(r,lancId)=>{ // um crédito de cartão do extrato → tabela da conciliação (não duplica pelo código do banco)
       if(!r.sipag||!r.fitid)return;
       const row={loja:lojaCurta,loja_id:lojaAtual,data:r.iso,valor:r.amt,descricao:(r.desc||'').slice(0,300),tipo:r.sipag.tipo,origem:'ofx',origem_ref:r.fitid,lancamento_id:lancId||null,criado_por:USER.id};
@@ -2753,7 +2771,7 @@
         pago:true,origem:'ofx',fitid:r.fitid||null,criado_por:USER.id};if(r.obs&&r.obs.trim())reg.documento=r.obs.trim().toUpperCase();
       const {data:ins,error}=await sb.from('lancamentos').insert(reg).select('id').single();
       if(error){if(error.message.includes('duplicate')||error.code==='23505')dup++;else erro++;continue;}
-      ok++;if(r.catId&&!r.resolvido)nAutoCat++;if(r.contatoId)nAutoCt++;await gravarSipag(r,ins&&ins.id);
+      ok++;if(r.catId&&!r.resolvido)nAutoCat++;if(r.contatoId)nAutoCt++;await gravarSipag(r,ins&&ins.id);lancadasAgora.push(r);
       if(r.estornar&&r.cxLoja&&String(r.catId)===String(catEstornarId())){const st=await impMandarBanco(r,ins&&ins.id);if(st==='criou')cxCriou++;else if(st==='ligou')cxLigou++;else if(st.startsWith('erro'))cxErr=cxErr||st.slice(5);}
     }
     // salva o histórico da importação
@@ -2766,9 +2784,10 @@
       if(eh&&/linhas_|column|schema/i.test(eh.message||''))await sb.from('importacoes').insert(hist); // SQL da v2.4 ainda não rodou
     }catch(e){}
     if(ok||ligados)await lembrarContaLoja();
+    let cpfN=0;try{cpfN=await aprenderCpfFuncionarios(lancadasAgora);}catch(e){}
     let depN=0,depErr='';if(IMPORT_DEP.length){const rr=await cxMarcarDepositos(IMPORT_DEP);depN=rr.n;depErr=rr.err;IMPORT_DEP=[];}
     IMPORT=[];importObs='';importPeriodo={de:'',ate:''};IMPORT_TIPO='';IMP_MARC={modo:'todas',crit:[]};
-    toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${pulados?` · ${pulados} ficaram para a próxima importação`:''}${sipErr?` · conciliação: ${sipErr}`:''}${cxCriou?` · 🔁 ${cxCriou} mandados para o Banco Caixinha`:''}${cxLigou?` · 🔁 ${cxLigou} ligados ao que já estava no Banco Caixinha`:''}${cxErr?` · Banco Caixinha: ${cxErr}`:''}${depN?` · ${depN} depósito(s) da gaveta conferido(s) pelo extrato`:''}${depErr?` · Caixinha (depósitos): ${depErr}`:''}`, (erro>0||fech>0||sipErr||cxErr||depErr)?'erro':'ok');
+    toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${pulados?` · ${pulados} ficaram para a próxima importação`:''}${sipErr?` · conciliação: ${sipErr}`:''}${cxCriou?` · 🔁 ${cxCriou} mandados para o Banco Caixinha`:''}${cxLigou?` · 🔁 ${cxLigou} ligados ao que já estava no Banco Caixinha`:''}${cxErr?` · Banco Caixinha: ${cxErr}`:''}${depN?` · ${depN} depósito(s) da gaveta conferido(s) pelo extrato`:''}${cpfN?` · ${cpfN} funcionário(s) aprendido(s) pelo CPF`:''}${depErr?` · Caixinha (depósitos): ${depErr}`:''}`, (erro>0||fech>0||sipErr||cxErr||depErr)?'erro':'ok');
     if(cxCriou||cxLigou)CX.carregado=false;
     go('lanc');
   }
