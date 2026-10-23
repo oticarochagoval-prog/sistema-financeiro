@@ -351,6 +351,16 @@ Clique em qualquer conta para ver os detalhes ou resolver. A Agenda também alim
 
 **Parcela lançada → as próximas vão sozinhas (v2.6.1):** ao lançar nos Lançamentos uma despesa com parcela (ex.: 1/6 do cartão da loja), as parcelas 2/6 a 6/6 entram sozinhas na Agenda, uma por mês, no mesmo dia. Quando cada uma sair no extrato, ela é baixada sozinha.
 
+
+### Ler boleto por foto ou PDF (v2.8.4)
+
+- Na Agenda, em **Lançar conta**, clique em **Ler boleto (foto ou PDF)**. No celular abre a câmera; no computador, escolha a foto ou o PDF.
+- O Fluxo preenche sozinho: **valor e vencimento** (pelo código de barras), **descrição** (o nome da empresa), **parcela** (ex.: boleto 5/6 → cria só a 5/6 e a 6/6) e, quando já conhece a empresa pelo CNPJ, **categoria e contato**.
+- **Aprende:** depois que você lança o primeiro boleto de uma empresa com categoria, o Fluxo guarda o CNPJ dela. No próximo boleto, categoria e contato vêm sozinhos.
+- **PDF com texto** (o que chega por e-mail) é lido no próprio Fluxo, sem custo. **Foto** (ou PDF escaneado) é lida pela IA no servidor — custa centavos por boleto. A chave da IA fica guardada na Vercel, nunca no sistema.
+- Parcelado sem boleto na mão: escolha **quantas vezes** e **de qual parcela começa** (ex.: 6x, da 5ª).
+- Sempre confira antes de clicar em **Lançar na agenda**.
+
 ## 🧩 Módulos: Óticas · Laboratório · Grupo de compras · Casa (v2.7.0)
 
 No alto da tela, ao lado da escolha da loja, ficam os **módulos**. Ao trocar de módulo, a lista de lojas/empresas e o menu mudam:
@@ -405,6 +415,39 @@ Os empréstimos continuam sendo lançados e baixados no **Caixinha**. No Fluxo, 
 - **Banco Caixinha:** cada conta que o escritório pagou por uma loja e ainda falta voltar, com data, descrição, valor, quanto já voltou e quanto falta.
 - Precisa ter entrado no Caixinha uma vez neste computador (igual à aba Caixinha espelho). Só aparece no módulo Óticas.
 
+## Diversas: a conta dividida (v2.9.0)
+
+Quinto módulo, lá em cima: **Óticas Rocha · Laboratório · Grupo de compras · Casa · Diversas**. A Diversas é a conta dividida (DVL): os boletos que ela paga ficam lá, e cada empresa paga a sua parte transferindo para ela.
+
+- **Lançar e dividir:** na Agenda da Diversas, lance o boleto (pode usar **Ler boleto**). Marque **"Dividir entre as empresas"** e escolha:
+  - **Por %:** a porcentagem fixa de cada empresa (a mesma ideia da Diversas do FaturaFácil);
+  - **Por lente (surfaçagem):** pelas lentes do mês de cada empresa;
+  - **Por igual:** só entre as empresas marcadas, com os centavos acertados;
+  - **À mão:** digita a parte de cada uma.
+- A tabela mostra a parte de cada empresa antes de lançar. O total sempre bate com o valor do boleto (os centavos que sobram vão para quem tem o maior resto).
+- **Regras salvas:** "Salvar regra" guarda o jeito de dividir (ex.: ESCRITÓRIO). Na próxima vez, é só escolher em "Regra salva".
+- Ao lançar, **cada empresa recebe na própria Agenda** "PARTE DIVERSAS · descrição", com o **mesmo vencimento** do boleto. Quando a transferência para a Diversas cair no extrato da loja (mesmo valor, perto do vencimento), a parte dá baixa sozinha.
+- **Não pode atrasar:** marque no lançamento (vale em qualquer módulo). A conta fica com uma faixa vermelha na agenda. Na Diversas, o quadro "Não pode atrasar" mostra os próximos 45 dias e quantas empresas ainda não transferiram. O agente vai vigiar esses.
+- **Quanto cada empresa deve à Diversas:** quadro com a parte do mês de cada empresa, quanto já transferiu e quanto falta.
+- **Porcentagens e lentes:** no fim da Agenda da Diversas. A % só o gestor muda; as lentes são digitadas todo mês (o "por lente" usa o mês do vencimento do boleto, ou o último mês preenchido).
+- Abrir o boleto da Diversas mostra a lista de empresas e quem já transferiu. "Não vou pagar" ou "Excluir" no boleto leva junto as partes que ainda estavam em aberto.
+
+## Mandar para a Lixeira — uma ou várias (v2.9.1)
+
+- Em **Lançamentos**, cada linha tem uma caixinha ao lado da data. Marque as que devem sair (ou a caixinha do cabeçalho, que marca todas que estão aparecendo) e clique em **Mandar para a Lixeira**.
+- **Quem lança também pode** (Rhaiane, Carol...). Nada é apagado de vez: vai para a Lixeira com o nome de quem tirou. **Só o gestor restaura.**
+- Mês fechado não deixa tirar. Reabra o mês primeiro.
+- **Pix de cliente não precisa sair.** Até outubro ele é neutro (não soma na venda; para não ver, use **esconder as neutras**). De novembro em diante ele conta como venda (veja abaixo).
+
+## Pix de cliente vira venda (v2.9.2 — vale de novembro/2026 em diante)
+
+- **De 01/11/2026 em diante**, o Pix recebido de cliente entra na categoria **VENDA PIX** e **conta como venda no dia em que cai** (no Dashboard, na DRE e no resultado).
+- **No fim do mês, lance só o DINHEIRO à vista** da Linx, **sem o Pix** (a Linx mostra os dois separados). Se lançar o total com o Pix, a venda fica duplicada.
+- **Até outubro** continua do jeito antigo: o Pix é neutro e o total à vista do fim do mês entra inteiro.
+- O card **Entradas do mês** mostra junto: **cartão · Pix · dinheiro e outras**.
+- Pix de outra loja do grupo, do Lucas (empréstimo) ou de devolução **não** vira venda: continua separado pelas regras. Depósito do dinheiro da gaveta continua neutro.
+- Com o extrato caindo todo dia (API), **não precisa escolher o que entra**: entra tudo (para o saldo do banco bater) e a categoria decide se é venda, despesa ou neutra.
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -430,6 +473,10 @@ Os empréstimos continuam sendo lançados e baixados no **Caixinha**. No Fluxo, 
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 23/10/2026 | 2.9.2 | Plano B: de novembro/2026 em diante o Pix de cliente entra como VENDA PIX (conta no dia); no fim do mês lança-se só o dinheiro à vista da Linx. Card de Entradas mostra cartão · Pix · dinheiro | Rodar o SQL v2.9.2 no sistema-financeiro |
+| 23/10/2026 | 2.9.1 | Lançamentos: marcar várias linhas e mandar para a Lixeira de uma vez; quem lança também pode (só o gestor restaura); restaurar da Lixeira corrigido para linhas que vieram das Lentes | Rodar o SQL v2.9.1 no sistema-financeiro |
+| 23/10/2026 | 2.9.0 | Módulo Diversas (conta dividida): dividir boleto entre as empresas por %, por lente, por igual ou à mão, com regras salvas; cada empresa recebe a parte na Agenda e dá baixa pelo extrato. "Não pode atrasar" em qualquer conta. Quadro do que cada empresa deve à Diversas | Rodar o SQL v2.9 no sistema-financeiro |
+| 23/10/2026 | 2.8.4 | Agenda: "Ler boleto (foto ou PDF)" preenche valor, vencimento, empresa, parcela e (pelo CNPJ aprendido) categoria e contato; parcelado pode começar na parcela que falta | Subir a pasta api e pôr a chave da IA na Vercel |
 | 22/10/2026 | 2.8.3 | Importar extrato aceita o PDF do Sicoob, com o texto completo (ex.: SALARIO HELOISA nas transferências para a DVL); não duplica com o OFX; transferência para loja do grupo é classificada pelo texto que vem depois do nome | Nenhum |
 | 22/10/2026 | 2.8.2 | Remanejos: só acompanha o que está nos Recorrentes e na Agenda; "a menos" só depois que o extrato da loja foi importado até aquela data (os avisos falsos de lojas sem extrato somem sozinhos) | Nenhum |
 | 22/10/2026 | 2.8.1 | Remanejos entram sozinhos: a menos, a mais e atraso (só dia útil, feriado nacional não conta), comparando com o fixo dos Recorrentes ou a média dos 3 meses; funcionários ficam de fora. Resumo do mês por loja, categoria e contato, juros e o que as lojas devem ao grupo de compras. Ajustes de categorias e contatos | Rodar o SQL v2.8.1 no sistema-financeiro |
