@@ -438,8 +438,18 @@ A Agenda de pagamentos não tem mais o quadro "Lançar conta". Tudo se lança em
 
 - **Despesa com data até hoje** (já paga): vira lançamento normal.
 - **Despesa com data depois de hoje** (ainda vai pagar, ex.: boleto lido pela foto com vencimento futuro): vai para a **Agenda**. Se tiver parcela (ex.: 2/5), entram na Agenda da 2/5 até a 5/5, uma por mês. Quando o extrato trouxer o pagamento, a importação reconhece e dá baixa.
-- **Na Diversas**, embaixo do + Lançar aparece **Dividir entre as empresas** (por %, por lente, por igual, à mão ou regra salva). Cada loja ganha "PARTE DIVERSAS · descrição" na Agenda dela, com a mesma data. Vale tanto para o que já foi pago quanto para o que vai vencer.
-- As porcentagens e as lentes do mês continuam na Agenda da Diversas, em "Porcentagens e lentes".
+- **Na Diversas**, ao lado do Ler boleto tem o botão **Dividir entre as empresas** (desde a v2.9.13; clicou, abre o quadro embaixo do + Lançar) (por %, por lente, por igual, à mão ou regra salva). Cada loja ganha "PARTE DIVERSAS · descrição" na Agenda dela, com a mesma data. Vale tanto para o que já foi pago quanto para o que vai vencer.
+- **Lentes do mês (surfaçagem) — v2.9.14:** dia 1º de cada mês, digite as lentes do mês que fechou. O jeito mais fácil: em Lançamentos da Diversas aparece o aviso "Faltam as lentes de setembro" com o botão **Preencher agora**, que abre o Dividir em **Por lente** com uma caixinha por loja (Enter passa para a próxima). Também dá para digitar na Agenda da Diversas, em "Porcentagens e lentes".
+- **Qual mês de lente vale:** a divisão por lente usa as lentes do mês anterior ao do boleto (o mês que fechou). Se esse mês ainda não foi digitado, usa o último mês preenchido e avisa.
+- O botão **Dividir entre as empresas** fica em dois lugares: em cima, ao lado do Ler boleto, e embaixo do + Lançar.
+
+## No celular (v2.9.15)
+
+No celular o menu fica escondido: toque no **☰**, no canto de cima, para abrir; escolheu a tela, ele fecha sozinho. A barra de cima mostra os módulos e a loja em linhas próprias, os campos do lançamento ficam um embaixo do outro, e as tabelas largas rolam para o lado com o dedo.
+
+## Boleto pela foto: uma foto, um boleto
+
+Tire a foto de **um boleto só**. Se for parcelado, fotografe só a parcela que vai pagar agora (ex.: 3 de 6): o Fluxo lê "3 de 6" e cria sozinho a 4/6, a 5/6 e a 6/6 na Agenda, uma por mês. As que já foram pagas não entram de novo. Ainda não pagou: deixe a data do vencimento (vai para a Agenda). Já pagou: troque a data para o dia do pagamento.
 
 ## Mandar para a Lixeira — uma ou várias (v2.9.1)
 
@@ -549,6 +559,9 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 23/10/2026 | 2.9.15 | Versão para celular: menu escondido no ☰, barra de cima em linhas, campos um embaixo do outro, tabelas rolam para o lado | Nenhum |
+| 23/10/2026 | 2.9.14 | Lentes do mês digitadas no próprio quadro do Dividir (Por lente), aviso "Faltam as lentes" com Preencher agora na Diversas, divisão por lente usa o mês que fechou, botão Dividir em cima e embaixo | Nenhum |
+| 23/10/2026 | 2.9.13 | Dividir da Diversas vira botão ao lado do Ler boleto (antes era uma caixinha de marcar, difícil de ver) | Nenhum |
 | 23/10/2026 | 2.9.12 | Agenda sem o "Lançar conta": tudo se lança em Lançamentos; despesa com data futura vai sozinha para a Agenda; Dividir entre as empresas no Lançamentos da Diversas | Nenhum |
 | 23/10/2026 | 2.9.11 | Importar reconhece a Agenda: boleto pago que estava lá entra com a categoria dela e dá baixa ao confirmar; aceita juros de até 10% depois do vencimento | Nenhum |
 | 23/10/2026 | 2.9.10 | Lista de Lançamentos: entradas não mostram contato (só Lucas, GV Optical e FZ Grifes) | Nenhum |

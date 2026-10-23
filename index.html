@@ -180,6 +180,34 @@
   .loading{text-align:center;padding:50px;color:var(--muted)}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.4);color:#fff}
   .toast.ok{background:var(--green);color:#04130c}.toast.erro{background:var(--red)}
+  /* ---- v2.9.15: versão para celular ---- */
+  .menucel{display:none}.menuveu{display:none}
+  @media(max-width:760px){
+    #app.show{display:block}
+    .side{position:fixed;left:0;top:0;bottom:0;height:100%;width:270px;z-index:60;transform:translateX(-105%);transition:transform .2s;box-shadow:0 0 30px rgba(0,0,0,.45)}
+    body.menu-aberto .side{transform:none}
+    body.menu-aberto .menuveu{display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:55}
+    #burgerBtn{display:none}
+    .menucel{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--txt);font-size:18px;cursor:pointer;flex-shrink:0}
+    .topbar{flex-wrap:wrap;padding:10px 12px;gap:8px}
+    .pagetitle{font-size:16px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .iconbtn{width:34px;height:34px}
+    .modbox{order:5;margin-left:0;width:100%;overflow-x:auto}
+    .store{order:6;margin-left:0;width:100%;max-width:none}
+    .content{padding:12px}
+    .card{padding:14px;border-radius:14px}
+    .quickbar{padding:12px}
+    .quickrow.l1,.quickrow.l2{grid-template-columns:1fr 1fr}
+    .quickrow.l1>div:nth-child(3),.quickrow.l2>div:nth-child(2),.quickrow.l2>div:nth-child(3){grid-column:1/-1}
+    .quickrow:not(.l1):not(.l2){grid-template-columns:1fr !important}
+    .content table{display:block;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+    .modal{width:94vw !important;max-height:90vh;overflow:auto;padding:18px}
+    .hint{display:none}
+    .topbar{position:static}
+    .quickbar>div:first-child{flex-wrap:wrap}
+    .quickbar>div:first-child>span:first-child{width:100%}
+    .quickbar>div:first-child>button{margin-left:0 !important;flex:1;min-width:0}
+  }
 </style>
 </head>
 <body>
@@ -204,8 +232,10 @@
       <nav id="nav"></nav>
       <div class="sidefoot" id="sidefoot">—</div>
     </aside>
+    <div class="menuveu" onclick="fecharMenuCel()"></div>
     <div class="main">
       <div class="topbar">
+        <button class="menucel" onclick="abrirMenuCel()" title="Menu">☰</button>
         <span class="pagetitle" id="ptitle">Dashboard</span>
         <div id="modBox" class="modbox" style="display:none"></div>
         <select class="store" id="store" onchange="trocarLoja()"></select>
@@ -250,7 +280,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.12', APP_DATA='23/10/2026';
+  const APP_VERSAO='2.9.15', APP_DATA='23/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1219,7 +1249,9 @@
       return `<div class="nav ${id===page?'active':''}" data-label="${l}" onclick="go('${id}')"><span class="ic">${NAV_ICON[id]?`<svg viewBox="0 0 24 24" aria-hidden="true">${NAV_ICON[id]}</svg>`:ic}</span><span class="navtxt">${l}</span>${pronto?'':'<span class="soon">em breve</span>'}</div>`;
     }).join('');
   }
-  function go(p){page=p;q='';document.getElementById('ptitle').textContent=TITLES[p]||p;renderNav();render();}
+  function abrirMenuCel(){const s=document.getElementById('side');if(s)s.classList.remove('collapsed');document.body.classList.add('menu-aberto');}
+  function fecharMenuCel(){document.body.classList.remove('menu-aberto');}
+  function go(p){fecharMenuCel();page=p;q='';document.getElementById('ptitle').textContent=TITLES[p]||p;renderNav();render();}
   function toggleMenu(){const s=document.getElementById('side');s.classList.toggle('collapsed');const c=s.classList.contains('collapsed');const b=document.getElementById('burgerBtn');b.title=c?'Abrir menu':'Fechar menu';b.innerHTML=c?'›':'‹';}
 
   function catsAtivas(){return CATS.filter(c=>!c.arquivada&&_visivelNoModulo(c));}
@@ -1356,7 +1388,7 @@
   }
 
   // Lançamentos: depois de desenhar (inclusive após salvar/editar/excluir), atualiza o saldo do dia 1º e os cartões da loja
-  async function viewLanc(){await viewLancBase();if(MODULO_ATUAL==='diversas'&&document.getElementById('agDivPainel')){agCarregarRegras().then(()=>agDivRender()).catch(()=>{});}if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
+  async function viewLanc(){await viewLancBase();if(MODULO_ATUAL==='diversas'){preencherAvisoLentes().catch(()=>{});if(document.getElementById('agDivPainel'))agCarregarRegras().then(()=>agDivRender()).catch(()=>{});}if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
   async function viewLancBase(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando lançamentos...</div>';
     await carregarLancamentos();
@@ -1400,7 +1432,7 @@
     const formHTML=podeEditar()?`<div class="quickbar">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
         <span style="font-size:13px;font-weight:700;color:var(--green);display:flex;align-items:center;gap:7px">➕ NOVO LANÇAMENTO</span>
-        <input type="file" id="lancArq" accept="image/*,application/pdf" style="display:none" onchange="lancLerArquivo(this)"><button class="btn" style="margin-left:auto;padding:7px 12px;font-size:12px" onclick="document.getElementById('lancArq').click()">Ler boleto (foto ou PDF)</button>
+        <input type="file" id="lancArq" accept="image/*,application/pdf" style="display:none" onchange="lancLerArquivo(this)"><button class="btn" style="margin-left:auto;padding:7px 12px;font-size:12px" onclick="document.getElementById('lancArq').click()">Ler boleto (foto ou PDF)</button>${MODULO_ATUAL==='diversas'&&tipo==='des'?`<button class="btn agDivBtn ${AG_DIV.on?'':'ghost'}" id="agDivBtn" style="padding:7px 12px;font-size:12px" onclick="lancDividirToggle()">${AG_DIV.on?'Dividindo entre as empresas':'Dividir entre as empresas'}</button>`:''}
         <button class="btn ghost" style="padding:7px 12px;font-size:12px" onclick="go('recorrentes')">🔁 Recorrentes</button>
       </div>
       <div id="lancLidoInfo" class="mut" style="font-size:12px;margin:-4px 0 10px;min-height:0"></div>
@@ -1420,11 +1452,11 @@
         <div><span class="qlabel">Nº documento / Observação (opcional)</span><input id="qDoc" class="qin maiusc" placeholder="Ex: boleto 169097165 · ou LUÍSA — PANFLETAGEM (vale no lugar do contato)"></div>
         <button class="addbtn" id="btnLancar" onclick="salvarLanc()">+ Lançar</button>
       </div>
-      ${MODULO_ATUAL==='diversas'&&tipo==='des'?`<label style="display:block;margin-top:10px;font-size:13px;cursor:pointer"><input type="checkbox" id="agDiv" ${AG_DIV.on?'checked':''} onchange="AG_DIV.on=this.checked;agDivRender()"> <b>Dividir entre as empresas</b> <span class="mut" style="font-size:11.5px">cada loja ganha a parte dela na Agenda</span></label><div id="agDivPainel"></div>`:''}
+      ${MODULO_ATUAL==='diversas'&&tipo==='des'?`<div style="margin-top:10px"><button class="btn agDivBtn ${AG_DIV.on?'':'ghost'}" style="padding:6px 14px;font-size:12.5px" onclick="lancDividirToggle()">${AG_DIV.on?'Dividindo entre as empresas':'Dividir entre as empresas'}</button> <span class="mut" style="font-size:11.5px">cada loja ganha a parte dela na Agenda</span></div><div id="agDivPainel"></div>`:''}
       <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho</span><span>👥 Categoria obrigatória · sem contato cadastrado? escreva quem foi na observação</span></div>
     </div>`:'<div class="note">👁️ Seu acesso é somente leitura (contador). Você pode ver e exportar, mas não lançar.</div>';
     const diaLabel=filtroDia?isoParaBR(filtroDia):'Todos os dias';
-    document.getElementById('content').innerHTML=avisoPixNovembro()+'<div id="ultimaImportLanc"></div>'+saldoBanco+formHTML+`
+    document.getElementById('content').innerHTML=avisoPixNovembro()+(MODULO_ATUAL==='diversas'?'<div id="divLentesAviso"></div>':'')+'<div id="ultimaImportLanc"></div>'+saldoBanco+formHTML+`
       <div style="font-size:13px;font-weight:700;color:var(--txt);margin:22px 0 12px;display:flex;align-items:center;gap:7px;border-top:1px solid var(--line);padding-top:18px">🔍 LANÇAMENTOS CADASTRADOS <span class="mut" style="font-weight:400;font-size:12px">— consultar e editar</span></div>
       <div style="display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 14px;width:fit-content;margin-bottom:12px">
         <button class="burger" style="width:32px;height:32px" title="Mês anterior" onclick="navMes(-1)">‹</button>
@@ -3106,6 +3138,20 @@
     return p;}
   function divPartes(total){if(AG_DIV.metodo==='mao'){const o={};Object.entries(AG_DIV.mao||{}).forEach(([k,v])=>{const n=_numBR(v);if(n>0)o[k]=Math.round(n*100)/100;});return o;}return divDistribuir(total,divPesos());}
   async function agCarregarRegras(){try{const {data}=await sb.from('rateio_regras').select('*').order('nome');RATEIO_REGRAS=data||[];}catch(e){RATEIO_REGRAS=[];}}
+  // digitou a lente de uma loja no quadro de dividir: salva no mês que fechou e vai para a próxima loja
+  async function divLenteMudou(id,val,ix){const ym=AG_DIV.lentesAlvo;if(!ym)return;const n=Math.max(0,parseInt(String(val).replace(/\D/g,''),10)||0),[a,mm]=ym.split('-').map(Number);
+    const {data:ex,error:e0}=await sb.from('lentes_mes').select('id').eq('loja_id',id).eq('ano',a).eq('mes',mm).limit(1);if(e0){toast('Erro: '+e0.message,'erro');return;}
+    const res=ex&&ex[0]?await sb.from('lentes_mes').update({quantidade:n}).eq('id',ex[0].id):await sb.from('lentes_mes').insert({loja_id:id,ano:a,mes:mm,quantidade:n});
+    if(res.error){toast('Erro: '+res.error.message,'erro');return;}(LENTES_MES[ym]=LENTES_MES[ym]||{})[id]=n;
+    await agDivRender();const prox=document.querySelector(`.divLente[data-ix="${ix+1}"]`);if(prox){prox.focus();prox.select();}
+    const av=document.getElementById('divLentesAviso');if(av)preencherAvisoLentes();}
+  // aviso na Diversas: faltam as lentes do mês que fechou
+  async function preencherAvisoLentes(){const box=document.getElementById('divLentesAviso');if(!box)return;const alvo=mesShift(_hojeLocal().slice(0,7),-1);
+    let L={};try{L=await divCarregarLentes(alvo,true);}catch(e){}const emp=divEmpresas().filter(l=>_modDe(l)==='oticas'),falta=emp.filter(l=>!(l.id in L)).length;
+    box.innerHTML=falta?`<div class="note" style="border-color:rgba(199,134,26,.45);display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>Faltam as lentes (surfaçagem) de <b>${MESES_NOME[Number(alvo.slice(5,7))-1]}</b>${falta<emp.length?` de ${falta} loja(s)`:''}. Clique em <b>Dividir entre as empresas</b> → <b>Por lente</b> e digite na coluna.</span><button class="btn" style="margin-left:auto;padding:5px 12px;font-size:12.5px" onclick="if(!AG_DIV.on)lancDividirToggle();AG_DIV.metodo='lente';agDivRender()">Preencher agora</button></div>`:'';}
+  function lancDividirToggle(){AG_DIV.on=!AG_DIV.on;
+    document.querySelectorAll('.agDivBtn').forEach(x=>{x.className='btn agDivBtn '+(AG_DIV.on?'':'ghost');x.textContent=AG_DIV.on?'Dividindo entre as empresas':'Dividir entre as empresas';});
+    if(AG_DIV.on&&!RATEIO_REGRAS.length)agCarregarRegras().then(()=>agDivRender()).catch(()=>{});agDivRender();if(AG_DIV.on){const p=document.getElementById('agDivPainel');if(p)setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),50);}}
   function _divValorForm(){const a=document.getElementById('agValor');if(a)return _numBR(a.value);const q=document.getElementById('qVal');return q?(parseInt(q.dataset.cents||'0',10)||0)/100:0;}
   function _divVencForm(){const a=document.getElementById('agVenc');if(a&&a.value)return a.value;const q=document.getElementById('qData');const iso=q&&q.value?dataParaISO(q.value):null;return iso||addDias(AG_SEMANA||_hojeLocal(),6);}
   // cria a parte de cada empresa na Agenda dela, ligada ao boleto da Diversas (rateio_de)
@@ -3114,23 +3160,25 @@
     if(!pr.length)return 'nenhuma parte';const {error}=await sb.from('contas_pagar').insert(pr);return error?error.message:'';}
   async function agDivRender(){const box=document.getElementById('agDivPainel');if(!box)return;if(!AG_DIV.on){box.innerHTML='';return;}
     const valor=_divValorForm(),venc=_divVencForm(),m=AG_DIV.metodo;
-    if(m==='lente'){let ym=venc.slice(0,7),L=await divCarregarLentes(ym),n=0;while(!Object.values(L).some(v=>v>0)&&n<6){ym=mesShift(ym,-1);L=await divCarregarLentes(ym);n++;}
-      AG_DIV.lentes=L;AG_DIV.lentesMes=Object.values(L).some(v=>v>0)?ym:'';}
+    if(m==='lente'){const alvo=mesShift(venc.slice(0,7),-1),LA=await divCarregarLentes(alvo);let ym=alvo,L=LA,n=0;while(!Object.values(L).some(v=>v>0)&&n<6){ym=mesShift(ym,-1);L=await divCarregarLentes(ym);n++;}
+      AG_DIV.lentes=L;AG_DIV.lentesMes=Object.values(L).some(v=>v>0)?ym:'';AG_DIV.lentesAlvo=alvo;AG_DIV.lentesAlvoVals=LA;}
     const emp=divEmpresas(),partes=divPartes(valor),somaP=Object.values(partes).reduce((a,b)=>a+b,0),somaPct=emp.reduce((t,l)=>t+(Number(l.pct_diversas)||0),0);
     const chip=(k,t)=>`<button class="btn ${m===k?'':'ghost'}" style="padding:4px 11px;font-size:12px" onclick="AG_DIV.metodo='${k}';AG_DIV.regra='';agDivRender()">${t}</button>`;
-    const col=l=>m==='pct'?`${(Number(l.pct_diversas)||0).toLocaleString('pt-BR')}%`:m==='lente'?String((AG_DIV.lentes||{})[l.id]||0)
+    const _mesN=ym=>ym?MESES_NOME[Number(ym.slice(5,7))-1]:'';
+    const col=(l,ix)=>m==='pct'?`${(Number(l.pct_diversas)||0).toLocaleString('pt-BR')}%`:m==='lente'?(podeEditar()?`<input class="qin divLente" data-ix="${ix}" style="width:80px;padding:3px 8px;text-align:right" inputmode="numeric" value="${(AG_DIV.lentesAlvoVals||{})[l.id]||''}" placeholder="${AG_DIV.lentesMes&&AG_DIV.lentesMes!==AG_DIV.lentesAlvo?((AG_DIV.lentes||{})[l.id]||''):''}" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" onchange="divLenteMudou(${l.id},this.value,${ix})">`:String((AG_DIV.lentes||{})[l.id]||0))
       :m==='igual'?`<input type="checkbox" ${AG_DIV.sel&&AG_DIV.sel.has(l.id)?'checked':''} onchange="agDivSel(${l.id},this.checked)">`
       :`<input class="qin" style="width:110px;padding:4px 8px;text-align:right" inputmode="decimal" value="${_remEsc(AG_DIV.mao[l.id]||'')}" onchange="AG_DIV.mao[${l.id}]=this.value;agDivRender()">`;
     const aviso=m==='pct'&&Math.abs(somaPct-100)>0.01?`<div style="color:var(--amber);font-size:12px;margin-top:6px">As porcentagens somam ${somaPct.toLocaleString('pt-BR')}%, não 100%. A divisão sai proporcional; acerte em "Porcentagens e lentes", embaixo.</div>`
-      :m==='lente'&&!AG_DIV.lentesMes?`<div style="color:var(--amber);font-size:12px;margin-top:6px">Ainda não tem lentes digitadas. Preencha em "Porcentagens e lentes", embaixo.</div>`
-      :m==='lente'&&AG_DIV.lentesMes!==venc.slice(0,7)?`<div class="mut" style="font-size:12px;margin-top:6px">Usando as lentes de ${MESES_NOME[Number(AG_DIV.lentesMes.slice(5,7))-1]} (o mês do vencimento ainda não tem).</div>`
+      :m==='lente'&&!AG_DIV.lentesMes?`<div style="color:var(--amber);font-size:12px;margin-top:6px">Digite na coluna as lentes (surfaçagem) de ${_mesN(AG_DIV.lentesAlvo)} de cada loja. Dia 1º de cada mês, as do mês que fechou.</div>`
+      :m==='lente'&&AG_DIV.lentesMes!==AG_DIV.lentesAlvo?`<div style="color:var(--amber);font-size:12px;margin-top:6px">Faltam as lentes de ${_mesN(AG_DIV.lentesAlvo)}: digite na coluna. Enquanto isso, divide pelas de ${_mesN(AG_DIV.lentesMes)} (em cinza).</div>`
+      :m==='lente'?`<div class="mut" style="font-size:12px;margin-top:6px">Dividindo pelas lentes de ${_mesN(AG_DIV.lentesAlvo)} (o mês que fechou). Dá para corrigir na coluna.</div>`
       :m==='mao'&&valor&&Math.abs(somaP-valor)>0.009?`<div style="color:var(--amber);font-size:12px;margin-top:6px">As partes somam ${BRL(somaP)}; o boleto é ${BRL(valor)}.</div>`:'';
     box.innerHTML=`<div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px">
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">${chip('pct','Por %')}${chip('lente','Por lente (surfaçagem)')}${chip('igual','Por igual')}${chip('mao','À mão')}
         <select class="qin" style="margin-left:auto;padding:4px 8px;font-size:12px;max-width:170px" onchange="agDivUsarRegra(this.value)"><option value="">Regra salva…</option>${RATEIO_REGRAS.map(r=>`<option value="${r.id}" ${String(AG_DIV.regra)===String(r.id)?'selected':''}>${_remEsc(r.nome)}</option>`).join('')}</select>
         <button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="agDivSalvarRegra()">Salvar regra</button></div>
-      <div style="max-height:300px;overflow:auto"><table><thead><tr><th>Empresa</th><th style="text-align:right">${m==='pct'?'%':m==='lente'?'Lentes':m==='igual'?'Entra':'Valor'}</th><th style="text-align:right">Parte</th></tr></thead><tbody>
-      ${emp.map(l=>`<tr><td>${lojaNomeCurto(l.id)}</td><td style="text-align:right">${col(l)}</td><td class="amt" style="text-align:right">${partes[l.id]?BRL(partes[l.id]).replace('R$ ',''):'—'}</td></tr>`).join('')}
+      <div style="max-height:300px;overflow:auto"><table><thead><tr><th>Empresa</th><th style="text-align:right">${m==='pct'?'%':m==='lente'?'Lentes de '+_mesN(AG_DIV.lentesAlvo).toLowerCase():m==='igual'?'Entra':'Valor'}</th><th style="text-align:right">Parte</th></tr></thead><tbody>
+      ${emp.map((l,ix)=>`<tr><td>${lojaNomeCurto(l.id)}</td><td style="text-align:right">${col(l,ix)}</td><td class="amt" style="text-align:right">${partes[l.id]?BRL(partes[l.id]).replace('R$ ',''):'—'}</td></tr>`).join('')}
       <tr><td><b>Total</b></td><td></td><td class="amt" style="text-align:right"><b>${BRL(somaP).replace('R$ ','')}</b></td></tr></tbody></table></div>${aviso}
       <div class="mut" style="font-size:11.5px;margin-top:6px">Cada empresa recebe na própria Agenda "PARTE DIVERSAS · descrição", com o mesmo vencimento. Quando a transferência para a Diversas cair no extrato da loja, dá baixa sozinha.</div></div>`;}
   function agDivSel(id,on){if(!AG_DIV.sel)AG_DIV.sel=new Set();on?AG_DIV.sel.add(id):AG_DIV.sel.delete(id);AG_DIV.regra='';agDivRender();}
@@ -3161,7 +3209,7 @@
     const {data:partes}=await sb.from('contas_pagar').select('id,loja_id,valor,status,vencimento,rateio_de').not('rateio_de','is',null).gte('vencimento',ym+'-01').lte('vencimento',_fimMes(ym)).limit(5000);
     const {data:crs}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,status').in('loja_id',ids).eq('status','aberto').eq('critico',true).lte('vencimento',addDias(hoje,45)).order('vencimento').limit(200);
     let partesCrit=[];if(crs&&crs.length){const {data}=await sb.from('contas_pagar').select('rateio_de,status').in('rateio_de',crs.map(c=>c.id));partesCrit=data||[];}
-    const L=await divCarregarLentes(ym,true);
+    const ymL=mesShift(ym,-1),L=await divCarregarLentes(ymL,true);
     if(!document.getElementById('agDivResumo'))return;
     const por={};(partes||[]).filter(x=>x.status!=='cancelado').forEach(x=>{const o=por[x.loja_id]=por[x.loja_id]||{t:0,p:0};o.t+=Number(x.valor);if(x.status==='pago')o.p+=Number(x.valor);});
     const v=x=>BRL(x).replace('R$ ','');const linhas=emp.filter(l=>por[l.id]).map(l=>{const o=por[l.id],f=o.t-o.p;return `<tr><td>${lojaNomeCurto(l.id)}</td><td class="amt" style="text-align:right">${v(o.t)}</td><td class="amt" style="text-align:right">${o.p?v(o.p):'—'}</td><td class="amt" style="text-align:right;${f>0.004?'color:var(--amber)':''}"><b>${f>0.004?v(f):'—'}</b></td></tr>`;}).join('');
@@ -3174,11 +3222,11 @@
         <tr><td><b>Total</b></td><td class="amt" style="text-align:right"><b>${v(tot.t)}</b></td><td class="amt" style="text-align:right"><b>${v(tot.p)}</b></td><td class="amt" style="text-align:right"><b>${v(tot.t-tot.p)}</b></td></tr></tbody></table>`:'<div class="mut" style="font-size:12.5px">Nenhum boleto dividido neste mês ainda.</div>'}</div>
       <div class="card"><h3 style="font-size:14.5px;margin:0 0 8px">Não pode atrasar <span class="mut" style="font-size:12px;font-weight:400">· próximos 45 dias</span></h3>${crit||'<div class="mut" style="font-size:12.5px">Nenhum marcado.</div>'}</div></div>
       <details style="margin-top:14px" ${_divAjAberto?'open':''} ontoggle="_divAjAberto=this.open"><summary style="cursor:pointer;font-weight:700;font-size:14px">Porcentagens e lentes (como dividir)</summary>
-        <div class="card" style="margin-top:10px;padding:0;overflow-x:auto"><table><thead><tr><th>Empresa</th><th style="text-align:right">% da Diversas</th><th style="text-align:right">Lentes de ${MESES_NOME[Number(ym.slice(5,7))-1]}</th></tr></thead><tbody>
+        <div class="card" style="margin-top:10px;padding:0;overflow-x:auto"><table><thead><tr><th>Empresa</th><th style="text-align:right">% da Diversas</th><th style="text-align:right">Lentes de ${MESES_NOME[Number(ymL.slice(5,7))-1]}</th></tr></thead><tbody>
         ${emp.map(l=>`<tr><td>${lojaNomeCurto(l.id)}</td><td style="text-align:right">${ehDono()?`<input class="qin" style="width:90px;padding:4px 8px;text-align:right" inputmode="decimal" value="${(Number(l.pct_diversas)||0).toString().replace('.',',')}" onchange="divSalvarPct(${l.id},this.value)">`:(Number(l.pct_diversas)||0).toLocaleString('pt-BR')+'%'}</td>
-          <td style="text-align:right">${podeEditar()?`<input class="qin" style="width:90px;padding:4px 8px;text-align:right" inputmode="numeric" value="${L[l.id]||''}" onchange="divSalvarLente(${l.id},'${ym}',this.value)">`:(L[l.id]||0)}</td></tr>`).join('')}
+          <td style="text-align:right">${podeEditar()?`<input class="qin" style="width:90px;padding:4px 8px;text-align:right" inputmode="numeric" value="${L[l.id]||''}" onchange="divSalvarLente(${l.id},'${ymL}',this.value)">`:(L[l.id]||0)}</td></tr>`).join('')}
         <tr><td><b>Total</b></td><td style="text-align:right;${Math.abs(somaPct-100)>0.01?'color:var(--amber)':''}"><b>${somaPct.toLocaleString('pt-BR')}%</b></td><td style="text-align:right"><b>${somaLen}</b></td></tr></tbody></table></div>
-        <div class="mut" style="font-size:11.5px;margin-top:6px">A % é fixa (só o gestor muda). As lentes são do mês: digite todo mês, como no FaturaFácil. A divisão "por lente" usa o mês do vencimento do boleto (ou o último mês preenchido).</div></details>`;}
+        <div class="mut" style="font-size:11.5px;margin-top:6px">A % é fixa (só o gestor muda). As lentes são do mês que fechou: digite todo dia 1º (aqui ou no quadro do Dividir, em Lançamentos). A divisão "por lente" usa as lentes do mês anterior ao do boleto (ou o último mês preenchido).</div></details>`;}
   async function divSalvarPct(id,val){const n=_numBR(val);const {error}=await sb.from('lojas').update({pct_diversas:n}).eq('id',id);
     if(error){toast(/pct_diversas|column/i.test(error.message)?'Rode o SQL da v2.9 no sistema-financeiro primeiro.':'Erro: '+error.message,'erro');return;}
     const l=LOJAS.find(x=>x.id===id);if(l)l.pct_diversas=n;_divAjAberto=true;agDivResumo();agDivRender();}
