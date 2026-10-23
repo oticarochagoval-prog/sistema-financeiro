@@ -250,7 +250,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.6', APP_DATA='23/10/2026';
+  const APP_VERSAO='2.9.7', APP_DATA='23/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -2272,7 +2272,7 @@
     [/PEREGO|GV OPTICAL|FREEFORM|SURFA/i,'Surfaçagem Freeform'],
     [/FZ GRIFES|LUXOTICA/i,'Óculos/FZ Grifes'],
     [/PACOTE SERVI|IOF|TARIFA|DÉB\.CONV/i,'Tarifas Banco'],
-    [/SIMPLES|DAS|DARF/i,'Imposto (Simples)'],
+    [/\bSIMPLES\b|\bDAS\b|\bDARF\b/i,'Imposto (Simples)'],
     [/CEMIG|SANEAMENTO|SAAE|VIVO|TELEFON/i,'CEMIG/SAAE/Telefones'],
     [/CONTABIL/i,'Contabilidade'],
     [/SAL[AÁ]RIO|RESCIS|FOLHA|FGTS|VALE /i,'Funcionários'],
@@ -2303,6 +2303,29 @@
 
   // ---- o que vem depois do nome do favorecido/remetente (o Sicoob reserva 34 letras pro nome). Só o PDF traz. ----
   function complementoFavorecido(txt){const m=String(txt||'').match(/(?:FAV|REM)\.:\s?(.{34})\s+(\S.*)$/);return m?m[2].trim():'';}
+  // nome do favorecido (as 34 letras depois do "FAV.:"; no OFX vem cortado em 32, mas o começo é o mesmo)
+  function favorecidoNome(txt){const m=String(txt||'').match(/FAV\.:\s?(.{1,34})/);return m?m[1].trim():'';}
+  // ---- v2.9.7: acha o funcionário pelo nome escrito no extrato (Ana/Anna, Vitor/Victor, Jéssica/Jezica, com ou sem sobrenome) ----
+  const _NOME_STOP=new Set(['DE','DA','DO','DAS','DOS','E']);
+  function _nomeChave(w){return String(w||'').replace(/PH/g,'F').replace(/TH/g,'T').replace(/CT/g,'T').replace(/Y/g,'I').replace(/W/g,'V').replace(/K/g,'C').replace(/H/g,'').replace(/Z/g,'S').replace(/(.)\1+/g,'$1');}
+  function funcionarioNoTexto(txt){
+    const toks=normDesc(txt).split(' ').filter(t=>t.length>=2&&!/^\d+$/.test(t));if(!toks.length)return null;
+    const kset=new Set(toks.map(_nomeChave)),tset=new Set(toks);const cands=[];
+    contatosAtivos().forEach(c=>{if(c.tipo!=='funcionario')return;const n=normDesc(c.nome);if(/IONARI/.test(n))return; // "FUNCIONARIOS", "13 FUNCIONARIOS" não são pessoas
+      const ns=n.split(' ').filter(w=>w.length>=2&&!_NOME_STOP.has(w)&&!/^\d+$/.test(w));if(!ns.length||ns[0].length<3)return;
+      if(!kset.has(_nomeChave(ns[0])))return; // o primeiro nome tem que estar no texto
+      const ok=ns.filter(w=>kset.has(_nomeChave(w))).length,exato=ns.filter(w=>tset.has(w)).length;
+      cands.push({c,ok,sobra:ns.length-ok,exato,chave:ns.map(_nomeChave).join(' ')});});
+    if(!cands.length)return null;
+    cands.sort((a,b)=>b.ok-a.ok||a.sobra-b.sobra||b.exato-a.exato||a.c.id-b.c.id);
+    const t=cands[0],amb=cands.some(x=>x!==t&&x.ok===t.ok&&x.sobra===t.sobra&&x.chave!==t.chave);
+    return amb?{contato:null,ambiguo:true,nome:normDesc(t.c.nome).split(' ')[0]}:{contato:t.c,ambiguo:false,nome:t.c.nome};}
+  function catEhFuncionario(catId){const c=CATS.find(x=>String(x.id)===String(catId));if(!c)return false;const n=normDesc(c.nome);return /FUNCION|BONIFICA|FERIAS/.test(n)&&!/IMPOSTO/.test(n);}
+  // categoria é de funcionário e ficou sem contato? procura a pessoa pelo nome
+  function _preencheFuncionario(item,txt){if(item.contatoId||!catEhFuncionario(item.catId))return;const p=funcionarioNoTexto(txt);if(p&&p.contato){item.contatoId=p.contato.id;item.pessoa=p.contato.nome;}}
+  function catFuncionarios(){return catPorNome('Funcionários')||catsAtivas().find(c=>/^FUNCIONARIOS$/.test(normDesc(c.nome)))||null;}
+  function contatoGV(){const cs=contatosAtivos();return cs.find(c=>/^GV LENTES$/.test(normDesc(c.nome)))||cs.find(c=>/^GV OPTICAL$/.test(normDesc(c.nome)))||cs.find(c=>/^GV\b/.test(normDesc(c.nome)))||null;}
+  function catLentes(){return catPorNome('Lentes/Laboratório')||catsAtivas().find(c=>/^LENTES ?LABORATORIO$/.test(normDesc(c.nome)))||null;}
   // ---- extrato do Sicoob em PDF (v2.8.3): lê o texto e monta um OFX igual ao do banco (mesmo código de cada linha → não duplica) ----
   let _pdfjsP=null;
   function _carregarPdfJs(){if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);if(_pdfjsP)return _pdfjsP;
@@ -2322,7 +2345,7 @@
     if(!/EXTRATO DE CONTA CORRENTE|HIST[ÓO]RICO DE MOVIMENTA/i.test(tudo))throw new Error('esse PDF não parece um extrato de conta corrente do Sicoob');
     const per=tudo.match(/Per[ií]odo:?\s*(\d\d)\/(\d\d)\/(\d{4})\s*-\s*(\d\d)\/(\d\d)\/(\d{4})/i);if(!per)throw new Error('não achei o período do extrato no PDF');
     const de=`${per[3]}${per[2]}${per[1]}`,ate=`${per[6]}${per[5]}${per[4]}`,anoDe=Number(per[3]),anoAte=Number(per[6]);
-    const conta=((tudo.match(/Conta:?\s*[\d.\-]+\s*\/\s*([^\n]+)/i)||[])[1]||'').trim();
+    const conta=((tudo.match(/Conta:?\s*[\d.\-]+\s*\/\s*([^\n]+)/i)||[])[1]||'').trim(),contaNum=((tudo.match(/Conta:?\s*([\d.\-]+)\s*\//i)||[])[1]||'').trim();
     const tx=[];let fim=false;
     const ehCabecalho=t=>/^Data\b.*Hist[óo]rico|SISTEMA DE COOPERATIVAS|PLATAFORMA DE SERVI|EXTRATO DE CONTA|HIST[ÓO]RICO DE MOVIMENTA|^Cooperativa:?|^Conta:?|^Per[ií]odo|^P[áa]gina\b|OUVIDORIA|^SAC\b|^\d+\s*\/\s*\d+$/i.test(t);
     pags.forEach(linhas=>{if(fim)return;let histX=null,cur=null;
@@ -2344,7 +2367,7 @@
     if(!tx.length)throw new Error('não achei lançamentos no PDF');
     // mesmo código de linha que o Sicoob usa no OFX: data + valor em centavos + ordem (quando repete no dia)
     const seq={},limpa=x=>String(x||'').replace(/[<>\r\n]/g,' ').replace(/\s+/g,' ').trim();
-    let ofx=`OFXHEADER:100\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>\n<DTSTART>${de}\n<DTEND>${ate}\n`;
+    let ofx=`OFXHEADER:100\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS>${contaNum?`<BANKACCTFROM><ACCTID>${contaNum}</BANKACCTFROM>`:''}<BANKTRANLIST>\n<DTSTART>${de}\n<DTEND>${ate}\n`;
     tx.forEach(t=>{const c=Math.round(Math.abs(t.v)*100),k=t.dt+'|'+c;seq[k]=(seq[k]||0)+1;
       ofx+=`<STMTTRN>\n<TRNTYPE>${t.v<0?'DEBIT':'CREDIT'}\n<DTPOSTED>${t.dt}\n<TRNAMT>${t.v.toFixed(2)}\n<FITID>${t.dt}${c}${seq[k]}\n<MEMO>${limpa(t.hist)}\n<NAME>${limpa(t.comp.join(' ')||t.doc)}\n</STMTTRN>\n`;});
     ofx+='</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>';
@@ -2412,13 +2435,13 @@
       if(r.grupo==='lentes')return `<tr style="opacity:.6">${data}<td>${r.desc}<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">🔗 já lançado pelas Lentes: ${r.jaLentes.descricao}</span></div></td><td colspan="2"><span class="arqbtn" onclick="IMPORT[${i}].jaLentes=null;IMPORT[${i}].grupo='falta';_keepY=window.scrollY;render()" style="cursor:pointer">⏭️ não lança de novo · <u>lançar mesmo assim</u></span></td>${valorTd}</tr>`;
       const destaque=!impSel(r)?'style="opacity:.45"':(r.corrigir?'style="background:rgba(245,183,64,.08)"':(r.estornar?'style="background:rgba(125,162,255,.07)"':''));
       const dataSel=`<td class="mut" style="white-space:nowrap"><label style="display:flex;gap:6px;align-items:center;cursor:pointer" title="Lançar esta linha agora?"><input type="checkbox" tabindex="-1" ${impSel(r)?'checked':''} onclick="event.stopPropagation();IMPORT[${i}].selManual=this.checked;_keepY=window.scrollY;render()">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</label></td>`;
-      const etqRegra=r.regra?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 regra "${r.regra}"</span>${r.estornar?` <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">🔁 a estornar → ${r.lojaEstorno||'qual loja?'}</span>`:''}</div>`:(r.sipag?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">💳 ${({antecipacao:'antecipação',debito:'débito',credito_parcela:'parcela de crédito',estorno:'estorno',outro:'Sipag'})[r.sipag.tipo]}${r.sipag.band?' · '+r.sipag.band:''}</span></div>`:(r.grupo==='adivinhado'?'<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">adivinhado</span></div>':''));
+      const etqRegra=r.regra?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 regra "${r.regra}"</span>${r.estornar?impEstornoHTML(r,i):''}</div>`:(r.sipag?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">💳 ${({antecipacao:'antecipação',debito:'débito',credito_parcela:'parcela de crédito',estorno:'estorno',outro:'Sipag'})[r.sipag.tipo]}${r.sipag.band?' · '+r.sipag.band:''}</span></div>`:(r.grupo==='adivinhado'?'<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">adivinhado</span></div>':''));
       const aprend=r.aprender?(r.aprender.salvo?`<div style="margin-top:4px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 vai lembrar "${palavraLegivel(r.aprender.palavra)}"</span></div>`:`<div style="margin-top:4px"><button class="catchip" style="font-size:10.5px;padding:2px 8px;cursor:pointer;border-color:var(--green);color:var(--green);background:rgba(61,214,140,.08)" onclick="lembrarRegraImport(${i})">🔑 Lembrar sempre: "${palavraLegivel(r.aprender.palavra)}" → ${(CATS.find(c=>String(c.id)===String(r.aprender.catId))||{}).nome||''}</button>${r.aprender.n?` <span class="mut" style="font-size:11px">· aplicado em mais ${r.aprender.n} linha(s) iguais</span>`:''}</div>`):(r.copiadoDe!=null?`<div class="mut" style="font-size:11px;margin-top:3px">↳ mesma categoria da linha parecida</div>`:'');
-      return `<tr ${destaque}${impSel(r)&&r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${dataSel}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button>${(()=>{const t=catTransf();return t&&String(r.catId)===String(t.id)&&!r.corrigir?'':`<button class="miniadd" tabindex="-1" style="height:28px;font-size:11px;padding:0 7px;width:auto;white-space:nowrap" title="Não entra no resultado: vai como neutra (transferência/empréstimo). Fica guardada só para o saldo do banco bater — não precisa excluir." onclick="impNaoEntra(${i})">não entra</button>`;})()}</div>${r.obs||r._obsAberto?`<input class="qin maiusc" tabindex="-1" style="margin-top:4px;font-size:11.5px;padding:4px 8px;width:100%" value="${(r.obs||'').replace(/"/g,'&quot;')}" placeholder="observação (ex.: MARIA — PANFLETAGEM)" oninput="IMPORT[${i}].obs=this.value;IMPORT[${i}]._mexido=true">`:`<div style="margin-top:3px"><span tabindex="-1" onclick="IMPORT[${i}]._obsAberto=true;_keepY=window.scrollY;render()" style="cursor:pointer;font-size:11px;color:var(--muted)">+ obs</span></div>`}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||(r.obs?`<span class="mut">${String(r.obs).slice(0,22).replace(/</g,'&lt;')}</span>`:'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td>${valorTd}</tr>`;
+      return `<tr ${destaque}${impSel(r)&&r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${dataSel}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${r.rateio?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--amber);color:var(--amber)">conta dividida da DVL: é despesa${r.catId?' (confira a categoria)':' — escolha a categoria'}</span></div>`:''}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button>${(()=>{const t=catTransf();return t&&String(r.catId)===String(t.id)&&!r.corrigir?'':`<button class="miniadd" tabindex="-1" style="height:28px;font-size:11px;padding:0 7px;width:auto;white-space:nowrap" title="Não entra no resultado: vai como neutra (transferência/empréstimo). Fica guardada só para o saldo do banco bater — não precisa excluir." onclick="impNaoEntra(${i})">não entra</button>`;})()}</div>${r.obs||r._obsAberto?`<input class="qin maiusc" tabindex="-1" style="margin-top:4px;font-size:11.5px;padding:4px 8px;width:100%" value="${(r.obs||'').replace(/"/g,'&quot;')}" placeholder="observação (ex.: MARIA — PANFLETAGEM)" oninput="IMPORT[${i}].obs=this.value;IMPORT[${i}]._mexido=true">`:`<div style="margin-top:3px"><span tabindex="-1" onclick="IMPORT[${i}]._obsAberto=true;_keepY=window.scrollY;render()" style="cursor:pointer;font-size:11px;color:var(--muted)">+ obs</span></div>`}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||(r.obs?`<span class="mut">${String(r.obs).slice(0,22).replace(/</g,'&lt;')}</span>`:'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div></td>${valorTd}</tr>`;
     };
     const idx=IMPORT.map((r,i)=>i).filter(i=>IMPORT_TIPO==='ent'?IMPORT[i].amt>0:IMPORT_TIPO==='sai'?IMPORT[i].amt<0:true);
     const atencao=idx.filter(i=>{const r=IMPORT[i];return r.grupo==='falta'||!r.grupo||r.corrigir||r.estornar||r.resolvido||(!r.catId&&r.grupo!=='ja'&&r.grupo!=='lentes');});
-    const pend=atencao.filter(i=>{const r=IMPORT[i];return !r.catId||r.corrigir;}).length;
+    const pend=atencao.filter(i=>{const r=IMPORT[i];return !r.catId||r.corrigir||impEstornoPendente(r);}).length;
     const GRUPOS_IMP=[
       ['ja','✓ Já estavam lançados','não entram de novo — os digitados à mão só ganham o código do banco'],
       ['cartao','💳 Cartão (Sipag)','vão como Cartão; a conciliação confere com o Cartões Rocha'],
@@ -2439,6 +2462,8 @@
     const autoTxt=novosR.length?`<div style="font-size:13px">🤖 <b>Sozinho:</b> ${Math.round(autoN/novosR.length*100)}% das linhas novas já vieram com categoria (${autoN} de ${novosR.length})${ctN?` · ${ctN} com contato`:''}</div>`:'';
     const periodoTxt=(importPeriodo.de&&importPeriodo.ate)?`📅 Extrato de <b>${importPeriodo.de}</b> a <b>${importPeriodo.ate}</b>`:'';
     document.getElementById('content').innerHTML=`<div class="note">📥 <b>${IMPORT.length} linhas do extrato</b> · ✓ ${jaN} já estavam lançadas · <b>${novos} novas</b>${jaLentesN?` · 🔗 ${jaLentesN} boletos de lentes`:''} · ${pend?`<b style="color:var(--amber)">${pend} precisam de você ⚠️</b>`:'<b style="color:var(--green)">✅ tudo classificado</b>'}<div class="mut" style="font-size:12px;margin-top:4px">Nada do extrato é ignorado: Pix de cliente, depósito e transferência entram como <b>neutros</b> (não mexem no resultado, só fazem a escada do banco bater).</div></div>
+      ${IMPORT_DEP.length?`<div class="note">Caixinha: <b>${IMPORT_DEP.length} depósito${IMPORT_DEP.length===1?'':'s'} da gaveta</b> ${IMPORT_DEP.length===1?'apareceu':'apareceram'} no extrato (${IMPORT_DEP.map(p=>`${BRL(p.m.valor)} de ${_brDia(p.m.data)}`).join(', ')}). Ao confirmar, fica${IMPORT_DEP.length===1?'':'m'} como <b>conferido pelo extrato</b> no Caixinha.</div>`:''}
+      ${importContaNova?`<div class="note" style="border-color:rgba(199,134,26,.4)">Primeiro extrato desta conta: a conta <b>${_fmtConta(importContaNova)}</b> vai ficar guardada como a conta da <b>${_nomeLoja(lojaAtual)}</b>. Daqui pra frente, extrato de outra conta não entra nesta loja. Se não é desta loja, clique em Cancelar.</div>`:''}
       <div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="font-size:13px">${periodoTxt}${autoTxt}</div>
         <div style="flex:1;min-width:220px"><span class="qlabel">Observação desta importação (opcional)</span><input class="qin" placeholder="Ex: Extrato Sicoob conta principal — junho" value="${importObs}" oninput="importObs=this.value"></div>
@@ -2462,11 +2487,31 @@
           const e=sel.filter(r=>r.amt>0).length,s2=sel.length-e;
           return `<button class="btn" id="btnConfImport" onclick="confirmarImport()" ${sel.length?'':'disabled'} style="font-size:15px;padding:13px 32px">✓ Lançar as ${sel.length} marcadas (${e} entrada${e===1?'':'s'} · ${s2} saída${s2===1?'':'s'})${jaN?` e ligar ${jaN} já lançadas`:''}</button><div class="mut" style="font-size:11.5px;margin-top:8px">As ${nv.length-sel.length} desmarcadas não entram agora: aparecem de novo na próxima importação deste extrato — nada se perde nem duplica.</div>`;})()}
 
-        <button class="btn ghost" onclick="IMPORT=[];importObs='';render()" style="margin-left:10px">Cancelar</button>
+        <button class="btn ghost" onclick="IMPORT=[];importObs='';importContaNova='';IMPORT_DEP=[];render()" style="margin-left:10px">Cancelar</button>
       </div>`;
     if(_keepY!=null){const y=_keepY;_keepY=null;requestAnimationFrame(()=>window.scrollTo(0,y));}
   }
   function cicloDestino(i,next){_keepY=window.scrollY;IMPORT[i].destino=next;render();}
+  // ---- v2.9.7: "VAI ESTORNAR" no extrato → pergunta a loja e já manda para o Banco Caixinha ao confirmar ----
+  function impEstornoHTML(r,i){
+    if(!CX.carregado||!CX.caixas.length)return ` <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">a estornar${r.lojaEstorno?' → '+r.lojaEstorno:''}</span><div class="mut" style="font-size:11px;margin-top:3px">Para mandar direto para o Banco Caixinha, entre no Caixinha (menu Caixinha) e puxe de novo. Sem isso, entra como A ESTORNAR e você manda depois pelo Lançamentos.</div>`;
+    const v=r.cxDepois?'__depois':(r.cxLoja||'');
+    return ` <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">vai para o Banco Caixinha</span><div style="margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="mut" style="font-size:11.5px">Qual loja deve?</span><select class="qin" tabindex="-1" style="font-size:12px;padding:2px 8px;height:28px;width:auto;${v?'':'border-color:var(--amber)'}" onchange="impEstornoLoja(${i},this.value)">${cxOpcoesLojas('').replace(' selected','').replace(/value="([^"]*)"/g,(m,x)=>x===String(v)?m+' selected':m)}<option value="__depois" ${v==='__depois'?'selected':''}>decidir depois (pelo Lançamentos)</option></select></div>`;}
+  function impEstornoLoja(i,v){const r=IMPORT[i];if(!r)return;r.cxDepois=v==='__depois';r.cxLoja=(v&&v!=='__depois')?v:'';r._mexido=true;_keepY=window.scrollY;render();}
+  function impEstornoPendente(r){return !!(r&&r.estornar&&CX.carregado&&CX.caixas.length&&!r.cxLoja&&!r.cxDepois);}
+  // cria (ou liga) o empréstimo a estornar no Banco Caixinha — mesma coisa do botão "Mandar pro Banco Caixinha"
+  async function impMandarBanco(r,lancId){const c=cxClient();if(!c||!r.cxLoja||!lancId)return 'pulou';
+    const valor=Math.abs(Number(r.amt||0)),desc=(String(r.desc||'').split(' · ')[0]||'A ESTORNAR').toUpperCase().slice(0,200),lojaNome=LOJAS.find(x=>x.id===lojaAtual)?.nome.split(' — ')[0]||'';
+    const igual=(CX.contas||[]).find(x=>String(x.caixinha_id)===String(r.cxLoja)&&x.status==='estornar'&&Math.abs(Number(x.valor)-valor)<0.005&&x.data&&_dias(x.data,r.iso)<=7&&!x._ligadoAgora);
+    let contaId=null,ligou=false;
+    if(igual){contaId=igual.id;igual._ligadoAgora=true;ligou=true;}
+    else{const {data,error}=await c.from('contas').insert({caixinha_id:r.cxLoja,escopo:'loja',data:r.iso,descricao:desc,contato:'ESCRITÓRIO',obs:'Veio do Fluxo ('+lojaNome+') · extrato · lançado por '+PERFIL.nome,valor,valor_pago:0,status:'estornar',criado_por_nome:'FLUXO · '+PERFIL.nome}).select('id').single();
+      if(error)return 'erro:'+error.message;contaId=data&&data.id;
+      if(!contaId){const {data:d2}=await c.from('contas').select('id').eq('caixinha_id',r.cxLoja).eq('data',r.iso).eq('descricao',desc).eq('status','estornar').order('id',{ascending:false}).limit(1);contaId=d2&&d2[0]?d2[0].id:null;}
+      if(!contaId)return 'erro:criou no Caixinha mas não achei o número';
+      (CX.contas||[]).push({id:contaId,caixinha_id:r.cxLoja,status:'estornar',data:r.iso,valor,valor_pago:0,descricao:desc,_ligadoAgora:true});}
+    const {error:e2}=await sb.from('lancamentos').update({ref_externa:'cxb:'+contaId}).eq('id',lancId);
+    if(e2)return 'erro:'+e2.message;return ligou?'ligou':'criou';}
 
   // ================= Sicoob automático (v2.9.0) =================
   // O robô (GitHub, 3x por dia) puxa o extrato pela API do Sicoob e guarda em sicoob_extrato.
@@ -2520,6 +2565,34 @@
     if(!importObs)importObs='EXTRATO SICOOB AUTOMÁTICO';
     _IMP_API=true;toast(`${rows.length} linhas do Sicoob (${_sicBR(rows[0].data)} a ${_sicBR(rows[rows.length-1].data)}). Conferindo…`,'ok');
     return _processarOFX(ofx,{value:''});}
+  // ---- v2.9.7: trava de conta — extrato de uma loja não entra em outra ----
+  let importContaNova='',IMPORT_DEP=[],IMPORT_CX_LOGIN=false;
+  const _digConta=x=>String(x||'').replace(/\D/g,'').replace(/^0+/,'');
+  const _fmtConta=d=>d&&d.length>1?d.slice(0,-1)+'-'+d.slice(-1):(d||'');
+  function contasConhecidas(){const out=[];
+    (SICOOB_CONTAS||[]).forEach(c=>{const d=_digConta(c.numero_conta);if(d&&c.loja_id)out.push({loja_id:Number(c.loja_id),dig:d});});
+    LOJAS.forEach(l=>{if(l.conta_banco)String(l.conta_banco).split(/[,;\s]+/).forEach(x=>{const d=_digConta(x);if(d&&!out.some(o=>o.loja_id===l.id&&o.dig===d))out.push({loja_id:l.id,dig:d});});});
+    return out;}
+  function conferirContaExtrato(conta){const d=_digConta(conta);if(!d)return {};const cs=contasConhecidas();
+    const outra=cs.find(c=>c.dig===d&&c.loja_id!==lojaAtual),daqui=cs.filter(c=>c.loja_id===lojaAtual);
+    if(daqui.some(c=>c.dig===d))return {ok:true,d};
+    if(outra)return {bloqueia:true,d,outra:outra.loja_id};
+    if(daqui.length)return {bloqueia:true,d,daqui:daqui.map(c=>c.dig)};
+    return {aprender:true,d};}
+  const _nomeLoja=id=>(LOJAS.find(l=>l.id===id)||{}).nome?.split(' — ')[0]||'';
+  function mostrarBloqueioConta(ck){const aqui=_nomeLoja(lojaAtual);
+    const msg=ck.outra?`Este extrato é da conta <b>${_fmtConta(ck.d)}</b>, que é da <b>${_nomeLoja(ck.outra)}</b>. Você está na <b>${aqui}</b>.`:`Este extrato é da conta <b>${_fmtConta(ck.d)}</b>. A conta da <b>${aqui}</b> é <b>${ck.daqui.map(_fmtConta).join(', ')}</b>.`;
+    document.getElementById('content').innerHTML=`<div class="card" style="max-width:640px;border-color:var(--red);border-left:4px solid var(--red)"><div class="cardhead"><h3>Extrato de outra loja: nada foi importado</h3></div>
+      <p style="font-size:14px;line-height:1.5;margin:8px 0">${msg}</p>
+      <p class="mut" style="font-size:13px;margin:0 0 12px">${ck.outra?`Troque para a ${_nomeLoja(ck.outra)} e escolha o arquivo de novo.`:'Confira se baixou o extrato da conta certa.'}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${ck.outra&&LOJAS.some(l=>l.id===ck.outra)?`<button class="btn" onclick="irParaLojaImport(${ck.outra})">Ir para a ${_nomeLoja(ck.outra)}</button>`:''}<button class="btn ghost" onclick="IMPORT=[];render()">Voltar</button>
+      ${!ck.outra&&PERFIL.papel==='dono'?`<button class="btn ghost" onclick="trocarContaLoja('${ck.d}')">A conta da ${aqui} mudou: passar a ser ${_fmtConta(ck.d)}</button>`:''}</div></div>`;}
+  async function irParaLojaImport(id){const sel=document.getElementById('store');if(sel){sel.value=String(id);await trocarLoja();}else{lojaAtual=id;}IMPORT=[];go('import');}
+  async function trocarContaLoja(d){if(!confirm(`Trocar a conta da ${_nomeLoja(lojaAtual)} para ${_fmtConta(d)}?\nDepois escolha o arquivo de novo.`))return;
+    const {error}=await sb.from('lojas').update({conta_banco:d}).eq('id',lojaAtual);if(error){toast('Não consegui trocar: '+error.message,'erro');return;}
+    const L=LOJAS.find(l=>l.id===lojaAtual);if(L)L.conta_banco=d;toast('Conta trocada. Escolha o arquivo de novo.','ok');IMPORT=[];render();}
+  async function lembrarContaLoja(){if(!importContaNova)return;const d=importContaNova;importContaNova='';
+    try{const {error}=await sb.from('lojas').update({conta_banco:d}).eq('id',lojaAtual);if(!error){const L=LOJAS.find(l=>l.id===lojaAtual);if(L)L.conta_banco=d;}}catch(e){}}
   async function lerArquivoOFX(input){
     const file=input.files[0];if(!file)return;_IMP_API=false;
     const nomeArq=file.name.toLowerCase();
@@ -2543,8 +2616,17 @@
         toast('⚠️ Esse arquivo não parece um extrato OFX válido.','erro');
         input.value='';return;
       }
+      // v2.9.7: o extrato é desta loja? (número da conta que vem no arquivo × conta cadastrada de cada loja)
+      importContaNova='';
+      if(!_IMP_API){const ck=conferirContaExtrato(((txt.match(/<ACCTID>\s*([^<\r\n]+)/i)||[])[1]||'').trim());
+        if(ck.bloqueia){if(input)input.value='';IMPORT=[];mostrarBloqueioConta(ck);return;}
+        if(ck.aprender)importContaNova=ck.d;}
       const trans=parseOFX(txt);
       if(trans.length===0){toast('Não consegui ler transações do arquivo','erro');return;}
+      // a Stone deposita (CRÉD.TED-STR) sempre com o nome da própria loja: se só aparece o nome de outra loja, o extrato é dela
+      if(!_IMP_API){const L=LOJAS.find(l=>l.id===lojaAtual),ch=L?cxChaveLoja(L.nome):'';
+        if(/^r\d+$/.test(ch)){const minha='Rocha '+ch.slice(1),nomes=trans.filter(t=>t.amt>0&&/TED-STR|TED STR/i.test(t.memo+' '+t.name)).map(t=>empresaDoGrupo(t.memo+' '+t.name)).filter(Boolean);
+          if(nomes.length&&!nomes.includes(minha)&&!confirm(`Atenção: a Stone depositou neste extrato com o nome da ${nomes[0]}, não da ${minha}.\nA Stone sempre deposita com o nome da própria loja — este extrato parece ser da ${nomes[0]}.\n\nImportar mesmo assim na ${minha}?`)){if(input)input.value='';importContaNova='';return;}}}
       // pega o período do extrato (DTSTART e DTEND)
       const ds=txt.match(/<DTSTART>(\d{8})/);const de=txt.match(/<DTEND>(\d{8})/);
       importPeriodo={de:ds?`${ds[1].slice(6,8)}/${ds[1].slice(4,6)}/${ds[1].slice(0,4)}`:'',ate:de?`${de[1].slice(6,8)}/${de[1].slice(4,6)}/${de[1].slice(0,4)}`:''};
@@ -2587,13 +2669,29 @@
           item.grupo='falta';item.catId='';return item;
         }
         // 4) saídas: transferência pra outra loja (neutra, mas confira), palavras-chave, regras antigas
-        if(ehTransferenciaRocha(full)){const comp=empresaDoGrupo(full)?complementoFavorecido(full):'';
-          if(comp){const rc=aplicarRegrasP(comp,lojaAtual);if(rc&&rc.categoria_id&&rc.categoria_id!==catEstornarId()){item.catId=rc.categoria_id;item.contatoId=rc.contato_id||null;item.regra=rc.palavra;item.grupo='regra';item.complemento=comp;return item;}
-            if(rc&&rc.contato_id)item.contatoId=rc.contato_id;}
-          item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;item.paraLoja=empresaDoGrupo(full);item.complemento=comp;return item;}
+        const favN=normDesc(favorecidoNome(full));
+        // v2.9.7: para a GV Optical (inclusive "GV OPTICAL FREEFORM") é sempre pagamento de lentes
+        if(/^GV OPTICAL/.test(favN)){const cl=catLentes(),gv=contatoGV();item.catId=cl?cl.id:'';item.contatoId=gv?gv.id:null;item.regra='GV OPTICAL';item.grupo=cl?'regra':'falta';item.complemento=complementoFavorecido(full);return item;}
+        const grupoEmp=empresaDoGrupo(full);
+        if(ehTransferenciaRocha(full)&&(grupoEmp||!/FAV\.:/.test(full)||/LUCAS GOMES ROCH/.test(favN))){const comp=grupoEmp?complementoFavorecido(full):'';
+          if(comp){const nc=normDesc(comp);
+            // "VAI ESTORNAR" na transferência: empréstimo que volta → Banco Caixinha
+            if(/ESTORNAR|ESTORNAD/.test(nc)){const ce=catEstornarId();item.catId=ce||'';item.estornar=true;item.lojaEstorno=lojaDaDescricao(comp)||grupoEmp;item.grupo='falta';item.regra='ESTORNAR';item.complemento=comp;return item;}
+            const rc=aplicarRegrasP(comp,lojaAtual);if(rc&&rc.categoria_id&&rc.categoria_id!==catEstornarId()){item.catId=rc.categoria_id;item.contatoId=rc.contato_id||null;item.regra=rc.palavra;item.grupo='regra';item.complemento=comp;_preencheFuncionario(item,comp);return item;}
+            if(rc&&rc.contato_id)item.contatoId=rc.contato_id;
+            // nome de funcionário depois do favorecido (ex.: FERIAS ANNA CAROLINA): é Funcionários, não transferência
+            const p=funcionarioNoTexto(comp);const cf=catFuncionarios();
+            if(p&&cf){item.catId=cf.id;item.complemento=comp;if(p.contato){item.contatoId=p.contato.id;item.pessoa=p.contato.nome;item.regra='funcionário: '+p.contato.nome;item.grupo='regra';}else{item.regra='funcionário: '+p.nome+' (mais de um com esse nome)';item.corrigir=true;item.grupo='falta';}return item;}
+            // para a DVL com motivo (conta dividida: CEMIG ESCRITÓRIO, ESTOJOS, PANFLETOS…): é despesa, não neutra
+            if(/OTICA ROCHA DVL/.test(favN)){item.rateio=true;item.complemento=comp;const cn=adivinhaCat(comp);const c=cn&&cn!=='__IGNORAR__'&&cn!=='Cartão'?catsAtivas().find(x=>x.nome===cn):null;item.catId=c?c.id:'';item.grupo=c?'adivinhado':'falta';if(c)item.corrigir=true;return item;}}
+          item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;item.paraLoja=grupoEmp;item.complemento=comp;return item;}
+        // (v2.9.7) favorecido que não é do grupo (fornecedor, pessoa): segue as palavras-chave como qualquer pagamento
+        // "ESTORNAD" = "VAI ESTORNAR" cortado (o Pix só guarda poucas letras da mensagem)
+        if(/\bESTORNAD\b/.test(normDesc(full))&&catEstornarId()){item.catId=catEstornarId();item.estornar=true;item.lojaEstorno=lojaDaDescricao(full);item.grupo='falta';item.regra='ESTORNAR';return item;}
         const rp=aplicarRegrasP(full,lojaAtual);
         if(rp&&rp.categoria_id){item.catId=rp.categoria_id;item.contatoId=rp.contato_id||null;item.regra=rp.palavra;item.grupo='regra';
           if(rp.categoria_id===catEstornarId()){item.estornar=true;item.lojaEstorno=lojaDaDescricao(full);item.grupo='falta';}
+          else _preencheFuncionario(item,full);
           return item;}
         if(rp&&rp.contato_id){item.contatoId=rp.contato_id;item.regraContato=rp.palavraContato;}
         const catNome=adivinhaCat(full);
@@ -2604,6 +2702,10 @@
         return item;
       });
       IMPORT_ABERTO={};
+      IMPORT_DEP=[];IMPORT_CX_LOGIN=false;
+      try{if(await cxSessao()){IMPORT_CX_LOGIN=true;await cxCarregar(true);}}catch(e){}
+      if(IMPORT.some(r=>r.estornar))IMPORT.forEach(r=>{if(r.estornar&&r.lojaEstorno&&!r.cxLoja){const k=cxCaixaPorNome(r.lojaEstorno);if(k)r.cxLoja=k.id;}});
+      if(CX.carregado)IMPORT_DEP=cxCasarDepositos(IMPORT);
       toast(trans.length+' transações lidas!','ok');
       render();
   }
@@ -2626,7 +2728,7 @@
     const btn=document.getElementById('btnConfImport');if(btn){btn.disabled=true;btn.textContent='Lançando...';}
     const contaSicoob=CONTAS.find(c=>/sicoob/i.test(c.nome))||CONTAS.find(c=>!/caixinha/i.test(c.nome))||null;
     const lojaCurta=lojaNomeCurto(lojaAtual);
-    let ok=0,dup=0,erro=0,fech=0,ligados=0,sip=0,sipErr='',nAutoCat=0,nAutoCt=0,pulados=0;
+    let ok=0,dup=0,erro=0,fech=0,ligados=0,sip=0,sipErr='',nAutoCat=0,nAutoCt=0,pulados=0,cxCriou=0,cxLigou=0,cxErr='';
     const gravarSipag=async(r,lancId)=>{ // um crédito de cartão do extrato → tabela da conciliação (não duplica pelo código do banco)
       if(!r.sipag||!r.fitid)return;
       const row={loja:lojaCurta,loja_id:lojaAtual,data:r.iso,valor:r.amt,descricao:(r.desc||'').slice(0,300),tipo:r.sipag.tipo,origem:'ofx',origem_ref:r.fitid,lancamento_id:lancId||null,criado_por:USER.id};
@@ -2652,6 +2754,7 @@
       const {data:ins,error}=await sb.from('lancamentos').insert(reg).select('id').single();
       if(error){if(error.message.includes('duplicate')||error.code==='23505')dup++;else erro++;continue;}
       ok++;if(r.catId&&!r.resolvido)nAutoCat++;if(r.contatoId)nAutoCt++;await gravarSipag(r,ins&&ins.id);
+      if(r.estornar&&r.cxLoja&&String(r.catId)===String(catEstornarId())){const st=await impMandarBanco(r,ins&&ins.id);if(st==='criou')cxCriou++;else if(st==='ligou')cxLigou++;else if(st.startsWith('erro'))cxErr=cxErr||st.slice(5);}
     }
     // salva o histórico da importação
     try{
@@ -2662,8 +2765,11 @@
       const {error:eh}=await sb.from('importacoes').insert(Object.assign({linhas_total:ok,linhas_auto_cat:nAutoCat,linhas_auto_contato:nAutoCt},hist));
       if(eh&&/linhas_|column|schema/i.test(eh.message||''))await sb.from('importacoes').insert(hist); // SQL da v2.4 ainda não rodou
     }catch(e){}
+    if(ok||ligados)await lembrarContaLoja();
+    let depN=0,depErr='';if(IMPORT_DEP.length){const rr=await cxMarcarDepositos(IMPORT_DEP);depN=rr.n;depErr=rr.err;IMPORT_DEP=[];}
     IMPORT=[];importObs='';importPeriodo={de:'',ate:''};IMPORT_TIPO='';IMP_MARC={modo:'todas',crit:[]};
-    toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${pulados?` · ${pulados} ficaram para a próxima importação`:''}${sipErr?` · conciliação: ${sipErr}`:''}`, (erro>0||fech>0||sipErr)?'erro':'ok');
+    toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${pulados?` · ${pulados} ficaram para a próxima importação`:''}${sipErr?` · conciliação: ${sipErr}`:''}${cxCriou?` · 🔁 ${cxCriou} mandados para o Banco Caixinha`:''}${cxLigou?` · 🔁 ${cxLigou} ligados ao que já estava no Banco Caixinha`:''}${cxErr?` · Banco Caixinha: ${cxErr}`:''}${depN?` · ${depN} depósito(s) da gaveta conferido(s) pelo extrato`:''}${depErr?` · Caixinha (depósitos): ${depErr}`:''}`, (erro>0||fech>0||sipErr||cxErr||depErr)?'erro':'ok');
+    if(cxCriou||cxLigou)CX.carregado=false;
     go('lanc');
   }
 
@@ -3823,7 +3929,7 @@
       const [cx,comp,lan,cont]=await Promise.all([
         c.from('caixinhas').select('id,nome,tipo,arquivada,ordem').order('ordem'),
         cxSelectTudo('competencias','id,caixinha_id,ano,mes'),
-        cxSelectTudo('lancamentos','id,competencia_id,data,tipo,valor,excluido,contraparte,recolhido,categoria,criado_por_nome'),
+        cxSelectTudo('lancamentos','id,competencia_id,data,tipo,valor,excluido,contraparte,recolhido,categoria,criado_por_nome,descricao,conferido_banco,conf_banco_por,conf_banco_em'),
         cxSelectTudo('contas','id,caixinha_id,status,escopo,data,valor,valor_pago,pagamentos,pago_data,descricao,contato'),
       ]);
       const fe=[cx,comp,lan].find(r=>r.error);
@@ -3831,7 +3937,7 @@
       const compById={};(comp.data||[]).forEach(x=>compById[x.id]=x);
       const caixas=(cx.data||[]).filter(x=>!x.arquivada&&x.tipo==='loja').map(x=>({id:x.id,nome:x.nome,mov:[]}));
       const byId={};caixas.forEach(x=>byId[x.id]=x);
-      (lan.data||[]).forEach(l=>{if(l.excluido)return;const cp=compById[l.competencia_id];if(!cp)return;const k=byId[cp.caixinha_id];if(!k)return;k.mov.push({id:l.id,data:l.data,tipo:l.tipo,valor:Number(l.valor)||0,para:l.contraparte||null,recolhido:!!l.recolhido,cat:l.categoria||'',por:l.criado_por_nome||''});});
+      (lan.data||[]).forEach(l=>{if(l.excluido)return;const cp=compById[l.competencia_id];if(!cp)return;const k=byId[cp.caixinha_id];if(!k)return;k.mov.push({id:l.id,data:l.data,tipo:l.tipo,valor:Number(l.valor)||0,para:l.contraparte||null,recolhido:!!l.recolhido,cat:l.categoria||'',por:l.criado_por_nome||'',desc:l.descricao||'',conf:!!l.conferido_banco,confPor:l.conf_banco_por||'',confEm:l.conf_banco_em||''});});
       CX.caixas=caixas;CX.contas=cont.error?[]:(cont.data||[]);CX.carregado=true;CX.em=new Date();CX.erro='';
       return true;
     }catch(e){CX.erro=e.message||String(e);return false;}
@@ -3873,6 +3979,23 @@
     lista.forEach(ct=>{inicio+=_cxAbertoAte(ct,diaAntes);const d=ct.data||'';if(d.slice(0,7)===pref)emprestado+=Number(ct.valor)||0;_cxEstornos(ct).forEach(p=>{if((p.d||'').slice(0,7)===pref&&(p.d||'')<=corte)voltou+=p.v;});fim+=_cxAbertoAte(ct,corte);});
     return {inicio,emprestado,voltou,fim,mesAtual,corte};
   }
+  // ---- v2.9.7: depósito da gaveta conferido pelo extrato (o extrato traz o depósito: mesmo valor, data igual ou até 5 dias úteis depois) ----
+  const CX_DEP_DESDE='2026-10-01',CX_DEP_PRAZO=5; // dias úteis para o depósito aparecer no banco
+  const _brDia=iso=>iso?String(iso).slice(0,10).split('-').reverse().slice(0,2).join('/'):'';
+  function cxDepStatus(m){if(m.conf)return {st:'ok',txt:/^EXTRATO/i.test(m.confPor||'')?`conferido pelo extrato em ${_brDia(m.confEm)}`:`conferido por ${m.confPor||'—'}${m.confEm?' em '+_brDia(m.confEm):''}`};
+    const n=diasUteisDepois(m.data,_hojeLocal());return n>CX_DEP_PRAZO?{st:'nao',txt:'não chegou no banco'}:{st:'esp',txt:'aguardando o extrato'};}
+  function cxDepositosDaLoja(k){return (k&&k.mov||[]).filter(m=>m.tipo==='deposito'&&!m.para&&(m.data||'')>=CX_DEP_DESDE);}
+  // casa os depósitos ainda não conferidos com as linhas do extrato (só linhas com "DEP…" no texto)
+  function cxCasarDepositos(itens){const k=cxCaixaDaLojaAtual();if(!k)return [];const cents=v=>Math.round(Math.abs(Number(v))*100);
+    const linhas=(itens||[]).filter(r=>r.amt>0&&/\bDEP/.test(normDesc(r.full||r.desc)));const usadas=new Set(),out=[];
+    cxDepositosDaLoja(k).filter(m=>!m.conf).sort((a,b)=>(a.data||'')<(b.data||'')?-1:1).forEach(m=>{
+      const cs=linhas.filter(r=>!usadas.has(r)&&cents(r.amt)===cents(m.valor)&&r.iso>=addDias(m.data,-1)&&diasUteisDepois(m.data,r.iso)<=CX_DEP_PRAZO).sort((a,b)=>Math.abs(_dias(a.iso,m.data))-Math.abs(_dias(b.iso,m.data)));
+      if(cs.length){usadas.add(cs[0]);out.push({m,r:cs[0]});}});
+    return out;}
+  async function cxMarcarDepositos(pares){let n=0,err='';const c=cxClient();if(!c)return {n,err};
+    for(const {m,r} of pares){const {error}=await c.from('lancamentos').update({conferido_banco:true,conf_banco_por:'EXTRATO',conf_banco_em:r.iso+'T12:00:00-03:00'}).eq('id',m.id);
+      if(error){err=err||error.message;}else{n++;m.conf=true;m.confPor='EXTRATO';m.confEm=r.iso;}}
+    return {n,err};}
   function cxEstornar(kId){let e=0;CX.contas.forEach(c=>{if(c.caixinha_id===kId&&c.status==='estornar')e+=Math.max((Number(c.valor)||0)-(Number(c.valor_pago)||0),0);});return e;}
   // "Rocha 7" (Caixinha) ↔ loja do Caixa Rocha: casa pelo número; GV pelo nome
   function cxChaveLoja(nome){const n=String(nome||'').toLowerCase();const m=n.match(/rocha\s*0*(\d+)/);if(m)return 'r'+parseInt(m[1],10);if(/gv|optical|lentes|laborat/.test(n))return 'gv';return n.replace(/[^a-z0-9]/g,'');}
@@ -3937,12 +4060,23 @@
         <a class="btn ghost" href="${CX_LINK}" target="_blank" rel="noopener" style="padding:5px 10px;font-size:12px;text-decoration:none">Abrir o Caixinha ↗</a>
         ${ehDono()?`<button class="btn ghost" style="padding:5px 10px;font-size:12px;margin-left:auto" onclick="if(confirm('Sair do Caixinha neste computador? A aba vai pedir a senha do Caixinha de novo.'))cxSair()">Sair do Caixinha</button>`:''}
       </div>
+      ${cxDepositosCard(mi)}
       <div class="card" style="margin-top:14px"><div class="cardhead"><h3>Os três "bancos" — para não confundir</h3></div>
         <div class="cfgrow"><span>🏦 <b>Banco Sicoob</b> — a conta da loja no banco de verdade</span><span class="mut" style="margin-left:auto;font-size:12px">mora no <b>Fechamento do mês</b> (a escada do Sicoob)</span></div>
         <div class="cfgrow"><span>💵 <b>Caixa (gaveta)</b> — o dinheiro físico que a loja tem na mão</span><span class="mut" style="margin-left:auto;font-size:12px">mora no <b>Caixinha → aba Caixa</b>; aqui é espelho</span></div>
         <div class="cfgrow"><span>🔁 <b>Banco Caixinha</b> — o que o escritório pagou pela loja e ela ainda vai devolver (estornar). Vira o mês e continua em aberto</span><span class="mut" style="margin-left:auto;font-size:12px">mora no <b>Caixinha → aba Banco</b>; aqui é espelho</span></div>
         <p class="mut" style="font-size:11.5px;margin-top:8px;line-height:1.5">🔎 <b>Conferir</b> = saídas do mês que a própria loja lançou pelo login dela (Rocha N / GV Optical). A Rhaiane confere no Caixinha e completa o que faltar; as sem categoria aparecem em amarelo. Nenhum dos três se soma ao outro. Entradas = entradas + reposições + guardado · Saídas = saídas + emprestado para outra loja · Em aberto = contas com status "a estornar" ainda não devolvidas, pela mesma conta da aba Banco do Caixinha.</p></div>`;
   }
+  function cxDepositosCard(mi){const pref=`${ANO_FIXO}-${_mm(mi)}`;
+    const linhas=CX.caixas.map(k=>{const ds=cxDepositosDaLoja(k).filter(m=>(m.data||'').slice(0,7)===pref);if(!ds.length)return '';
+      const st=ds.map(cxDepStatus),ex=st.filter(x=>x.st==='ok'&&/extrato/.test(x.txt)).length,mao=st.filter(x=>x.st==='ok').length-ex,esp=st.filter(x=>x.st==='esp').length,nao=st.filter(x=>x.st==='nao').length;
+      return `<tr><td><b>${k.nome}</b></td><td class="amt">${ds.length}</td><td class="amt">${ex||'<span class="mut">0</span>'}</td><td class="amt">${mao||'<span class="mut">0</span>'}</td><td class="amt">${esp||'<span class="mut">0</span>'}</td><td class="amt" style="${nao?'color:var(--red);font-weight:800':''}">${nao||'<span class="mut">0</span>'}</td></tr>`;}).join('');
+    const naoCh=[];CX.caixas.forEach(k=>cxDepositosDaLoja(k).forEach(m=>{if(cxDepStatus(m).st==='nao')naoCh.push({k,m});}));naoCh.sort((a,b)=>(a.m.data||'')<(b.m.data||'')?-1:1);
+    if(!linhas&&!naoCh.length)return '';
+    return `<div class="card" style="margin-top:14px"><div class="cardhead"><h3>Depósitos da gaveta no banco — ${MESES_NOME[mi]}</h3></div>
+      <p class="mut" style="font-size:12px;margin:4px 0 8px">Quando o extrato da loja traz o depósito (mesmo valor, até ${CX_DEP_PRAZO} dias úteis depois), ele fica conferido sozinho no Caixinha. O que passar de ${CX_DEP_PRAZO} dias úteis sem aparecer fica como "não chegou no banco".</p>
+      ${naoCh.length?`<div style="border:1px solid var(--red);border-left:4px solid var(--red);border-radius:10px;padding:8px 12px;margin-bottom:10px"><b style="color:var(--red)">Não chegou no banco (${naoCh.length})</b>${naoCh.map(({k,m})=>`<div style="display:flex;gap:10px;font-size:13px;padding:4px 0;border-top:1px solid var(--line)"><span style="min-width:80px">${k.nome}</span><span class="mut">${_brDia(m.data)} · ${m.desc||'DEPÓSITO'}${m.por?' · lançado por '+m.por:''}</span><b style="margin-left:auto">${BRL(m.valor)}</b></div>`).join('')}</div>`:''}
+      ${linhas?`<div style="overflow:auto"><table><thead><tr><th>Loja</th><th style="text-align:right">Depósitos</th><th style="text-align:right">Pelo extrato</th><th style="text-align:right">À mão</th><th style="text-align:right">Aguardando</th><th style="text-align:right">Não chegou</th></tr></thead><tbody>${linhas}</tbody></table></div>`:''}</div>`;}
   // bloco da caixinha dentro do Fechamento do mês (abaixo da escada do Sicoob)
   async function cxBlocoFechamento(){
     const sess=await cxSessao();

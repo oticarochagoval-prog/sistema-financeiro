@@ -486,6 +486,25 @@ O extrato do Sicoob não precisa mais ser baixado. Um robô busca o extrato dire
 - Em **Lançamentos** e **Importar extrato** aparece até o fim de novembro o aviso: desde 1º de outubro o Pix é venda, não exclua os Pix, e no fim do mês lance só o dinheiro da Linx.
 - O botão **Laboratório**, lá em cima, agora se chama **GV Lentes**.
 
+## Regras das saídas com o texto completo do Sicoob (v2.9.7)
+
+O extrato automático (e o PDF) traz o texto inteiro: o nome do favorecido e, depois dele, o motivo. A importação usa isso:
+
+- **Nome de funcionário depois da empresa do grupo** (ex.: "FAV.: OTICA ROCHA DVL … FERIAS ANNA CAROLINA"): vai em **Funcionários**, com o contato da pessoa. O nome é achado mesmo escrito diferente (Ana/Anna, Vitor/Victor, Jéssica/Jezica, com ou sem sobrenome). Se tiver duas pessoas com o mesmo nome (ex.: só "MARIA"), vem Funcionários marcado "confira", sem contato.
+- **Funcionários sem contato** (ex.: palavra-chave "SALARIO MARIA" que não tinha pessoa): o Fluxo completa o contato pelo nome que está no texto (SALARIO MARIA CLARA → Maria Clara).
+- **Para a GV Optical** ("FAV.: GV OPTICAL…", inclusive "GV OPTICAL FREEFORM"): sempre **Lentes/Laboratório**, contato **GV Optical**.
+- **Para a DVL com motivo** (conta dividida: CEMIG ESCRITÓRIO, ESTOJOS, PANFLETOS…): é **despesa**, não neutra. Se a palavra-chave conhece o motivo, já vem com a categoria; se não, aparece em "Precisam de você" com a etiqueta "conta dividida da DVL" para escolher a categoria (e o 🔑 Lembrar sempre aprende).
+- **Favorecido de fora do grupo** (fornecedor, pessoa): segue as palavras-chave como qualquer pagamento (ex.: "FAV.: LAURIBERTO CAURIM CEMIG…" → CEMIG). Para o Lucas continua "confira".
+- **VAI ESTORNAR** (também "ESTORNAD", quando o Pix corta a mensagem): vem em A ESTORNAR com a pergunta **Qual loja deve?**. Ao confirmar, já vira empréstimo a estornar no **Banco Caixinha** daquela loja, ligado ao lançamento. Se já existir um igual lá (mesma loja, mesmo valor, até 7 dias), só liga. Dá para escolher "decidir depois" e mandar pelo Lançamentos. Precisa estar entrado no Caixinha (menu Caixinha).
+
+### Trava: extrato de outra loja não entra (v2.9.7)
+
+Cada loja tem a sua conta do Sicoob guardada (Rocha 1 18769-0 … Rocha 11 109752-0, GV Lentes, FZ Grifes, Grupo VR e Diversas). No OFX e no PDF o Fluxo lê o número da conta: se é de outra loja, aparece "Este extrato é da conta X, que é da Rocha Y" e **nada é importado**, com o botão para ir à loja certa. Segunda conferência: se a Stone depositou (CRÉD.TED-STR) com o nome de outra loja, o Fluxo pergunta antes de importar. Conta nova numa loja sem conta guardada fica guardada no primeiro extrato confirmado.
+
+### Depósito da gaveta conferido pelo extrato (v2.9.7)
+
+Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo valor, data igual ou até 5 dias úteis depois), ao confirmar a importação o depósito fica **conferido no banco** no Caixinha, como "conferido pelo extrato". No **Caixinha (espelho)** aparece o quadro "Depósitos da gaveta no banco": quantos foram conferidos pelo extrato, à mão (pela Rhaiane), aguardando, e em vermelho os que passaram de 5 dias úteis sem aparecer: **não chegou no banco**.
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -511,6 +530,7 @@ O extrato do Sicoob não precisa mais ser baixado. Um robô busca o extrato dire
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 23/10/2026 | 2.9.7 | Saídas usam o texto completo do Sicoob: nome de funcionário → Funcionários com contato (Ana/Anna); GV Optical → Lentes/Laboratório; DVL com motivo → despesa; VAI ESTORNAR pergunta a loja e manda para o Banco Caixinha; trava de conta (extrato de outra loja não entra); depósito da gaveta conferido pelo extrato e quadro "não chegou no banco" no espelho do Caixinha | Coluna da conta de cada loja criada e preenchida pelo Claude |
 | 23/10/2026 | 2.9.6 | Pix como venda e conferência de Pix já valem em outubro; Dashboard mostra À vista + Pix somados na mesma linha (e no Receitas); aviso para a equipe atualizado | Nenhum (tabela da conferência criada pelo Claude) |
 | 23/10/2026 | 2.9.5 | Conferência de Pix banco × Linx (de novembro em diante, só gestor, no Dashboard de cada loja e em Análise, com histórico de quem mudou); Ler boleto também em Lançamentos; Pix de cliente pelo Sicoob vira Pix, Pix do Lucas fica "confira"; aviso de 1º de novembro; Laboratório vira GV Lentes | Tabela criada pelo Claude no Supabase |
 | 23/10/2026 | 2.9.4 | Extrato automático do Sicoob: robô busca o extrato pela API do banco 3 vezes por dia; em Importar, botão "Puxar do Sicoob" (sem baixar arquivo, texto completo, não duplica com OFX/PDF). Aviso de certificado vencendo e de robô parado. Começa pela Rocha 1 | Rocha 1 não precisa mais baixar o extrato |
