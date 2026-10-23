@@ -448,6 +448,23 @@ Lá em cima, na ordem: **Óticas Rocha · Diversas · Grupo de compras · Labora
 - Pix de outra loja do grupo, do Lucas (empréstimo) ou de devolução **não** vira venda: continua separado pelas regras. Depósito do dinheiro da gaveta continua neutro.
 - Com o extrato caindo todo dia (API), **não precisa escolher o que entra**: entra tudo (para o saldo do banco bater) e a categoria decide se é venda, despesa ou neutra.
 
+## Extrato automático do Sicoob (v2.9.4)
+
+O extrato do Sicoob não precisa mais ser baixado. Um robô busca o extrato direto no banco, sozinho, 3 vezes por dia (5h37, 12h37 e 19h37).
+
+1. Entre em **Importar** com a loja escolhida.
+2. No quadro **Extrato automático do Sicoob**, clique em **Puxar do Sicoob**.
+3. Aparece a mesma tela de conferência de sempre. O que já estava lançado aparece como "já lançado" e não entra de novo.
+4. Confira o que ficou sem categoria e confirme.
+
+- O texto vem completo, com o nome de quem pagou o Pix e o motivo escrito na transferência (ex.: SALARIO MIRELLE).
+- O robô só **lê** o extrato. Ele não consegue fazer pagamento nem transferência.
+- O quadro mostra quando o robô atualizou pela última vez, o saldo no banco e quando vence o certificado digital da empresa.
+- **Aviso no topo do sistema** (gestor e lançadores veem): certificado vencendo em 30 dias ou menos, certificado vencido, ou robô que falhou ou ficou mais de um dia e meio sem atualizar. Clicar no aviso abre o Importar.
+- Loja que ainda não está ligada à API continua com o OFX ou PDF, como antes.
+
+**Certificado vencendo:** renovar o e-CNPJ A1 da empresa, tirar a chave pública (.cer) e trocar no portal developers.sicoob.com.br, no aplicativo FLUXO daquela loja. Depois o Lucas troca o certificado no cofre do GitHub.
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -473,6 +490,7 @@ Lá em cima, na ordem: **Óticas Rocha · Diversas · Grupo de compras · Labora
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 23/10/2026 | 2.9.4 | Extrato automático do Sicoob: robô busca o extrato pela API do banco 3 vezes por dia; em Importar, botão "Puxar do Sicoob" (sem baixar arquivo, texto completo, não duplica com OFX/PDF). Aviso de certificado vencendo e de robô parado. Começa pela Rocha 1 | Rocha 1 não precisa mais baixar o extrato |
 | 23/10/2026 | 2.9.3 | Botões dos módulos na nova ordem: Óticas Rocha · Diversas · Grupo de compras · Laboratório · Casa | Nenhum |
 | 23/10/2026 | 2.9.2 | Plano B: de novembro/2026 em diante o Pix de cliente entra como VENDA PIX (conta no dia); no fim do mês lança-se só o dinheiro à vista da Linx. Card de Entradas mostra cartão · Pix · dinheiro | Rodar o SQL v2.9.2 no sistema-financeiro |
 | 23/10/2026 | 2.9.1 | Lançamentos: marcar várias linhas e mandar para a Lixeira de uma vez; quem lança também pode (só o gestor restaura); restaurar da Lixeira corrigido para linhas que vieram das Lentes | Rodar o SQL v2.9.1 no sistema-financeiro |

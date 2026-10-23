@@ -1,0 +1,60 @@
+name: Extrato Sicoob
+
+on:
+  schedule:
+    # horário de Brasília: 05:37, 12:37 e 19:37 (o GitHub usa UTC)
+    - cron: '37 8 * * *'
+    - cron: '37 15 * * *'
+    - cron: '37 22 * * *'
+  workflow_dispatch:
+    inputs:
+      so_conta:
+        description: 'Rodar só uma conta (ex.: ROCHA1). Deixe vazio para todas.'
+        required: false
+        default: ''
+
+concurrency:
+  group: sicoob-extrato
+  cancel-in-progress: false
+
+jobs:
+  puxar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Puxar extrato de todas as contas
+        run: node robo/sicoob-extrato.mjs
+        env:
+          SO_CONTA: ${{ github.event.inputs.so_conta }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SICOOB_PFX_ROCHA1: ${{ secrets.SICOOB_PFX_ROCHA1 }}
+          SICOOB_SENHA_ROCHA1: ${{ secrets.SICOOB_SENHA_ROCHA1 }}
+          SICOOB_PFX_ROCHA2: ${{ secrets.SICOOB_PFX_ROCHA2 }}
+          SICOOB_SENHA_ROCHA2: ${{ secrets.SICOOB_SENHA_ROCHA2 }}
+          SICOOB_PFX_ROCHA3: ${{ secrets.SICOOB_PFX_ROCHA3 }}
+          SICOOB_SENHA_ROCHA3: ${{ secrets.SICOOB_SENHA_ROCHA3 }}
+          SICOOB_PFX_ROCHA4: ${{ secrets.SICOOB_PFX_ROCHA4 }}
+          SICOOB_SENHA_ROCHA4: ${{ secrets.SICOOB_SENHA_ROCHA4 }}
+          SICOOB_PFX_ROCHA5: ${{ secrets.SICOOB_PFX_ROCHA5 }}
+          SICOOB_SENHA_ROCHA5: ${{ secrets.SICOOB_SENHA_ROCHA5 }}
+          SICOOB_PFX_ROCHA6: ${{ secrets.SICOOB_PFX_ROCHA6 }}
+          SICOOB_SENHA_ROCHA6: ${{ secrets.SICOOB_SENHA_ROCHA6 }}
+          SICOOB_PFX_ROCHA7: ${{ secrets.SICOOB_PFX_ROCHA7 }}
+          SICOOB_SENHA_ROCHA7: ${{ secrets.SICOOB_SENHA_ROCHA7 }}
+          SICOOB_PFX_ROCHA8: ${{ secrets.SICOOB_PFX_ROCHA8 }}
+          SICOOB_SENHA_ROCHA8: ${{ secrets.SICOOB_SENHA_ROCHA8 }}
+          SICOOB_PFX_ROCHA9: ${{ secrets.SICOOB_PFX_ROCHA9 }}
+          SICOOB_SENHA_ROCHA9: ${{ secrets.SICOOB_SENHA_ROCHA9 }}
+          SICOOB_PFX_ROCHA10: ${{ secrets.SICOOB_PFX_ROCHA10 }}
+          SICOOB_SENHA_ROCHA10: ${{ secrets.SICOOB_SENHA_ROCHA10 }}
+          SICOOB_PFX_ROCHA11: ${{ secrets.SICOOB_PFX_ROCHA11 }}
+          SICOOB_SENHA_ROCHA11: ${{ secrets.SICOOB_SENHA_ROCHA11 }}
+          SICOOB_PFX_GVLENTES: ${{ secrets.SICOOB_PFX_GVLENTES }}
+          SICOOB_SENHA_GVLENTES: ${{ secrets.SICOOB_SENHA_GVLENTES }}
+          SICOOB_PFX_FZ: ${{ secrets.SICOOB_PFX_FZ }}
+          SICOOB_SENHA_FZ: ${{ secrets.SICOOB_SENHA_FZ }}

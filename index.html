@@ -217,6 +217,7 @@
           <span id="versao" class="mut" style="font-size:10.5px;font-variant-numeric:tabular-nums;white-space:nowrap" title="Versão do sistema"></span>
         </div>
       </div>
+      <div id="sicoobAviso" style="display:none"></div>
       <div class="content" id="content"><div class="loading"><span class="spin"></span> Carregando...</div></div>
     </div>
   </div>
@@ -249,7 +250,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.3', APP_DATA='23/10/2026';
+  const APP_VERSAO='2.9.4', APP_DATA='23/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -335,6 +336,7 @@
     await carregarBase();
     renderNav();render();
     setTimeout(()=>{lentesSincronizar(true).catch(e=>console.error('lentes',e));},800);
+    setTimeout(()=>{sicoobCarregar().catch(e=>console.error('sicoob',e));},1200);
   }
   async function carregarBase(){
     const {data:lojas}=await sb.from('lojas').select('*').eq('arquivada',false).order('ordem');
@@ -2387,6 +2389,7 @@
     if(IMPORT.length===0){
       document.getElementById('content').innerHTML=`<div class="note">⤓ <b>Importar extrato OFX do Sicoob</b> — lê o arquivo, preenche data/descrição/valor, adivinha categoria e contato, separa transferências entre lojas e marca o que é cartão (conta) ou depósito (ignora, a Linx já contou). Você confere antes de lançar.</div>
       <div id="ultimaImport"></div>
+      ${sicoobCardImport()}
       <div class="card"><div class="cardhead"><h3>Selecionar arquivo .OFX</h3><span class="tag">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</span></div>
         <div style="border:1.5px dashed #38465a;border-radius:14px;padding:34px;text-align:center;margin-top:12px">
           <div style="font-size:30px;margin-bottom:10px">⤓</div>
@@ -2461,8 +2464,60 @@
   }
   function cicloDestino(i,next){_keepY=window.scrollY;IMPORT[i].destino=next;render();}
 
+  // ================= Sicoob automático (v2.9.0) =================
+  // O robô (GitHub, 3x por dia) puxa o extrato pela API do Sicoob e guarda em sicoob_extrato.
+  // Aqui o botão "Puxar do Sicoob" monta o mesmo OFX do banco (mesmo código de linha → não duplica)
+  // e passa pela importação de sempre: a equipe só confere e confirma.
+  let SICOOB_CONTAS=[],_IMP_API=false;
+  const _sicDiasAte=iso=>iso?Math.round((new Date(iso+'T12:00:00')-new Date())/864e5):null;
+  const _sicBR=iso=>iso?String(iso).slice(0,10).split('-').reverse().join('/'):'—';
+  const _sicHoras=ts=>ts?Math.round((Date.now()-new Date(ts).getTime())/36e5):null;
+  async function sicoobCarregar(){
+    try{const {data,error}=await sb.from('sicoob_contas').select('*').eq('ativo',true).order('id');if(error)return;SICOOB_CONTAS=data||[];}catch(e){return;}
+    sicoobAviso();if(page==='import'&&IMPORT.length===0)render();
+  }
+  function sicoobProblemas(){const out=[];
+    SICOOB_CONTAS.forEach(c=>{const d=_sicDiasAte(c.cert_vence),h=_sicHoras(c.ultimo_ok);
+      if(d!=null&&d<0)out.push(`Certificado da ${c.apelido} VENCEU em ${_sicBR(c.cert_vence)}: o extrato automático parou`);
+      else if(d!=null&&d<=30)out.push(`Certificado da ${c.apelido} vence em ${d} dia${d===1?'':'s'} (${_sicBR(c.cert_vence)}): renovar e trocar no portal do Sicoob`);
+      if(c.ultimo_erro)out.push(`Extrato automático da ${c.apelido} falhou: ${String(c.ultimo_erro).slice(0,140)}`);
+      else if(c.ultimo_ok&&h>36)out.push(`Extrato automático da ${c.apelido} sem atualizar há ${Math.round(h/24)} dia(s)`);});
+    return out;}
+  function sicoobAviso(){const el=document.getElementById('sicoobAviso');if(!el)return;const ps=sicoobProblemas();
+    if(!ps.length){el.style.display='none';el.innerHTML='';return;}
+    el.style.display='block';
+    el.innerHTML=`<div style="margin:10px 22px 0;background:rgba(245,183,64,.1);border:1px solid var(--amber);border-left:4px solid var(--amber);border-radius:10px;padding:9px 14px;font-size:13px;cursor:pointer" onclick="go('import')" title="Abrir Importar">${ps.map(t=>`<div>${t}</div>`).join('')}</div>`;}
+  function sicoobCardImport(){
+    const cs=SICOOB_CONTAS.filter(c=>c.loja_id==lojaAtual);if(!cs.length)return '';
+    return `<div class="card" style="margin-bottom:14px"><div class="cardhead"><h3>Extrato automático do Sicoob</h3><span class="tag">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</span></div>
+      <div class="mut" style="font-size:12.5px;margin:6px 0 12px">O robô busca o extrato no Sicoob sozinho, 3 vezes por dia. É só puxar, conferir e confirmar, sem baixar arquivo.</div>
+      ${cs.map(c=>{const d=_sicDiasAte(c.cert_vence);
+        const st=c.ultimo_erro?`<span style="color:var(--red)">Falhou na última vez: ${String(c.ultimo_erro).slice(0,160)}</span>`:(c.ultimo_ok?`Atualizado em ${new Date(c.ultimo_ok).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}${c.saldo_atual!=null?` · saldo no banco ${BRL(Number(c.saldo_atual))}`:''}`:'Ainda não rodou');
+        const cv=c.cert_vence?`Certificado vence em ${_sicBR(c.cert_vence)}${d!=null?` (${d} dias)`:''}`:'';
+        return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)">
+          <div style="flex:1;min-width:240px"><b>${c.apelido}</b> <span class="mut">· conta ${String(c.numero_conta).replace(/(\d)(\d)$/,'$1-$2')}</span><div class="mut" style="font-size:12px;margin-top:3px">${st}</div>${cv?`<div class="mut" style="font-size:12px;margin-top:2px${d!=null&&d<=30?';color:var(--amber);font-weight:700':''}">${cv}</div>`:''}</div>
+          <button class="btn" onclick="puxarSicoob(${c.id})">Puxar do Sicoob</button></div>`;}).join('')}</div>`;}
+  async function puxarSicoob(contaId){
+    const c=SICOOB_CONTAS.find(x=>x.id===contaId);if(!c)return;
+    // começa um pouco antes do último dia já importado (o que já entrou aparece como "já lançado")
+    let de=c.data_inicio||'2026-10-01';
+    try{const {data}=await sb.from('lancamentos').select('data').eq('loja_id',c.loja_id).eq('origem','ofx').order('data',{ascending:false}).limit(1);
+      if(data&&data[0]){const x=addDias(data[0].data,-3);if(x>de)de=x;}}catch(e){}
+    let rows=[];for(let o=0;;o+=1000){const {data,error}=await sb.from('sicoob_extrato').select('transaction_id,data,data_hora,valor,historico,complemento,documento').eq('conta_id',c.id).gte('data',de).order('data').order('data_hora').order('transaction_id').range(o,o+999);
+      if(error){toast('Erro ao ler o extrato automático: '+error.message,'erro');return;}rows=rows.concat(data||[]);if(!data||data.length<1000)break;}
+    if(!rows.length){toast(`Nada novo do Sicoob desde ${_sicBR(de)}.`,'ok');return;}
+    // mesmo código de linha do OFX do Sicoob: data + valor em centavos + ordem no dia
+    const seq={},limpa=x=>String(x||'').replace(/[<>\r\n]/g,' ').replace(/\s+/g,' ').trim(),d8=iso=>iso.replace(/-/g,'');
+    const ini=d8(rows[0].data),fim=d8(rows[rows.length-1].data);
+    let ofx=`OFXHEADER:100\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>\n<DTSTART>${ini}\n<DTEND>${fim}\n`;
+    rows.forEach(r=>{const v=Number(r.valor),dt=d8(r.data),cc=Math.round(Math.abs(v)*100),k=dt+'|'+cc;seq[k]=(seq[k]||0)+1;
+      ofx+=`<STMTTRN>\n<TRNTYPE>${v<0?'DEBIT':'CREDIT'}\n<DTPOSTED>${dt}\n<TRNAMT>${v.toFixed(2)}\n<FITID>${dt}${cc}${seq[k]}\n<MEMO>${limpa(r.historico)}\n<NAME>${limpa(r.complemento)}\n</STMTTRN>\n`;});
+    ofx+='</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>';
+    if(!importObs)importObs='EXTRATO SICOOB AUTOMÁTICO';
+    _IMP_API=true;toast(`${rows.length} linhas do Sicoob (${_sicBR(rows[0].data)} a ${_sicBR(rows[rows.length-1].data)}). Conferindo…`,'ok');
+    return _processarOFX(ofx,{value:''});}
   async function lerArquivoOFX(input){
-    const file=input.files[0];if(!file)return;
+    const file=input.files[0];if(!file)return;_IMP_API=false;
     const nomeArq=file.name.toLowerCase();
     // PDF do Sicoob: traz o texto inteiro de cada linha (o OFX corta em 32 letras)
     if(nomeArq.endsWith('.pdf')){let r;try{toast('Lendo o PDF do extrato…','ok');r=await pdfExtratoParaOFX(file);}catch(e){toast('Não consegui ler o PDF: '+(e.message||e),'erro');input.value='';return;}
@@ -2509,7 +2564,7 @@
         // 1) já está lançado? mesmo código do banco, ou digitado à mão com mesma data e mesmo valor
         let ex=t.fitid&&porFitid[t.fitid];
         if(ex){usadosEx.add(ex.id);item.grupo='ja';item.jaExiste=ex;item.jaImportado=true;return item;}
-        ex=EXIST.find(l=>!usadosEx.has(l.id)&&!l.fitid&&l.data===t.iso&&cents(l.valor)===cents(t.amt)&&Math.sign(Number(l.valor))===Math.sign(t.amt));
+        ex=EXIST.find(l=>!usadosEx.has(l.id)&&(!l.fitid||_IMP_API)&&l.data===t.iso&&cents(l.valor)===cents(t.amt)&&Math.sign(Number(l.valor))===Math.sign(t.amt));
         if(ex){usadosEx.add(ex.id);item.grupo='ja';item.jaExiste=ex;return item;}
         // 2) boleto de lentes já espelhado do Caixinha
         if(t.amt<0){const L=LENT.find(l=>!usados.has(l.id)&&Math.abs(Math.abs(Number(l.valor))-Math.abs(t.amt))<0.005&&_dias(l.data,t.iso)<=3);
