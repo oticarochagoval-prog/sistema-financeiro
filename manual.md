@@ -485,6 +485,7 @@ O extrato do Sicoob não precisa mais ser baixado. Um robô busca o extrato dire
 - **Pix do Lucas** (LUCAS GOMES ROCHA) **não vira venda**: entra como transferência marcada "confira" (normalmente é empréstimo do sócio).
 - Em **Lançamentos** e **Importar extrato** aparece até o fim de novembro o aviso: desde 1º de outubro o Pix é venda, não exclua os Pix, e no fim do mês lance só o dinheiro da Linx.
 - O botão **Laboratório**, lá em cima, agora se chama **GV Lentes**.
+- **Entradas não têm contato (v2.9.9)**: em receita é só a categoria. Some o campo Contato no lançamento de receita, na edição de uma entrada e na importação. O Fluxo só põe contato sozinho, pelo texto do banco, quando o dinheiro tem que voltar ou ser conferido: Pix do Lucas (LUCAS GOMES ROCHA), dinheiro da GV Optical e da FZ Grifes. As entradas antigas que já tinham contato continuam com ele.
 
 ## Regras das saídas com o texto completo do Sicoob (v2.9.7)
 
@@ -531,6 +532,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 23/10/2026 | 2.9.9 | Entradas sem contato (só categoria); contato automático só para Lucas, GV Optical e FZ Grifes | Nenhum |
 | 23/10/2026 | 2.9.8 | Funcionário aprendido pelo pedaço do CPF do Pix (salário, vale, bônus…): da próxima vez acerta a pessoa mesmo com nome curto; linhas adivinhadas de salário também completam o contato | Nenhum |
 | 23/10/2026 | 2.9.7 | Saídas usam o texto completo do Sicoob: nome de funcionário → Funcionários com contato (Ana/Anna); GV Optical → Lentes/Laboratório; DVL com motivo → despesa; VAI ESTORNAR pergunta a loja e manda para o Banco Caixinha; trava de conta (extrato de outra loja não entra); depósito da gaveta conferido pelo extrato e quadro "não chegou no banco" no espelho do Caixinha | Coluna da conta de cada loja criada e preenchida pelo Claude |
 | 23/10/2026 | 2.9.6 | Pix como venda e conferência de Pix já valem em outubro; Dashboard mostra À vista + Pix somados na mesma linha (e no Receitas); aviso para a equipe atualizado | Nenhum (tabela da conferência criada pelo Claude) |
