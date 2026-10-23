@@ -250,7 +250,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.10', APP_DATA='23/10/2026';
+  const APP_VERSAO='2.9.12', APP_DATA='23/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1356,7 +1356,7 @@
   }
 
   // Lançamentos: depois de desenhar (inclusive após salvar/editar/excluir), atualiza o saldo do dia 1º e os cartões da loja
-  async function viewLanc(){await viewLancBase();if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
+  async function viewLanc(){await viewLancBase();if(MODULO_ATUAL==='diversas'&&document.getElementById('agDivPainel')){agCarregarRegras().then(()=>agDivRender()).catch(()=>{});}if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
   async function viewLancBase(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando lançamentos...</div>';
     await carregarLancamentos();
@@ -1406,9 +1406,9 @@
       <div id="lancLidoInfo" class="mut" style="font-size:12px;margin:-4px 0 10px;min-height:0"></div>
       <div class="quickrow l1">
         <div><span class="qlabel">Tipo</span><div class="tipo-toggle"><button id="tDes" class="${tipo==='des'?'des':''}" onclick="setTipo('des')">Despesa</button><button id="tRec" class="${tipo==='rec'?'rec':''}" onclick="setTipo('rec')">Receita</button><button id="tTra" class="${tipo==='tra'?'tra':''}" onclick="setTipo('tra')">Transf.</button></div></div>
-        <div><span class="qlabel">Data (dia/mês · ${ANO_FIXO})</span><input id="qData" class="qin" placeholder="dd/mm" data-dm="" onkeydown="maskData(this,event)" onfocus="this.select()"></div>
+        <div><span class="qlabel">Data (dia/mês · ${ANO_FIXO})</span><input id="qData" class="qin" placeholder="dd/mm" data-dm="" onkeydown="maskData(this,event)" onfocus="this.select()" onblur="if(AG_DIV.on)agDivRender()"></div>
         <div><span class="qlabel">Descrição</span><input id="qDesc" class="qin maiusc" placeholder="Ex: Fornecedor Essilor" onkeydown="if(event.key==='Enter')document.getElementById('qVal').focus()"></div>
-        <div><span class="qlabel">Valor</span><input id="qVal" class="qin calc" data-cents="0" placeholder="0,00" inputmode="numeric" onkeydown="calcInput(this,event)"></div>
+        <div><span class="qlabel">Valor</span><input id="qVal" class="qin calc" data-cents="0" placeholder="0,00" inputmode="numeric" onkeydown="calcInput(this,event)" onkeyup="if(AG_DIV.on)agDivRender()"></div>
       </div>
       <div class="quickrow l2">
         <div><span class="qlabel">Parcela</span><div style="display:flex;align-items:center;gap:5px"><input id="qParcA" class="qin" placeholder="3" style="text-align:center;padding:10px 4px" inputmode="numeric" maxlength="2"><span style="color:var(--muted);font-weight:700">/</span><input id="qParcB" class="qin" placeholder="4" style="text-align:center;padding:10px 4px" inputmode="numeric" maxlength="2"></div></div>
@@ -1420,6 +1420,7 @@
         <div><span class="qlabel">Nº documento / Observação (opcional)</span><input id="qDoc" class="qin maiusc" placeholder="Ex: boleto 169097165 · ou LUÍSA — PANFLETAGEM (vale no lugar do contato)"></div>
         <button class="addbtn" id="btnLancar" onclick="salvarLanc()">+ Lançar</button>
       </div>
+      ${MODULO_ATUAL==='diversas'&&tipo==='des'?`<label style="display:block;margin-top:10px;font-size:13px;cursor:pointer"><input type="checkbox" id="agDiv" ${AG_DIV.on?'checked':''} onchange="AG_DIV.on=this.checked;agDivRender()"> <b>Dividir entre as empresas</b> <span class="mut" style="font-size:11.5px">cada loja ganha a parte dela na Agenda</span></label><div id="agDivPainel"></div>`:''}
       <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho</span><span>👥 Categoria obrigatória · sem contato cadastrado? escreva quem foi na observação</span></div>
     </div>`:'<div class="note">👁️ Seu acesso é somente leitura (contador). Você pode ver e exportar, mas não lançar.</div>';
     const diaLabel=filtroDia?isoParaBR(filtroDia):'Todos os dias';
@@ -1588,12 +1589,19 @@
     const v=cents/100;
     const tipoDb=isTra?'transferencia':(tipo==='rec'?'receita':'despesa');
     const valor=(tipo==='rec')?v:-v;
+    // v2.9.12: dividir entre as empresas (só Diversas)
+    const dividir=MODULO_ATUAL==='diversas'&&tipo==='des'&&AG_DIV.on&&!!document.getElementById('agDivPainel');let partes=null;
+    if(dividir){partes=divPartes(v);const sp=Object.values(partes).reduce((a,b)=>a+b,0);
+      if(!(sp>0)){toast('Escolha como dividir: nenhuma empresa ficou com parte.','erro');return;}
+      if(Math.abs(sp-v)>0.009&&!confirm(`As partes somam ${BRL(sp)} e o lançamento é ${BRL(v)}. Lançar assim mesmo?`))return;}
+    // v2.9.12: despesa que vence depois de hoje ainda não foi paga → vai para a Agenda (o extrato dá baixa quando pagar)
+    if(tipo==='des'&&iso>_hojeLocal()){await salvarLancNaAgenda({desc:desc.toUpperCase(),v,iso,catId,contatoId,parc,doc,partes});return;}
     busy=true;const btn=document.getElementById('btnLancar');if(btn){btn.disabled=true;btn.textContent='Salvando...';}
-    const {error}=await sb.from('lancamentos').insert({
+    const {data:insL,error}=await sb.from('lancamentos').insert({
       loja_id:lojaAtual,conta_id:contaId||null,data:iso,descricao:desc.toUpperCase(),
       valor,tipo:tipoDb,categoria_id:catId,contato_id:contatoId,parcela:parc,
       documento:doc||null,pago:true,origem:'manual',criado_por:USER.id
-    });
+    }).select('id').single();
     busy=false;
     if(error){toast('Erro ao salvar: '+error.message,'erro');if(btn){btn.disabled=false;btn.textContent='+ Lançar';}return;}
     let nAg=0;if(parc&&valor<0){try{const [a,b]=String(parc).split('/').map(n=>parseInt(n,10));if(a>=1&&b>a&&b<=60){
@@ -1601,9 +1609,24 @@
       for(let k=a+1;k<=b;k++){if(tem.has(`${k}/${b}`))continue;const m=mesShift(iso.slice(0,7),k-a);const ult=Number(_fimMes(m).slice(8,10));
         rows.push({loja_id:lojaAtual,descricao:desc.toUpperCase(),valor:v,vencimento:`${m}-${String(Math.min(Number(iso.slice(8,10)),ult)).padStart(2,'0')}`,categoria_id:catId?Number(catId):null,contato_id:contatoId?Number(contatoId):null,parcela:`${k}/${b}`,status:'aberto'});}
       if(rows.length){const {error:e2}=await sb.from('contas_pagar').insert(rows);if(!e2)nAg=rows.length;}}}catch(e){}}
+    let msgDiv='';if(dividir&&insL&&insL.id){try{const {data:bo,error:eb}=await sb.from('contas_pagar').insert({loja_id:lojaAtual,descricao:desc.toUpperCase(),valor:v,vencimento:iso,categoria_id:catId?Number(catId):null,contato_id:contatoId?Number(contatoId):null,parcela:parc,status:'pago',pago_em:iso,pago_lancamento_id:insL.id,pago_como:'lançado em Lançamentos'}).select('id,vencimento,parcela');
+        const e3=eb?eb.message:await divCriarPartes(bo||[],partes,desc.toUpperCase(),catId,contatoId,false);msgDiv=e3?` · não consegui dividir: ${e3}`:` · dividido entre ${Object.values(partes).filter(x=>x>0).length} empresas (cada uma tem a parte na Agenda)`;AG_DIV.mao={};}catch(e){msgDiv=' · não consegui dividir';}}
     await agAprenderBoleto(catId,contatoId);
-    toast(nAg?`Lançamento salvo! 📅 As próximas ${nAg} parcelas foram para a Agenda de pagamentos.`:'Lançamento salvo!','ok');await viewLanc();
+    toast((nAg?`Lançamento salvo! 📅 As próximas ${nAg} parcelas foram para a Agenda de pagamentos.`:'Lançamento salvo!')+msgDiv,msgDiv.includes('não consegui')?'erro':'ok');await viewLanc();
   }
+  // v2.9.12: despesa com vencimento futuro lançada em Lançamentos → conta(s) na Agenda (parcelas a partir da atual) e, na Diversas, as partes de cada empresa
+  async function salvarLancNaAgenda(o){const btn=document.getElementById('btnLancar');busy=true;if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+    let ini=1,n=1;if(o.parc){const [a,b]=String(o.parc).split('/').map(x=>parseInt(x,10));if(a>=1&&b>=a&&b<=60){ini=a;n=b;}}
+    const rows=[];for(let k=ini;k<=n;k++){const m=mesShift(o.iso.slice(0,7),k-ini);const ult=Number(_fimMes(m).slice(8,10));
+      rows.push({loja_id:lojaAtual,descricao:o.desc,valor:o.v,vencimento:`${m}-${String(Math.min(Number(o.iso.slice(8,10)),ult)).padStart(2,'0')}`,categoria_id:o.catId?Number(o.catId):null,contato_id:o.contatoId?Number(o.contatoId):null,parcela:n>1?`${k}/${n}`:null,linha_digitavel:k===ini&&_agLido&&_agLido.linha?_agLido.linha:null,status:'aberto'});}
+    let {data:ins,error}=await sb.from('contas_pagar').insert(rows).select('id,vencimento,parcela');
+    if(error&&/linha_digitavel/i.test(error.message||'')){rows.forEach(r=>delete r.linha_digitavel);({data:ins,error}=await sb.from('contas_pagar').insert(rows).select('id,vencimento,parcela'));}
+    busy=false;if(btn){btn.disabled=false;btn.textContent='+ Lançar';}
+    if(error){toast('Não consegui mandar para a Agenda: '+error.message,'erro');return;}
+    let msg=rows.length>1?`📅 Vence ${isoParaBR(o.iso)}: ${rows.length} parcelas foram para a Agenda de pagamentos.`:`📅 Vence ${isoParaBR(o.iso)}: foi para a Agenda de pagamentos.`;
+    if(o.partes&&ins&&ins.length){const e2=await divCriarPartes(ins,o.partes,o.desc,o.catId,o.contatoId,false);msg+=e2?` Não consegui dividir: ${e2}`:` Dividido: cada empresa tem a parte dela na Agenda.`;AG_DIV.mao={};}
+    msg+=' Quando o extrato trouxer o pagamento, ele dá baixa sozinho.';
+    await agAprenderBoleto(o.catId,o.contatoId);toast(msg,'ok');await viewLanc();}
   // ---- Lixeira (v2.9.1): todo mundo que lança pode mandar para a Lixeira (uma ou várias); só o gestor restaura ----
   let LANC_SEL=new Set(),_lancVisiveis=[];
   function lancSel(id,on){on?LANC_SEL.add(id):LANC_SEL.delete(id);_keepY=window.scrollY;render();}
@@ -2345,6 +2368,13 @@
     if(/\bFZ (COMERCIO|GRIFES)/.test(n))return (ach(/^FZ GRIFES$/)||{}).id||null;
     return null;}
   function contatoEntradaVale(nome){return /^(LUCAS GOMES ROCHA|GV OPTICAL|GV LENTES|FZ GRIFES)$/.test(normDesc(nome||''));}
+  // ---- v2.9.11: a importação reconhece a Agenda ----
+  let AGENDA_AB=[];
+  function agendaDoExtrato(t,usadosAg){const v=Math.abs(t.amt),abertas=AGENDA_AB.filter(c=>!usadosAg.has(c.id));
+    const iguais=abertas.filter(c=>Math.abs(Number(c.valor)-v)<0.01&&t.iso>=addDias(c.vencimento,-7)&&t.iso<=addDias(c.vencimento,10)).sort((a,b)=>Math.abs(_dias(a.vencimento,t.iso))-Math.abs(_dias(b.vencimento,t.iso)));
+    if(iguais.length)return {c:iguais[0],juros:0};
+    const juros=abertas.filter(c=>{const cv=Number(c.valor);return v>cv+0.004&&v<=cv*1.10+0.004&&t.iso>c.vencimento&&t.iso<=addDias(c.vencimento,30);});
+    return juros.length===1?{c:juros[0],juros:Math.round((v-Number(juros[0].valor))*100)/100}:null;}
   function catFuncionarios(){return catPorNome('Funcionários')||catsAtivas().find(c=>/^FUNCIONARIOS$/.test(normDesc(c.nome)))||null;}
   function contatoGV(){const cs=contatosAtivos();return cs.find(c=>/^GV LENTES$/.test(normDesc(c.nome)))||cs.find(c=>/^GV OPTICAL$/.test(normDesc(c.nome)))||cs.find(c=>/^GV\b/.test(normDesc(c.nome)))||null;}
   function catLentes(){return catPorNome('Lentes/Laboratório')||catsAtivas().find(c=>/^LENTES ?LABORATORIO$/.test(normDesc(c.nome)))||null;}
@@ -2459,7 +2489,7 @@
       const dataSel=`<td class="mut" style="white-space:nowrap"><label style="display:flex;gap:6px;align-items:center;cursor:pointer" title="Lançar esta linha agora?"><input type="checkbox" tabindex="-1" ${impSel(r)?'checked':''} onclick="event.stopPropagation();IMPORT[${i}].selManual=this.checked;_keepY=window.scrollY;render()">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</label></td>`;
       const etqRegra=r.regra?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 regra "${r.regra}"</span>${r.estornar?impEstornoHTML(r,i):''}</div>`:(r.sipag?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">💳 ${({antecipacao:'antecipação',debito:'débito',credito_parcela:'parcela de crédito',estorno:'estorno',outro:'Sipag'})[r.sipag.tipo]}${r.sipag.band?' · '+r.sipag.band:''}</span></div>`:(r.grupo==='adivinhado'?'<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">adivinhado</span></div>':''));
       const aprend=r.aprender?(r.aprender.salvo?`<div style="margin-top:4px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 vai lembrar "${palavraLegivel(r.aprender.palavra)}"</span></div>`:`<div style="margin-top:4px"><button class="catchip" style="font-size:10.5px;padding:2px 8px;cursor:pointer;border-color:var(--green);color:var(--green);background:rgba(61,214,140,.08)" onclick="lembrarRegraImport(${i})">🔑 Lembrar sempre: "${palavraLegivel(r.aprender.palavra)}" → ${(CATS.find(c=>String(c.id)===String(r.aprender.catId))||{}).nome||''}</button>${r.aprender.n?` <span class="mut" style="font-size:11px">· aplicado em mais ${r.aprender.n} linha(s) iguais</span>`:''}</div>`):(r.copiadoDe!=null?`<div class="mut" style="font-size:11px;margin-top:3px">↳ mesma categoria da linha parecida</div>`:'');
-      return `<tr ${destaque}${impSel(r)&&r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${dataSel}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${r.rateio?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--amber);color:var(--amber)">conta dividida da DVL: é despesa${r.catId?' (confira a categoria)':' — escolha a categoria'}</span></div>`:''}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button>${(()=>{const t=catTransf();return t&&String(r.catId)===String(t.id)&&!r.corrigir?'':`<button class="miniadd" tabindex="-1" style="height:28px;font-size:11px;padding:0 7px;width:auto;white-space:nowrap" title="Não entra no resultado: vai como neutra (transferência/empréstimo). Fica guardada só para o saldo do banco bater — não precisa excluir." onclick="impNaoEntra(${i})">não entra</button>`;})()}</div>${r.obs||r._obsAberto?`<input class="qin maiusc" tabindex="-1" style="margin-top:4px;font-size:11.5px;padding:4px 8px;width:100%" value="${(r.obs||'').replace(/"/g,'&quot;')}" placeholder="observação (ex.: MARIA — PANFLETAGEM)" oninput="IMPORT[${i}].obs=this.value;IMPORT[${i}]._mexido=true">`:`<div style="margin-top:3px"><span tabindex="-1" onclick="IMPORT[${i}]._obsAberto=true;_keepY=window.scrollY;render()" style="cursor:pointer;font-size:11px;color:var(--muted)">+ obs</span></div>`}</td><td>${r.amt>0?`<span class="mut" style="font-size:12px">${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||''}</span>`:`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||(r.obs?`<span class="mut">${String(r.obs).slice(0,22).replace(/</g,'&lt;')}</span>`:'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div>`}</td>${valorTd}</tr>`;
+      return `<tr ${destaque}${impSel(r)&&r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${dataSel}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${r.agenda?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">da Agenda: ${_remEsc(r.agenda.desc||'')}${r.agenda.parcela?' '+r.agenda.parcela:''}${r.agenda.juros?' · '+BRL(r.agenda.juros)+' de juros':''}</span></div>`:''}${r.rateio?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--amber);color:var(--amber)">conta dividida da DVL: é despesa${r.catId?' (confira a categoria)':' — escolha a categoria'}</span></div>`:''}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button>${(()=>{const t=catTransf();return t&&String(r.catId)===String(t.id)&&!r.corrigir?'':`<button class="miniadd" tabindex="-1" style="height:28px;font-size:11px;padding:0 7px;width:auto;white-space:nowrap" title="Não entra no resultado: vai como neutra (transferência/empréstimo). Fica guardada só para o saldo do banco bater — não precisa excluir." onclick="impNaoEntra(${i})">não entra</button>`;})()}</div>${r.obs||r._obsAberto?`<input class="qin maiusc" tabindex="-1" style="margin-top:4px;font-size:11.5px;padding:4px 8px;width:100%" value="${(r.obs||'').replace(/"/g,'&quot;')}" placeholder="observação (ex.: MARIA — PANFLETAGEM)" oninput="IMPORT[${i}].obs=this.value;IMPORT[${i}]._mexido=true">`:`<div style="margin-top:3px"><span tabindex="-1" onclick="IMPORT[${i}]._obsAberto=true;_keepY=window.scrollY;render()" style="cursor:pointer;font-size:11px;color:var(--muted)">+ obs</span></div>`}</td><td>${r.amt>0?`<span class="mut" style="font-size:12px">${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||''}</span>`:`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||(r.obs?`<span class="mut">${String(r.obs).slice(0,22).replace(/</g,'&lt;')}</span>`:'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div>`}</td>${valorTd}</tr>`;
     };
     const idx=IMPORT.map((r,i)=>i).filter(i=>IMPORT_TIPO==='ent'?IMPORT[i].amt>0:IMPORT_TIPO==='sai'?IMPORT[i].amt<0:true);
     const atencao=idx.filter(i=>{const r=IMPORT[i];return r.grupo==='falta'||!r.grupo||r.corrigir||r.estornar||r.resolvido||(!r.catId&&r.grupo!=='ja'&&r.grupo!=='lentes');});
@@ -2471,6 +2501,7 @@
       ['dep','🏧 Depósitos da gaveta','neutro: dinheiro da caixinha levado ao banco'],
       ['transf','⇆ Transferências entre lojas','neutro: dinheiro passando de uma loja pra outra'],
       ['lentes','🔗 Boletos de lentes','já vieram do Caixinha'],
+      ['agenda','Pagamentos da Agenda','já estavam na Agenda: entram com a categoria de lá e dão baixa ao confirmar'],
       ['regra','🔑 Classificados pelas palavras-chave',''],
       ['adivinhado','🤖 Classificados pelas regras antigas','confira se quiser'],
     ];
@@ -2659,8 +2690,10 @@
         const {data}=await sb.from('lancamentos').select('id,data,valor,descricao,fitid').eq('loja_id',lojaAtual).like('ref_externa','fz%').gte('data',addDias(datas[0],-3)).lte('data',addDias(datas[datas.length-1],3));LENT=data||[];
         const {data:ex}=await sb.from('lancamentos').select('id,data,valor,descricao,fitid,origem,conta_id,categoria_id,ref_externa').eq('loja_id',lojaAtual).gte('data',addDias(datas[0],-2)).lte('data',addDias(datas[datas.length-1],2)).limit(5000);
         EXIST=(ex||[]).filter(l=>!contaEhCaixinha(l.conta_id));
+        // v2.9.11: contas abertas da Agenda (boleto pago que já estava lá entra com a categoria dela e dá baixa)
+        try{const {data:ag}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,categoria_id,contato_id').eq('loja_id',lojaAtual).eq('status','aberto').gte('vencimento',addDias(datas[0],-30)).lte('vencimento',addDias(datas[datas.length-1],7)).limit(2000);AGENDA_AB=ag||[];}catch(e){AGENDA_AB=[];}
       }}catch(e){}
-      const usados=new Set(),usadosEx=new Set();
+      const usados=new Set(),usadosEx=new Set(),usadosAg=new Set();
       const cents=v=>Math.round(Math.abs(Number(v))*100);
       const porFitid={};EXIST.forEach(l=>{if(l.fitid)porFitid[l.fitid]=l;});
       const catCartao=catsAtivas().find(c=>c.nome==='Cartão'),cPix=catPorNome(CAT_PIX),cDep=catPorNome(CAT_DEPGAV),cTr=catTransf();
@@ -2677,6 +2710,10 @@
         // 2) boleto de lentes já espelhado do Caixinha
         if(t.amt<0){const L=LENT.find(l=>!usados.has(l.id)&&Math.abs(Math.abs(Number(l.valor))-Math.abs(t.amt))<0.005&&_dias(l.data,t.iso)<=3);
           if(L){usados.add(L.id);item.grupo='lentes';item.jaLentes=L;return item;}}
+        // 2b) saída que já estava na Agenda: mesmo valor (7 dias antes a 10 depois do vencimento) ou pago com juros (até 10% a mais, depois do vencimento)
+        if(t.amt<0){const ag=agendaDoExtrato(t,usadosAg);if(ag){usadosAg.add(ag.c.id);item.agenda={id:ag.c.id,desc:ag.c.descricao,parcela:ag.c.parcela||'',juros:ag.juros};
+          if(ag.c.categoria_id){item.grupo='agenda';item.catId=ag.c.categoria_id;item.contatoId=ag.c.contato_id||null;return item;}
+          if(ag.c.contato_id)item.contatoId=ag.c.contato_id;}}
         // 3) entradas: cartão, transferência de outra loja, Pix de cliente, depósito da gaveta — nada é ignorado
         if(t.amt>0){
           if(CARTAO_RE.test(full)){item.grupo='cartao';item.catId=catCartao?catCartao.id:'';return item;}
@@ -2754,7 +2791,7 @@
     const btn=document.getElementById('btnConfImport');if(btn){btn.disabled=true;btn.textContent='Lançando...';}
     const contaSicoob=CONTAS.find(c=>/sicoob/i.test(c.nome))||CONTAS.find(c=>!/caixinha/i.test(c.nome))||null;
     const lojaCurta=lojaNomeCurto(lojaAtual);
-    let ok=0,dup=0,erro=0,fech=0,ligados=0,sip=0,sipErr='',nAutoCat=0,nAutoCt=0,pulados=0,cxCriou=0,cxLigou=0,cxErr='';const lancadasAgora=[];
+    let ok=0,dup=0,erro=0,fech=0,ligados=0,sip=0,sipErr='',nAutoCat=0,nAutoCt=0,pulados=0,cxCriou=0,cxLigou=0,cxErr='';const lancadasAgora=[];let agBaixas=0;
     const gravarSipag=async(r,lancId)=>{ // um crédito de cartão do extrato → tabela da conciliação (não duplica pelo código do banco)
       if(!r.sipag||!r.fitid)return;
       const row={loja:lojaCurta,loja_id:lojaAtual,data:r.iso,valor:r.amt,descricao:(r.desc||'').slice(0,300),tipo:r.sipag.tipo,origem:'ofx',origem_ref:r.fitid,lancamento_id:lancId||null,criado_por:USER.id};
@@ -2780,6 +2817,7 @@
       const {data:ins,error}=await sb.from('lancamentos').insert(reg).select('id').single();
       if(error){if(error.message.includes('duplicate')||error.code==='23505')dup++;else erro++;continue;}
       ok++;if(r.catId&&!r.resolvido)nAutoCat++;if(r.contatoId)nAutoCt++;await gravarSipag(r,ins&&ins.id);lancadasAgora.push(r);
+      if(r.agenda&&ins&&ins.id){try{const {error:ea}=await sb.from('contas_pagar').update({status:'pago',pago_em:r.iso,pago_lancamento_id:ins.id,pago_como:'baixa pelo extrato (importação)'+(r.agenda.juros?` · pago com ${BRL(r.agenda.juros)} de juros`:''),atualizado_em:new Date().toISOString(),atualizado_por:USER.id}).eq('id',r.agenda.id).eq('status','aberto');if(!ea)agBaixas++;}catch(e){}}
       if(r.estornar&&r.cxLoja&&String(r.catId)===String(catEstornarId())){const st=await impMandarBanco(r,ins&&ins.id);if(st==='criou')cxCriou++;else if(st==='ligou')cxLigou++;else if(st.startsWith('erro'))cxErr=cxErr||st.slice(5);}
     }
     // salva o histórico da importação
@@ -2795,7 +2833,7 @@
     let cpfN=0;try{cpfN=await aprenderCpfFuncionarios(lancadasAgora);}catch(e){}
     let depN=0,depErr='';if(IMPORT_DEP.length){const rr=await cxMarcarDepositos(IMPORT_DEP);depN=rr.n;depErr=rr.err;IMPORT_DEP=[];}
     IMPORT=[];importObs='';importPeriodo={de:'',ate:''};IMPORT_TIPO='';IMP_MARC={modo:'todas',crit:[]};
-    toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${pulados?` · ${pulados} ficaram para a próxima importação`:''}${sipErr?` · conciliação: ${sipErr}`:''}${cxCriou?` · 🔁 ${cxCriou} mandados para o Banco Caixinha`:''}${cxLigou?` · 🔁 ${cxLigou} ligados ao que já estava no Banco Caixinha`:''}${cxErr?` · Banco Caixinha: ${cxErr}`:''}${depN?` · ${depN} depósito(s) da gaveta conferido(s) pelo extrato`:''}${cpfN?` · ${cpfN} funcionário(s) aprendido(s) pelo CPF`:''}${depErr?` · Caixinha (depósitos): ${depErr}`:''}`, (erro>0||fech>0||sipErr||cxErr||depErr)?'erro':'ok');
+    toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${pulados?` · ${pulados} ficaram para a próxima importação`:''}${sipErr?` · conciliação: ${sipErr}`:''}${cxCriou?` · 🔁 ${cxCriou} mandados para o Banco Caixinha`:''}${cxLigou?` · 🔁 ${cxLigou} ligados ao que já estava no Banco Caixinha`:''}${cxErr?` · Banco Caixinha: ${cxErr}`:''}${depN?` · ${depN} depósito(s) da gaveta conferido(s) pelo extrato`:''}${cpfN?` · ${cpfN} funcionário(s) aprendido(s) pelo CPF`:''}${agBaixas?` · ${agBaixas} conta(s) da Agenda baixada(s)`:''}${depErr?` · Caixinha (depósitos): ${depErr}`:''}`, (erro>0||fech>0||sipErr||cxErr||depErr)?'erro':'ok');
     if(cxCriou||cxLigou)CX.carregado=false;
     go('lanc');
   }
@@ -2976,23 +3014,7 @@
           <span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:rgba(31,157,107,.3);vertical-align:middle;margin-right:4px"></i>pago</span>
           <span>clique numa conta para ver ou resolver</span></div></div>
       <div class="grid two" style="margin-bottom:14px">
-        ${podeEditar()?`<div class="card"><h3 style="font-size:14.5px;margin:0 0 10px">Lançar conta${grupo?` <span class="mut" style="font-size:12px;font-weight:400">· entra na ${lojaNomeCurto(lojaAtual)}</span>`:''}</h3>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><input type="file" id="agArq" accept="image/*,application/pdf" style="display:none" onchange="agLerArquivo(this)"><button class="btn" style="padding:7px 14px" onclick="document.getElementById('agArq').click()">Ler boleto (foto ou PDF)</button><span class="mut" style="font-size:11.5px">tire a foto do boleto ou escolha o PDF: valor, vencimento, empresa e parcela entram sozinhos</span></div>
-          <input id="agCod" class="qin" placeholder="Ou cole aqui o código de barras / linha digitável" oninput="agLerCodigo()" style="width:100%">
-          <div id="agCodInfo" class="mut" style="font-size:12px;margin:6px 0 8px;min-height:16px"></div>
-          <div style="display:grid;grid-template-columns:1fr 120px 140px;gap:8px">
-            <input id="agDesc" class="qin maiusc" placeholder="Descrição (ex.: ESSILOR, ALUGUEL)" onblur="agSugerir()">
-            <input id="agValor" class="qin" placeholder="Valor" inputmode="decimal" oninput="agDivRender()">
-            <input id="agVenc" class="qin" type="date" onchange="agDivRender()"></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 80px 96px;gap:8px;margin-top:8px">
-            <select id="agCat" class="qin"><option value="">Categoria…</option>${catsOptions()}</select>
-            <select id="agCont" class="qin"><option value="">Contato (opcional)</option>${contatosOptions()}</select>
-            <select id="agParc" class="qin" title="Quantas parcelas no total">${Array.from({length:24},(_,i)=>`<option value="${i+1}">${i+1}x</option>`).join('')}</select>
-            <select id="agParcIni" class="qin" title="Começa em qual parcela (ex.: já pagou 4 de 6 → começa na 5ª)">${Array.from({length:24},(_,i)=>`<option value="${i+1}">da ${i+1}ª</option>`).join('')}</select></div>
-          <label style="display:block;margin-top:10px;font-size:13px;cursor:pointer"><input type="checkbox" id="agCrit"> <b>Não pode atrasar</b> <span class="mut" style="font-size:11.5px">(fica em vermelho na agenda e o agente vigia)</span></label>
-          ${MODULO_ATUAL==='diversas'?`<label style="display:block;margin-top:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="agDiv" ${AG_DIV.on?'checked':''} onchange="AG_DIV.on=this.checked;agDivRender()"> <b>Dividir entre as empresas</b></label><div id="agDivPainel"></div>`:''}
-          <button class="btn" id="agBtn" style="margin-top:10px;width:100%" onclick="agSalvar()">${MODULO_ATUAL==='diversas'?'+ Lançar (e dividir, se marcado)':'+ Lançar na agenda'}</button>
-          <div class="mut" style="font-size:11.5px;margin-top:6px">Parcelado: escolha as vezes e de qual parcela começa (ex.: boleto 5/6 → 6x a partir da 5ª cria só a 5/6 e a 6/6), uma por mês, no mesmo dia.</div></div>`:''}
+        <div class="card"><h3 style="font-size:14.5px;margin:0 0 8px">Lançar uma conta</h3><div class="mut" style="font-size:12.5px;line-height:1.5">Agora tudo se lança em <a style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="go('lanc')">Lançamentos</a>. Despesa com vencimento depois de hoje (ou boleto lido pela foto) vem para esta Agenda sozinha${MODULO_ATUAL==='diversas'?', e lá mesmo dá para dividir entre as empresas':''}. Quando o extrato trouxer o pagamento, ela dá baixa.</div></div>
         <div class="card"><h3 style="font-size:14.5px;margin:0 0 8px">Vencidos de semanas anteriores <span class="mut" style="font-size:12px;font-weight:400">· não somam na semana</span></h3>
           ${vencHTML?`<table><thead><tr><th>Venceu</th><th>Conta</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${vencHTML}</tbody></table>
           <div class="mut" style="font-size:11.5px;margin-top:8px">"Já paguei": pergunta como e baixa. "Não vou pagar": sai da agenda e fica guardado com o motivo.</div>`:'<div class="mut" style="font-size:12.5px">Nada vencido. 👍</div>'}</div></div>
@@ -3084,8 +3106,14 @@
     return p;}
   function divPartes(total){if(AG_DIV.metodo==='mao'){const o={};Object.entries(AG_DIV.mao||{}).forEach(([k,v])=>{const n=_numBR(v);if(n>0)o[k]=Math.round(n*100)/100;});return o;}return divDistribuir(total,divPesos());}
   async function agCarregarRegras(){try{const {data}=await sb.from('rateio_regras').select('*').order('nome');RATEIO_REGRAS=data||[];}catch(e){RATEIO_REGRAS=[];}}
+  function _divValorForm(){const a=document.getElementById('agValor');if(a)return _numBR(a.value);const q=document.getElementById('qVal');return q?(parseInt(q.dataset.cents||'0',10)||0)/100:0;}
+  function _divVencForm(){const a=document.getElementById('agVenc');if(a&&a.value)return a.value;const q=document.getElementById('qData');const iso=q&&q.value?dataParaISO(q.value):null;return iso||addDias(AG_SEMANA||_hojeLocal(),6);}
+  // cria a parte de cada empresa na Agenda dela, ligada ao boleto da Diversas (rateio_de)
+  async function divCriarPartes(boletos,partes,desc,cat,cont,crit){const pr=[];boletos.forEach(bo=>Object.entries(partes).forEach(([lid,v])=>{if(!(v>0))return;
+      pr.push(Object.assign({loja_id:Number(lid),descricao:'PARTE DIVERSAS · '+desc,valor:v,vencimento:bo.vencimento,categoria_id:cat?Number(cat):null,contato_id:cont?Number(cont):null,parcela:bo.parcela||null,status:'aberto',rateio_de:bo.id},crit?{critico:true}:{}));}));
+    if(!pr.length)return 'nenhuma parte';const {error}=await sb.from('contas_pagar').insert(pr);return error?error.message:'';}
   async function agDivRender(){const box=document.getElementById('agDivPainel');if(!box)return;if(!AG_DIV.on){box.innerHTML='';return;}
-    const valor=_numBR((document.getElementById('agValor')||{}).value),venc=(document.getElementById('agVenc')||{}).value||addDias(AG_SEMANA||_hojeLocal(),6),m=AG_DIV.metodo;
+    const valor=_divValorForm(),venc=_divVencForm(),m=AG_DIV.metodo;
     if(m==='lente'){let ym=venc.slice(0,7),L=await divCarregarLentes(ym),n=0;while(!Object.values(L).some(v=>v>0)&&n<6){ym=mesShift(ym,-1);L=await divCarregarLentes(ym);n++;}
       AG_DIV.lentes=L;AG_DIV.lentesMes=Object.values(L).some(v=>v>0)?ym:'';}
     const emp=divEmpresas(),partes=divPartes(valor),somaP=Object.values(partes).reduce((a,b)=>a+b,0),somaPct=emp.reduce((t,l)=>t+(Number(l.pct_diversas)||0),0);
@@ -3108,7 +3136,7 @@
   function agDivSel(id,on){if(!AG_DIV.sel)AG_DIV.sel=new Set();on?AG_DIV.sel.add(id):AG_DIV.sel.delete(id);AG_DIV.regra='';agDivRender();}
   function agDivUsarRegra(id){const r=RATEIO_REGRAS.find(x=>String(x.id)===String(id));AG_DIV.regra=id;if(!r){agDivRender();return;}AG_DIV.metodo=r.metodo;
     if(r.metodo==='igual')AG_DIV.sel=new Set((r.lojas||[]).map(Number));
-    if(r.metodo==='mao'){const v=_numBR((document.getElementById('agValor')||{}).value);AG_DIV.mao={};if(v){const pt=divDistribuir(v,r.proporcoes||{});Object.entries(pt).forEach(([k,x])=>AG_DIV.mao[k]=x.toFixed(2).replace('.',','));}}
+    if(r.metodo==='mao'){const v=_divValorForm();AG_DIV.mao={};if(v){const pt=divDistribuir(v,r.proporcoes||{});Object.entries(pt).forEach(([k,x])=>AG_DIV.mao[k]=x.toFixed(2).replace('.',','));}}
     agDivRender();}
   async function agDivSalvarRegra(){const nome=prompt('Nome da regra (ex.: ESCRITÓRIO, SALÁRIOS DO ESCRITÓRIO):');if(!nome||!nome.trim())return;
     const reg={nome:nome.trim().toUpperCase(),metodo:AG_DIV.metodo,lojas:AG_DIV.metodo==='igual'?[...(AG_DIV.sel||[])]:null,proporcoes:null};
@@ -3392,9 +3420,9 @@
     if(g('qDoc')&&!g('qDoc').value)g('qDoc').value=(r.numero_documento?'BOLETO '+String(r.numero_documento).toUpperCase():(linha?'BOLETO '+linha.slice(-14):'')).slice(0,60);
     const rg=aplicarRegrasP(`${benef} ${cnpj}`,lojaAtual);if(rg&&rg.categoria_id&&g('qCat'))g('qCat').value=String(rg.categoria_id);if(rg&&rg.contato_id&&g('qContato'))g('qContato').value=String(rg.contato_id);
     if(g('qContato')&&!g('qContato').value&&benef){const ct=CONTATOS.find(x=>x.nome&&String(x.nome).length>=4&&benef.includes(String(x.nome).toUpperCase()));if(ct)g('qContato').value=String(ct.id);}
-    _agLido={cnpj,benef};
+    _agLido={cnpj,benef,linha:linha.length>=44?linha:null};if(AG_DIV.on)agDivRender();
     const fal=[];if(!valor)fal.push('valor');if(!benef)fal.push('empresa');
-    if(info)info.innerHTML=`<span style="color:var(--green)">Li o boleto:</span> ${benef?'<b>'+_remEsc(benef)+'</b>':''}${valor?' · <b>'+BRL(valor)+'</b>':''}${venc?' · vence '+isoParaBR(venc):''}${tot>1?` · parcela ${parc} de ${tot} (as próximas vão para a Agenda)`:''}${rg&&rg.categoria_id?' · categoria e contato pelo que já aprendi':''}. <b>Confira a data do pagamento</b>${fal.length?` <span style="color:var(--amber)">· não achei: ${fal.join(', ')}</span>`:''} e clique em Lançar.`;}
+    if(info)info.innerHTML=`<span style="color:var(--green)">Li o boleto:</span> ${benef?'<b>'+_remEsc(benef)+'</b>':''}${valor?' · <b>'+BRL(valor)+'</b>':''}${venc?' · vence '+isoParaBR(venc):''}${tot>1?` · parcela ${parc} de ${tot} (as próximas vão para a Agenda)`:''}${rg&&rg.categoria_id?' · categoria e contato pelo que já aprendi':''}. ${dt>_hojeLocal()?'Ainda não venceu: ao lançar, <b>vai para a Agenda</b> e o extrato dá baixa quando pagar. Se já pagou, troque a data para o dia do pagamento':'<b>Confira a data do pagamento</b>'}${fal.length?` <span style="color:var(--amber)">· não achei: ${fal.join(', ')}</span>`:''} e clique em Lançar.`;}
   // ---- Conferência de Pix: banco × Linx (de novembro/2026 em diante; só o gestor) ----
   const PIX_CONF_DESDE='2026-10';
   async function pixBancoMes(ids,ym){const cats=CATS.filter(c=>[CAT_PIX_VENDA,CAT_PIX].includes(String(c.nome).toUpperCase())||String(c.nome).toUpperCase()===CAT_PIX.toUpperCase()).map(c=>c.id);const o={};if(!cats.length||!ids.length)return o;

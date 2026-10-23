@@ -432,6 +432,15 @@ Lá em cima, na ordem: **Óticas Rocha · Diversas · Grupo de compras · GV Len
 - **Porcentagens e lentes:** no fim da Agenda da Diversas. A % só o gestor muda; as lentes são digitadas todo mês (o "por lente" usa o mês do vencimento do boleto, ou o último mês preenchido).
 - Abrir o boleto da Diversas mostra a lista de empresas e quem já transferiu. "Não vou pagar" ou "Excluir" no boleto leva junto as partes que ainda estavam em aberto.
 
+## Tudo se lança em Lançamentos (v2.9.12)
+
+A Agenda de pagamentos não tem mais o quadro "Lançar conta". Tudo se lança em **Lançamentos**, e o Fluxo decide sozinho para onde vai, sem botão:
+
+- **Despesa com data até hoje** (já paga): vira lançamento normal.
+- **Despesa com data depois de hoje** (ainda vai pagar, ex.: boleto lido pela foto com vencimento futuro): vai para a **Agenda**. Se tiver parcela (ex.: 2/5), entram na Agenda da 2/5 até a 5/5, uma por mês. Quando o extrato trouxer o pagamento, a importação reconhece e dá baixa.
+- **Na Diversas**, embaixo do + Lançar aparece **Dividir entre as empresas** (por %, por lente, por igual, à mão ou regra salva). Cada loja ganha "PARTE DIVERSAS · descrição" na Agenda dela, com a mesma data. Vale tanto para o que já foi pago quanto para o que vai vencer.
+- As porcentagens e as lentes do mês continuam na Agenda da Diversas, em "Porcentagens e lentes".
+
 ## Mandar para a Lixeira — uma ou várias (v2.9.1)
 
 - Em **Lançamentos**, cada linha tem uma caixinha ao lado da data. Marque as que devem sair (ou a caixinha do cabeçalho, que marca todas que estão aparecendo) e clique em **Mandar para a Lixeira**.
@@ -499,6 +508,14 @@ O extrato automático (e o PDF) traz o texto inteiro: o nome do favorecido e, de
 - **Favorecido de fora do grupo** (fornecedor, pessoa): segue as palavras-chave como qualquer pagamento (ex.: "FAV.: LAURIBERTO CAURIM CEMIG…" → CEMIG). Para o Lucas continua "confira".
 - **VAI ESTORNAR** (também "ESTORNAD", quando o Pix corta a mensagem): vem em A ESTORNAR com a pergunta **Qual loja deve?**. Ao confirmar, já vira empréstimo a estornar no **Banco Caixinha** daquela loja, ligado ao lançamento. Se já existir um igual lá (mesma loja, mesmo valor, até 7 dias), só liga. Dá para escolher "decidir depois" e mandar pelo Lançamentos. Precisa estar entrado no Caixinha (menu Caixinha).
 
+### Pagamentos da Agenda reconhecidos no extrato (v2.9.11)
+
+Na importação, uma saída que bate com uma conta aberta da Agenda da loja entra no grupo **Pagamentos da Agenda**, já com a categoria e o contato que estavam na Agenda (que vieram da foto do boleto). Ao confirmar, a conta da Agenda fica **paga**, ligada ao lançamento. Vale para todas as lojas, inclusive a parte da Diversas ("PARTE DIVERSAS") que a loja transfere para a DVL.
+
+- **Mesmo valor:** de 7 dias antes a 10 dias depois do vencimento.
+- **Pago com juros ou multa:** até 10% a mais, pago depois do vencimento (até 30 dias), e só se tiver uma conta parecida. A linha mostra "R$ X de juros".
+- O banco não manda o número do boleto, só o valor, a data e o texto que quem pagou digitou. Por isso, ao pagar, vale escrever o que é (ex.: ALUGUEL LOJA NOVA).
+
 ### Trava: extrato de outra loja não entra (v2.9.7)
 
 Cada loja tem a sua conta do Sicoob guardada (Rocha 1 18769-0 … Rocha 11 109752-0, GV Lentes, FZ Grifes, Grupo VR e Diversas). No OFX e no PDF o Fluxo lê o número da conta: se é de outra loja, aparece "Este extrato é da conta X, que é da Rocha Y" e **nada é importado**, com o botão para ir à loja certa. Segunda conferência: se a Stone depositou (CRÉD.TED-STR) com o nome de outra loja, o Fluxo pergunta antes de importar. Conta nova numa loja sem conta guardada fica guardada no primeiro extrato confirmado.
@@ -532,6 +549,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 23/10/2026 | 2.9.12 | Agenda sem o "Lançar conta": tudo se lança em Lançamentos; despesa com data futura vai sozinha para a Agenda; Dividir entre as empresas no Lançamentos da Diversas | Nenhum |
+| 23/10/2026 | 2.9.11 | Importar reconhece a Agenda: boleto pago que estava lá entra com a categoria dela e dá baixa ao confirmar; aceita juros de até 10% depois do vencimento | Nenhum |
 | 23/10/2026 | 2.9.10 | Lista de Lançamentos: entradas não mostram contato (só Lucas, GV Optical e FZ Grifes) | Nenhum |
 | 23/10/2026 | 2.9.9 | Entradas sem contato (só categoria); contato automático só para Lucas, GV Optical e FZ Grifes | Nenhum |
 | 23/10/2026 | 2.9.8 | Funcionário aprendido pelo pedaço do CPF do Pix (salário, vale, bônus…): da próxima vez acerta a pessoa mesmo com nome curto; linhas adivinhadas de salário também completam o contato | Nenhum |
