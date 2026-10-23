@@ -530,6 +530,10 @@ Na importação, uma saída que bate com uma conta aberta da Agenda da loja entr
 - **Pago com juros ou multa:** até 10% a mais, pago depois do vencimento (até 30 dias), e só se tiver uma conta parecida. A linha mostra "R$ X de juros".
 - O banco não manda o número do boleto, só o valor, a data e o texto que quem pagou digitou. Por isso, ao pagar, vale escrever o que é (ex.: ALUGUEL LOJA NOVA).
 
+### Parcela no texto do banco vira as próximas na Agenda (v2.9.18)
+
+Quando a linha do extrato termina com a parcela (ex.: "ESTOJOS VICENZA 2 3", "UNIOPTICA 2 5", "EMPRESTIMOS GVR 12 37"), a importação mostra "parcela 2/3: as próximas vão para a Agenda". Ao confirmar, o Fluxo cria sozinho as parcelas seguintes na Agenda (mesmo valor, mesmo dia, uma por mês), sem duplicar o que já estiver lá. Quando a próxima for paga, a importação reconhece pela Agenda e dá baixa. Lançado à mão em Lançamentos com a parcela preenchida (ex.: 3/6) também cria as próximas, em qualquer módulo.
+
 ### Trava: extrato de outra loja não entra (v2.9.7)
 
 Cada loja tem a sua conta do Sicoob guardada (Rocha 1 18769-0 … Rocha 11 109752-0, GV Lentes, FZ Grifes, Grupo VR e Diversas). No OFX e no PDF o Fluxo lê o número da conta: se é de outra loja, aparece "Este extrato é da conta X, que é da Rocha Y" e **nada é importado**, com o botão para ir à loja certa. Segunda conferência: se a Stone depositou (CRÉD.TED-STR) com o nome de outra loja, o Fluxo pergunta antes de importar. Conta nova numa loja sem conta guardada fica guardada no primeiro extrato confirmado.
@@ -563,6 +567,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 23/10/2026 | 2.9.18 | Importar: parcela escrita no texto do banco (ex.: 2 3) cria sozinha as próximas parcelas na Agenda | Nenhum |
 | 23/10/2026 | 2.9.17 | Por lente usa as últimas lentes digitadas; boleto parcelado fica com a mesma divisão em todas as parcelas; recorrente por lente não fica mais esperando o mês | Nenhum |
 | 23/10/2026 | 2.9.16 | Recorrente da Diversas com Dividir entre as empresas: todo mês vira conta na Agenda e parte de cada empresa | Coluna "rateio" dos recorrentes criada pelo Claude |
 | 23/10/2026 | 2.9.15 | Versão para celular: menu escondido no ☰, barra de cima em linhas, campos um embaixo do outro, tabelas rolam para o lado | Nenhum |
