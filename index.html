@@ -280,7 +280,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.15', APP_DATA='23/10/2026';
+  const APP_VERSAO='2.9.16', APP_DATA='23/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1388,7 +1388,7 @@
   }
 
   // Lançamentos: depois de desenhar (inclusive após salvar/editar/excluir), atualiza o saldo do dia 1º e os cartões da loja
-  async function viewLanc(){await viewLancBase();if(MODULO_ATUAL==='diversas'){preencherAvisoLentes().catch(()=>{});if(document.getElementById('agDivPainel'))agCarregarRegras().then(()=>agDivRender()).catch(()=>{});}if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
+  async function viewLanc(){divGerarRecorrentes().catch(()=>{});await viewLancBase();if(MODULO_ATUAL==='diversas'){preencherAvisoLentes().catch(()=>{});if(document.getElementById('agDivPainel'))agCarregarRegras().then(()=>agDivRender()).catch(()=>{});}if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
   async function viewLancBase(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando lançamentos...</div>';
     await carregarLancamentos();
@@ -2979,7 +2979,7 @@
       const meses=[...new Set([de.slice(0,7),ate.slice(0,7)])];
       const contIds=[...new Set(recs.filter(r=>r.contato_id).map(r=>r.contato_id))];let lc=[];
       if(contIds.length){for(let o=0;;o+=1000){const {data}=await sb.from('lancamentos').select('loja_id,data,valor,contato_id').in('contato_id',contIds).lt('valor',0).gte('data',mesShift(de.slice(0,7),-3)+'-01').lte('data',_fimMes(ate.slice(0,7))).order('id').range(o,o+999);lc=lc.concat(data||[]);if(!data||data.length<1000)break;}}
-      recs.forEach(r=>{if(!r.dia_vencimento)return;meses.forEach(m=>{const ult=Number(_fimMes(m).slice(8,10));const v=`${m}-${String(Math.min(r.dia_vencimento,ult)).padStart(2,'0')}`;if(v<de||v>ate)return;
+      recs.forEach(r=>{if(!r.dia_vencimento||(r.rateio&&r.rateio.metodo))return;meses.forEach(m=>{const ult=Number(_fimMes(m).slice(8,10));const v=`${m}-${String(Math.min(r.dia_vencimento,ult)).padStart(2,'0')}`;if(v<de||v>ate)return;
         let val=Math.abs(Number(r.valor)||0),pago;
         if(r.contato_id){const doCt=lc.filter(l=>l.loja_id==r.loja_id&&l.contato_id===r.contato_id);const ant=[1,2,3].map(n=>mesShift(m,-n));
           const somaAnt=doCt.filter(l=>ant.includes(String(l.data).slice(0,7))).reduce((t,l)=>t-Number(l.valor),0);const nAnt=ant.filter(a=>doCt.some(l=>String(l.data).slice(0,7)===a)).length;
@@ -2993,7 +2993,7 @@
     itens.forEach(it=>{it.dia=agDiaUtil(it.venc);});
     return itens;
   }
-  async function viewApagar(){
+  async function viewApagar(){try{await divGerarRecorrentes();}catch(e){}
     const box=document.getElementById('content');const seq=++_agSeq;const hoje=_hojeLocal();
     if(!AG_SEMANA)AG_SEMANA=agInicioSemana(hoje);
     const grupo=AG_ESCOPO==='grupo',lojaIds=grupo?idsDoModulo():[lojaAtual];
@@ -3149,11 +3149,37 @@
   async function preencherAvisoLentes(){const box=document.getElementById('divLentesAviso');if(!box)return;const alvo=mesShift(_hojeLocal().slice(0,7),-1);
     let L={};try{L=await divCarregarLentes(alvo,true);}catch(e){}const emp=divEmpresas().filter(l=>_modDe(l)==='oticas'),falta=emp.filter(l=>!(l.id in L)).length;
     box.innerHTML=falta?`<div class="note" style="border-color:rgba(199,134,26,.45);display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>Faltam as lentes (surfaçagem) de <b>${MESES_NOME[Number(alvo.slice(5,7))-1]}</b>${falta<emp.length?` de ${falta} loja(s)`:''}. Clique em <b>Dividir entre as empresas</b> → <b>Por lente</b> e digite na coluna.</span><button class="btn" style="margin-left:auto;padding:5px 12px;font-size:12.5px" onclick="if(!AG_DIV.on)lancDividirToggle();AG_DIV.metodo='lente';agDivRender()">Preencher agora</button></div>`:'';}
+  // ---- v2.9.16: recorrente da Diversas dividido entre as empresas ----
+  function divRateioDoQuadro(){const m=AG_DIV.metodo,rt={metodo:m};if(m==='igual')rt.lojas=[...(AG_DIV.sel||new Set(divEmpresas().filter(l=>_modDe(l)==='oticas').map(l=>l.id)))];
+    if(m==='mao'){const pt=divPartes(0),sm=Object.values(pt).reduce((a,b)=>a+b,0);if(!sm)return null;rt.proporcoes={};Object.entries(pt).forEach(([k,v])=>rt.proporcoes[k]=v/sm);}
+    if(AG_DIV.regra){const r=RATEIO_REGRAS.find(x=>String(x.id)===String(AG_DIV.regra));if(r)rt.regra=r.nome;}return rt;}
+  function divRateioTexto(rt){if(!rt||!rt.metodo)return '';return 'dividido · '+({pct:'por %',lente:'por lente',igual:'por igual',mao:'à mão'})[rt.metodo]+(rt.regra?' ('+rt.regra+')':'');}
+  async function divPartesDe(rt,valor,venc){const emp=divEmpresas(),p={};
+    if(rt.metodo==='pct')emp.forEach(l=>p[l.id]=Number(l.pct_diversas)||0);
+    else if(rt.metodo==='lente'){const L=await divCarregarLentes(mesShift(venc.slice(0,7),-1),true);if(!Object.values(L).some(v=>v>0))return null;emp.forEach(l=>p[l.id]=Number(L[l.id])||0);}
+    else if(rt.metodo==='igual'){const st=new Set((rt.lojas||[]).map(Number));emp.forEach(l=>p[l.id]=st.has(l.id)?1:0);}
+    else if(rt.metodo==='mao')Object.entries(rt.proporcoes||{}).forEach(([k,v])=>p[k]=Number(v)||0);
+    const o=divDistribuir(valor,p);return Object.keys(o).length?o:null;}
+  // todo mês: o recorrente dividido vira conta na Agenda da Diversas + a parte de cada empresa (de 3 dias atrás até 35 dias à frente)
+  let _divRecDia='';
+  async function divGerarRecorrentes(forcar){const hoje=_hojeLocal();if(!podeEditar()||(_divRecDia===hoje&&!forcar))return {n:0,pend:[]};_divRecDia=hoje;
+    const div=LOJAS.find(l=>_modDe(l)==='diversas');if(!div)return {n:0,pend:[]};
+    const {data:recs,error}=await sb.from('recorrentes').select('*').eq('loja_id',div.id);if(error)return {n:0,pend:[]};
+    let n=0;const pend=[];
+    for(const r of (recs||[]).filter(r=>r.rateio&&r.rateio.metodo&&r.dia_vencimento&&r.ativo!==false)){
+      for(const ym of [hoje.slice(0,7),mesShift(hoje.slice(0,7),1)]){const v=`${ym}-${String(Math.min(r.dia_vencimento,Number(_fimMes(ym).slice(8,10)))).padStart(2,'0')}`;
+        if(v<addDias(hoje,-3)||v>addDias(hoje,35))continue;
+        const {data:ex}=await sb.from('contas_pagar').select('id').eq('loja_id',div.id).eq('descricao',r.descricao).eq('vencimento',v).limit(1);if(ex&&ex.length)continue;
+        const valor=Math.abs(Number(r.valor)||0),partes=await divPartesDe(r.rateio,valor,v);if(!partes){pend.push(`${r.descricao} (faltam as lentes de ${MESES_NOME[Number(mesShift(ym,-1).slice(5,7))-1]})`);continue;}
+        const {data:bo,error:eb}=await sb.from('contas_pagar').insert({loja_id:div.id,descricao:r.descricao,valor,vencimento:v,categoria_id:r.categoria_id||null,contato_id:r.contato_id||null,status:'aberto'}).select('id,vencimento,parcela');
+        if(eb||!bo||!bo.length)continue;const e2=await divCriarPartes(bo,partes,r.descricao,r.categoria_id,r.contato_id,false);if(!e2)n++;}}
+    if(n)toast(`Recorrentes da Diversas: ${n} conta(s) do mês dividida(s) e mandada(s) para a Agenda de cada empresa.`,'ok');
+    return {n,pend};}
   function lancDividirToggle(){AG_DIV.on=!AG_DIV.on;
     document.querySelectorAll('.agDivBtn').forEach(x=>{x.className='btn agDivBtn '+(AG_DIV.on?'':'ghost');x.textContent=AG_DIV.on?'Dividindo entre as empresas':'Dividir entre as empresas';});
     if(AG_DIV.on&&!RATEIO_REGRAS.length)agCarregarRegras().then(()=>agDivRender()).catch(()=>{});agDivRender();if(AG_DIV.on){const p=document.getElementById('agDivPainel');if(p)setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),50);}}
-  function _divValorForm(){const a=document.getElementById('agValor');if(a)return _numBR(a.value);const q=document.getElementById('qVal');return q?(parseInt(q.dataset.cents||'0',10)||0)/100:0;}
-  function _divVencForm(){const a=document.getElementById('agVenc');if(a&&a.value)return a.value;const q=document.getElementById('qData');const iso=q&&q.value?dataParaISO(q.value):null;return iso||addDias(AG_SEMANA||_hojeLocal(),6);}
+  function _divValorForm(){const a=document.getElementById('agValor');if(a)return _numBR(a.value);const rv=document.getElementById('recVal');if(rv)return (parseInt(rv.dataset.cents||'0',10)||0)/100;const q=document.getElementById('qVal');return q?(parseInt(q.dataset.cents||'0',10)||0)/100:0;}
+  function _divVencForm(){const a=document.getElementById('agVenc');if(a&&a.value)return a.value;const rd=document.getElementById('recDia');if(rd){const ym=_hojeLocal().slice(0,7),d=Math.min(parseInt(rd.value,10)||10,Number(_fimMes(ym).slice(8,10)));return `${ym}-${String(d).padStart(2,'0')}`;}const q=document.getElementById('qData');const iso=q&&q.value?dataParaISO(q.value):null;return iso||addDias(AG_SEMANA||_hojeLocal(),6);}
   // cria a parte de cada empresa na Agenda dela, ligada ao boleto da Diversas (rateio_de)
   async function divCriarPartes(boletos,partes,desc,cat,cont,crit){const pr=[];boletos.forEach(bo=>Object.entries(partes).forEach(([lid,v])=>{if(!(v>0))return;
       pr.push(Object.assign({loja_id:Number(lid),descricao:'PARTE DIVERSAS · '+desc,valor:v,vencimento:bo.vencimento,categoria_id:cat?Number(cat):null,contato_id:cont?Number(cont):null,parcela:bo.parcela||null,status:'aberto',rateio_de:bo.id},crit?{critico:true}:{}));}));
@@ -3846,19 +3872,22 @@
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
     const {data}=await sb.from('recorrentes').select('*, categorias(nome), contatos(nome)').eq('loja_id',lojaAtual).order('dia_vencimento');
     const recs=data||[];
-    const rows=recs.map(r=>`<div class="cfgrow"><b>${r.descricao}</b> <span class="catchip" style="margin-left:8px">${r.categorias?.nome||'—'}</span>${r.contatos?.nome?`<span class="catchip" style="margin-left:6px">${r.contatos.nome}</span>`:''}<span class="mut" style="margin-left:8px">dia ${r.dia_vencimento||'—'}</span><b style="margin-left:auto;color:var(--red)">${BRL(r.valor)}</b><span class="arqbtn" onclick="excluirRecorrente(${r.id})">🗑 remover</span></div>`).join('');
+    const rows=recs.map(r=>`<div class="cfgrow"><b>${r.descricao}</b> <span class="catchip" style="margin-left:8px">${r.categorias?.nome||'—'}</span>${r.contatos?.nome?`<span class="catchip" style="margin-left:6px">${r.contatos.nome}</span>`:''}${r.rateio&&r.rateio.metodo?`<span class="catchip" style="margin-left:6px;border-color:var(--green);color:var(--green)">${divRateioTexto(r.rateio)}</span>`:''}<span class="mut" style="margin-left:8px">dia ${r.dia_vencimento||'—'}</span><b style="margin-left:auto;color:var(--red)">${BRL(r.valor)}</b><span class="arqbtn" onclick="excluirRecorrente(${r.id})">🗑 remover</span></div>`).join('');
     document.getElementById('content').innerHTML=`<div class="note">🔁 <b>Lançamentos recorrentes</b> — contas que se repetem todo mês (aluguel, folha, internet). Cadastre aqui pra não esquecer; depois você lança/confirma cada mês.</div>
       ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>Novo recorrente</h3></div>
         <div style="display:grid;grid-template-columns:1fr 130px 90px auto;gap:8px;margin-top:10px;align-items:end">
           <div><span class="qlabel">Descrição</span><input id="recDesc" class="qin maiusc" placeholder="Ex: ALUGUEL LOJA"></div>
-          <div><span class="qlabel">Valor</span><input id="recVal" class="qin calc" data-cents="0" placeholder="0,00" inputmode="numeric" onkeydown="calcInput(this,event)"></div>
-          <div><span class="qlabel">Dia</span><input id="recDia" class="qin" placeholder="10" inputmode="numeric" maxlength="2" style="text-align:center"></div>
+          <div><span class="qlabel">Valor</span><input id="recVal" class="qin calc" data-cents="0" placeholder="0,00" inputmode="numeric" onkeydown="calcInput(this,event)" onkeyup="if(AG_DIV.on)agDivRender()"></div>
+          <div><span class="qlabel">Dia</span><input id="recDia" class="qin" placeholder="10" inputmode="numeric" maxlength="2" style="text-align:center" onchange="if(AG_DIV.on)agDivRender()"></div>
           <button class="btn" onclick="addRecorrente()">+ Add</button>
         </div>
+        ${MODULO_ATUAL==='diversas'?`<div style="margin-top:10px"><button class="btn agDivBtn ${AG_DIV.on?'':'ghost'}" style="padding:6px 14px;font-size:12.5px" onclick="lancDividirToggle()">${AG_DIV.on?'Dividindo entre as empresas':'Dividir entre as empresas'}</button> <span class="mut" style="font-size:11.5px">todo mês a conta vai para a Agenda da Diversas e cada empresa ganha a parte dela</span></div><div id="agDivPainel"></div>`:''}
         <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><div><span class="qlabel">Categoria</span><select id="recCat" class="qin" style="max-width:260px">${catsOptions()}</select></div>
           <div><span class="qlabel">Contato (funcionário, fornecedor…)</span><select id="recCont" class="qin" style="max-width:260px"><option value="">— sem contato —</option>${contatosOptions()}</select></div></div>
         <div class="mut" style="font-size:11.5px;margin-top:6px">Com <b>contato</b> (ex.: um funcionário com comissão): a Agenda usa a <b>média dos últimos 3 meses</b> pagos a ele e marca como pago quando sai <b>qualquer pagamento</b> para ele no mês — o valor pode variar.</div></div>`:''}
       <div class="card">${rows||'<p class="mut" style="font-size:13px">Nenhum recorrente cadastrado.</p>'}</div>`;
+    if(MODULO_ATUAL==='diversas'&&document.getElementById('agDivPainel'))agCarregarRegras().then(()=>agDivRender()).catch(()=>{});
+    if(MODULO_ATUAL==='diversas'){try{const g=await divGerarRecorrentes(true);if(g.pend&&g.pend.length){const c=document.getElementById('content');if(c)c.insertAdjacentHTML('afterbegin',`<div class="note" style="border-color:rgba(199,134,26,.45)">Ainda não dividi: ${g.pend.map(_remEsc).join(', ')}. Digite as lentes em Lançamentos (Preencher agora) que eu divido sozinho.</div>`);}}catch(e){}}
   }
   async function addRecorrente(){
     const desc=document.getElementById('recDesc').value.trim().toUpperCase();
@@ -3868,9 +3897,12 @@
     if(!desc||!cents){toast('Preencha descrição e valor','erro');return;}
     const contId=(document.getElementById('recCont')||{}).value||null;
     const reg={loja_id:lojaAtual,descricao:desc,valor:-(cents/100),categoria_id:catId,dia_vencimento:dia};if(contId)reg.contato_id=Number(contId);
+    const dividir=MODULO_ATUAL==='diversas'&&AG_DIV.on&&!!document.getElementById('agDivPainel');
+    if(dividir){if(!dia){toast('Para dividir todo mês, preencha o dia do vencimento.','erro');return;}const rt=divRateioDoQuadro();if(!rt){toast('Preencha as partes antes de salvar.','erro');return;}reg.rateio=rt;}
     const {error}=await sb.from('recorrentes').insert(reg);
-    if(error){toast('Erro: '+error.message,'erro');return;}
-    toast('Recorrente cadastrado!','ok');viewRecorrentes();
+    if(error){toast(/rateio/i.test(error.message||'')?'Falta rodar o SQL da v2.9.16 (coluna de divisão dos recorrentes).':'Erro: '+error.message,'erro');return;}
+    toast(dividir?'Recorrente cadastrado. Todo mês ele vai dividido para a Agenda de cada empresa.':'Recorrente cadastrado!','ok');
+    if(dividir){AG_DIV.mao={};await divGerarRecorrentes(true);}viewRecorrentes();
   }
   async function excluirRecorrente(id){if(!confirm('Remover este recorrente?'))return;await sb.from('recorrentes').delete().eq('id',id);toast('Removido','ok');viewRecorrentes();}
 

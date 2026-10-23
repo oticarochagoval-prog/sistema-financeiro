@@ -443,6 +443,10 @@ A Agenda de pagamentos não tem mais o quadro "Lançar conta". Tudo se lança em
 - **Qual mês de lente vale:** a divisão por lente usa as lentes do mês anterior ao do boleto (o mês que fechou). Se esse mês ainda não foi digitado, usa o último mês preenchido e avisa.
 - O botão **Dividir entre as empresas** fica em dois lugares: em cima, ao lado do Ler boleto, e embaixo do + Lançar.
 
+## Recorrente da Diversas dividido (v2.9.16)
+
+Em **Recorrentes**, na Diversas, aparece o botão **Dividir entre as empresas** (por %, por lente, por igual, à mão ou regra salva). Preencha descrição, valor e **dia** e clique em + Add. Todo mês, quando faltarem até 35 dias para o vencimento, o Fluxo cria sozinho a conta na Agenda da Diversas e a "PARTE DIVERSAS" na Agenda de cada empresa, sem duplicar. Por lente: só divide depois que as lentes do mês que fechou forem digitadas (até lá, o Recorrentes avisa "Ainda não dividi"). Recorrente dividido não aparece mais como "fixo" na Agenda, porque vira conta de verdade.
+
 ## No celular (v2.9.15)
 
 No celular o menu fica escondido: toque no **☰**, no canto de cima, para abrir; escolheu a tela, ele fecha sozinho. A barra de cima mostra os módulos e a loja em linhas próprias, os campos do lançamento ficam um embaixo do outro, e as tabelas largas rolam para o lado com o dedo.
@@ -559,6 +563,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 23/10/2026 | 2.9.16 | Recorrente da Diversas com Dividir entre as empresas: todo mês vira conta na Agenda e parte de cada empresa | Coluna "rateio" dos recorrentes criada pelo Claude |
 | 23/10/2026 | 2.9.15 | Versão para celular: menu escondido no ☰, barra de cima em linhas, campos um embaixo do outro, tabelas rolam para o lado | Nenhum |
 | 23/10/2026 | 2.9.14 | Lentes do mês digitadas no próprio quadro do Dividir (Por lente), aviso "Faltam as lentes" com Preencher agora na Diversas, divisão por lente usa o mês que fechou, botão Dividir em cima e embaixo | Nenhum |
 | 23/10/2026 | 2.9.13 | Dividir da Diversas vira botão ao lado do Ler boleto (antes era uma caixinha de marcar, difícil de ver) | Nenhum |
