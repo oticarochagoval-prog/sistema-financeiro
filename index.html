@@ -282,7 +282,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.40', APP_DATA='24/10/2026';
+  const APP_VERSAO='2.9.42', APP_DATA='24/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1128,7 +1128,7 @@
   async function cxPronto(){const ses=await cxSessao();if(!ses){alert('Para falar com o Banco Caixinha, entre no Caixinha primeiro: menu Caixinha (espelho) → escolha seu nome e a senha do Caixinha. É só uma vez por computador.');go('caixinha');return false;}
     if(!CX.carregado){const ok=await cxCarregar(true);if(!ok){toast('Não consegui ler o Caixinha: '+(CX.erro||''),'erro');return false;}}return true;}
   function cxCaixaPorNome(nome){const ch=cxChaveLoja(nome);return CX.caixas.find(k=>cxChaveLoja(k.nome)===ch)||null;}
-  function cxOpcoesLojas(sel){const selCh=sel?cxChaveLoja(sel):'';return '<option value="">qual loja deve?</option>'+CX.caixas.map(k=>`<option value="${k.id}" ${cxChaveLoja(k.nome)===selCh?'selected':''}>${k.nome}</option>`).join('');}
+  function cxOpcoesLojas(sel){const selCh=sel?cxChaveLoja(sel):'';return '<option value="">qual loja deve?</option>'+(CX.caixasBanco||CX.caixas).map(k=>`<option value="${k.id}" ${k.tipo!=='conta'&&cxChaveLoja(k.nome)===selCh?'selected':''}>${k.nome}${k.tipo==='conta'?' (conta)':''}</option>`).join('');}
   // mesmo valor (centavo) na mesma loja, até 45 dias de diferença na data: pega o mais perto
   function cxMesmoEmprestimo(caixaId,valor,iso,ignorar){return (CX.contas||[]).filter(x=>String(x.caixinha_id)===String(caixaId)&&x.status==='estornar'&&!(ignorar&&x._ligadoAgora)&&Math.abs(Number(x.valor)-valor)<0.005&&x.data&&Math.abs(_dias(x.data,iso))<=45).sort((a,b)=>Math.abs(_dias(a.data,iso))-Math.abs(_dias(b.data,iso)))[0]||null;}
   function cxAberto(c){return Math.max(0,Number(c.valor||0)-Number(c.valor_pago||0));}
@@ -1172,7 +1172,7 @@
   function cxAchaEmprestimo(valor,iso,lig){const v=Math.round(Math.abs(Number(valor))*100);
     const cs=(CX.contas||[]).filter(x=>x.status==='estornar'&&Math.round(Number(x.valor)*100)===v&&x.data&&_dias(x.data,iso)<=45&&!(lig&&lig.has(String(x.id))));
     return cs.length===1?cs[0]:null;}
-  const _cxNomeCaixa=id=>((CX.caixas||[]).find(k=>String(k.id)===String(id))||{}).nome||'';
+  const _cxNomeCaixa=id=>((CX.caixasBanco||CX.caixas||[]).find(k=>String(k.id)===String(id))||{}).nome||'';
   async function lancLigarEmprestimo(id,contaId){const l=LANC.find(x=>x.id===id);if(!l||!catEstornarId())return;if(bloqueadoPorFechamento(l.data,l.conta_id))return;
     const up={categoria_id:catEstornarId(),ref_externa:'cxb:'+contaId};const {error}=await sb.from('lancamentos').update(up).eq('id',id);
     if(error){toast('Não salvou: '+error.message,'erro');return;}if(CX._lig)CX._lig.add(String(contaId));toast('Ligado ao empréstimo que já estava no Banco Caixinha ✓','ok');_lancAplicaLocal(l,up);}
@@ -1242,7 +1242,7 @@
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
       <h3>↩ Marcar devolução no Banco Caixinha</h3>
       <p>Entrou <b>${BRL(valor)}</b> em ${isoParaBR(l.data)} (${l.descricao||''}). É a devolução de qual empréstimo?</p>
-      <span class="qlabel">Banco Caixinha de qual loja (quem emprestou)?</span><select id="dvLoja" class="qin" style="margin-bottom:8px" onchange="document.getElementById('dvLista').innerHTML=dvListaHTML(this.value,${valor})">${cxOpcoesLojas(lojaSug)}</select>
+      <span class="qlabel">Banco Caixinha de qual loja (quem emprestou)?</span><select id="dvLoja" class="qin" style="margin-bottom:8px" onchange="document.getElementById('dvLista').innerHTML=dvListaHTML(this.value,${valor})">${cxOpcoesLojas(lojaSug).replace('qual loja deve?','escolha')}</select>
       <div id="dvLista" style="max-height:300px;overflow:auto">${k0?lista(k0.id):'<p class="mut" style="font-size:13px">Escolha a loja.</p>'}</div>
       <div id="dvErr"></div>
       <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" id="dvOk" onclick="confirmarDevolucao(${lancId})">Marcar como devolvido</button></div></div></div>`;
@@ -1346,10 +1346,10 @@
   let _comboApply=null,_comboItems=null,_comboFirst=null,_comboF=[],_comboSel=0;
   function fecharCombo(){const p=document.getElementById('comboPanel');if(p)p.remove();document.removeEventListener('mousedown',_comboOutside,true);}
   function _comboOutside(e){const p=document.getElementById('comboPanel');if(p&&!p.contains(e.target))fecharCombo();}
-  function _comboItemsCat(){return catsAtivas().slice().sort((a,b)=>((a.grupo==='neutra')===(b.grupo==='neutra')?0:(a.grupo==='neutra'?1:-1))||(a.nome||'').localeCompare(b.nome||'')).map(c=>({id:String(c.id),nome:c.nome,sub:c.grupo==='neutra'?'neutra · não entra no resultado':(GRUPOS[c.grupo]?GRUPOS[c.grupo].nome:'')}));}
+  function _comboItemsCat(){return catsAtivas().slice().sort((a,b)=>((a.grupo==='neutra')===(b.grupo==='neutra')?0:(a.grupo==='neutra'?1:-1))||(a.nome||'').localeCompare(b.nome||'')).map(c=>({id:String(c.id),nome:c.nome,sub:c.grupo==='neutra'?'neutra · não entra no resultado':(GRUPOS[c.grupo]?GRUPOS[c.grupo].nome:''),edit:podeEditar()?'editarCat':''}));}
   // v2.9.38: o que é "neutra" — explicação fixa para a equipe
   function explicaNeutra(){alert('NEUTRA = não entra em nada: não é venda, não é despesa, não mexe no resultado nem na DRE.\n\nFica no Fluxo só para o saldo do banco bater e para ninguém precisar excluir.\n\nAs neutras:\n• TRANSFERÊNCIA ENTRE LOJAS: dinheiro de uma empresa do grupo para outra.\n• DEPÓSITO DA GAVETA (CAIXINHA): dinheiro da gaveta depositado no banco (confere sozinho com o Caixinha).\n• A ESTORNAR / ESTORNO RECEBIDO (BANCO CAIXINHA): empréstimo que vai voltar e a volta dele (ligado ao Banco Caixinha).\n\nNa dúvida, pergunte para a Heloísa antes de pôr neutra: neutra não some, mas sai do resultado.');}
-  function _comboItemsCont(){return contatosAtivos().slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(c=>({id:String(c.id),nome:c.nome,sub:(c.tipo==='funcionario'?'👤':'🏢')}));}
+  function _comboItemsCont(){return contatosAtivos().slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(c=>({id:String(c.id),nome:c.nome,sub:(c.tipo==='funcionario'?'👤':'🏢'),edit:podeEditar()?'editarContato':''}));}
   let _comboOrigIdx=-1,_comboPrefill='';
   function _focarCombo(idx,tent){const all=[...document.querySelectorAll('.combo')];const el=all[idx];
     if(el&&document.body.contains(el)){el.setAttribute('tabindex','0');el.focus({preventScroll:true});if(el.scrollIntoView)el.scrollIntoView({block:'nearest'});}
@@ -1385,7 +1385,7 @@
     const f=_comboItems.filter(it=>(it.nome||'').toLowerCase().includes(qq));
     _comboFirst=f.length?f[0].id:null;_comboF=f;if(_comboSel>=f.length)_comboSel=Math.max(0,f.length-1);
     let html='<div class="comboitem clear" onclick="_comboPick(\'\')">— limpar · <span style="font-size:11px">↑↓ escolhe · Enter confirma</span></div>';
-    html+=f.map((it,ix)=>`<div class="comboitem${ix===_comboSel?' sel':''}" onclick="_comboPick('${it.id}')">${it.nome}${it.sub?`<span class="csub"> · ${it.sub}</span>`:''}</div>`).join('');
+    html+=f.map((it,ix)=>`<div class="comboitem${ix===_comboSel?' sel':''}" onclick="_comboPick('${it.id}')" style="${it.edit?'display:flex;align-items:center;gap:6px':''}"><span style="flex:1">${it.nome}${it.sub?`<span class="csub"> · ${it.sub}</span>`:''}</span>${it.edit?`<span title="Editar nome, grupo e palavras-chave" onmousedown="event.preventDefault();event.stopPropagation()" onclick="event.stopPropagation();fecharCombo();${it.edit}(${Number(it.id)})" style="cursor:pointer;padding:0 4px;opacity:.75">✏️</span>`:''}</div>`).join('');
     if(!f.length)html+='<div class="comboitem" style="color:var(--muted);cursor:default">nada encontrado</div>';
     list.innerHTML=html;const selEl=list.querySelector('.comboitem.sel');if(selEl&&selEl.scrollIntoView)selEl.scrollIntoView({block:'nearest'});
   }
@@ -2027,7 +2027,7 @@
       imp:'Impostos: Simples Nacional, tributos.',
       fixo:'Custos pra loja funcionar: aluguel, folha, energia, internet, mídia.',
       nop:'Fora da operação do dia a dia: retirada dos sócios, empréstimos, compra de equipamento.',
-      neutra:'Não entra no DRE: transferências entre lojas.',
+      neutra:'Não entra no resultado nem no DRE: transferência entre lojas, depósito da gaveta, A estornar e estorno recebido. Fica só para o saldo do banco bater (não exclua).',
       adef:'Ainda não classificadas. Organize cada uma no grupo certo.'
     };
     const cards=ordem.map(g=>{
@@ -2037,7 +2037,7 @@
       const selGrupo=(c)=>`<select class="qin inlinesel" style="height:30px;font-size:12px;min-width:130px;margin-left:auto" onchange="mudarGrupoCat(${c.id},this.value)">${ordem.map(k=>`<option value="${k}" ${k===c.grupo?'selected':''}>${GRUPOS[k].nome}</option>`).join('')}</select>`;
       const palavrasDe=(c)=>REGRAS_P.filter(r=>r.categoria_id===c.id&&!r.loja_id).map(r=>r.palavra).join(', ');
       const campoPal=(c)=>podeEditar()?`<div style="display:flex;gap:8px;align-items:center;padding:0 6px 10px 6px"><span class="mut" style="font-size:11px;white-space:nowrap">🔑 palavras que puxam sozinho</span><input class="qin maiusc" style="height:32px;font-size:12px;flex:1" value="${palavrasDe(c).replace(/"/g,'&quot;')}" placeholder="ex: CEMIG, SAAE, VIVO (separadas por vírgula)" onchange="salvarPalavrasCat(${c.id},this.value)"></div>`:(palavrasDe(c)?`<div class="mut" style="font-size:11.5px;padding:0 6px 10px 6px">🔑 ${palavrasDe(c)}</div>`:'');
-      const rows=aberto?(it.length?it.map(c=>`<div class="cfgrow" style="padding-left:6px;border-bottom:none">${c.nome}${podeEditar()?selGrupo(c):`<span class="grp ${g}" style="margin-left:auto">${GRUPOS[g].nome}</span>`}${podeEditar()?`<span class="arqbtn" onclick="arquivarCat(${c.id})">📥</span>`:''}</div>${campoPal(c)}<div style="border-bottom:1px solid var(--line)"></div>`).join(''):'<div class="mut" style="font-size:12.5px;padding:10px 6px">Nenhuma categoria neste grupo.</div>'):'';
+      const rows=aberto?(it.length?it.map(c=>`<div class="cfgrow" style="padding-left:6px;border-bottom:none">${c.nome}${podeEditar()?selGrupo(c):`<span class="grp ${g}" style="margin-left:auto">${GRUPOS[g].nome}</span>`}${podeEditar()?`<span class="arqbtn" onclick="editarCat(${c.id})">✏️ editar</span><span class="arqbtn" onclick="arquivarCat(${c.id})">📥 arquivar</span>`:''}</div>${campoPal(c)}<div style="border-bottom:1px solid var(--line)"></div>`).join(''):'<div class="mut" style="font-size:12.5px;padding:10px 6px">Nenhuma categoria neste grupo.</div>'):'';
       return `<div class="card" style="margin-bottom:10px;padding:0;overflow:hidden">
         <div onclick="_grpAberto=_grpAberto==='${g}'?null:'${g}';render()" style="cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:10px">
           <span class="grp ${g}">${GRUPOS[g].nome}</span>
@@ -2073,21 +2073,30 @@
     if(error){toast('Erro: '+error.message,'erro');return;}
     CATS.push(data);toast('Criada!','ok');render();
   }
+  // v2.9.41: editar categoria (também pelo lápis da lista em Lançamentos) — nome, grupo e palavras-chave
   function editarCat(id){
-    const c=CATS.find(x=>x.id===id);
-    const grupos=Object.entries(GRUPOS).filter(([k])=>k!=='neutra').map(([k,g])=>`<option value="${k}" ${k===c.grupo?'selected':''}>${g.nome}</option>`).join('');
+    const c=CATS.find(x=>x.id===Number(id));if(!c)return;
+    const grupos=Object.entries(GRUPOS).map(([k,g])=>`<option value="${k}" ${k===c.grupo?'selected':''}>${g.nome}${k==='neutra'?' (não entra no resultado)':''}</option>`).join('');
+    const pal=REGRAS_P.filter(r=>r.categoria_id===c.id&&!r.loja_id).map(r=>r.palavra).join(', ');
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
-      <h3>✏️ Editar categoria</h3><span class="qlabel">Nome</span><input id="ecNome" value="${c.nome}">
-      <span class="qlabel">Grupo no DRE</span><select id="ecGrupo">${grupos}</select><div id="ecErr"></div>
-      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarEditarCat(${id})">Salvar</button></div></div></div>`;
+      <h3>✏️ Editar categoria</h3><span class="qlabel">Nome</span><input id="ecNome" class="qin maiusc" value="${_remEsc(c.nome)}">
+      <span class="qlabel">Grupo no DRE</span><select id="ecGrupo" class="qin">${grupos}</select>
+      <span class="qlabel">🔑 Palavras que puxam sozinho (separadas por vírgula)</span><input id="ecPal" class="qin maiusc" value="${_remEsc(pal)}" placeholder="ex: CEMIG, SAAE, VIVO">
+      <p class="mut" style="font-size:12px;margin:4px 0 0">Quando o texto do extrato tiver uma dessas palavras, a categoria já vem preenchida.</p><div id="ecErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarEditarCat(${c.id})">Salvar</button></div></div></div>`;
   }
   async function salvarEditarCat(id){
-    const nome=document.getElementById('ecNome').value.trim();const grupo=document.getElementById('ecGrupo').value;
+    const nome=document.getElementById('ecNome').value.trim().toUpperCase();const grupo=document.getElementById('ecGrupo').value;const pal=document.getElementById('ecPal').value;
     if(!nome){document.getElementById('ecErr').innerHTML='<div class="err">Digite o nome.</div>';return;}
     const {error}=await sb.from('categorias').update({nome,grupo}).eq('id',id);
     if(error){toast('Erro: '+error.message,'erro');return;}
-    const c=CATS.find(x=>x.id===id);c.nome=nome;c.grupo=grupo;fecharModal();toast('Salvo!','ok');render();
+    const c=CATS.find(x=>x.id===id);c.nome=nome;c.grupo=grupo;
+    const antes=REGRAS_P.filter(r=>r.categoria_id===id&&!r.loja_id).map(r=>normDesc(r.palavra)).sort().join(',');const depois=[...new Set(String(pal||'').split(',').map(x=>normDesc(x)).filter(x=>x.length>=2))].sort().join(',');
+    if(antes!==depois)await salvarPalavrasCat(id,pal);
+    LANC.forEach(l=>{if(l.categoria_id===id)l.categorias={nome,grupo};});
+    fecharModal();toast('Categoria salva!','ok');_depoisDeEditarCadastro();
   }
+  function _depoisDeEditarCadastro(){if(page==='lanc'&&document.getElementById('lancResultado'))lancSoAtualizar();else{_keepY=window.scrollY;render();}}
   async function arquivarCat(id){await sb.from('categorias').update({arquivada:true}).eq('id',id);CATS.find(c=>c.id===id).arquivada=true;toast('Arquivada','ok');render();}
   async function ativarCat(id){await sb.from('categorias').update({arquivada:false}).eq('id',id);CATS.find(c=>c.id===id).arquivada=false;toast('Reativada','ok');render();}
 
@@ -2115,18 +2124,25 @@
     CONTATOS.push(data);toast('Criado!','ok');render();
   }
   function editarContato(id){
-    const c=CONTATOS.find(x=>x.id===id);
+    const c=CONTATOS.find(x=>x.id===Number(id));if(!c)return;
+    const pal=REGRAS_P.filter(r=>r.contato_id===c.id&&!r.loja_id).map(r=>r.palavra).join(', ');
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
-      <h3>✏️ Editar contato</h3><span class="qlabel">Nome</span><input id="ectNome" value="${c.nome}">
-      <span class="qlabel">Tipo</span><select id="ectTipo"><option value="empresa" ${c.tipo==='empresa'?'selected':''}>🏢 Empresa</option><option value="funcionario" ${c.tipo==='funcionario'?'selected':''}>👤 Funcionário</option></select><div id="ectErr"></div>
-      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarEditarContato(${id})">Salvar</button></div></div></div>`;
+      <h3>✏️ Editar contato</h3><span class="qlabel">Nome</span><input id="ectNome" class="qin maiusc" value="${_remEsc(c.nome)}">
+      <span class="qlabel">Tipo</span><select id="ectTipo" class="qin"><option value="empresa" ${c.tipo==='empresa'?'selected':''}>🏢 Empresa</option><option value="funcionario" ${c.tipo==='funcionario'?'selected':''}>👤 Funcionário</option></select>
+      <span class="qlabel">🔑 Palavras que puxam sozinho (separadas por vírgula)</span><input id="ectPal" class="qin maiusc" value="${_remEsc(pal)}" placeholder="ex: ESSILOR, ESSILOR BRASIL">
+      <p class="mut" style="font-size:12px;margin:4px 0 0">Quando o texto do extrato tiver uma dessas palavras, o contato já vem preenchido.</p><div id="ectErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarEditarContato(${c.id})">Salvar</button></div></div></div>`;
   }
   async function salvarEditarContato(id){
-    const nome=document.getElementById('ectNome').value.trim();const tipo=document.getElementById('ectTipo').value;
+    const nome=document.getElementById('ectNome').value.trim().toUpperCase();const tipo=document.getElementById('ectTipo').value;const pal=document.getElementById('ectPal').value;
     if(!nome){document.getElementById('ectErr').innerHTML='<div class="err">Digite o nome.</div>';return;}
     const {error}=await sb.from('contatos').update({nome,tipo}).eq('id',id);
     if(error){toast('Erro: '+error.message,'erro');return;}
-    const c=CONTATOS.find(x=>x.id===id);c.nome=nome;c.tipo=tipo;fecharModal();toast('Salvo!','ok');render();
+    const c=CONTATOS.find(x=>x.id===id);c.nome=nome;c.tipo=tipo;
+    const antes=REGRAS_P.filter(r=>r.contato_id===id&&!r.loja_id).map(r=>normDesc(r.palavra)).sort().join(',');const depois=[...new Set(String(pal||'').split(',').map(x=>normDesc(x)).filter(x=>x.length>=2))].sort().join(',');
+    if(antes!==depois)await salvarPalavrasCont(id,pal);
+    LANC.forEach(l=>{if(l.contato_id===id)l.contatos={nome,tipo};});
+    fecharModal();toast('Contato salvo!','ok');_depoisDeEditarCadastro();
   }
   async function arquivarContato(id){await sb.from('contatos').update({arquivado:true}).eq('id',id);CONTATOS.find(c=>c.id===id).arquivado=true;toast('Arquivado','ok');render();}
   async function ativarContato(id){await sb.from('contatos').update({arquivado:false}).eq('id',id);CONTATOS.find(c=>c.id===id).arquivado=false;toast('Reativado','ok');render();}
@@ -4069,7 +4085,7 @@
         if(m.tipo==='reposicao'&&!n){semNome.v+=m.valor;return;}const key=n||'SEM NOME';por[key]=(por[key]||0)+(m.tipo==='emprestimo'?m.valor:-m.valor);});
       const abertos=Object.entries(por).filter(([,v])=>v>0.004).sort((a,b)=>b[1]-a[1]);
       return {nome:k.nome,falta:r.fimEmp,emp:r.emp,rep:r.rep,abertos,semNome:semNome.v};}).filter(x=>x.falta>0.004||x.emp>0||x.rep>0).sort((a,b)=>b.falta-a.falta);
-    const nomeCx=id=>(CX.caixas.find(k=>k.id===id)||{}).nome||'';
+    const nomeCx=id=>((CX.caixasBanco||CX.caixas).find(k=>k.id===id)||{}).nome||'';
     const banco=(CX.contas||[]).filter(ct=>ct.status==='estornar'&&ct.escopo!=='decimo').map(ct=>{const ab=_cxAbertoAte(ct,corte);return {ct,ab,voltou:Math.max((Number(ct.valor)||0)-ab,0)};}).filter(x=>x.ab>0.004).sort((a,b)=>(a.ct.data||'')<(b.ct.data||'')?1:-1);
     const bT=cxBancoResumo(null,ANO_FIXO,mi+1);
     const v=x=>BRL(x).replace('R$ ','');
@@ -4086,7 +4102,7 @@
       <div class="card" style="padding:0;overflow-x:auto;margin-bottom:16px"><table><thead><tr><th>Loja que emprestou</th><th style="text-align:right">Falta voltar</th><th>Para quem</th><th style="text-align:right">Emprestou no mês</th><th style="text-align:right">Voltou no mês</th></tr></thead>
       <tbody>${rowsLoja||'<tr><td colspan="5" class="mut" style="padding:14px">Nenhum empréstimo em aberto.</td></tr>'}</tbody></table></div>
       <h3 style="font-size:14.5px;margin:4px 0 8px">Banco Caixinha (o escritório pagou pela loja)</h3>
-      <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>Loja que deve</th><th>Data</th><th>O que foi pago</th><th style="text-align:right">Valor</th><th style="text-align:right">Já voltou</th><th style="text-align:right">Falta</th></tr></thead>
+      <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>Caixinha (de onde saiu)</th><th>Data</th><th>O que foi pago · quem devolve</th><th style="text-align:right">Valor</th><th style="text-align:right">Já voltou</th><th style="text-align:right">Falta</th></tr></thead>
       <tbody>${rowsBanco||'<tr><td colspan="6" class="mut" style="padding:14px">Nada em aberto no Banco Caixinha.</td></tr>'}</tbody></table></div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:12px" class="mut"><span>Lido do Caixinha às ${CX.em?CX.em.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—'}</span>
         <button class="btn ghost" style="padding:5px 10px;font-size:12px" onclick="CX.carregado=false;render()">Atualizar</button>
@@ -4412,7 +4428,9 @@
       const caixas=(cx.data||[]).filter(x=>!x.arquivada&&x.tipo==='loja').map(x=>({id:x.id,nome:x.nome,mov:[]}));
       const byId={};caixas.forEach(x=>byId[x.id]=x);
       (lan.data||[]).forEach(l=>{if(l.excluido)return;const cp=compById[l.competencia_id];if(!cp)return;const k=byId[cp.caixinha_id];if(!k)return;k.mov.push({id:l.id,data:l.data,tipo:l.tipo,valor:Number(l.valor)||0,para:l.contraparte||null,recolhido:!!l.recolhido,cat:l.categoria||'',por:l.criado_por_nome||'',desc:l.descricao||'',conf:!!l.conferido_banco,confPor:l.conf_banco_por||'',confEm:l.conf_banco_em||''});});
-      CX.caixas=caixas;CX.contas=cont.error?[]:(cont.data||[]);CX.carregado=true;CX.em=new Date();CX.erro='';
+      // v2.9.42: caixinhas tipo 'conta' (ex.: DIVERSAS) só entram nas listas do Banco Caixinha — não têm caixa, ficam fora de cxCalcMes/gaveta/depósitos
+      const contasCx=(cx.data||[]).filter(x=>!x.arquivada&&x.tipo==='conta').map(x=>({id:x.id,nome:x.nome,tipo:'conta',mov:[]}));
+      CX.caixas=caixas;CX.caixasConta=contasCx;CX.caixasBanco=caixas.concat(contasCx);CX.contas=cont.error?[]:(cont.data||[]);CX.carregado=true;CX.em=new Date();CX.erro='';
       return true;
     }catch(e){CX.erro=e.message||String(e);return false;}
   }

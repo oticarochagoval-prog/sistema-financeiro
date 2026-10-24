@@ -43,6 +43,12 @@ Em **Lançamentos**, logo abaixo do mês, aparece uma faixa com todos os dias. O
 
 A barra embaixo do número mostra as três partes: verde (conferido), amarelo (falta conferir) e vermelho (falta resolver). O botão **Continuar de onde parou** leva direto ao primeiro dia que ainda não está todo conferido. Clicar num dia mostra só aquele dia; clicar de novo volta pro mês.
 
+### Lápis para editar categoria e contato (v2.9.41)
+
+- **Em Lançamentos:** ao abrir a lista de categoria ou de contato de uma linha, cada item tem um **✏️**. Clicou, abre a edição ali mesmo: **nome**, **grupo** (ou tipo, no contato) e **🔑 palavras que puxam sozinho**. Não precisa ir até a tela de Categorias ou de Contatos.
+- **Na tela Categorias:** cada categoria agora tem **✏️ editar** e **📥 arquivar**, igual aos contatos.
+- As palavras-chave são o que faz o extrato já entrar classificado: quanto mais a equipe ensina, mais linhas entram sozinhas.
+
 ### Contato sem cadastro (v2.9.36)
 
 Nas **saídas**, embaixo do campo **Contato**, tem **+ contato sem cadastro**. Serve para escrever o nome de quem recebeu sem precisar cadastrar: funcionário que já saiu (ex.: **GABRIEL**), quem fez a panfletagem, um prestador de uma vez só. Depois de gravar, aparece **📝 GABRIEL** embaixo do contato, e a linha não fica mais vermelha por falta de contato (vale também para **Funcionários**: o nome escrito conta como contato). Nas **entradas** continua **+ obs** embaixo da categoria.
@@ -143,7 +149,7 @@ Existem **dois empréstimos diferentes**, e cada um mora num lugar:
 
 Na importação, o "VAI ESTORNAR" pergunta **Quem vai devolver?** e vai para o Banco Caixinha da própria loja.
 
-**Não precisa criar "Diversas" no Caixinha:** a Diversas entra como **contato** (DESPESAS DIVERSAS), não como caixa.
+**Caixinha DIVERSAS (tipo conta, v2.9.42):** a caixinha DIVERSAS criada no Caixinha aparece nas listas do Banco Caixinha (marcada "(conta)") para empréstimos que não são de loja. Ela não tem caixa: não entra no Caixinha (espelho), na gaveta nem nos depósitos.
 
 **Quando a Diversas já mandou o dinheiro no mesmo dia** (ex.: SALARIO JUAN: a DVL mandou R$ 2.140,34 pra GV e a GV pagou o Juan no mesmo dia), não é empréstimo em aberto: marque a saída como **Transferência entre lojas** no "o que é?". A entrada da DVL já é transferência. A GV fica no zero e o salário é despesa da **Diversas**, dividida entre as empresas.
 
@@ -677,6 +683,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 24/10/2026 | 2.9.42 | Caixinhas tipo "conta" do Caixinha (ex.: DIVERSAS) aparecem nas listas do Banco Caixinha: Mandar pro Banco Caixinha, Marcar devolução e Empréstimos (espelho). Ficam fora das contas de caixa, gaveta e depósitos | Nenhum |
+| 24/10/2026 | 2.9.41 | Lápis ✏️ em cada item da lista de categoria e de contato (em Lançamentos) para editar nome, grupo/tipo e palavras-chave ali mesmo; botão "✏️ editar" na tela Categorias | Nenhum |
 | 24/10/2026 | 2.9.40 | Linha neutra com cor própria (categoria azul tracejada, valor cinza, etiqueta "não entra no resultado nem no fechamento"); saiu o aviso vermelho embaixo da busca; botão "neutras (N) · não entram no resultado" | Nenhum |
 | 24/10/2026 | 2.9.39 | Aviso fixo em vermelho embaixo da busca de Lançamentos explicando as neutras (não entram no resultado, não exclua) | Nenhum |
 | 24/10/2026 | 2.9.38 | Explicação fixa de "neutra" (etiqueta clicável embaixo da categoria; neutras no fim da lista); botão "ver só as neutras (N)" em Lançamentos para revisar | Nenhum |
