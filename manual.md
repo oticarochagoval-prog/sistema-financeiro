@@ -43,6 +43,18 @@ Em **Lançamentos**, logo abaixo do mês, aparece uma faixa com todos os dias. O
 
 A barra embaixo do número mostra as três partes: verde (conferido), amarelo (falta conferir) e vermelho (falta resolver). O botão **Continuar de onde parou** leva direto ao primeiro dia que ainda não está todo conferido. Clicar num dia mostra só aquele dia; clicar de novo volta pro mês.
 
+### Painel de conferidos no alto de Lançamentos (v2.9.26)
+
+Logo no alto de **Lançamentos** aparece o quadro **Conferidos · loja · mês**, por exemplo **0/225**. Ele muda quando troca a loja ou o módulo (Diversas, Grupo de compras…).
+
+- **Vermelho**: nada conferido ainda nessa loja no mês.
+- **Amarelo**: já começou, mostra quantos faltam.
+- **Verde**: tudo conferido.
+- O botão **Começar a conferir / Continuar de onde parou** leva ao primeiro dia que falta.
+- **No menu (v2.9.27):** ao lado de **Lançamentos** aparece o mesmo número (ex.: **0/164**), com a mesma cor, em qualquer tela. Troca de loja e o número troca junto: dá pra ver de longe qual loja ainda tem coisa sem conferir.
+- Na loja com robô, embaixo aparece **Importar sozinho: funcionando**, os horários, a última vez e a próxima. Se o robô der erro, fica vermelho com o motivo.
+- Trocar categoria, contato, observação ou marcar conferido **não recarrega mais a tela** (acabou o "apagão" de um segundo).
+
 ## Conferido: o quadradinho no fim da linha (v2.9.24)
 
 - Cada lançamento tem uma **bolinha** ao lado da data: **verde** = conferido, **amarela** = classificado mas ninguém conferiu, **vermelha** = falta resolver.
@@ -117,6 +129,29 @@ Existem **dois empréstimos diferentes**, e cada um mora num lugar:
 > ⛔ **Nunca** exclua nem lance o pagamento do escritório como despesa da loja que pagou. Categoria A ESTORNAR + botão. Excluir some com o dinheiro da escada do banco; lançar como despesa infla o custo da loja errada.
 
 > 💡 Tudo sobre a ligação com o Caixinha (Banco, Lentes, Caixa) está no **Manual do Caixinha** — botão 🔗? na barra de cima.
+
+### Botão "Vai estornar" (v2.9.28 · botão roxo na v2.9.29)
+
+Em **Lançamentos**, embaixo da descrição de cada saída, tem o botão roxo **Vai estornar**. Use quando o pagamento foi um empréstimo que vai voltar. **Não precisa excluir nada.**
+
+1. Clique em **Vai estornar**: abre o "Mandar pro Banco Caixinha".
+2. Confira **qual loja deve**. Se a descrição não diz a loja, já vem a própria loja do extrato (na GV Lentes vem **GV Optical**).
+3. Confirme. A linha vira **A ESTORNAR** e ganha a etiqueta roxa **emprestado · no Banco Caixinha ✓**. Não conta como despesa: entra no **Emprestado a receber** (roxo) do saldo.
+
+- Boleto de **Lentes** que veio do Caixinha (etiqueta Lentes) é pagamento de verdade: nele o botão não aparece.
+- Escreveu **EXT** ou **ESTORNAR** na descrição? O botão fica **cheio de roxo, com "?"**, lembrando de mandar.
+- Se a Heloísa já anotou no Caixinha o **mesmo valor, até o centavo**, mesmo com outra data (até 45 dias), o Fluxo **liga ao que já existe**. Vale também para o extrato importado.
+- Nas entradas neutras (transferência, sem categoria) aparece **Voltou do empréstimo**: marca a devolução no Banco Caixinha.
+- **Caixinha (espelho)** e **Empréstimos (espelho)** aparecem também na **GV Lentes** e no **Grupo de compras**.
+
+### Depósito em dinheiro (v2.9.29)
+
+Todo depósito em dinheiro no banco é **DEPÓSITO DA GAVETA**: é neutro, não é venda (a venda à vista entra pela Linx no fim do mês). Ele **continua vindo no extrato** porque o saldo do banco precisa bater e porque é ele que prova que o dinheiro da gaveta chegou no banco.
+
+- Na importação (e na entrada automática), o depósito que bate com o que a loja lançou no Caixinha (mesmo valor, até 5 dias úteis) já entra **verde**, com a etiqueta **gaveta · conferido no Caixinha ✓** e "CAIXINHA" no quadradinho. Ninguém precisa conferir.
+- Os que já estavam lançados: no alto de Lançamentos aparece **Conferir N depósitos da gaveta com o Caixinha** (ou o botão **conferir com o Caixinha** na linha). Um clique confere todos.
+- **Sem par no Caixinha** (amarelo): a loja esqueceu de lançar o depósito no Caixinha, ou foi um cliente que depositou dinheiro (raro). Se foi cliente, troque a categoria para venda.
+- "CAIXINHA" não entra no ranking de quem conferiu.
 
 ## Os três "bancos": onde cada um mora
 
@@ -503,6 +538,8 @@ Tire a foto de **um boleto só**. Se for parcelado, fotografe só a parcela que 
 
 O extrato do Sicoob não precisa mais ser baixado. Um robô busca o extrato direto no banco, sozinho, 3 vezes por dia (5h37, 12h37 e 19h37).
 
+No menu, ao lado de **Importar extrato**, aparece **sozinho** (verde) na loja em que o robô já está ligado, ou **erro** (vermelho) se ele falhou. Na loja que ainda não tem robô, o Importar avisa "Esta loja ainda importa à mão" e mostra em quais lojas já funciona.
+
 1. Entre em **Importar** com a loja escolhida.
 2. No quadro **Extrato automático do Sicoob**, clique em **Puxar do Sicoob**.
 3. Aparece a mesma tela de conferência de sempre. O que já estava lançado aparece como "já lançado" e não entra de novo.
@@ -603,6 +640,11 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 24/10/2026 | 2.9.30 | Boleto de Lentes que vem do Caixinha não mostra o botão "Vai estornar" (é pagamento de verdade) | Nenhum |
+| 24/10/2026 | 2.9.29 | Botão roxo "Vai estornar" embaixo da descrição (cheio quando a descrição tem EXT/ESTORNAR), loja padrão = a própria loja (GV → GV Optical), etiqueta roxa "emprestado"; depósito da gaveta conferido com o Caixinha (na importação já entra verde; botão para os antigos; "sem par" quando a loja não lançou) | Nenhum |
+| 24/10/2026 | 2.9.28 | Link "vai estornar" em cada saída de Lançamentos (manda pro Banco Caixinha sem excluir) e "voltou do empréstimo" nas entradas neutras; liga ao que a Heloísa já anotou pelo mesmo valor até 45 dias de diferença (também na importação); Caixinha e Empréstimos (espelho) na GV Lentes e no Grupo de compras | Nenhum |
+| 24/10/2026 | 2.9.27 | Número de conferidos da loja no mês ao lado de "Lançamentos" no menu (0/164 vermelho, amarelo quando falta, verde quando tudo conferido), em qualquer tela | Nenhum |
+| 24/10/2026 | 2.9.26 | Painel de conferidos no alto de Lançamentos (0/225, vermelho quando nada foi conferido, botão Começar a conferir); trocar categoria/contato/obs/conferido sem recarregar a tela; "sozinho" no menu Importar extrato na loja com robô, horários do robô, última vez e próxima | Nenhum |
 | 24/10/2026 | 2.9.25 | Entrada automática do Sicoob (o que vem todo classificado entra sozinho, amarelo; o resto espera no Importar); faixa do dia a dia conta conferidos (5/20); ranking do mês para todos e produtividade de 3 meses só para gestores, cada módulo com o seu, e quantos faltam conferir no mês; botão Dividir vermelho/verde na Diversas e pergunta ao lançar sem dividir | Nenhum |
 | 24/10/2026 | 2.9.24 | Conferido em cada lançamento (quadradinho no fim da linha, nome de quem conferiu), bolinha verde/amarela/vermelha, contador do mês, conferir os amarelos do dia, ranking no Dashboard de quem conferiu e de quem importou (3 meses, avisa queda) | Colunas conferido_por/conferido_em criadas pelo Claude |
 | 24/10/2026 | 2.9.23 | Lançamentos: bolinha depois da data em cada linha, verde = pronto, vermelha = falta resolver (mesma regra dos dias prontos lá em cima) | Nenhum |
