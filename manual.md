@@ -130,19 +130,27 @@ Existem **dois empréstimos diferentes**, e cada um mora num lugar:
 
 > 💡 Tudo sobre a ligação com o Caixinha (Banco, Lentes, Caixa) está no **Manual do Caixinha** — botão 🔗? na barra de cima.
 
-### Botão "Vai estornar" (v2.9.28 · botão roxo na v2.9.29)
+### "o que é?" e o Banco Caixinha (v2.9.34)
 
-Em **Lançamentos**, embaixo da descrição de cada saída, tem o botão roxo **Vai estornar**. Use quando o pagamento foi um empréstimo que vai voltar. **Não precisa excluir nada.**
+Em cada lançamento, embaixo da descrição, tem o botãozinho **o que é? ▾**. Ele abre as opções para dizer o que aquela linha é, **sem excluir**:
 
-1. Clique em **Vai estornar**: abre o "Mandar pro Banco Caixinha".
-2. Confira **qual loja deve**. Se a descrição não diz a loja, já vem a própria loja do extrato (na GV Lentes vem **GV Optical**).
-3. Confirme. A linha vira **A ESTORNAR** e ganha a etiqueta roxa **emprestado · no Banco Caixinha ✓**. Não conta como despesa: entra no **Emprestado a receber** (roxo) do saldo.
+- **Saída:** Empréstimo (vai estornar) · Transferência entre lojas · Outra categoria.
+- **Entrada:** Voltou do empréstimo · Depósito da gaveta · Transferência entre lojas · Venda Pix · Outra categoria.
 
-- Boleto de **Lentes** que veio do Caixinha (etiqueta Lentes) é pagamento de verdade: nele o botão não aparece.
-- Escreveu **EXT** ou **ESTORNAR** na descrição? O botão fica **cheio de roxo, com "?"**, lembrando de mandar.
-- Se a Heloísa já anotou no Caixinha o **mesmo valor, até o centavo**, mesmo com outra data (até 45 dias), o Fluxo **liga ao que já existe**. Vale também para o extrato importado.
-- Nas entradas neutras (transferência, sem categoria) aparece **Voltou do empréstimo**: marca a devolução no Banco Caixinha.
+O botão **roxo cheio** só aparece quando o Fluxo achou algo no Banco Caixinha com o **mesmo valor até o centavo**:
+
+- **Já está no Banco Caixinha · GV Optical 02/10: ligar**: a Heloísa já anotou esse empréstimo. Um clique e a linha vira A ESTORNAR, roxa (emprestado, não é despesa).
+- **Devolução já marcada no Caixinha (14/10): ligar**: a Heloísa já marcou que o dinheiro voltou. Um clique e a entrada vira ESTORNO RECEBIDO. Nada muda no Caixinha, só liga.
+- **Voltou do empréstimo? Rocha 7 30/10**: tem empréstimo em aberto com esse valor. Clique para marcar a devolução.
+- **Vai estornar?**: a descrição fala em EXT/ESTORNAR.
+
+**No extrato que entra** (robô ou importação), isso já vem ligado sozinho. Se houver dois valores iguais, o Fluxo não adivinha.
+
+**Exemplo (Águia Branca da GV):** a GV pagou R$ 1.115,30 e R$ 1.164,58 no dia 02/10 por conta da DVL; a Heloísa anotou no Banco Caixinha da GV Optical e marcou a devolução no dia 14/10. No Fluxo: as duas saídas de 02/10 ficam **A ESTORNAR** (roxo, emprestado) e as duas entradas de 14/10 ficam **ESTORNO RECEBIDO**. Nenhuma conta como despesa nem como venda da GV; o saldo do banco continua batendo; entre 02/10 e 14/10 o valor aparece no **Emprestado a receber**.
+
+- Boleto de **Lentes** que veio do Caixinha é pagamento de verdade: nele não aparece botão.
 - **Caixinha (espelho)** e **Empréstimos (espelho)** aparecem também na **GV Lentes** e no **Grupo de compras**.
+- Precisa estar entrado no Caixinha neste computador (menu Caixinha espelho, uma vez só).
 
 ### Depósito em dinheiro (v2.9.29)
 
@@ -152,6 +160,10 @@ Todo depósito em dinheiro no banco é **DEPÓSITO DA GAVETA**: é neutro, não 
 - Os que já estavam lançados: no alto de Lançamentos aparece **Conferir N depósitos da gaveta com o Caixinha** (ou o botão **conferir com o Caixinha** na linha). Um clique confere todos.
 - **Sem par no Caixinha** (amarelo): a loja esqueceu de lançar o depósito no Caixinha, ou foi um cliente que depositou dinheiro (raro). Se foi cliente, troque a categoria para venda.
 - "CAIXINHA" não entra no ranking de quem conferiu.
+
+### GV Lentes: loja pagando o laboratório é receita (v2.9.33 · VENDA PIX desde a v2.9.35)
+
+No extrato da **GV Lentes**, o dinheiro que uma loja do grupo manda com o motivo **GV OPTICAL**, **FREEFORM**, lente ou REF entra como **VENDA PIX** (receita da GV), e não mais como transferência neutra. A categoria VENDA OTICA ROCHA foi arquivada. Na **Conferência de Pix** da GV, esse dinheiro das lojas não entra (não é Pix de cliente), para continuar batendo com o que as meninas anotam. Salário, férias, estorno e empréstimo continuam como **transferência** para conferir (ex.: "SALARIO JUAN", "AGUIA BRANCA TRATAMENTO").
 
 ## Os três "bancos": onde cada um mora
 
@@ -640,6 +652,11 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 24/10/2026 | 2.9.35 | GV: loja pagando o laboratório entra como VENDA PIX (VENDA OTICA ROCHA arquivada); na Conferência de Pix da GV esse dinheiro das lojas não conta | Nenhum |
+| 24/10/2026 | 2.9.34 | Botão "o que é?" em cada lançamento (empréstimo, devolução, depósito, transferência, venda Pix, loja pagando o laboratório) no lugar dos botões soltos; liga sozinho ao empréstimo e à devolução que a Heloísa já marcou no Caixinha (mesmo valor), também no extrato que entra | Nenhum |
+| 24/10/2026 | 2.9.33 | GV Lentes: loja do grupo pagando o laboratório (GV OPTICAL, FREEFORM, lente, REF) entra como VENDA OTICA ROCHA (receita); salário/estorno/empréstimo seguem como transferência | Nenhum |
+| 24/10/2026 | 2.9.32 | "Voltou do empréstimo?" só aparece quando há empréstimo em aberto no Banco Caixinha com o mesmo valor (antes aparecia em toda entrada neutra e confundia) | Nenhum |
+| 24/10/2026 | 2.9.31 | Empréstimo que a Heloísa já anotou no Banco Caixinha: o extrato já entra ligado (roxo, emprestado) e no que já estava lançado aparece "Já está no Banco Caixinha: ligar" (um clique); só quando não acha aparece o Vai estornar | Nenhum |
 | 24/10/2026 | 2.9.30 | Boleto de Lentes que vem do Caixinha não mostra o botão "Vai estornar" (é pagamento de verdade) | Nenhum |
 | 24/10/2026 | 2.9.29 | Botão roxo "Vai estornar" embaixo da descrição (cheio quando a descrição tem EXT/ESTORNAR), loja padrão = a própria loja (GV → GV Optical), etiqueta roxa "emprestado"; depósito da gaveta conferido com o Caixinha (na importação já entra verde; botão para os antigos; "sem par" quando a loja não lançou) | Nenhum |
 | 24/10/2026 | 2.9.28 | Link "vai estornar" em cada saída de Lançamentos (manda pro Banco Caixinha sem excluir) e "voltou do empréstimo" nas entradas neutras; liga ao que a Heloísa já anotou pelo mesmo valor até 45 dias de diferença (também na importação); Caixinha e Empréstimos (espelho) na GV Lentes e no Grupo de compras | Nenhum |
