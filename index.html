@@ -144,6 +144,7 @@
   tbody td{padding:11px 13px;border-bottom:1px solid var(--line);font-size:13px}
   tbody tr:hover{background:var(--panel-2)}
   tbody tr.neutra{background:rgba(125,162,255,.06)}
+  tbody tr.neutra td.amt{color:var(--muted)!important;font-weight:600} tbody tr.neutra .combo.neutracat{border-color:var(--blue);color:var(--blue);border-style:dashed} /* v2.9.40: neutra com cor própria; valor cinza = não conta */
   .amt{font-variant-numeric:tabular-nums;font-weight:650;text-align:right}
   .amt.green{color:var(--green)}.amt.red{color:var(--red)}.amt.blue{color:var(--blue)}
   .catchip{font-size:11.5px;background:var(--chip);padding:3px 11px;border-radius:20px;border:1px solid var(--line)}
@@ -272,6 +273,7 @@
   let lojaAtual=null;
   let page='visao', tipo='des', q='', busy=false;
   let filtroDia=''; // '' = todos os dias; senão 'YYYY-MM-DD'
+  let soNeutras=false;
   let ocultarNeutras=false;try{ocultarNeutras=localStorage.getItem('fluxo_ocultar_neutras')==='1';}catch(e){}
   let filtroTipoLanc=''; // '' · 'ent' (só entradas) · 'sai' (só saídas)
   let filtroConta=''; // '' = todas · 'banco' · 'caixinha' (lançamentos antigos da aba Caixinha)
@@ -280,7 +282,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.36', APP_DATA='24/10/2026';
+  const APP_VERSAO='2.9.40', APP_DATA='24/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1185,24 +1187,33 @@
       const c=catPorNome(String(v).slice(2));if(!c){toast('Não achei a categoria "'+String(v).slice(2)+'".','erro');return;}await mudarCampoLanc(id,'categoria_id',c.id);lancSoAtualizar();});}
   async function lancVaiEstornar(id){if(!catEstornarId()){toast('Falta a categoria "'+CAT_ESTORNAR+'".','erro');return;}_mbMudaCat=id;await abrirMandarBanco(id);}
   async function lancVoltouEstorno(id){if(!catEstornoRecId()){toast('Falta a categoria "'+CAT_ESTORNO_REC+'".','erro');return;}_dvMudaCat=id;await abrirMarcarDevolucao(id);}
+  // v2.9.37: no Banco Caixinha a CAIXA é a loja de onde saiu o dinheiro (quem emprestou) e o CONTATO é quem vai devolver
+  //          (ex.: caixa GV Optical · contato DESPESAS DIVERSAS) — igual a Heloísa já lança lá
+  function cxDevedores(){const fixos=['DESPESAS DIVERSAS','CARTÕES','LUCAS','FREEFORME'];const daqui=cxChaveLoja((LOJAS.find(x=>x.id===lojaAtual)||{}).nome||'');
+    const lojas=(CX.caixas||[]).filter(k=>cxChaveLoja(k.nome)!==daqui).map(k=>String(k.nome).toUpperCase());
+    const usados=[...new Set((CX.contas||[]).filter(c=>c.status==='estornar'&&c.contato).map(c=>String(c.contato).toUpperCase().trim()))];
+    return [...new Set([...fixos,...lojas,...usados])];}
+  function cxDevedorDaDescricao(txt){const lj=lojaDaDescricao(txt||'');if(!lj)return '';const k=cxCaixaPorNome(lj);return k?String(k.nome).toUpperCase():String(lj).toUpperCase();}
   async function abrirMandarBanco(lancId){
     if(!podeEditar())return;const l=LANC.find(x=>x.id===lancId);if(!l)return;
     if(!(await cxPronto()))return;
-    const valor=Math.abs(Number(l.valor||0));const lojaDesc=lojaDaDescricao(l.descricao||''),lojaSug=lojaDesc||(LOJAS.find(x=>x.id===lojaAtual)||{}).nome||'';const contNome=(l.contatos&&l.contatos.nome)||'';
+    const valor=Math.abs(Number(l.valor||0));const minha=(LOJAS.find(x=>x.id===lojaAtual)||{}).nome||'';const dev=cxDevedorDaDescricao(l.descricao);
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
       <h3>🔁 Mandar pro Banco Caixinha</h3>
-      <p>Vai virar um <b>empréstimo a estornar</b> na aba Banco do Caixinha, na loja que deve. O lançamento daqui fica ligado a ele (não manda duas vezes).</p><p class="mut" style="font-size:12px;margin-top:-4px">Se a Heloísa já anotou no Caixinha o mesmo valor (até o centavo), mesmo com outra data (até 45 dias), o Fluxo liga a esse em vez de criar outro.</p>
-      <span class="qlabel">Qual loja deve este valor?</span><select id="mbLoja" class="qin" style="margin-bottom:8px">${cxOpcoesLojas(lojaSug)}</select>
-      ${lojaDesc?`<p class="mut" style="font-size:12px;margin:-4px 0 8px">Li "<b>${lojaDesc}</b>" na descrição. Confira.</p>`:'<p class="mut" style="font-size:12px;margin:-4px 0 8px">A descrição não diz a loja: deixei a própria loja deste extrato. Troque se for outra.</p>'}
+      <p>Vira um <b>empréstimo a estornar</b> no Banco Caixinha da loja que pagou. O lançamento daqui fica ligado a ele (não manda duas vezes).</p>
+      <span class="qlabel">Quem vai devolver este dinheiro?</span><input id="mbCont" class="qin maiusc" list="mbDevs" placeholder="ex.: DESPESAS DIVERSAS, ROCHA 7, CARTÕES" value="${dev.replace(/"/g,'&quot;')}" style="margin-bottom:4px"><datalist id="mbDevs">${cxDevedores().map(d=>`<option value="${d.replace(/"/g,'&quot;')}">`).join('')}</datalist>
+      <p class="mut" style="font-size:12px;margin:0 0 10px">${dev?`Li "<b>${dev}</b>" na descrição. Confira.`:'Escolha na lista ou escreva. Conta dividida = DESPESAS DIVERSAS.'}</p>
+      <span class="qlabel">Banco Caixinha de qual loja (de onde saiu o dinheiro)?</span><select id="mbLoja" class="qin" style="margin-bottom:8px">${cxOpcoesLojas(minha).replace('qual loja deve?','escolha a loja')}</select>
       <span class="qlabel">Descrição (vai igual pro Caixinha)</span><input id="mbDesc" class="qin maiusc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
-      <span class="qlabel">Quem vai estornar / referência (contato no Caixinha)</span><input id="mbCont" class="qin maiusc" value="${(contNome||'ESCRITÓRIO').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
-      <div style="display:flex;gap:14px;font-size:13px;margin-bottom:6px"><span>Valor <b>${BRL(valor)}</b></span><span>Data <b>${isoParaBR(l.data)}</b></span><span class="mut">loja que pagou: ${LOJAS.find(x=>x.id===lojaAtual)?.nome.split(' — ')[0]||''}</span></div>
+      <div style="display:flex;gap:14px;font-size:13px;margin-bottom:6px"><span>Valor <b>${BRL(valor)}</b></span><span>Data <b>${isoParaBR(l.data)}</b></span></div>
+      <p class="mut" style="font-size:12px;margin:0 0 6px">Se a Heloísa já anotou no Caixinha o mesmo valor (até o centavo), mesmo com outra data (até 45 dias), o Fluxo liga a esse em vez de criar outro.</p>
       <div id="mbErr"></div>
       <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" id="mbOk" onclick="confirmarMandarBanco(${lancId})">Mandar pro Banco Caixinha</button></div></div></div>`;
   }
   async function confirmarMandarBanco(lancId){
     const l=LANC.find(x=>x.id===lancId);if(!l)return;const caixaId=document.getElementById('mbLoja').value;const err=document.getElementById('mbErr');
-    if(!caixaId){err.innerHTML='<div class="err">Escolha a loja que deve.</div>';return;}
+    if(!caixaId){err.innerHTML='<div class="err">Escolha o Banco Caixinha da loja que pagou.</div>';return;}
+    if(!(document.getElementById('mbCont').value||'').trim()){err.innerHTML='<div class="err">Escreva quem vai devolver (ex.: DESPESAS DIVERSAS, ROCHA 7).</div>';return;}
     const desc=(document.getElementById('mbDesc').value||'').trim().toUpperCase()||'A ESTORNAR';const cont=(document.getElementById('mbCont').value||'').trim().toUpperCase()||null;
     const valor=Math.abs(Number(l.valor||0));const btn=document.getElementById('mbOk');btn.disabled=true;btn.textContent='Mandando...';
     const c=cxClient();
@@ -1225,13 +1236,13 @@
   async function abrirMarcarDevolucao(lancId){
     if(!podeEditar())return;const l=LANC.find(x=>x.id===lancId);if(!l)return;
     if(!(await cxPronto()))return;
-    const valor=Math.abs(Number(l.valor||0));const lojaSug=lojaDaDescricao(l.descricao||'');
+    const valor=Math.abs(Number(l.valor||0));const lojaSug=(LOJAS.find(x=>x.id===lojaAtual)||{}).nome||''; // v2.9.37: o empréstimo está no Banco Caixinha desta loja (quem emprestou)
     const lista=(k)=>dvListaHTML(k,valor);
     const k0=cxCaixaPorNome(lojaSug||'');
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
       <h3>↩ Marcar devolução no Banco Caixinha</h3>
       <p>Entrou <b>${BRL(valor)}</b> em ${isoParaBR(l.data)} (${l.descricao||''}). É a devolução de qual empréstimo?</p>
-      <span class="qlabel">Loja que devolveu</span><select id="dvLoja" class="qin" style="margin-bottom:8px" onchange="document.getElementById('dvLista').innerHTML=dvListaHTML(this.value,${valor})">${cxOpcoesLojas(lojaSug)}</select>
+      <span class="qlabel">Banco Caixinha de qual loja (quem emprestou)?</span><select id="dvLoja" class="qin" style="margin-bottom:8px" onchange="document.getElementById('dvLista').innerHTML=dvListaHTML(this.value,${valor})">${cxOpcoesLojas(lojaSug)}</select>
       <div id="dvLista" style="max-height:300px;overflow:auto">${k0?lista(k0.id):'<p class="mut" style="font-size:13px">Escolha a loja.</p>'}</div>
       <div id="dvErr"></div>
       <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" id="dvOk" onclick="confirmarDevolucao(${lancId})">Marcar como devolvido</button></div></div></div>`;
@@ -1335,7 +1346,9 @@
   let _comboApply=null,_comboItems=null,_comboFirst=null,_comboF=[],_comboSel=0;
   function fecharCombo(){const p=document.getElementById('comboPanel');if(p)p.remove();document.removeEventListener('mousedown',_comboOutside,true);}
   function _comboOutside(e){const p=document.getElementById('comboPanel');if(p&&!p.contains(e.target))fecharCombo();}
-  function _comboItemsCat(){return catsAtivas().slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(c=>({id:String(c.id),nome:c.nome,sub:(GRUPOS[c.grupo]?GRUPOS[c.grupo].nome:'')}));}
+  function _comboItemsCat(){return catsAtivas().slice().sort((a,b)=>((a.grupo==='neutra')===(b.grupo==='neutra')?0:(a.grupo==='neutra'?1:-1))||(a.nome||'').localeCompare(b.nome||'')).map(c=>({id:String(c.id),nome:c.nome,sub:c.grupo==='neutra'?'neutra · não entra no resultado':(GRUPOS[c.grupo]?GRUPOS[c.grupo].nome:'')}));}
+  // v2.9.38: o que é "neutra" — explicação fixa para a equipe
+  function explicaNeutra(){alert('NEUTRA = não entra em nada: não é venda, não é despesa, não mexe no resultado nem na DRE.\n\nFica no Fluxo só para o saldo do banco bater e para ninguém precisar excluir.\n\nAs neutras:\n• TRANSFERÊNCIA ENTRE LOJAS: dinheiro de uma empresa do grupo para outra.\n• DEPÓSITO DA GAVETA (CAIXINHA): dinheiro da gaveta depositado no banco (confere sozinho com o Caixinha).\n• A ESTORNAR / ESTORNO RECEBIDO (BANCO CAIXINHA): empréstimo que vai voltar e a volta dele (ligado ao Banco Caixinha).\n\nNa dúvida, pergunte para a Heloísa antes de pôr neutra: neutra não some, mas sai do resultado.');}
   function _comboItemsCont(){return contatosAtivos().slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(c=>({id:String(c.id),nome:c.nome,sub:(c.tipo==='funcionario'?'👤':'🏢')}));}
   let _comboOrigIdx=-1,_comboPrefill='';
   function _focarCombo(idx,tent){const all=[...document.querySelectorAll('.combo')];const el=all[idx];
@@ -1510,6 +1523,7 @@
       if(filtroConta==='banco'&&contaEhCaixinha(l.conta_id))return false;
       if(filtroTipoLanc==='ent'&&!(Number(l.valor)>0))return false;if(filtroTipoLanc==='sai'&&!(Number(l.valor)<0))return false;
       if(ocultarNeutras&&l.categorias&&l.categorias.grupo==='neutra')return false;
+      if(soNeutras&&!(l.categorias&&l.categorias.grupo==='neutra'))return false; // v2.9.38: botão "ver só as neutras"
       if(!q)return true;
       const cat=(l.categorias&&l.categorias.nome)||'';const cont=(l.contatos&&l.contatos.nome)||'';
       const txt=(l.descricao||'').toLowerCase().includes(q.toLowerCase())||cat.toLowerCase().includes(q.toLowerCase())||cont.toLowerCase().includes(q.toLowerCase());
@@ -1630,7 +1644,7 @@
       if(editavel&&!_ehCxb&&!_ehLentes&&!contaEhCaixinha(l.conta_id))vaiEst+=`<button tabindex="-1" class="catchip" onclick="lancOQueE(this,${l.id})" title="Escolher o que é este lançamento (empréstimo, devolução, depósito, transferência, venda) sem excluir" style="cursor:pointer;font-size:10.5px;padding:2px 9px;color:var(--muted)">o que é? ▾</button>`;
       // v2.9.36: nas saídas o campo fica embaixo do CONTATO, como "contato sem cadastro" (ex.: GABRIEL, que já saiu); nas entradas continua "+ obs" embaixo da categoria
       const obsLinha=editavel?`<div style="margin-top:3px"><span tabindex="-1" onclick="editarObsLanc(${l.id})" title="${saida?'Nome de quem recebeu, sem precisar cadastrar contato (ex.: funcionário que já saiu, quem fez a panfletagem)':'Observação deste lançamento'}" style="cursor:pointer;font-size:11px;color:var(--muted)">${obsTxt?'📝 '+obsTxt:(saida?'+ contato sem cadastro':'+ obs')}</span></div>`:(obsTxt?`<div class="mut" style="font-size:11px;margin-top:3px">📝 ${obsTxt}</div>`:'');
-      const selCat=(editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatLanc(this,${l.id})"><span>${cat.nome||'⚠ categoria'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`)+(saida?'':obsLinha);
+      const selCat=(editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${neutra?'neutracat':''}" style="min-width:120px" onclick="abrirComboCatLanc(this,${l.id})"><span>${cat.nome||'⚠ categoria'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`)+(neutra?`<div style="margin-top:3px"><span tabindex="-1" onclick="explicaNeutra()" title="Não entra no resultado. Clique para ver o que é neutra." style="cursor:pointer;font-size:10.5px;color:var(--blue);border:1px solid rgba(125,162,255,.5);border-radius:10px;padding:0 7px">neutra · não entra no resultado nem no fechamento ⓘ</span></div>`:'')+(saida?'':obsLinha);
       // seletor de contato inline (vermelho se saída sem contato)
       const faltaContato=saida&&!l.contato_id&&!obsTxt&&!neutra;
       const selCont=!saida?(contatoEntradaVale(cont.nome)?`<span class="mut" style="font-size:12px">${cont.nome}</span>`:''):editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(obsTxt?`<span class="mut" title="sem contato cadastrado — vale o nome escrito embaixo">sem cadastro</span>`:(saida?'⚠ contato':'— contato'))}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>${obsLinha}`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—')+obsLinha;
@@ -1660,7 +1674,8 @@
         <span style="font-weight:700">Saldo: ${BRL(somaE-somaS)}</span>
         ${(()=>{const banco=rows.filter(l=>!contaEhCaixinha(l.conta_id)),cf=banco.filter(l=>l.conferido_por).length,am=banco.filter(l=>lancStatus(l)==='y').length,vm=banco.filter(l=>lancStatus(l)==='r').length;
           return banco.length?`<span style="font-size:12.5px"><b style="color:var(--green)">Conferidos ${cf} de ${banco.length}</b>${am?` · <span style="color:var(--amber)">${am} amarelos</span>`:''}${vm?` · <span style="color:var(--red)">${vm} vermelhos</span>`:''}</span>${filtroDia&&am&&podeEditar()?` <button class="btn ghost" style="padding:3px 9px;font-size:11.5px" onclick="lancConferirDia()">Conferir os ${am} amarelos do dia</button>`:''}`:'';})()}
-        <span onclick="ocultarNeutras=!ocultarNeutras;try{localStorage.setItem('fluxo_ocultar_neutras',ocultarNeutras?'1':'0')}catch(e){};_keepY=window.scrollY;render()" title="Neutras = transferências entre lojas, Pix de cliente, depósito da gaveta: não entram no resultado" style="cursor:pointer;margin-left:auto;padding:1px 9px;border-radius:20px;border:1px solid var(--line);color:var(--muted)">${ocultarNeutras?'mostrar as neutras':'esconder as neutras'}</span>
+        ${(()=>{const pref=`${ANO_FIXO}-${_mm(mesSel)}`;const nN=LANC.filter(l=>(l.data||'').slice(0,7)===pref&&l.categorias&&l.categorias.grupo==='neutra').length;return nN?`<span onclick="soNeutras=!soNeutras;if(soNeutras)ocultarNeutras=false;_keepY=window.scrollY;render()" title="Mostra só os lançamentos neutros (não entram no resultado), para dar uma olhada" style="cursor:pointer;margin-left:auto;padding:1px 9px;border-radius:20px;border:1px solid ${soNeutras?'var(--txt)':'var(--line)'};color:${soNeutras?'var(--txt)':'var(--muted)'}">${soNeutras?'ver todos ✕':`neutras (${nN}) · não entram no resultado`}</span>`:'';})()}
+        <span onclick="ocultarNeutras=!ocultarNeutras;soNeutras=false;try{localStorage.setItem('fluxo_ocultar_neutras',ocultarNeutras?'1':'0')}catch(e){};_keepY=window.scrollY;render()" title="Neutras = transferências entre lojas, Pix de cliente, depósito da gaveta: não entram no resultado" style="cursor:pointer;margin-left:auto;padding:1px 9px;border-radius:20px;border:1px solid var(--line);color:var(--muted)">${ocultarNeutras?'mostrar as neutras':'esconder as neutras'}</span>
       </div>
       ${(()=>{_lancVisiveis=rows.map(l=>l.id);const n=[...LANC_SEL].filter(id=>_lancVisiveis.includes(id)).length;return n?`<div class="note" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-color:rgba(214,69,69,.45)"><b>${n} marcado(s)</b><button class="btn" style="padding:5px 12px;font-size:12.5px;background:var(--red);border-color:var(--red)" onclick="lancParaLixeira([...LANC_SEL].filter(id=>_lancVisiveis.includes(id)))">Mandar para a Lixeira</button><button class="btn ghost" style="padding:5px 12px;font-size:12.5px" onclick="LANC_SEL.clear();_keepY=window.scrollY;render()">Desmarcar</button><span class="mut" style="font-size:12px">Vai com o seu nome e dá para restaurar. Pix de cliente não precisa sair: até outubro é neutro (use "esconder as neutras"); de novembro em diante conta como venda.</span></div>`:'';})()}
       <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th style="white-space:nowrap">${podeEditar()&&rows.length?`<input type="checkbox" style="margin-right:6px;vertical-align:middle" title="Marcar todos que estão aparecendo" ${rows.length&&rows.every(l=>LANC_SEL.has(l.id))?'checked':''} onclick="lancSelTodos(this.checked)">`:''}Data</th><th>Descrição</th><th>Categoria</th><th>Contato</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${tr}</tbody></table>${rows.length===0?'<div class="empty"><div class="big">📭</div>Nenhum lançamento'+(filtroDia?' nesse dia.':' ainda. Lance o primeiro acima!')+'</div>':''}</div>`;
@@ -1706,6 +1721,7 @@
       if(filtroConta==='banco'&&contaEhCaixinha(l.conta_id))return false;
       if(filtroTipoLanc==='ent'&&!(Number(l.valor)>0))return false;if(filtroTipoLanc==='sai'&&!(Number(l.valor)<0))return false;
       if(ocultarNeutras&&l.categorias&&l.categorias.grupo==='neutra')return false;
+      if(soNeutras&&!(l.categorias&&l.categorias.grupo==='neutra'))return false; // v2.9.38: botão "ver só as neutras"
       if(!q)return true;
       const cat=(l.categorias&&l.categorias.nome)||'';const cont=(l.contatos&&l.contatos.nome)||'';
       const txt=(l.descricao||'').toLowerCase().includes(q.toLowerCase())||cat.toLowerCase().includes(q.toLowerCase())||cont.toLowerCase().includes(q.toLowerCase());
@@ -2739,17 +2755,18 @@
   // ---- v2.9.7: "VAI ESTORNAR" no extrato → pergunta a loja e já manda para o Banco Caixinha ao confirmar ----
   function impEstornoHTML(r,i){
     if(!CX.carregado||!CX.caixas.length)return ` <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">a estornar${r.lojaEstorno?' → '+r.lojaEstorno:''}</span><div class="mut" style="font-size:11px;margin-top:3px">Para mandar direto para o Banco Caixinha, entre no Caixinha (menu Caixinha) e puxe de novo. Sem isso, entra como A ESTORNAR e você manda depois pelo Lançamentos.</div>`;
-    const v=r.cxDepois?'__depois':(r.cxLoja||'');
-    return ` <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">vai para o Banco Caixinha</span><div style="margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="mut" style="font-size:11.5px">Qual loja deve?</span><select class="qin" tabindex="-1" style="font-size:12px;padding:2px 8px;height:28px;width:auto;${v?'':'border-color:var(--amber)'}" onchange="impEstornoLoja(${i},this.value)">${cxOpcoesLojas('').replace(' selected','').replace(/value="([^"]*)"/g,(m,x)=>x===String(v)?m+' selected':m)}<option value="__depois" ${v==='__depois'?'selected':''}>decidir depois (pelo Lançamentos)</option></select></div>`;}
-  function impEstornoLoja(i,v){const r=IMPORT[i];if(!r)return;r.cxDepois=v==='__depois';r.cxLoja=(v&&v!=='__depois')?v:'';r._mexido=true;_keepY=window.scrollY;render();}
-  function impEstornoPendente(r){return !!(r&&r.estornar&&CX.carregado&&CX.caixas.length&&!r.cxLoja&&!r.cxDepois);}
+    if(r.cxMatch)return ` <span class="catchip" style="font-size:10px;padding:1px 8px;border-color:#b48cff;color:#b48cff">já está no Banco Caixinha (${_remEsc(r.cxMatch.nome)} · ${_remEsc(r.cxDevedor||'')})</span>`;
+    const v=r.cxDepois?'__depois':(r.cxDevedor||'');const ops=cxDevedores();if(v&&v!=='__depois'&&!ops.includes(v))ops.unshift(v);
+    return ` <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">vai para o Banco Caixinha desta loja</span><div style="margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="mut" style="font-size:11.5px">Quem vai devolver?</span><select class="qin" tabindex="-1" style="font-size:12px;padding:2px 8px;height:28px;width:auto;${v?'':'border-color:var(--amber)'}" onchange="impEstornoLoja(${i},this.value)"><option value="">escolha</option>${ops.map(d=>`<option value="${d.replace(/"/g,'&quot;')}" ${d===v?'selected':''}>${d}</option>`).join('')}<option value="__depois" ${v==='__depois'?'selected':''}>decidir depois (pelo Lançamentos)</option></select></div>`;}
+  function impEstornoLoja(i,v){const r=IMPORT[i];if(!r)return;r.cxDepois=v==='__depois';r.cxDevedor=(v&&v!=='__depois')?v:'';if(!r.cxLoja){const k=cxCaixaDaLojaAtual();if(k)r.cxLoja=k.id;}r._mexido=true;_keepY=window.scrollY;render();}
+  function impEstornoPendente(r){return !!(r&&r.estornar&&CX.carregado&&CX.caixas.length&&!r.cxMatch&&!r.cxDevedor&&!r.cxDepois);}
   // cria (ou liga) o empréstimo a estornar no Banco Caixinha — mesma coisa do botão "Mandar pro Banco Caixinha"
   async function impMandarBanco(r,lancId){const c=cxClient();if(!c||!r.cxLoja||!lancId)return 'pulou';
     const valor=Math.abs(Number(r.amt||0)),desc=(String(r.desc||'').split(' · ')[0]||'A ESTORNAR').toUpperCase().slice(0,200),lojaNome=LOJAS.find(x=>x.id===lojaAtual)?.nome.split(' — ')[0]||'';
     const igual=(r.cxMatch&&(CX.contas||[]).find(x=>String(x.id)===String(r.cxMatch.id)))||cxMesmoEmprestimo(r.cxLoja,valor,r.iso,true);
     let contaId=null,ligou=false;
     if(igual){contaId=igual.id;igual._ligadoAgora=true;ligou=true;}
-    else{const {data,error}=await c.from('contas').insert({caixinha_id:r.cxLoja,escopo:'loja',data:r.iso,descricao:desc,contato:'ESCRITÓRIO',obs:'Veio do Fluxo ('+lojaNome+') · extrato · lançado por '+PERFIL.nome,valor,valor_pago:0,status:'estornar',criado_por_nome:'FLUXO · '+PERFIL.nome}).select('id').single();
+    else{const {data,error}=await c.from('contas').insert({caixinha_id:r.cxLoja,escopo:'loja',data:r.iso,descricao:desc,contato:(r.cxDevedor||'ESCRITÓRIO').toUpperCase(),obs:'Veio do Fluxo ('+lojaNome+') · extrato · lançado por '+PERFIL.nome,valor,valor_pago:0,status:'estornar',criado_por_nome:'FLUXO · '+PERFIL.nome}).select('id').single();
       if(error)return 'erro:'+error.message;contaId=data&&data.id;
       if(!contaId){const {data:d2}=await c.from('contas').select('id').eq('caixinha_id',r.cxLoja).eq('data',r.iso).eq('descricao',desc).eq('status','estornar').order('id',{ascending:false}).limit(1);contaId=d2&&d2[0]?d2[0].id:null;}
       if(!contaId)return 'erro:criou no Caixinha mas não achei o número';
@@ -3019,13 +3036,13 @@
       IMPORT.forEach(r=>{if(r.amt>0&&r.grupo!=='ja'&&r.grupo!=='lentes')r.contatoId=contatoEntradaAuto(r.full||r.desc);});
       IMPORT_DEP=[];IMPORT_CX_LOGIN=false;
       try{if(await cxSessao()){IMPORT_CX_LOGIN=true;await cxCarregar(true);}}catch(e){}
-      if(IMPORT.some(r=>r.estornar))IMPORT.forEach(r=>{if(r.estornar&&r.lojaEstorno&&!r.cxLoja){const k=cxCaixaPorNome(r.lojaEstorno);if(k)r.cxLoja=k.id;}});
+      if(IMPORT.some(r=>r.estornar)){const kq=cxCaixaDaLojaAtual();IMPORT.forEach(r=>{if(r.estornar&&!r.cxLoja){if(kq)r.cxLoja=kq.id;if(!r.cxDevedor&&r.lojaEstorno)r.cxDevedor=cxDevedorDaDescricao(r.lojaEstorno)||String(r.lojaEstorno).toUpperCase();}});} // v2.9.37: caixa = esta loja (quem pagou); contato = quem devolve
       if(CX.carregado)IMPORT_DEP=cxCasarDepositos(IMPORT);
       if(CX.carregado&&catEstornarId()){try{const lig=await cxLigadosFluxo();const usados=new Set(lig);const cents=v=>Math.round(Math.abs(Number(v))*100);
         IMPORT.forEach(r=>{if(!(r.amt<0)||r.grupo==='ja'||r.grupo==='lentes'||r.cxLoja)return;
           if(IMPORT.filter(x=>x.amt<0&&x.grupo!=='ja'&&cents(x.amt)===cents(r.amt)).length>1)return; // dois pagamentos iguais no extrato: não adivinha
           const m=cxAchaEmprestimo(r.amt,r.iso,usados);if(!m)return;usados.add(String(m.id));
-          r.estornar=true;r.cxLoja=m.caixinha_id;r.catId=catEstornarId();r.cxMatch={id:m.id,nome:_cxNomeCaixa(m.caixinha_id),data:m.data};r.grupo='regra';r.regra='já está no Banco Caixinha ('+r.cxMatch.nome+')';r.corrigir=false;});}catch(e){}}
+          r.estornar=true;r.cxLoja=m.caixinha_id;r.cxDevedor=String(m.contato||'').toUpperCase();r.catId=catEstornarId();r.cxMatch={id:m.id,nome:_cxNomeCaixa(m.caixinha_id),data:m.data};r.grupo='regra';r.regra='já está no Banco Caixinha ('+r.cxMatch.nome+')';r.corrigir=false;});}catch(e){}}
       if(CX.carregado&&catEstornoRecId()){try{const ligP=new Set(CX._ligP||[]);const cents=v=>Math.round(Math.abs(Number(v))*100);
         IMPORT.forEach(r=>{if(!(r.amt>0)||r.grupo==='ja'||r.grupo==='lentes'||r.grupo==='cartao'||r.grupo==='pix'||r.grupo==='dep')return;
           if(IMPORT.filter(x=>x.amt>0&&x.grupo!=='ja'&&cents(x.amt)===cents(r.amt)).length>1)return;
@@ -3083,7 +3100,7 @@
       ok++;r._lancId=ins&&ins.id;if(r.catId&&!r.resolvido)nAutoCat++;if(r.contatoId)nAutoCt++;await gravarSipag(r,ins&&ins.id);lancadasAgora.push(r);
       if(r.agenda&&ins&&ins.id){try{const {error:ea}=await sb.from('contas_pagar').update({status:'pago',pago_em:r.iso,pago_lancamento_id:ins.id,pago_como:'baixa pelo extrato (importação)'+(r.agenda.juros?` · pago com ${BRL(r.agenda.juros)} de juros`:''),atualizado_em:new Date().toISOString(),atualizado_por:USER.id}).eq('id',r.agenda.id).eq('status','aberto');if(!ea)agBaixas++;}catch(e){}}
       if(r.cxDevolvido&&ins&&ins.id){try{await sb.from('lancamentos').update({ref_externa:'cxp:'+r.cxDevolvido.id+':'+r.cxDevolvido.i}).eq('id',ins.id);}catch(e){}}
-      if(r.estornar&&r.cxLoja&&String(r.catId)===String(catEstornarId())){const st=await impMandarBanco(r,ins&&ins.id);if(st==='criou')cxCriou++;else if(st==='ligou')cxLigou++;else if(st.startsWith('erro'))cxErr=cxErr||st.slice(5);}
+      if(r.estornar&&r.cxLoja&&(r.cxDevedor||r.cxMatch)&&String(r.catId)===String(catEstornarId())){const st=await impMandarBanco(r,ins&&ins.id);if(st==='criou')cxCriou++;else if(st==='ligou')cxLigou++;else if(st.startsWith('erro'))cxErr=cxErr||st.slice(5);}
     }
     // salva o histórico da importação
     try{

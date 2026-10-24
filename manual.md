@@ -136,6 +136,17 @@ Existem **dois empréstimos diferentes**, e cada um mora num lugar:
 
 ### "o que é?" e o Banco Caixinha (v2.9.34)
 
+**Como o Banco Caixinha guarda o empréstimo (v2.9.37):** a **caixa** é a loja de onde saiu o dinheiro (quem emprestou) e o **contato** é **quem vai devolver**. Exemplo: caixa **GV Optical**, contato **DESPESAS DIVERSAS**. É assim que a Heloísa já lança. A janela "Mandar pro Banco Caixinha" pergunta nessa ordem:
+
+1. **Quem vai devolver este dinheiro?** Lista com DESPESAS DIVERSAS, as lojas, CARTÕES, LUCAS… (ou escreva). Se a descrição fala a loja (R7, ROCHA 7), já vem preenchido.
+2. **Banco Caixinha de qual loja?** Já vem a própria loja do extrato.
+
+Na importação, o "VAI ESTORNAR" pergunta **Quem vai devolver?** e vai para o Banco Caixinha da própria loja.
+
+**Não precisa criar "Diversas" no Caixinha:** a Diversas entra como **contato** (DESPESAS DIVERSAS), não como caixa.
+
+**Quando a Diversas já mandou o dinheiro no mesmo dia** (ex.: SALARIO JUAN: a DVL mandou R$ 2.140,34 pra GV e a GV pagou o Juan no mesmo dia), não é empréstimo em aberto: marque a saída como **Transferência entre lojas** no "o que é?". A entrada da DVL já é transferência. A GV fica no zero e o salário é despesa da **Diversas**, dividida entre as empresas.
+
 Em cada lançamento, embaixo da descrição, tem o botãozinho **o que é? ▾**. Ele abre as opções para dizer o que aquela linha é, **sem excluir**:
 
 - **Saída:** Empréstimo (vai estornar) · Transferência entre lojas · Outra categoria.
@@ -283,6 +294,16 @@ Desde a v2.9.20 serve tanto o PDF do internet banking (computador) quanto o do *
 - **Pix e TED sem nome** (ex.: "Pagamento Pix 06.981.180 0001-16"): na primeira vez, alguém escolhe a categoria. O sistema oferece **"🔑 Lembrar sempre: CNPJ 06.981.180/0001-16"** e, da próxima vez, aquele Pix vem classificado sozinho. Funciona também com CPF mascarado (***.502.576-**).
 
 ## Neutras: dinheiro que passa, mas não é venda nem despesa
+
+**Regra para a equipe (v2.9.38):** **neutra não entra em nada**. Não é venda, não é despesa, não mexe no resultado nem na DRE. Fica no Fluxo só para o saldo do banco bater e para **ninguém precisar excluir**. Embaixo da categoria aparece **neutra · não entra no resultado ⓘ**; clicando, abre a explicação. Na lista de categorias, as neutras ficam no fim, marcadas "neutra · não entra no resultado".
+
+- **TRANSFERÊNCIA ENTRE LOJAS:** dinheiro de uma empresa do grupo para outra.
+- **DEPÓSITO DA GAVETA (CAIXINHA):** dinheiro da gaveta depositado no banco (confere sozinho com o Caixinha).
+- **A ESTORNAR / ESTORNO RECEBIDO (BANCO CAIXINHA):** empréstimo que vai voltar e a volta dele (fica ligado ao Banco Caixinha).
+- **Não existe uma "neutra genérica"** de propósito: pôr tudo em neutra seria como excluir (sai do resultado). Na dúvida, pergunte para a Heloísa.
+- **Linha neutra com cor própria (v2.9.40):** fundo azulado, categoria com borda azul tracejada, **valor em cinza** (não conta) e a etiqueta **neutra · não entra no resultado nem no fechamento ⓘ**. O aviso vermelho embaixo da busca saiu: a própria linha já explica.
+- **Ver só as neutras:** no alto da lista de Lançamentos, o botão **neutras (N) · não entram no resultado** mostra só elas, para dar uma olhada e trocar se alguma estiver errada. **ver todos ✕** volta.
+
 
 | Categoria neutra | Quando |
 | --- | --- |
@@ -656,6 +677,10 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 24/10/2026 | 2.9.40 | Linha neutra com cor própria (categoria azul tracejada, valor cinza, etiqueta "não entra no resultado nem no fechamento"); saiu o aviso vermelho embaixo da busca; botão "neutras (N) · não entram no resultado" | Nenhum |
+| 24/10/2026 | 2.9.39 | Aviso fixo em vermelho embaixo da busca de Lançamentos explicando as neutras (não entram no resultado, não exclua) | Nenhum |
+| 24/10/2026 | 2.9.38 | Explicação fixa de "neutra" (etiqueta clicável embaixo da categoria; neutras no fim da lista); botão "ver só as neutras (N)" em Lançamentos para revisar | Nenhum |
+| 24/10/2026 | 2.9.37 | Banco Caixinha do jeito da Heloísa: caixa = loja de onde saiu o dinheiro, contato = quem vai devolver (DESPESAS DIVERSAS, ROCHA 7, CARTÕES…). Janela e importação perguntam "Quem vai devolver?"; tirada a pergunta confusa "Quem vai estornar / referência" | Nenhum |
 | 24/10/2026 | 2.9.36 | Nas saídas, o campo de observação foi para baixo do Contato e se chama "+ contato sem cadastro" (nome de quem recebeu, sem cadastrar); nas entradas continua "+ obs" | Nenhum |
 | 24/10/2026 | 2.9.35 | GV: loja pagando o laboratório entra como VENDA PIX (VENDA OTICA ROCHA arquivada); na Conferência de Pix da GV esse dinheiro das lojas não conta | Nenhum |
 | 24/10/2026 | 2.9.34 | Botão "o que é?" em cada lançamento (empréstimo, devolução, depósito, transferência, venda Pix, loja pagando o laboratório) no lugar dos botões soltos; liga sozinho ao empréstimo e à devolução que a Heloísa já marcou no Caixinha (mesmo valor), também no extrato que entra | Nenhum |
