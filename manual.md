@@ -147,10 +147,14 @@ Existem **dois empréstimos diferentes**, e cada um mora num lugar:
 
 **Como o Banco Caixinha guarda o empréstimo (v2.9.37):** a **caixa** é a loja de onde saiu o dinheiro (quem emprestou) e o **contato** é **quem vai devolver**. Exemplo: caixa **GV Optical**, contato **DESPESAS DIVERSAS**. É assim que a Heloísa já lança. A janela "Mandar pro Banco Caixinha" pergunta nessa ordem:
 
-1. **Quem vai devolver este dinheiro?** Lista com DESPESAS DIVERSAS, as lojas, CARTÕES, LUCAS… (ou escreva). Se a descrição fala a loja (R7, ROCHA 7), já vem preenchido.
+1. **De quem é essa despesa? (quem vai devolver o dinheiro)** (v2.9.48) Lista organizada em três partes: **Conta dividida** (DESPESAS DIVERSAS), **Outra loja** (Rocha 1 a 11 e GV Optical, menos a própria) e **Outros** (CARTÕES, LUCAS, FREEFORME, EMPRÉSTIMO), mais "Outro (escrever)…". Já vem escolhido: a loja que a descrição fala (R7, ROCHA 7); fatura de cartão (Nubank, Itaú, Digio…) → CARTÕES; o resto → DESPESAS DIVERSAS. Exemplo: a Rocha 1 pagou panfletos da conta dividida → DESPESAS DIVERSAS.
 2. **Banco Caixinha de qual loja?** Já vem a própria loja do extrato.
 
 Na importação, o "VAI ESTORNAR" pergunta **Quem vai devolver?** e vai para o Banco Caixinha da própria loja.
+
+**Liga sozinho (v2.9.50):** ao abrir Lançamentos (com o Caixinha entrado no computador), o Fluxo liga sozinho o que é certeza: saída que já está como **A ESTORNAR** com um único empréstimo igual no Banco Caixinha, e entrada neutra cuja **devolução a Heloísa já marcou** lá (mesmo valor, até 5 dias) — essa vira ESTORNO RECEBIDO. Só liga; não cria nada no Caixinha. O que não for certeza continua com o botão roxo.
+
+**Segurança (v2.9.49):** o **Banco Caixinha é sempre o da loja deste extrato** (de onde saiu o dinheiro) e não dá para trocar. **Criar empréstimo novo** e **marcar devolução** no Banco Caixinha é só para o **Lucas e a Heloísa**, e pede confirmação com o resumo (de onde saiu, quem devolve, valor). A equipe usa o botão roxo para **ligar** ao que a Heloísa já lançou; se ainda não existe, o "Vai estornar" só marca **A ESTORNAR** e a linha fica com "a Heloísa manda pro Banco Caixinha".
 
 **Caixinha DIVERSAS (tipo conta, v2.9.42):** a caixinha DIVERSAS criada no Caixinha aparece nas listas do Banco Caixinha (marcada "(conta)") para empréstimos que não são de loja. Ela não tem caixa: não entra no Caixinha (espelho), na gaveta nem nos depósitos.
 
@@ -321,6 +325,7 @@ Desde a v2.9.20 serve tanto o PDF do internet banking (computador) quanto o do *
 - **A ESTORNAR / ESTORNO RECEBIDO (BANCO CAIXINHA):** empréstimo que vai voltar e a volta dele (fica ligado ao Banco Caixinha).
 - **Não existe uma "neutra genérica"** de propósito: pôr tudo em neutra seria como excluir (sai do resultado). Na dúvida, pergunte para a Heloísa.
 - **Linha neutra com cor própria (v2.9.40):** fundo azulado, categoria com borda azul tracejada e a etiqueta **neutra · não entra no resultado nem no fechamento ⓘ**. O aviso vermelho embaixo da busca saiu: a própria linha já explica.
+- **Entradas e Saídas de verdade (v2.9.47):** no alto da lista, **Entradas** e **Saídas** mostram o valor **sem as neutras** (o que de fato entrou e saiu da empresa, como no Dashboard). Entre parênteses fica o total do banco, igual ao extrato. O chip **Neutras** mostra quanto entrou e saiu de neutro. O **Saldo** continua sendo o do banco.
 - **Ver só as neutras (v2.9.44):** ao lado de Entradas e Saídas, no alto da lista, tem **Neutras: N** (em azul). Um clique mostra só as neutras, por data; clicando de novo (✕) volta tudo. O botão "esconder as neutras" saiu: as neutras sempre aparecem, em azul mais forte.
 
 
@@ -698,6 +703,10 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 24/10/2026 | 2.9.50 | Liga sozinho ao Banco Caixinha: A ESTORNAR com empréstimo igual e entrada com devolução já marcada pela Heloísa (só liga, não cria) | Nenhum |
+| 24/10/2026 | 2.9.49 | Banco Caixinha travado na loja do extrato; criar empréstimo novo e marcar devolução só o gestor, com confirmação; equipe só liga ao que já existe (A ESTORNAR fica esperando a Heloísa) | Nenhum |
+| 24/10/2026 | 2.9.48 | "Quem vai devolver" virou lista organizada (Conta dividida · Outra loja · Outros · Outro), já vem sugerido (loja da descrição, CARTÕES ou DESPESAS DIVERSAS); linha que já está como A ESTORNAR mas sem ligação também mostra o roxo "Já está no Banco Caixinha: ligar" quando a Heloísa já anotou | Nenhum |
+| 24/10/2026 | 2.9.47 | Lançamentos: Entradas e Saídas sem as neutras (de verdade), com o total do banco entre parênteses; Neutras mostra quanto entrou e saiu | Nenhum |
 | 24/10/2026 | 2.9.46 | Saída do Caixinha entra sozinha no Fluxo (conta Caixinha da loja, linha amarelo-ouro "💵 do Caixinha · não soma no banco"), marca NO FINANCEIRO lá; Entradas/Saídas/Saldo contam só o banco; chip "Caixinha: N · R$ (não soma no banco)" | Nenhum (as saídas de outubro entram na primeira vez que abrir) |
 | 24/10/2026 | 2.9.45 | Lixeira (🗑 e marcar várias) só para o gestor (Lucas e Heloísa); a equipe usa o "o que é?" | Nenhum (a trava no banco pede autorização) |
 | 24/10/2026 | 2.9.44 | Azul das neutras mais forte; botão "Neutras: N" ao lado de Entradas/Saídas mostra só as neutras (saiu o "esconder as neutras"); pergunta antes de tirar um conferido | Nenhum |
