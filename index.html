@@ -280,7 +280,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.19', APP_DATA='23/10/2026';
+  const APP_VERSAO='2.9.20', APP_DATA='24/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -2443,11 +2443,12 @@
     const conta=((tudo.match(/Conta:?\s*[\d.\-]+\s*\/\s*([^\n]+)/i)||[])[1]||'').trim(),contaNum=((tudo.match(/Conta:?\s*([\d.\-]+)\s*\//i)||[])[1]||'').trim();
     const tx=[];let fim=false;
     const ehCabecalho=t=>/^Data\b.*Hist[óo]rico|SISTEMA DE COOPERATIVAS|PLATAFORMA DE SERVI|EXTRATO DE CONTA|HIST[ÓO]RICO DE MOVIMENTA|^Cooperativa:?|^Conta:?|^Per[ií]odo|^P[áa]gina\b|OUVIDORIA|^SAC\b|^\d+\s*\/\s*\d+$/i.test(t);
-    pags.forEach(linhas=>{if(fim)return;let histX=null,cur=null;
+    let cur=null; // v2.9.20: a linha pode continuar na página seguinte (PDF do aplicativo)
+    pags.forEach(linhas=>{if(fim)return;let histX=null;
       const h=linhas.find(l=>/^Data\b/.test(l.txt)&&/Hist[óo]rico/.test(l.txt));if(h){const it=h.itens.find(i=>/Hist[óo]rico/.test(i.s));if(it)histX=it.x;}
       for(const l of linhas){const t=l.txt;
         if(/^RESUMO\b/i.test(t)){fim=true;break;}
-        const m=t.match(/^(\d\d)\/(\d\d)\s+(.*?)\s*R\$\s*([\d.]+,\d\d)\s*([CD])\s*\*?$/);
+        const m=t.match(/^(\d\d)\/(\d\d)\s+(.*?)\s*(?:R\$\s*)?([\d.]+,\d\d)\s*([CD])\s*\*?$/);
         if(m){cur=null;if(/SALDO/i.test(m[3]))continue;
           let hist=m[3];
           if(histX!=null){const its=l.itens.filter(i=>i.x>=histX-3&&!/R\$|^\s*[\d.]+,\d\d\s*[CD]?\s*$/.test(i.s));if(its.length)hist=its.map(i=>i.s).join(' ').replace(/\s+/g,' ').trim();}
@@ -2457,6 +2458,7 @@
           cur={dt,v:Number(m[4].replace(/\./g,'').replace(',','.'))*(m[5]==='C'?1:-1),hist,doc:(docT&&!/^\d+$/.test(docT)&&!/^pix$/i.test(docT))?docT:'',comp:[]};tx.push(cur);continue;}
         if(!cur)continue;
         if(ehCabecalho(t)||/^\d\d\/\d\d\b/.test(t)){cur=null;continue;}
+        const md=t.match(/^DOC\.?:\s*(.*)$/i);if(md){if(!cur.doc&&md[1]&&!/^pix$/i.test(md[1].trim())&&!/^\d+$/.test(md[1].trim()))cur.doc=md[1].trim();continue;} // "DOC.: Pix" / "DOC.: 17142454" (modelo do aplicativo)
         cur.comp.push(t);}
     });
     if(!tx.length)throw new Error('não achei lançamentos no PDF');

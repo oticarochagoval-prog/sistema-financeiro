@@ -189,6 +189,8 @@ O lançamento do Sicoob volta a ser **pelo extrato**. Ninguém precisa redigitar
 
 ### Extrato em PDF (v2.8.3)
 
+Desde a v2.9.20 serve tanto o PDF do internet banking (computador) quanto o do **aplicativo do Sicoob no celular** (o que vem pelo WhatsApp).
+
 - Em **Importar extrato** dá para escolher o **OFX ou o PDF** do Sicoob. O PDF traz o texto inteiro de cada linha; o OFX corta em 32 letras.
 - Exemplo: no OFX chega só "FAV.: OTICA ROCHA DVL PRODUTOS O". No PDF chega "FAV.: OTICA ROCHA DVL PRODUTOS OPTICOS L **SALARIO HELOISA**", "… **CEMIG ESCRITÓRIO**", "… **VIVO CELULARES**".
 - **Não duplica:** o Fluxo dá a cada linha do PDF o mesmo código que o Sicoob usa no OFX. Linha que já entrou por OFX aparece como "já lançada", e dá para importar o mesmo período nos dois formatos.
@@ -575,6 +577,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 24/10/2026 | 2.9.20 | Importar aceita também o PDF do extrato tirado pelo aplicativo do Sicoob no celular (valor sem "R$", DOC.: em linha separada, linha que continua na página seguinte) | Nenhum |
 | 23/10/2026 | 2.9.19 | Backup e restaurar (só gestor): cópia de hora em hora pelo banco, antes de cada importação, baixar e restaurar com senha | Rodar o SQL "backup parte 2" no sistema-financeiro (a tabela o Claude já criou) |
 | 23/10/2026 | 2.9.18 | Importar: parcela escrita no texto do banco (ex.: 2 3) cria sozinha as próximas parcelas na Agenda | Nenhum |
 | 23/10/2026 | 2.9.17 | Por lente usa as últimas lentes digitadas; boleto parcelado fica com a mesma divisão em todas as parcelas; recorrente por lente não fica mais esperando o mês | Nenhum |
