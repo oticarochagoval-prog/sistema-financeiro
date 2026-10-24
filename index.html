@@ -280,7 +280,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.20', APP_DATA='24/10/2026';
+  const APP_VERSAO='2.9.23', APP_DATA='24/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1204,7 +1204,7 @@
   function nomeDe(uid){return PERFIS[uid]||'';}
   async function carregarContas(){const {data}=await sb.from('contas').select('*').eq('loja_id',lojaAtual).eq('arquivada',false).order('nome');CONTAS=data||[];}
   async function carregarLancamentos(){
-    const {data}=await sb.from('lancamentos').select('*, categorias(nome,grupo), contatos(nome,tipo), contas(nome)').eq('loja_id',lojaAtual).order('data',{ascending:true}).limit(2000);
+    const {data}=await sb.from('lancamentos').select('*, categorias(nome,grupo), contatos(nome,tipo), contas(nome)').eq('loja_id',lojaAtual).order('data',{ascending:true}).order('id',{ascending:true}).limit(2000); // v2.9.22: dentro do dia, na mesma ordem do extrato
     LANC=data||[];
   }
   let LANC_ANO=[];
@@ -1516,7 +1516,7 @@
       const ehCx=contaEhCaixinha(l.conta_id);const quem=nomeDe(l.criado_por);
       const etq=`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">${ehCx?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--gold);color:var(--gold)">💵 caixinha antiga</span>':''}${l.origem==='lentes'||/^fzl?:/.test(l.ref_externa||'')?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)" title="Veio da aba Lentes do Caixinha. Para corrigir valor ou data, corrija lá.">🔗 Lentes</span>'+(podeEditar()&&/^fzl?:/.test(l.ref_externa||'')?`<button class="catchip" onclick="lentesNaoPago(${l.id})" style="font-size:10px;padding:1px 7px;cursor:pointer;color:var(--muted)" title="Este boleto não foi pago: volta a previsto no Caixinha e sai daqui">✕ não foi pago</button>`:''):''}<span class="catchip" style="font-size:10px;padding:1px 7px">${l.origem==='ofx'?'OFX':(l.origem==='lentes'?'Caixinha':'manual')}${quem?' · '+quem:''}</span>${l.anexo_url?`<a class="catchip" href="${l.anexo_url}" target="_blank" rel="noopener" style="font-size:10px;padding:1px 7px;text-decoration:none">📎 boleto</a>`:''}${ponteHTML(l)}</div>`;
       return `<tr class="${neutra?'neutra':''}" style="${ehCx?'background:rgba(232,196,104,.06)':''}">
-        <td class="mut" style="white-space:nowrap">${editavel?`<input type="checkbox" style="margin-right:6px;vertical-align:middle" ${LANC_SEL.has(l.id)?'checked':''} onclick="lancSel(${l.id},this.checked)" title="Marcar para mandar para a Lixeira junto com outras">`:''}${isoParaBR(l.data).slice(0,5)}</td>
+        <td class="mut" style="white-space:nowrap">${editavel?`<input type="checkbox" style="margin-right:6px;vertical-align:middle" ${LANC_SEL.has(l.id)?'checked':''} onclick="lancSel(${l.id},this.checked)" title="Marcar para mandar para a Lixeira junto com outras">`:''}${isoParaBR(l.data).slice(0,5)}${(()=>{const ok=lancPronto(l);return `<span title="${ok?'Pronto':'Falta resolver: categoria, contato do funcionário ou mandar para o Banco Caixinha'}" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:7px;vertical-align:middle;background:${ok?'var(--green)':'var(--red)'}"></span>`;})()}</td>
         <td style="min-width:140px">${editavel?`<input class="inlinedesc maiusc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" onchange="mudarDescLanc(${l.id},this.value)" title="Clique pra editar">`:l.descricao}${l.parcela?`<span class="parc">${l.parcela}</span>`:''}${etq}</td>
         <td>${selCat}</td>
         <td>${selCont}</td>
@@ -2418,6 +2418,26 @@
         rows.push({loja_id:lojaAtual,descricao:pc.base,valor:v,vencimento:`${m}-${String(Math.min(Number(r.iso.slice(8,10)),ult)).padStart(2,'0')}`,categoria_id:r.catId?Number(r.catId):null,contato_id:r.contatoId?Number(r.contatoId):null,parcela:`${k}/${pc.b}`,status:'aberto'});}
       if(rows.length){const {error}=await sb.from('contas_pagar').insert(rows);if(!error)n+=rows.length;}}
     return n;}
+  // ---- v2.9.21: transferência de/para empresa do grupo → a descrição fica só com o motivo + sigla (tira a razão social de 34 letras) ----
+  // "FAV.: OTICA ROCHA DVL PRODUTOS OPTICOS L MEMORIA RAN LASER 3 10" → "MEMORIA RAN LASER 3 10 · DVL"
+  function descLimpaGrupo(nome){const m=String(nome||'').match(/^(FAV|REM)\.:\s?(.{34})\s+(\S.*)$/i);if(!m)return '';
+    const emp=normDesc(m[2]);if(!/^(OTICAS? ROCHA|ROCHA PRODUTOS|GV OPTICAL|FZ COMERCIO)/.test(emp))return '';
+    let sig='';if(/GV OPTICAL/.test(emp))sig='GV';else if(/^FZ /.test(emp))sig='FZ';else{const w=emp.replace(/^OTICAS? ROCHA\s*/,'').split(' ')[0];
+      const r=empresaDoGrupo(m[2]);sig=(w&&!/^(COMERCIO|PRODUTOS)$/.test(w))?w:(r?r.replace('Rocha ','R'):'ROCHA');}
+    return `${m[3].trim()} · ${m[1].toUpperCase()==='FAV'?'para':'de'} ${sig}`;}
+  // v2.9.22: Pix → tira o "Pagamento Pix" e o CNPJ/CPF: "Pagamento Pix 52.954.209 0001-98 SAAE RER VENC SETEMBRO" → "SAAE RER VENC SETEMBRO · Pix"
+  function descLimpaPix(nome){const m=String(nome||'').match(/^(Pagamento|Recebimento)\s+Pix\s+(.*)$/i);if(!m)return '';
+    const r=m[2].replace(/\*{3}\.?\d{3}\.?\d{3}-?\*{2}/g,' ').replace(/\b\d{2}\.?\d{3}\.?\d{3}(?:[\/\s]?\d{4}-?\d{2})?\b/g,' ').replace(/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g,' ').replace(/\s+/g,' ').trim();
+    return r.length>=3?`${r} · Pix`:`${m[2].trim()} · Pix`;}
+  // o resto: tira o jargão do banco no fim ("DÉB.TIT.COMPE EFETIVADO" → "boleto"); linha de cartão fica como veio (a conciliação usa)
+  function _tiraDocs(x){return String(x||'').replace(/\*{3}\.?\d{3}\.?\d{3}-?\*{2}/g,' ').replace(/\b\d{2}\.?\d{3}\.?\d{3}(?:[\/\s]?\d{4}-?\d{2})?\b/g,' ').replace(/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g,' ').replace(/\s+/g,' ').trim();}
+  function descCurtaBanco(nome,memo){let n=String(nome||'').trim();const me=String(memo||'').trim();if(!n||!me)return '';if(CARTAO_RE.test(n+' '+me))return '';
+    const tp=n.match(/Transfer[eê]ncia Pix\s+(.*)$/i);let pix=false;
+    if(tp){n=_tiraDocs(tp[1]).replace(/^OTICAS? ROCHA(?: [A-Z]+)*? (?:COMERCIO VAREJISTA|PRODUTOS OPTICOS)(?: LTDA?| L)?\s*/i,'');pix=true;}
+    else{const nm=n.match(/^NOME:\s*(.*?)\s*CPF/i);if(nm)n=nm[1];n=_tiraDocs(n.replace(/^(REM|FAV)\.:\s*/i,''));}
+    if(n.length<3)return '';if(pix)return `${n} · Pix`;
+    const u=normDesc(me);const c=/PGTO ?BOLETO|PAGAMENTO DE BOLETO|TIT ?COMPE|COBRANCA|TITULO/.test(u)?'boleto':/\bPIX\b/.test(u)?'Pix':/TRANSF|TR CT|\bTED\b|\bDOC\b/.test(u)?'transf.':/DEP/.test(u)?'depósito':/CONV|SEGURO/.test(u)?'débito automático':'';
+    return c?`${n} · ${c}`:'';}
   function catFuncionarios(){return catPorNome('Funcionários')||catsAtivas().find(c=>/^FUNCIONARIOS$/.test(normDesc(c.nome)))||null;}
   function contatoGV(){const cs=contatosAtivos();return cs.find(c=>/^GV LENTES$/.test(normDesc(c.nome)))||cs.find(c=>/^GV OPTICAL$/.test(normDesc(c.nome)))||cs.find(c=>/^GV\b/.test(normDesc(c.nome)))||null;}
   function catLentes(){return catPorNome('Lentes/Laboratório')||catsAtivas().find(c=>/^LENTES ?LABORATORIO$/.test(normDesc(c.nome)))||null;}
@@ -2744,7 +2764,7 @@
       const catCartao=catsAtivas().find(c=>c.nome==='Cartão'),cPix=catPorNome(CAT_PIX),cDep=catPorNome(CAT_DEPGAV),cTr=catTransf();
       IMP_MARC={modo:'todas',crit:[]};IMPORT=trans.map(t=>{
         const full=[t.memo,t.name].filter(Boolean).join(' ');
-        const descBanco=[...new Set([t.name,t.memo].filter(Boolean).map(x=>x.trim()))].join(' · ');
+        const descBanco=descLimpaGrupo(t.name)||descLimpaPix(t.name)||descCurtaBanco(t.name,t.memo)||[...new Set([t.name,t.memo].filter(Boolean).map(x=>x.trim()))].join(' · ');
         const item={iso:t.iso,amt:t.amt,fitid:t.fitid,desc:descBanco||t.desc||t.memo,full};
         item.sipag=sipagInfo(full,t.amt);
         // 1) já está lançado? mesmo código do banco, ou digitado à mão com mesma data e mesmo valor
@@ -2763,6 +2783,8 @@
         if(t.amt>0){
           if(CARTAO_RE.test(full)){item.grupo='cartao';item.catId=catCartao?catCartao.id:'';return item;}
           // v2.9.5: loja do grupo → transferência; Pix do sócio (Lucas) → confira (empréstimo, não é venda); Pix de cliente (inclusive "TRANSF.RECEBIDA - PIX SICOOB") → Pix
+          // v2.9.22: TED da Stone (CRÉD.TED-STR) vem com o nome da PRÓPRIA loja → é cartão, não transferência
+          {const Lh=LOJAS.find(l=>l.id===lojaAtual),chh=Lh?cxChaveLoja(Lh.nome):'';if(/TED-STR|TED STR/i.test(full)&&/^r\d+$/.test(chh)&&empresaDoGrupo(full)==='Rocha '+chh.slice(1)){item.grupo='cartao';item.catId=catCartao?catCartao.id:'';item.stone=true;item.desc='STONE · depósito das vendas no cartão';return item;}}
           if(/OTICA ROCHA|ROCHA COMERCIO|GV OPTICAL/i.test(full)||empresaDoGrupo(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';return item;}
           if(/LUCAS GOMES ROCH/i.test(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;item.socio=true;return item;}
           if(/PIX/i.test(full)){item.grupo='pix';const cv=t.iso>=PIX_VENDA_DESDE?(catPorNome(CAT_PIX_VENDA)||cPix):cPix;item.catId=cv?cv.id:'';return item;}
@@ -2791,7 +2813,7 @@
           item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;item.paraLoja=grupoEmp;item.complemento=comp;return item;}
         // (v2.9.7) favorecido que não é do grupo (fornecedor, pessoa): segue as palavras-chave como qualquer pagamento
         // "ESTORNAD" = "VAI ESTORNAR" cortado (o Pix só guarda poucas letras da mensagem)
-        if(/\bESTORNAD\b/.test(normDesc(full))&&catEstornarId()){item.catId=catEstornarId();item.estornar=true;item.lojaEstorno=lojaDaDescricao(full);item.grupo='falta';item.regra='ESTORNAR';return item;}
+        if(/\bESTORNA(D|R)\b/.test(normDesc(full))&&catEstornarId()){item.catId=catEstornarId();item.estornar=true;item.lojaEstorno=lojaDaDescricao(full);item.grupo='falta';item.regra='ESTORNAR';return item;}
         const rp=aplicarRegrasP(full,lojaAtual);
         if(rp&&rp.categoria_id){item.catId=rp.categoria_id;item.contatoId=rp.contato_id||null;item.regra=rp.palavra;item.grupo='regra';
           if(rp.categoria_id===catEstornarId()){item.estornar=true;item.lojaEstorno=lojaDaDescricao(full);item.grupo='falta';}

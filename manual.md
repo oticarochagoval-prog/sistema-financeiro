@@ -577,6 +577,9 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 24/10/2026 | 2.9.23 | Lançamentos: bolinha depois da data em cada linha, verde = pronto, vermelha = falta resolver (mesma regra dos dias prontos lá em cima) | Nenhum |
+| 24/10/2026 | 2.9.22 | Descrição curta no Importar: Pix sem "Pagamento Pix" e sem CNPJ/CPF (ex.: "SAAE RER VENC SETEMBRO · Pix"), jargão do banco vira "boleto", "Pix", "transf.", "depósito"; Lançamentos na mesma ordem do extrato dentro do dia; TED da Stone com o nome da própria loja entra como Cartão (antes ia como transferência) | Nenhum |
+| 24/10/2026 | 2.9.21 | Transferência de/para empresa do grupo entra só com o motivo e a sigla (ex.: "MEMORIA RAN LASER 3 10 · para DVL"), sem a razão social; "ESTORNAR" no texto (mesmo sem o VAI) vai para A ESTORNAR antes da palavra do fornecedor | Nenhum |
 | 24/10/2026 | 2.9.20 | Importar aceita também o PDF do extrato tirado pelo aplicativo do Sicoob no celular (valor sem "R$", DOC.: em linha separada, linha que continua na página seguinte) | Nenhum |
 | 23/10/2026 | 2.9.19 | Backup e restaurar (só gestor): cópia de hora em hora pelo banco, antes de cada importação, baixar e restaurar com senha | Rodar o SQL "backup parte 2" no sistema-financeiro (a tabela o Claude já criou) |
 | 23/10/2026 | 2.9.18 | Importar: parcela escrita no texto do banco (ex.: 2 3) cria sozinha as próximas parcelas na Agenda | Nenhum |
