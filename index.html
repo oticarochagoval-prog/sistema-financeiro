@@ -143,8 +143,8 @@
   thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:11px 13px;border-bottom:1px solid var(--line);font-weight:700}
   tbody td{padding:11px 13px;border-bottom:1px solid var(--line);font-size:13px}
   tbody tr:hover{background:var(--panel-2)}
-  tbody tr.neutra{background:rgba(125,162,255,.06)}
-  tbody tr.neutra td.amt{color:var(--muted)!important;font-weight:600} tbody tr.neutra .combo.neutracat{border-color:var(--blue);color:var(--blue);border-style:dashed} /* v2.9.40: neutra com cor própria; valor cinza = não conta */
+  tbody tr.neutra{background:rgba(125,162,255,.15)}
+  tbody tr.neutra .combo.neutracat{border:1.5px solid var(--blue);color:var(--blue);background:rgba(125,162,255,.16);font-weight:700} /* v2.9.40: neutra com cor própria · v2.9.43: valor continua vermelho (saída) / verde (entrada) */
   .amt{font-variant-numeric:tabular-nums;font-weight:650;text-align:right}
   .amt.green{color:var(--green)}.amt.red{color:var(--red)}.amt.blue{color:var(--blue)}
   .catchip{font-size:11.5px;background:var(--chip);padding:3px 11px;border-radius:20px;border:1px solid var(--line)}
@@ -274,7 +274,8 @@
   let page='visao', tipo='des', q='', busy=false;
   let filtroDia=''; // '' = todos os dias; senão 'YYYY-MM-DD'
   let soNeutras=false;
-  let ocultarNeutras=false;try{ocultarNeutras=localStorage.getItem('fluxo_ocultar_neutras')==='1';}catch(e){}
+  let ocultarNeutras=false; // v2.9.44: o botão "esconder as neutras" saiu; neutras sempre aparecem (filtro "Neutras" mostra só elas)
+  try{localStorage.removeItem('fluxo_ocultar_neutras');}catch(e){}
   let filtroTipoLanc=''; // '' · 'ent' (só entradas) · 'sai' (só saídas)
   let filtroConta=''; // '' = todas · 'banco' · 'caixinha' (lançamentos antigos da aba Caixinha)
 
@@ -282,7 +283,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.42', APP_DATA='24/10/2026';
+  const APP_VERSAO='2.9.46', APP_DATA='24/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1415,6 +1416,7 @@
   function abrirComboContImport(el,i){_abrirCombo(el,_comboItemsCont(),v=>{IMPORT[i].contatoId=v||null;IMPORT[i].corrigir=false;IMPORT[i]._mexido=true;_keepY=window.scrollY;render();});}
   function podeEditar(){return ['dono','operador','lancador'].includes(PERFIL.papel);}
   function podeExcluir(){return ['dono','operador'].includes(PERFIL.papel);} // excluir, restaurar, fechar mês, corrigir saldo do mês
+  function podeLixeira(){return PERFIL.papel==='dono';} // v2.9.45: mandar lançamento para a Lixeira só o gestor (Lucas e Heloísa); a equipe usa "o que é?" e as neutras
   function ehDono(){return PERFIL.papel==='dono';} // contas, saldo inicial, reabrir mês
   const PAPEL_NOME={dono:'Gestor (tudo)',operador:'Operador (tudo menos contas e reabrir mês)',lancador:'Lançador (lança e corrige, não exclui)',contador:'Contador (só olha)'};
   // contato só é obrigatório quando a categoria for "Funcionários"
@@ -1422,7 +1424,8 @@
   // e (se for do Banco Caixinha) já foi mandado/marcado lá
   // v2.9.24: verde = conferido · amarela = classificado, falta conferir · vermelha = falta resolver
   function lancStatus(l){if(!lancPronto(l))return 'r';return l.conferido_por?'ok':'y';}
-  async function lancConferir(id,on){const l=LANC.find(x=>x.id===id);if(!l)return;const up=on?{conferido_por:PERFIL.nome,conferido_em:new Date().toISOString()}:{conferido_por:null,conferido_em:null};
+  async function lancConferir(id,on){const l=LANC.find(x=>x.id===id);if(!l)return;
+    if(!on&&l.conferido_por&&!confirm(`Tirar o conferido deste lançamento?\n\n${l.descricao||''} · ${BRL(Math.abs(Number(l.valor)||0))}\nConferido por ${l.conferido_por}${l.conferido_em?' em '+new Date(l.conferido_em).toLocaleDateString('pt-BR'):''}.`)){lancSoAtualizar();return;} // v2.9.44: não desmarca sem quererconst up=on?{conferido_por:PERFIL.nome,conferido_em:new Date().toISOString()}:{conferido_por:null,conferido_em:null};
     const {error}=await sb.from('lancamentos').update(up).eq('id',id);if(error){toast(/conferido/i.test(error.message||'')?'Falta a coluna de conferido no banco (SQL da v2.9.24).':'Não salvou: '+error.message,'erro');filtrarLanc(q);return;}
     Object.assign(l,up);lancSoAtualizar();}
   async function lancConferirDia(){if(!filtroDia)return;const ls=LANC.filter(l=>l.data===filtroDia&&lancPronto(l)&&!l.conferido_por&&!contaEhCaixinha(l.conta_id));if(!ls.length){toast('Nada amarelo neste dia.','ok');return;}
@@ -1530,7 +1533,7 @@
       const val=qn&&Math.abs(l.valor).toFixed(2).includes(qn);return txt||val;
     });
     // soma dos lançamentos visíveis (entradas e saídas)
-    let somaE=0,somaS=0;rows.forEach(l=>{if(l.valor>0)somaE+=Number(l.valor);else somaS+=Math.abs(Number(l.valor));});
+    let somaE=0,somaS=0;rows.forEach(l=>{if(contaEhCaixinha(l.conta_id)&&filtroConta!=='caixinha')return; /* v2.9.46: Caixinha não soma com o banco */ if(l.valor>0)somaE+=Number(l.valor);else somaS+=Math.abs(Number(l.valor));});
     // painel de saldo (tipo extrato): saldo inicial do Sicoob + movimento = saldo atual
     const contaBanco=CONTAS.find(c=>/sicoob/i.test(c.nome))||CONTAS.find(c=>!/caixinha/i.test(c.nome));
     let saldoBanco='';
@@ -1644,41 +1647,41 @@
       if(editavel&&!_ehCxb&&!_ehLentes&&!contaEhCaixinha(l.conta_id))vaiEst+=`<button tabindex="-1" class="catchip" onclick="lancOQueE(this,${l.id})" title="Escolher o que é este lançamento (empréstimo, devolução, depósito, transferência, venda) sem excluir" style="cursor:pointer;font-size:10.5px;padding:2px 9px;color:var(--muted)">o que é? ▾</button>`;
       // v2.9.36: nas saídas o campo fica embaixo do CONTATO, como "contato sem cadastro" (ex.: GABRIEL, que já saiu); nas entradas continua "+ obs" embaixo da categoria
       const obsLinha=editavel?`<div style="margin-top:3px"><span tabindex="-1" onclick="editarObsLanc(${l.id})" title="${saida?'Nome de quem recebeu, sem precisar cadastrar contato (ex.: funcionário que já saiu, quem fez a panfletagem)':'Observação deste lançamento'}" style="cursor:pointer;font-size:11px;color:var(--muted)">${obsTxt?'📝 '+obsTxt:(saida?'+ contato sem cadastro':'+ obs')}</span></div>`:(obsTxt?`<div class="mut" style="font-size:11px;margin-top:3px">📝 ${obsTxt}</div>`:'');
-      const selCat=(editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${neutra?'neutracat':''}" style="min-width:120px" onclick="abrirComboCatLanc(this,${l.id})"><span>${cat.nome||'⚠ categoria'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`)+(neutra?`<div style="margin-top:3px"><span tabindex="-1" onclick="explicaNeutra()" title="Não entra no resultado. Clique para ver o que é neutra." style="cursor:pointer;font-size:10.5px;color:var(--blue);border:1px solid rgba(125,162,255,.5);border-radius:10px;padding:0 7px">neutra · não entra no resultado nem no fechamento ⓘ</span></div>`:'')+(saida?'':obsLinha);
+      const selCat=(editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${neutra?'neutracat':''}" style="min-width:120px" onclick="abrirComboCatLanc(this,${l.id})"><span>${cat.nome||'⚠ categoria'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`)+(neutra?`<div style="margin-top:3px"><span tabindex="-1" onclick="explicaNeutra()" title="Não entra no resultado. Clique para ver o que é neutra." style="cursor:pointer;font-size:10.5px;font-weight:700;color:var(--blue);background:rgba(125,162,255,.16);border:1px solid var(--blue);border-radius:10px;padding:0 7px">neutra · não entra no resultado nem no fechamento ⓘ</span></div>`:'')+(saida?'':obsLinha);
       // seletor de contato inline (vermelho se saída sem contato)
-      const faltaContato=saida&&!l.contato_id&&!obsTxt&&!neutra;
+      const faltaContato=saida&&!l.contato_id&&!obsTxt&&!neutra&&!String(l.ref_externa||'').startsWith('cxs:'); // v2.9.46: linha do Caixinha já tem cor própria
       const selCont=!saida?(contatoEntradaVale(cont.nome)?`<span class="mut" style="font-size:12px">${cont.nome}</span>`:''):editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(obsTxt?`<span class="mut" title="sem contato cadastrado — vale o nome escrito embaixo">sem cadastro</span>`:(saida?'⚠ contato':'— contato'))}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>${obsLinha}`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—')+obsLinha;
       // seletor de conta inline
       // conta: sempre Sicoob (banco), não precisa mostrar/editar na lista
       const ehCx=contaEhCaixinha(l.conta_id);const quem=nomeDe(l.criado_por)||(l.origem==='ofx'&&!l.criado_por&&l.fitid?'AUTOMÁTICO':'');
-      const etq=`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">${ehCx?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--gold);color:var(--gold)">💵 caixinha antiga</span>':''}${l.origem==='lentes'||/^fzl?:/.test(l.ref_externa||'')?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)" title="Veio da aba Lentes do Caixinha. Para corrigir valor ou data, corrija lá.">🔗 Lentes</span>'+(podeEditar()&&/^fzl?:/.test(l.ref_externa||'')?`<button class="catchip" onclick="lentesNaoPago(${l.id})" style="font-size:10px;padding:1px 7px;cursor:pointer;color:var(--muted)" title="Este boleto não foi pago: volta a previsto no Caixinha e sai daqui">✕ não foi pago</button>`:''):''}<span class="catchip" style="font-size:10px;padding:1px 7px">${l.origem==='ofx'?'OFX':(l.origem==='lentes'?'Caixinha':'manual')}${quem?' · '+quem:''}</span>${l.anexo_url?`<a class="catchip" href="${l.anexo_url}" target="_blank" rel="noopener" style="font-size:10px;padding:1px 7px;text-decoration:none">📎 boleto</a>`:''}${ponteHTML(l)}${vaiEst}${depChipHTML(l)}</div>`;
-      return `<tr class="${neutra?'neutra':''}" style="${ehCx?'background:rgba(232,196,104,.06)':''}">
-        <td class="mut" style="white-space:nowrap">${editavel?`<input type="checkbox" style="margin-right:6px;vertical-align:middle" ${LANC_SEL.has(l.id)?'checked':''} onclick="lancSel(${l.id},this.checked)" title="Marcar para mandar para a Lixeira junto com outras">`:''}${isoParaBR(l.data).slice(0,5)}${(()=>{const st=lancStatus(l);return `<span title="${st==='ok'?'Conferido':st==='y'?'Classificado, falta conferir':'Falta resolver: categoria, contato do funcionário ou mandar para o Banco Caixinha'}" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:7px;vertical-align:middle;background:${st==='ok'?'var(--green)':st==='y'?'var(--amber)':'var(--red)'}"></span>`;})()}</td>
+      const etq=`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">${String(l.ref_externa||'').startsWith('cxs:')?(()=>{const m=cxMovPorId(String(l.ref_externa).slice(4));return `<span class="catchip" style="font-size:10px;padding:1px 8px;border-color:#c9951a;color:#9a6c00;background:rgba(232,196,104,.25);font-weight:700" title="Saída lançada pela loja no Caixinha (dinheiro da gaveta); entrou sozinha no Fluxo. Não soma no saldo do banco nem no extrato; entra no resultado (DRE).">💵 do Caixinha · não soma no banco${m&&m.por?' · '+_remEsc(m.por):''}</span>${m&&m.cat?`<span class="catchip" style="font-size:10px;padding:1px 7px">no Caixinha: ${_remEsc(m.cat)}</span>`:''}`;})():(ehCx?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--gold);color:var(--gold)">💵 caixinha antiga</span>':'')}${l.origem==='lentes'||/^fzl?:/.test(l.ref_externa||'')?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)" title="Veio da aba Lentes do Caixinha. Para corrigir valor ou data, corrija lá.">🔗 Lentes</span>'+(podeEditar()&&/^fzl?:/.test(l.ref_externa||'')?`<button class="catchip" onclick="lentesNaoPago(${l.id})" style="font-size:10px;padding:1px 7px;cursor:pointer;color:var(--muted)" title="Este boleto não foi pago: volta a previsto no Caixinha e sai daqui">✕ não foi pago</button>`:''):''}${String(l.ref_externa||'').startsWith('cxs:')?'':`<span class="catchip" style="font-size:10px;padding:1px 7px">${l.origem==='ofx'?'OFX':(l.origem==='lentes'?'Caixinha':'manual')}${quem?' · '+quem:''}</span>`}${l.anexo_url?`<a class="catchip" href="${l.anexo_url}" target="_blank" rel="noopener" style="font-size:10px;padding:1px 7px;text-decoration:none">📎 boleto</a>`:''}${ponteHTML(l)}${vaiEst}${depChipHTML(l)}</div>`;
+      return `<tr class="${neutra?'neutra':''}" style="${String(l.ref_externa||'').startsWith('cxs:')?'background:rgba(232,196,104,.18)':(ehCx?'background:rgba(232,196,104,.06)':'')}">
+        <td class="mut" style="white-space:nowrap">${editavel&&podeLixeira()?`<input type="checkbox" style="margin-right:6px;vertical-align:middle" ${LANC_SEL.has(l.id)?'checked':''} onclick="lancSel(${l.id},this.checked)" title="Marcar para mandar para a Lixeira junto com outras">`:''}${isoParaBR(l.data).slice(0,5)}${(()=>{const st=lancStatus(l);return `<span title="${st==='ok'?'Conferido':st==='y'?'Classificado, falta conferir':'Falta resolver: categoria, contato do funcionário ou mandar para o Banco Caixinha'}" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:7px;vertical-align:middle;background:${st==='ok'?'var(--green)':st==='y'?'var(--amber)':'var(--red)'}"></span>`;})()}</td>
         <td style="min-width:140px">${editavel?`<input class="inlinedesc maiusc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" onchange="mudarDescLanc(${l.id},this.value)" title="Clique pra editar">`:l.descricao}${l.parcela?`<span class="parc">${l.parcela}</span>`:''}${etq}</td>
         <td>${selCat}</td>
         <td>${selCont}</td>
         <td class="amt ${l.valor>0?'green':'red'}" style="white-space:nowrap">${l.valor>0?'+':'-'}${BRL(Math.abs(l.valor))}</td>
-        <td style="text-align:center;white-space:nowrap">${editavel?(()=>{const pr=lancPronto(l),cf=!!l.conferido_por;return `<label title="${pr?(cf?'Conferido: clique para desmarcar':'Marcar como conferido'):'Resolva antes de conferir'}" style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin-right:6px;cursor:${pr?'pointer':'not-allowed'};line-height:1.1"><input type="checkbox" ${cf?'checked':''} ${pr?'':'disabled'} onchange="lancConferir(${l.id},this.checked)" style="width:16px;height:16px;accent-color:var(--green)">${cf?`<span style="font-size:9.5px;color:var(--muted);margin-top:2px">${_remEsc(String(l.conferido_por).split(' ')[0])}${l.conferido_em?' · '+new Date(l.conferido_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):''}</span>`:''}</label>`;})():''}${editavel?`<button class="delx" onclick="abrirEditarLanc(${l.id})" title="Editar tudo">✏️</button> <button class="delx" onclick="excluirLanc(${l.id})" title="Mandar para a Lixeira (dá para restaurar)">🗑</button>`:''}</td>
+        <td style="text-align:center;white-space:nowrap">${editavel?(()=>{const pr=lancPronto(l),cf=!!l.conferido_por;return `<label title="${pr?(cf?'Conferido: clique para desmarcar':'Marcar como conferido'):'Resolva antes de conferir'}" style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin-right:6px;cursor:${pr?'pointer':'not-allowed'};line-height:1.1"><input type="checkbox" ${cf?'checked':''} ${pr?'':'disabled'} onchange="lancConferir(${l.id},this.checked)" style="width:16px;height:16px;accent-color:var(--green)">${cf?`<span style="font-size:9.5px;color:var(--muted);margin-top:2px">${_remEsc(String(l.conferido_por).split(' ')[0])}${l.conferido_em?' · '+new Date(l.conferido_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):''}</span>`:''}</label>`;})():''}${editavel?`<button class="delx" onclick="abrirEditarLanc(${l.id})" title="Editar tudo">✏️</button> ${podeLixeira()?`<button class="delx" onclick="excluirLanc(${l.id})" title="Mandar para a Lixeira (dá para restaurar)">🗑</button>`:''}`:''}</td>
       </tr>`;
     }).join('');
     const nCx=LANC.filter(l=>contaEhCaixinha(l.conta_id)&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
     const chip=(v,txt)=>`<button class="btn ghost" style="padding:4px 10px;font-size:12px;${filtroConta===v?'border-color:var(--green);color:var(--green)':''}" onclick="filtroConta='${v}';render()">${txt}</button>`;
     const nSemCat=LANC.filter(l=>!l.categoria_id&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
-    return `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">${chip('','Todos')}${chip('banco','🏦 Sicoob')}${chip('caixinha',`💵 Caixinha antiga${nCx?` (${nCx})`:''}`)}${podeEditar()&&nSemCat?`<button class="btn" style="padding:4px 10px;font-size:12px;margin-left:auto" onclick="aplicarRegrasNoMes()">🔑 Aplicar regras nos ${nSemCat} sem categoria</button>`:''}${(()=>{if(!podeEditar())return '';const n=cxSemContato().length;
+    return `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">${chip('','Todos')}${chip('banco','🏦 Sicoob')}${chip('caixinha',`💵 Caixinha${nCx?` (${nCx})`:''}`)}${podeEditar()&&nSemCat?`<button class="btn" style="padding:4px 10px;font-size:12px;margin-left:auto" onclick="aplicarRegrasNoMes()">🔑 Aplicar regras nos ${nSemCat} sem categoria</button>`:''}${(()=>{if(!podeEditar())return '';const n=cxSemContato().length;
       return n?`<button class="btn" style="padding:4px 10px;font-size:12px" onclick="abrirContatoPadrao()" title="Escolha uma vez o contato de cada categoria do Caixinha; daí pra frente ele vem sozinho">👤 Contato dos ${n} do Caixinha sem contato</button>`
-        :(filtroConta==='caixinha'?`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="abrirContatoPadrao()">👤 Contato padrão por categoria</button>`:'');})()}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">lançados na aba Caixinha antiga do Fluxo — conferir categoria e contato; o dinheiro físico agora mora no sistema Caixinha</span>':''}<span style="margin-left:auto;display:flex;gap:8px;align-items:center">${lentesStatusHTML()}</span></div>${(()=>{const pend=LANC.filter(l=>{const n=String((l.categorias&&l.categorias.nome)||'').toUpperCase();const r=l.ref_externa||'';return (n===CAT_ESTORNAR&&!r.startsWith('cxb:'))||(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'));});return pend.length?`<div class="note" style="border-color:rgba(245,183,64,.45);margin-bottom:10px">🔁 <b>${pend.length} lançamento(s) do Banco Caixinha ainda não ligado(s)</b> — clique no botão amarelo de cada um ("Mandar pro Banco Caixinha" ou "Marcar devolução"). É isso que mantém o em aberto das lojas certo sem ninguém apagar nada.</div>`:'';})()}
+        :(filtroConta==='caixinha'?`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="abrirContatoPadrao()">👤 Contato padrão por categoria</button>`:'');})()}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">dinheiro da gaveta: as saídas vêm sozinhas do Caixinha e não somam no saldo do banco (entram no resultado)</span>':''}<span style="margin-left:auto;display:flex;gap:8px;align-items:center">${lentesStatusHTML()}</span></div>${(()=>{const pend=LANC.filter(l=>{const n=String((l.categorias&&l.categorias.nome)||'').toUpperCase();const r=l.ref_externa||'';return (n===CAT_ESTORNAR&&!r.startsWith('cxb:'))||(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'));});return pend.length?`<div class="note" style="border-color:rgba(245,183,64,.45);margin-bottom:10px">🔁 <b>${pend.length} lançamento(s) do Banco Caixinha ainda não ligado(s)</b> — clique no botão amarelo de cada um ("Mandar pro Banco Caixinha" ou "Marcar devolução"). É isso que mantém o em aberto das lojas certo sem ninguém apagar nada.</div>`:'';})()}
       <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12.5px;flex-wrap:wrap">
         <span class="mut">${rows.length} lançamento(s)</span>
         <span onclick="filtroTipoLanc=filtroTipoLanc==='ent'?'':'ent';_keepY=window.scrollY;render()" title="Clique para ver só as entradas" style="cursor:pointer;color:var(--green);padding:1px 8px;border-radius:20px;border:1px solid ${filtroTipoLanc==='ent'?'var(--green)':'transparent'}">Entradas: ${BRL(somaE)}${filtroTipoLanc==='ent'?' ✕':''}</span>
         <span onclick="filtroTipoLanc=filtroTipoLanc==='sai'?'':'sai';_keepY=window.scrollY;render()" title="Clique para ver só as saídas" style="cursor:pointer;color:var(--red);padding:1px 8px;border-radius:20px;border:1px solid ${filtroTipoLanc==='sai'?'var(--red)':'transparent'}">Saídas: ${BRL(somaS)}${filtroTipoLanc==='sai'?' ✕':''}</span>
+        ${(()=>{const pref=`${ANO_FIXO}-${_mm(mesSel)}`;const nN=LANC.filter(l=>(l.data||'').slice(0,7)===pref&&!contaEhCaixinha(l.conta_id)&&l.categorias&&l.categorias.grupo==='neutra').length;return nN?`<span onclick="soNeutras=!soNeutras;_keepY=window.scrollY;render()" title="Clique para ver só as neutras (não entram no resultado), por ordem de data" style="cursor:pointer;color:var(--blue);font-weight:700;padding:1px 8px;border-radius:20px;border:1px solid ${soNeutras?'var(--blue)':'transparent'}">Neutras: ${nN}${soNeutras?' ✕':''}</span>`:'';})()}
+        ${(()=>{const pref=`${ANO_FIXO}-${_mm(mesSel)}`;const lc=LANC.filter(l=>(l.data||'').slice(0,7)===pref&&contaEhCaixinha(l.conta_id)),nC=lc.length,tC=lc.reduce((a,l)=>a+Math.abs(Math.min(0,Number(l.valor))),0);return nC?`<span onclick="filtroConta=filtroConta==='caixinha'?'':'caixinha';_keepY=window.scrollY;render()" title="Dinheiro da gaveta (Caixinha). NÃO soma em Entradas, Saídas, Saldo nem no saldo do banco: o banco tem que bater com o extrato. Clique para ver só elas." style="cursor:pointer;color:#b07d00;font-weight:700;padding:1px 8px;border-radius:20px;border:1px solid ${filtroConta==='caixinha'?'#c9951a':'transparent'}">Caixinha: ${nC} · ${BRL(tC)} <span style="font-weight:500;font-size:11px">(não soma no banco)</span>${filtroConta==='caixinha'?' ✕':''}</span>`:'';})()}
         <span style="font-weight:700">Saldo: ${BRL(somaE-somaS)}</span>
         ${(()=>{const banco=rows.filter(l=>!contaEhCaixinha(l.conta_id)),cf=banco.filter(l=>l.conferido_por).length,am=banco.filter(l=>lancStatus(l)==='y').length,vm=banco.filter(l=>lancStatus(l)==='r').length;
           return banco.length?`<span style="font-size:12.5px"><b style="color:var(--green)">Conferidos ${cf} de ${banco.length}</b>${am?` · <span style="color:var(--amber)">${am} amarelos</span>`:''}${vm?` · <span style="color:var(--red)">${vm} vermelhos</span>`:''}</span>${filtroDia&&am&&podeEditar()?` <button class="btn ghost" style="padding:3px 9px;font-size:11.5px" onclick="lancConferirDia()">Conferir os ${am} amarelos do dia</button>`:''}`:'';})()}
-        ${(()=>{const pref=`${ANO_FIXO}-${_mm(mesSel)}`;const nN=LANC.filter(l=>(l.data||'').slice(0,7)===pref&&l.categorias&&l.categorias.grupo==='neutra').length;return nN?`<span onclick="soNeutras=!soNeutras;if(soNeutras)ocultarNeutras=false;_keepY=window.scrollY;render()" title="Mostra só os lançamentos neutros (não entram no resultado), para dar uma olhada" style="cursor:pointer;margin-left:auto;padding:1px 9px;border-radius:20px;border:1px solid ${soNeutras?'var(--txt)':'var(--line)'};color:${soNeutras?'var(--txt)':'var(--muted)'}">${soNeutras?'ver todos ✕':`neutras (${nN}) · não entram no resultado`}</span>`:'';})()}
-        <span onclick="ocultarNeutras=!ocultarNeutras;soNeutras=false;try{localStorage.setItem('fluxo_ocultar_neutras',ocultarNeutras?'1':'0')}catch(e){};_keepY=window.scrollY;render()" title="Neutras = transferências entre lojas, Pix de cliente, depósito da gaveta: não entram no resultado" style="cursor:pointer;margin-left:auto;padding:1px 9px;border-radius:20px;border:1px solid var(--line);color:var(--muted)">${ocultarNeutras?'mostrar as neutras':'esconder as neutras'}</span>
       </div>
       ${(()=>{_lancVisiveis=rows.map(l=>l.id);const n=[...LANC_SEL].filter(id=>_lancVisiveis.includes(id)).length;return n?`<div class="note" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-color:rgba(214,69,69,.45)"><b>${n} marcado(s)</b><button class="btn" style="padding:5px 12px;font-size:12.5px;background:var(--red);border-color:var(--red)" onclick="lancParaLixeira([...LANC_SEL].filter(id=>_lancVisiveis.includes(id)))">Mandar para a Lixeira</button><button class="btn ghost" style="padding:5px 12px;font-size:12.5px" onclick="LANC_SEL.clear();_keepY=window.scrollY;render()">Desmarcar</button><span class="mut" style="font-size:12px">Vai com o seu nome e dá para restaurar. Pix de cliente não precisa sair: até outubro é neutro (use "esconder as neutras"); de novembro em diante conta como venda.</span></div>`:'';})()}
-      <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th style="white-space:nowrap">${podeEditar()&&rows.length?`<input type="checkbox" style="margin-right:6px;vertical-align:middle" title="Marcar todos que estão aparecendo" ${rows.length&&rows.every(l=>LANC_SEL.has(l.id))?'checked':''} onclick="lancSelTodos(this.checked)">`:''}Data</th><th>Descrição</th><th>Categoria</th><th>Contato</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${tr}</tbody></table>${rows.length===0?'<div class="empty"><div class="big">📭</div>Nenhum lançamento'+(filtroDia?' nesse dia.':' ainda. Lance o primeiro acima!')+'</div>':''}</div>`;
+      <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th style="white-space:nowrap">${podeLixeira()&&rows.length?`<input type="checkbox" style="margin-right:6px;vertical-align:middle" title="Marcar todos que estão aparecendo" ${rows.length&&rows.every(l=>LANC_SEL.has(l.id))?'checked':''} onclick="lancSelTodos(this.checked)">`:''}Data</th><th>Descrição</th><th>Categoria</th><th>Contato</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${tr}</tbody></table>${rows.length===0?'<div class="empty"><div class="big">📭</div>Nenhum lançamento'+(filtroDia?' nesse dia.':' ainda. Lance o primeiro acima!')+'</div>':''}</div>`;
   }
   // muda a descrição direto na linha
   async function mudarDescLanc(id,valor){
@@ -1727,7 +1730,7 @@
       const txt=(l.descricao||'').toLowerCase().includes(q.toLowerCase())||cat.toLowerCase().includes(q.toLowerCase())||cont.toLowerCase().includes(q.toLowerCase());
       const val=qn&&Math.abs(l.valor).toFixed(2).includes(qn);return txt||val;
     });
-    let somaE=0,somaS=0;rows.forEach(l=>{if(l.valor>0)somaE+=Number(l.valor);else somaS+=Math.abs(Number(l.valor));});
+    let somaE=0,somaS=0;rows.forEach(l=>{if(contaEhCaixinha(l.conta_id)&&filtroConta!=='caixinha')return; /* v2.9.46: Caixinha não soma com o banco */ if(l.valor>0)somaE+=Number(l.valor);else somaS+=Math.abs(Number(l.valor));});
     const box=document.getElementById('lancResultado');
     if(box)box.innerHTML=htmlResultadoLanc(rows,somaE,somaS);
   }
@@ -1805,7 +1808,7 @@
   let LANC_SEL=new Set(),_lancVisiveis=[];
   function lancSel(id,on){on?LANC_SEL.add(id):LANC_SEL.delete(id);_keepY=window.scrollY;render();}
   function lancSelTodos(on){_lancVisiveis.forEach(id=>on?LANC_SEL.add(id):LANC_SEL.delete(id));_keepY=window.scrollY;render();}
-  async function lancParaLixeira(ids){ids=(ids||[]).filter(Boolean);if(!ids.length)return;if(!podeEditar()){toast('Seu acesso só olha.','erro');return;}
+  async function lancParaLixeira(ids){ids=(ids||[]).filter(Boolean);if(!ids.length)return;if(!podeLixeira()){toast('Só o Lucas e a Heloísa mandam para a Lixeira. Use o "o que é?" para marcar o que é (neutra, empréstimo…).','erro');return;}
     const ls=ids.map(id=>LANC.find(x=>x.id===id)).filter(Boolean);const bloq=ls.filter(l=>mesFechadoISO(l.data)&&!contaEhCaixinha(l.conta_id));
     if(bloq.length){toast(`${bloq.length} lançamento(s) estão em mês fechado e não podem sair. Reabra o mês primeiro.`,'erro');return;}
     const tot=ls.reduce((t,l)=>t+Math.abs(Number(l.valor)||0),0);
@@ -2811,6 +2814,7 @@
     try{const {data,error}=await sb.from('sicoob_contas').select('*').eq('ativo',true).order('id');if(error)return;SICOOB_CONTAS=data||[];}catch(e){return;}
     sicoobAviso();renderNav();if((page==='import'&&IMPORT.length===0)||page==='lanc')render();
     setTimeout(()=>{sicoobAutoEntrar().catch(e=>console.error('auto',e));},1500);
+    setTimeout(()=>{caixinhaParaFluxo().catch(e=>console.error('caixinha',e));},4000);
   }
   function sicoobProblemas(){const out=[];
     SICOOB_CONTAS.forEach(c=>{const d=_sicDiasAte(c.cert_vence),h=_sicHoras(c.ultimo_ok);
@@ -2861,6 +2865,51 @@
     if(!importObs)importObs='EXTRATO SICOOB AUTOMÁTICO';
     _IMP_API=true;toast(`${rows.length} linhas do Sicoob (${_sicBR(rows[0].data)} a ${_sicBR(rows[rows.length-1].data)}). Conferindo…`,'ok');
     return _processarOFX(ofx,{value:''});}
+  // ---- v2.9.46: CAIXINHA → FLUXO SOZINHO — saída que a loja lança no Caixinha entra na conta Caixinha da loja ----
+  // Só tipo "saida" (não entrada, depósito, guardado, empréstimo). Desde 01/10/2026. Marca "no financeiro" lá.
+  // Não duplica: liga ao que já estava lançado à mão (mesma loja, mesmo valor, até 3 dias).
+  const CXS_DESDE='2026-10-01';let _cxsRodando=false;
+  function cxMovPorId(id){if(!CX.carregado)return null;if(!CX._movId){CX._movId={};(CX.caixas||[]).forEach(k=>k.mov.forEach(m=>{CX._movId[m.id]=m;}));}return CX._movId[id]||null;}
+  const CXS_PADRAO={'MOTOTAXI':'MOTO TAXI','MOTO TAXI':'MOTO TAXI','LOCUCAO':'MIDIA','RETIRADA CAIXINHA':'REP.CAIXINHA','REPOSICAO CAIXINHA':'REP.CAIXINHA','PASSAGEM':'Funcionários','DESPESAS':'DESPESAS','VIGIA':'DESPESAS','FUNCIONARIOS':'Funcionários','LABORATORIO IPATINGA':'Lentes/Laboratório','ESTACIONAMENTO':'ESTACIONAMENTO'};
+  const _cxsChave=t=>normDesc(String(t||'').replace(/[^\p{L}\p{N}\s.\/]/gu,' ')).replace(/\s+/g,' ').trim();
+  async function caixinhaParaFluxo(manual){
+    if(_cxsRodando||!sb||!PERFIL||!podeEditar())return;
+    try{if(!(await cxSessao()))return;}catch(e){return;}
+    _cxsRodando=true;let novos=0,ligados=0,erro='';
+    try{
+      if(!(await cxCarregar(true)))return;CX._movId=null;
+      // lojas do Fluxo ↔ caixinhas (tipo loja)
+      const pares=[];(CX.caixas||[]).forEach(k=>{const L=LOJAS.find(l=>cxChaveLoja(l.nome)===cxChaveLoja(k.nome));if(L)pares.push({k,L});});
+      const pend=[];pares.forEach(({k,L})=>k.mov.forEach(m=>{if(m.tipo==='saida'&&!m.fin&&(m.data||'')>=CXS_DESDE&&Number(m.valor)>0)pend.push({m,L,k});}));
+      if(!pend.length){if(manual)toast('Nada novo no Caixinha.','ok');return;}
+      const ids=[...new Set(pend.map(p=>p.L.id))];
+      const {data:cts}=await sb.from('contas').select('id,loja_id,nome').in('loja_id',ids).eq('arquivada',false);
+      const contaCx={};(cts||[]).forEach(c=>{if(/caixinha/i.test(c.nome||'')&&!contaCx[c.loja_id])contaCx[c.loja_id]=c.id;});
+      const cxIds=Object.values(contaCx);if(!cxIds.length)return;
+      let ex=[];for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('id,loja_id,conta_id,data,valor,ref_externa,categoria_id').in('conta_id',cxIds).gte('data',addDias(CXS_DESDE,-5)).order('id').range(o,o+999);if(error)break;ex=ex.concat(data||[]);if(!data||data.length<1000)break;}
+      const {data:fe}=await sb.from('fechamentos').select('loja_id,ano,mes,fechado').in('loja_id',ids).eq('fechado',true);
+      const fechado=(lj,iso)=>(fe||[]).some(f=>f.loja_id===lj&&f.ano===Number(iso.slice(0,4))&&f.mes===Number(iso.slice(5,7)));
+      // categoria: palavras-chave > o que a equipe já escolheu para essa categoria do Caixinha > padrão
+      const aprendido={};ex.forEach(l=>{const r=String(l.ref_externa||'');if(!r.startsWith('cxs:')||!l.categoria_id)return;const m=cxMovPorId(r.slice(4));if(!m)return;const ch=_cxsChave(m.cat);(aprendido[ch]=aprendido[ch]||{})[l.categoria_id]=(aprendido[ch][l.categoria_id]||0)+1;});
+      const catDe=(m,L)=>{const rp=aplicarRegrasP(m.desc||'',L.id);if(rp&&rp.categoria_id)return rp.categoria_id;const ch=_cxsChave(m.cat);
+        const ap=aprendido[ch];if(ap){const best=Object.entries(ap).sort((a,b)=>b[1]-a[1])[0];if(best)return Number(best[0]);}
+        const nm=CXS_PADRAO[ch];if(nm){const c=nm==='Lentes/Laboratório'?catLentes():catPorNome(nm);if(c)return c.id;}const c2=catPorNome(String(m.cat||'').replace(/[^\p{L}\p{N}\s.\/]/gu,'').trim());return c2?c2.id:null;};
+      const cents=v=>Math.round(Math.abs(Number(v))*100);const usados=new Set();const marcar=[];
+      for(const {m,L} of pend){const cid=contaCx[L.id];if(!cid)continue;if(fechado(L.id,m.data))continue;
+        const ja=ex.find(l=>String(l.ref_externa||'')==='cxs:'+m.id);if(ja){marcar.push(m.id);continue;}
+        const mao=ex.find(l=>!usados.has(l.id)&&l.loja_id===L.id&&!String(l.ref_externa||'').startsWith('cxs:')&&Number(l.valor)<0&&cents(l.valor)===cents(m.valor)&&_dias(l.data,m.data)<=3);
+        if(mao){usados.add(mao.id);if(!mao.ref_externa){const {error}=await sb.from('lancamentos').update({ref_externa:'cxs:'+m.id}).eq('id',mao.id);if(error){erro=erro||error.message;continue;}}ligados++;marcar.push(m.id);continue;}
+        const reg={loja_id:L.id,conta_id:cid,data:m.data,descricao:String(m.desc||m.cat||'SAÍDA DO CAIXINHA').toUpperCase().slice(0,200),valor:-Math.abs(Number(m.valor)),tipo:'despesa',categoria_id:catDe(m,L),contato_id:null,pago:true,origem:'manual',ref_externa:'cxs:'+m.id,criado_por:null};
+        const {data:ins,error}=await sb.from('lancamentos').insert(reg).select('id').single();if(error){erro=erro||error.message;continue;}
+        ex.push(Object.assign({id:ins&&ins.id},reg));novos++;marcar.push(m.id);}
+      if(marcar.length){const c=cxClient();for(let i=0;i<marcar.length;i+=100){const {error}=await c.from('lancamentos').update({no_financeiro:true}).in('id',marcar.slice(i,i+100));if(error){erro=erro||('Caixinha: '+error.message);break;}}
+        marcar.forEach(id=>{const m=cxMovPorId(id);if(m)m.fin=true;});}
+    }catch(e){erro=erro||String(e.message||e);console.error('caixinha→fluxo',e);}
+    finally{_cxsRodando=false;}
+    if(novos||ligados||erro){toast(`Caixinha → Fluxo: ${novos} saída(s) entraram sozinhas${ligados?` · ${ligados} ligada(s) ao que já estava lançado`:''}${erro?' · erro: '+erro:''}`,erro?'erro':'ok');
+      NAV_CONF={};if(page==='lanc'){await carregarLancamentos();render();}}
+  }
+  setInterval(()=>{if(document.visibilityState==='visible')caixinhaParaFluxo().catch(e=>console.error(e));},60*60*1000);
   // ---- v2.9.25: ENTRADA AUTOMÁTICA — o que o robô trouxe e já vem todo classificado entra sozinho ----
   // Roda quando alguém abre o Fluxo e depois a cada hora (o robô puxa 3x por dia). Só entra o que é certeza
   // (cartão, Pix de cliente, palavra-chave, Agenda, transferência de loja, depósito casado com o Caixinha).
@@ -4419,7 +4468,7 @@
       const [cx,comp,lan,cont]=await Promise.all([
         c.from('caixinhas').select('id,nome,tipo,arquivada,ordem').order('ordem'),
         cxSelectTudo('competencias','id,caixinha_id,ano,mes'),
-        cxSelectTudo('lancamentos','id,competencia_id,data,tipo,valor,excluido,contraparte,recolhido,categoria,criado_por_nome,descricao,conferido_banco,conf_banco_por,conf_banco_em'),
+        cxSelectTudo('lancamentos','id,competencia_id,data,tipo,valor,excluido,contraparte,recolhido,categoria,criado_por_nome,descricao,conferido_banco,conf_banco_por,conf_banco_em,no_financeiro'),
         cxSelectTudo('contas','id,caixinha_id,status,escopo,data,valor,valor_pago,pagamentos,pago_data,descricao,contato'),
       ]);
       const fe=[cx,comp,lan].find(r=>r.error);
@@ -4427,7 +4476,7 @@
       const compById={};(comp.data||[]).forEach(x=>compById[x.id]=x);
       const caixas=(cx.data||[]).filter(x=>!x.arquivada&&x.tipo==='loja').map(x=>({id:x.id,nome:x.nome,mov:[]}));
       const byId={};caixas.forEach(x=>byId[x.id]=x);
-      (lan.data||[]).forEach(l=>{if(l.excluido)return;const cp=compById[l.competencia_id];if(!cp)return;const k=byId[cp.caixinha_id];if(!k)return;k.mov.push({id:l.id,data:l.data,tipo:l.tipo,valor:Number(l.valor)||0,para:l.contraparte||null,recolhido:!!l.recolhido,cat:l.categoria||'',por:l.criado_por_nome||'',desc:l.descricao||'',conf:!!l.conferido_banco,confPor:l.conf_banco_por||'',confEm:l.conf_banco_em||''});});
+      (lan.data||[]).forEach(l=>{if(l.excluido)return;const cp=compById[l.competencia_id];if(!cp)return;const k=byId[cp.caixinha_id];if(!k)return;k.mov.push({id:l.id,data:l.data,tipo:l.tipo,valor:Number(l.valor)||0,para:l.contraparte||null,recolhido:!!l.recolhido,cat:l.categoria||'',por:l.criado_por_nome||'',desc:l.descricao||'',conf:!!l.conferido_banco,confPor:l.conf_banco_por||'',confEm:l.conf_banco_em||'',fin:!!l.no_financeiro});});
       // v2.9.42: caixinhas tipo 'conta' (ex.: DIVERSAS) só entram nas listas do Banco Caixinha — não têm caixa, ficam fora de cxCalcMes/gaveta/depósitos
       const contasCx=(cx.data||[]).filter(x=>!x.arquivada&&x.tipo==='conta').map(x=>({id:x.id,nome:x.nome,tipo:'conta',mov:[]}));
       CX.caixas=caixas;CX.caixasConta=contasCx;CX.caixasBanco=caixas.concat(contasCx);CX.contas=cont.error?[]:(cont.data||[]);CX.carregado=true;CX.em=new Date();CX.erro='';

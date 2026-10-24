@@ -67,6 +67,9 @@ Logo no alto de **Lançamentos** aparece o quadro **Conferidos · loja · mês**
 
 ## Conferido: o quadradinho no fim da linha (v2.9.24)
 
+**O conferido não se perde (v2.9.44):** cada quadradinho marcado é gravado no banco na hora, com nome e data. Atualizar o sistema (versão nova) não apaga nada; importar o extrato de novo não mexe no que já estava conferido; mandar para a Lixeira e restaurar mantém o conferido; e o backup de hora em hora guarda tudo. Para **desmarcar**, o Fluxo pergunta antes ("Tirar o conferido deste lançamento? Conferido por … em …"), para ninguém tirar sem querer.
+
+
 - Cada lançamento tem uma **bolinha** ao lado da data: **verde** = conferido, **amarela** = classificado mas ninguém conferiu, **vermelha** = falta resolver.
 - No fim da linha fica o **quadradinho**. Quem marca fica gravado, com o nome e o dia em letra pequena embaixo. Linha vermelha não deixa marcar: primeiro resolve.
 - Com um dia escolhido, aparece **Conferir os N amarelos do dia**, para marcar todos de uma vez.
@@ -200,6 +203,16 @@ No Fluxo, o saldo inicial é **só o do Sicoob**. Não some caixinha nem emprés
 
 ## Caixinha: a regra é diferente
 
+### Saída do Caixinha entra sozinha no Fluxo (v2.9.46)
+
+- Toda **saída** que a loja lança no Caixinha (mototáxi, locução, passagem, despesas…) entra **sozinha** em Lançamentos, na conta **Caixinha** da loja, com a mesma data, descrição e valor. O Fluxo já marca **NO FINANCEIRO** no Caixinha. A Rhaiane **não precisa mais** passar à mão.
+- Puxa quando alguém abre o Fluxo e depois a cada hora (o computador precisa estar entrado no Caixinha: menu Caixinha espelho, uma vez só). Só pega **saídas** desde 01/10/2026: entrada, depósito, guardado e empréstimo não vêm por aqui.
+- **Linha amarelo-ouro** com a etiqueta **💵 do Caixinha · não soma no banco · loja** e, ao lado, a categoria que a loja escolheu lá ("no Caixinha: 🛵 Mototáxi").
+- **Não soma com o banco:** Entradas, Saídas, Saldo e o saldo do banco contam só o Sicoob (o banco tem que bater com o extrato). O total do Caixinha aparece separado: **Caixinha: N · R$ … (não soma no banco)**; clicando, mostra só elas. Na DRE (resultado) elas entram, porque são despesas de verdade.
+- **Categoria:** palavras-chave primeiro; depois o que a equipe já escolheu para aquela categoria do Caixinha; depois o padrão (Mototáxi → MOTO TAXI, Locução → MIDIA, Retirada Caixinha → REP.CAIXINHA, Passagem → Funcionários, Despesas e Vigia → DESPESAS, Laboratório Ipatinga → Lentes/Laboratório). Se não souber, fica sem categoria (a cor amarela já mostra que é do Caixinha).
+- **Não duplica:** o que já estava digitado à mão (mesma loja, mesmo valor, até 3 dias) só é ligado.
+
+
 **A aba Caixinha do Fluxo é um espelho.** Ela mostra, loja por loja, o que o sistema Caixinha calcula: abertura do mês, entradas, saídas, depósitos, tem que ter, a receber e a estornar. Não tem nada para digitar ali. Para corrigir um número, corrija no Caixinha — aqui atualiza sozinho. Na primeira vez em cada computador ela pede o login do Caixinha (o mesmo e-mail e senha de lá); depois abre direto. No Fechamento do mês, a escada da caixinha aparece embaixo da escada do Sicoob.
 
 **As lojas lançam no Caixinha.** Cada loja tem o próprio login lá e lança as saídas, o guardado e (três delas) os depósitos. A Rhaiane passa, recolhe o dinheiro, confere o caixa e completa o que faltou — principalmente categoria. No espelho, a coluna **🔎 Conferir** mostra quantas saídas do mês foram lançadas pela própria loja e quantas estão sem categoria.
@@ -307,8 +320,8 @@ Desde a v2.9.20 serve tanto o PDF do internet banking (computador) quanto o do *
 - **DEPÓSITO DA GAVETA (CAIXINHA):** dinheiro da gaveta depositado no banco (confere sozinho com o Caixinha).
 - **A ESTORNAR / ESTORNO RECEBIDO (BANCO CAIXINHA):** empréstimo que vai voltar e a volta dele (fica ligado ao Banco Caixinha).
 - **Não existe uma "neutra genérica"** de propósito: pôr tudo em neutra seria como excluir (sai do resultado). Na dúvida, pergunte para a Heloísa.
-- **Linha neutra com cor própria (v2.9.40):** fundo azulado, categoria com borda azul tracejada, **valor em cinza** (não conta) e a etiqueta **neutra · não entra no resultado nem no fechamento ⓘ**. O aviso vermelho embaixo da busca saiu: a própria linha já explica.
-- **Ver só as neutras:** no alto da lista de Lançamentos, o botão **neutras (N) · não entram no resultado** mostra só elas, para dar uma olhada e trocar se alguma estiver errada. **ver todos ✕** volta.
+- **Linha neutra com cor própria (v2.9.40):** fundo azulado, categoria com borda azul tracejada e a etiqueta **neutra · não entra no resultado nem no fechamento ⓘ**. O aviso vermelho embaixo da busca saiu: a própria linha já explica.
+- **Ver só as neutras (v2.9.44):** ao lado de Entradas e Saídas, no alto da lista, tem **Neutras: N** (em azul). Um clique mostra só as neutras, por data; clicando de novo (✕) volta tudo. O botão "esconder as neutras" saiu: as neutras sempre aparecem, em azul mais forte.
 
 
 | Categoria neutra | Quando |
@@ -563,6 +576,8 @@ Tire a foto de **um boleto só**. Se for parcelado, fotografe só a parcela que 
 
 ## Mandar para a Lixeira — uma ou várias (v2.9.1)
 
+**Só o gestor (v2.9.45):** o 🗑 e as caixinhas de marcar várias aparecem só para o **Lucas e a Heloísa**. A equipe (Carol, Rhaiane, Flávia) não exclui: usa o **"o que é?"** para dizer o que a linha é (neutra, empréstimo, depósito…). Assim o Fluxo mostra o extrato 100%.
+
 - Em **Lançamentos**, cada linha tem uma caixinha ao lado da data. Marque as que devem sair (ou a caixinha do cabeçalho, que marca todas que estão aparecendo) e clique em **Mandar para a Lixeira**.
 - **Quem lança também pode** (Rhaiane, Carol...). Nada é apagado de vez: vai para a Lixeira com o nome de quem tirou. **Só o gestor restaura.**
 - Mês fechado não deixa tirar. Reabra o mês primeiro.
@@ -683,6 +698,10 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 24/10/2026 | 2.9.46 | Saída do Caixinha entra sozinha no Fluxo (conta Caixinha da loja, linha amarelo-ouro "💵 do Caixinha · não soma no banco"), marca NO FINANCEIRO lá; Entradas/Saídas/Saldo contam só o banco; chip "Caixinha: N · R$ (não soma no banco)" | Nenhum (as saídas de outubro entram na primeira vez que abrir) |
+| 24/10/2026 | 2.9.45 | Lixeira (🗑 e marcar várias) só para o gestor (Lucas e Heloísa); a equipe usa o "o que é?" | Nenhum (a trava no banco pede autorização) |
+| 24/10/2026 | 2.9.44 | Azul das neutras mais forte; botão "Neutras: N" ao lado de Entradas/Saídas mostra só as neutras (saiu o "esconder as neutras"); pergunta antes de tirar um conferido | Nenhum |
+| 24/10/2026 | 2.9.43 | Valor das linhas neutras volta a ser vermelho (saída) e verde (entrada), como todas as outras | Nenhum |
 | 24/10/2026 | 2.9.42 | Caixinhas tipo "conta" do Caixinha (ex.: DIVERSAS) aparecem nas listas do Banco Caixinha: Mandar pro Banco Caixinha, Marcar devolução e Empréstimos (espelho). Ficam fora das contas de caixa, gaveta e depósitos | Nenhum |
 | 24/10/2026 | 2.9.41 | Lápis ✏️ em cada item da lista de categoria e de contato (em Lançamentos) para editar nome, grupo/tipo e palavras-chave ali mesmo; botão "✏️ editar" na tela Categorias | Nenhum |
 | 24/10/2026 | 2.9.40 | Linha neutra com cor própria (categoria azul tracejada, valor cinza, etiqueta "não entra no resultado nem no fechamento"); saiu o aviso vermelho embaixo da busca; botão "neutras (N) · não entram no resultado" | Nenhum |
