@@ -32,15 +32,29 @@ O **Resultado do mês** (entradas menos saídas, no quadro de baixo) é outra co
 
 A diferença nunca se resolve mexendo no saldo inicial. Ela se resolve achando o lançamento que falta ou que sobra.
 
-## Dia a dia: onde parei?
+## Dia a dia: onde parei? (conferidos · v2.9.25)
 
-Em **Lançamentos**, logo abaixo do mês, aparece uma faixa com todos os dias:
+Em **Lançamentos**, logo abaixo do mês, aparece uma faixa com todos os dias. O número grande no alto (ex.: **5/20**) quer dizer **5 conferidos de 20** no mês.
 
-- **✓ verde**: todos os lançamentos do dia estão prontos.
-- **4/5 amarelo**: 4 de 5 prontos — falta classificar 1.
+- **✓ verde**: todos os lançamentos do dia foram conferidos.
+- **5/20 amarelo**: 5 de 20 conferidos; o resto está classificado, falta conferir.
+- **vermelho**: o dia tem lançamento para resolver (sem categoria, sem contato de funcionário, Banco Caixinha não mandado).
 - **—**: dia sem lançamento.
 
-**Pronto** quer dizer: tem categoria; tem contato quando é funcionário; e, se for A ESTORNAR ou ESTORNO RECEBIDO, já foi mandado/marcado no Banco Caixinha. O botão **▶ Continuar de onde parou** leva direto ao primeiro dia com pendência. Parou pra almoçar? Quando voltar, é só clicar nele. Clicar num dia mostra só aquele dia; clicar de novo volta pro mês.
+A barra embaixo do número mostra as três partes: verde (conferido), amarelo (falta conferir) e vermelho (falta resolver). O botão **Continuar de onde parou** leva direto ao primeiro dia que ainda não está todo conferido. Clicar num dia mostra só aquele dia; clicar de novo volta pro mês.
+
+## Conferido: o quadradinho no fim da linha (v2.9.24)
+
+- Cada lançamento tem uma **bolinha** ao lado da data: **verde** = conferido, **amarela** = classificado mas ninguém conferiu, **vermelha** = falta resolver.
+- No fim da linha fica o **quadradinho**. Quem marca fica gravado, com o nome e o dia em letra pequena embaixo. Linha vermelha não deixa marcar: primeiro resolve.
+- Com um dia escolhido, aparece **Conferir os N amarelos do dia**, para marcar todos de uma vez.
+
+## Ranking e produtividade no Dashboard (v2.9.25)
+
+- **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
+- **Ranking do mês (todo mundo vê):** quem conferiu e quem importou extrato no mês escolhido.
+- **Produtividade · últimos 3 meses (só gestores: Lucas, Heloísa e Flávia):** por pessoa, conferidos + linhas importadas, mês a mês. Avisa em vermelho quando a pessoa **caiu** mais de 30% no mês passado ou quando o **ritmo deste mês** está abaixo do mês passado. As meninas não veem esta parte.
+- O que entrou sozinho pelo Sicoob não conta para ninguém (aparece embaixo como "Entrada automática").
 
 ## Lançamentos: de onde veio cada um
 
@@ -445,6 +459,10 @@ A Agenda de pagamentos não tem mais o quadro "Lançar conta". Tudo se lança em
 - **Qual mês de lente vale (v2.9.17):** a divisão por lente usa as **últimas lentes digitadas**, seja o mês que for. Boleto parcelado (ex.: Satisloh em 3 vezes) fica com a mesma divisão nas 3 parcelas; não recalcula mês a mês.
 - O botão **Dividir entre as empresas** fica em dois lugares: em cima, ao lado do Ler boleto, e embaixo do + Lançar.
 
+### Botão Dividir bem à vista (v2.9.25)
+
+Na Diversas, o botão **Dividir entre as empresas** fica **vermelho** enquanto a conta não foi dividida e **verde** ("Dividindo entre as empresas") depois de clicar. Ao lançar uma despesa ou salvar um recorrente da Diversas sem dividir, o Fluxo pergunta: OK lança só na Diversas, Cancelar volta para dividir.
+
 ## Recorrente da Diversas dividido (v2.9.16)
 
 Em **Recorrentes**, na Diversas, aparece o botão **Dividir entre as empresas** (por %, por lente, por igual, à mão ou regra salva). Preencha descrição, valor e **dia** e clique em + Add. Todo mês, quando faltarem até 35 dias para o vencimento, o Fluxo cria sozinho a conta na Agenda da Diversas e a "PARTE DIVERSAS" na Agenda de cada empresa, sem duplicar. Por lente: usa as últimas lentes digitadas (só fica esperando se nunca tiver sido digitada nenhuma). Recorrente dividido não aparece mais como "fixo" na Agenda, porque vira conta de verdade.
@@ -495,6 +513,14 @@ O extrato do Sicoob não precisa mais ser baixado. Um robô busca o extrato dire
 - O quadro mostra quando o robô atualizou pela última vez, o saldo no banco e quando vence o certificado digital da empresa.
 - **Aviso no topo do sistema** (gestor e lançadores veem): certificado vencendo em 30 dias ou menos, certificado vencido, ou robô que falhou ou ficou mais de um dia e meio sem atualizar. Clicar no aviso abre o Importar.
 - Loja que ainda não está ligada à API continua com o OFX ou PDF, como antes.
+
+### Entrada automática (v2.9.25)
+
+O que o robô traz **e já vem todo classificado** entra sozinho em Lançamentos, sem ninguém clicar em importar: cartão, Pix de cliente, palavra-chave, conta da Agenda, transferência de outra loja e depósito da gaveta (quando o Caixinha está aberto no computador). Entra **amarelo**: a equipe só confere no quadradinho. A etiqueta da linha mostra **OFX · AUTOMÁTICO**.
+
+- O que tem dúvida (palpite, sem categoria, A ESTORNAR, conta dividida da DVL, transferência para outra loja) **fica esperando**. Em **Importar → Puxar do Sicoob** aparece só o que falta; o que entrou sozinho aparece como "já lançado".
+- Roda quando alguém abre o Fluxo e depois a cada hora com ele aberto. Faz uma cópia de backup antes.
+- Quanto mais palavras-chave a equipe ensina, mais linhas entram sozinhas.
 
 **Certificado vencendo:** renovar o e-CNPJ A1 da empresa, tirar a chave pública (.cer) e trocar no portal developers.sicoob.com.br, no aplicativo FLUXO daquela loja. Depois o Lucas troca o certificado no cofre do GitHub.
 
@@ -577,6 +603,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 24/10/2026 | 2.9.25 | Entrada automática do Sicoob (o que vem todo classificado entra sozinho, amarelo; o resto espera no Importar); faixa do dia a dia conta conferidos (5/20); ranking do mês para todos e produtividade de 3 meses só para gestores, cada módulo com o seu, e quantos faltam conferir no mês; botão Dividir vermelho/verde na Diversas e pergunta ao lançar sem dividir | Nenhum |
+| 24/10/2026 | 2.9.24 | Conferido em cada lançamento (quadradinho no fim da linha, nome de quem conferiu), bolinha verde/amarela/vermelha, contador do mês, conferir os amarelos do dia, ranking no Dashboard de quem conferiu e de quem importou (3 meses, avisa queda) | Colunas conferido_por/conferido_em criadas pelo Claude |
 | 24/10/2026 | 2.9.23 | Lançamentos: bolinha depois da data em cada linha, verde = pronto, vermelha = falta resolver (mesma regra dos dias prontos lá em cima) | Nenhum |
 | 24/10/2026 | 2.9.22 | Descrição curta no Importar: Pix sem "Pagamento Pix" e sem CNPJ/CPF (ex.: "SAAE RER VENC SETEMBRO · Pix"), jargão do banco vira "boleto", "Pix", "transf.", "depósito"; Lançamentos na mesma ordem do extrato dentro do dia; TED da Stone com o nome da própria loja entra como Cartão (antes ia como transferência) | Nenhum |
 | 24/10/2026 | 2.9.21 | Transferência de/para empresa do grupo entra só com o motivo e a sigla (ex.: "MEMORIA RAN LASER 3 10 · para DVL"), sem a razão social; "ESTORNAR" no texto (mesmo sem o VAI) vai para A ESTORNAR antes da palavra do fornecedor | Nenhum |
