@@ -447,6 +447,14 @@ A Agenda de pagamentos não tem mais o quadro "Lançar conta". Tudo se lança em
 
 Em **Recorrentes**, na Diversas, aparece o botão **Dividir entre as empresas** (por %, por lente, por igual, à mão ou regra salva). Preencha descrição, valor e **dia** e clique em + Add. Todo mês, quando faltarem até 35 dias para o vencimento, o Fluxo cria sozinho a conta na Agenda da Diversas e a "PARTE DIVERSAS" na Agenda de cada empresa, sem duplicar. Por lente: usa as últimas lentes digitadas (só fica esperando se nunca tiver sido digitada nenhuma). Recorrente dividido não aparece mais como "fixo" na Agenda, porque vira conta de verdade.
 
+## Backup e restaurar (v2.9.19 · só o gestor)
+
+Menu Gestão → **Backup e restaurar** (só aparece para o gestor). O próprio banco tira uma cópia do Fluxo **de hora em hora**, mesmo com o Fluxo fechado (se nada mudou desde a última, não repete), e mais uma **antes de cada importação de extrato**. Guarda tudo das últimas 48 horas, depois 1 por hora na semana e 1 por dia no mês. O backup diário do Supabase continua existindo por cima.
+
+- **Fazer cópia agora** e **Baixar** (arquivo para guardar fora) a qualquer momento.
+- **Restaurar** pede a sua senha de entrada. Antes de voltar, tira uma cópia "antes de restaurar" (dá para desfazer). A volta é inteira de uma vez: se der erro no meio, nada muda. Atenção: tudo o que foi lançado depois do horário escolhido some (fica guardado na cópia "antes de restaurar").
+- Fora da cópia: usuários e o extrato bruto do robô do Sicoob (o robô busca de novo).
+
 ## No celular (v2.9.15)
 
 No celular o menu fica escondido: toque no **☰**, no canto de cima, para abrir; escolheu a tela, ele fecha sozinho. A barra de cima mostra os módulos e a loja em linhas próprias, os campos do lançamento ficam um embaixo do outro, e as tabelas largas rolam para o lado com o dedo.
@@ -567,6 +575,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 23/10/2026 | 2.9.19 | Backup e restaurar (só gestor): cópia de hora em hora pelo banco, antes de cada importação, baixar e restaurar com senha | Rodar o SQL "backup parte 2" no sistema-financeiro (a tabela o Claude já criou) |
 | 23/10/2026 | 2.9.18 | Importar: parcela escrita no texto do banco (ex.: 2 3) cria sozinha as próximas parcelas na Agenda | Nenhum |
 | 23/10/2026 | 2.9.17 | Por lente usa as últimas lentes digitadas; boleto parcelado fica com a mesma divisão em todas as parcelas; recorrente por lente não fica mais esperando o mês | Nenhum |
 | 23/10/2026 | 2.9.16 | Recorrente da Diversas com Dividir entre as empresas: todo mês vira conta na Agenda e parte de cada empresa | Coluna "rateio" dos recorrentes criada pelo Claude |
