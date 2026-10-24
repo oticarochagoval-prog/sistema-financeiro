@@ -43,6 +43,10 @@ Em **Lançamentos**, logo abaixo do mês, aparece uma faixa com todos os dias. O
 
 A barra embaixo do número mostra as três partes: verde (conferido), amarelo (falta conferir) e vermelho (falta resolver). O botão **Continuar de onde parou** leva direto ao primeiro dia que ainda não está todo conferido. Clicar num dia mostra só aquele dia; clicar de novo volta pro mês.
 
+### Contato sem cadastro (v2.9.36)
+
+Nas **saídas**, embaixo do campo **Contato**, tem **+ contato sem cadastro**. Serve para escrever o nome de quem recebeu sem precisar cadastrar: funcionário que já saiu (ex.: **GABRIEL**), quem fez a panfletagem, um prestador de uma vez só. Depois de gravar, aparece **📝 GABRIEL** embaixo do contato, e a linha não fica mais vermelha por falta de contato (vale também para **Funcionários**: o nome escrito conta como contato). Nas **entradas** continua **+ obs** embaixo da categoria.
+
 ### Painel de conferidos no alto de Lançamentos (v2.9.26)
 
 Logo no alto de **Lançamentos** aparece o quadro **Conferidos · loja · mês**, por exemplo **0/225**. Ele muda quando troca a loja ou o módulo (Diversas, Grupo de compras…).
@@ -652,6 +656,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 24/10/2026 | 2.9.36 | Nas saídas, o campo de observação foi para baixo do Contato e se chama "+ contato sem cadastro" (nome de quem recebeu, sem cadastrar); nas entradas continua "+ obs" | Nenhum |
 | 24/10/2026 | 2.9.35 | GV: loja pagando o laboratório entra como VENDA PIX (VENDA OTICA ROCHA arquivada); na Conferência de Pix da GV esse dinheiro das lojas não conta | Nenhum |
 | 24/10/2026 | 2.9.34 | Botão "o que é?" em cada lançamento (empréstimo, devolução, depósito, transferência, venda Pix, loja pagando o laboratório) no lugar dos botões soltos; liga sozinho ao empréstimo e à devolução que a Heloísa já marcou no Caixinha (mesmo valor), também no extrato que entra | Nenhum |
 | 24/10/2026 | 2.9.33 | GV Lentes: loja do grupo pagando o laboratório (GV OPTICAL, FREEFORM, lente, REF) entra como VENDA OTICA ROCHA (receita); salário/estorno/empréstimo seguem como transferência | Nenhum |

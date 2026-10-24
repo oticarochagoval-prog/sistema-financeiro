@@ -280,7 +280,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.35', APP_DATA='24/10/2026';
+  const APP_VERSAO='2.9.36', APP_DATA='24/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1416,7 +1416,7 @@
     if(!confirm(`Marcar como conferidos os ${ls.length} lançamentos amarelos de ${isoParaBR(filtroDia)}?`))return;const up={conferido_por:PERFIL.nome,conferido_em:new Date().toISOString()};
     const {error}=await sb.from('lancamentos').update(up).in('id',ls.map(l=>l.id));if(error){toast('Não salvou: '+error.message,'erro');return;}ls.forEach(l=>Object.assign(l,up));toast(`${ls.length} conferidos.`,'ok');lancSoAtualizar();}
   function lancPronto(l){const cat=l.categorias;if(!l.categoria_id||!cat||cat.grupo==='adef')return false;
-    if(categoriaExigeContato(l.categoria_id)&&!l.contato_id)return false;
+    if(categoriaExigeContato(l.categoria_id)&&!l.contato_id&&!String(l.documento||'').trim())return false; // v2.9.36: nome escrito em "contato sem cadastro" vale
     const n=String(cat.nome||'').toUpperCase(),r=l.ref_externa||'';
     if(n===CAT_ESTORNAR&&!r.startsWith('cxb:'))return false;if(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'))return false;return true;}
   // v2.9.26: muda categoria/contato/conferido SEM recarregar a tela (sem o "apagão")
@@ -1628,11 +1628,12 @@
       else if(_volta)vaiEst=_roxo(`lancVoltouEstorno(${l.id})`,`Voltou do empréstimo? ${_remEsc(_cxNomeCaixa(_volta.caixinha_id))} ${isoParaBR(_volta.data).slice(0,5)}`,'Tem um empréstimo em aberto no Banco Caixinha com este mesmo valor');
       else if(_sug&&editavel&&!_ehCxb&&!_ehLentes)vaiEst=_roxo(`lancVaiEstornar(${l.id})`,'Vai estornar?','A descrição fala em EXT/ESTORNAR: mandar pro Banco Caixinha');
       if(editavel&&!_ehCxb&&!_ehLentes&&!contaEhCaixinha(l.conta_id))vaiEst+=`<button tabindex="-1" class="catchip" onclick="lancOQueE(this,${l.id})" title="Escolher o que é este lançamento (empréstimo, devolução, depósito, transferência, venda) sem excluir" style="cursor:pointer;font-size:10.5px;padding:2px 9px;color:var(--muted)">o que é? ▾</button>`;
-      const obsLinha=editavel?`<div style="margin-top:3px"><span tabindex="-1" onclick="editarObsLanc(${l.id})" title="Observação (ex.: quem fez a panfletagem). Não precisa cadastrar contato." style="cursor:pointer;font-size:11px;color:var(--muted)">${obsTxt?'📝 '+obsTxt:'+ obs'}</span></div>`:(obsTxt?`<div class="mut" style="font-size:11px;margin-top:3px">📝 ${obsTxt}</div>`:'');
-      const selCat=(editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatLanc(this,${l.id})"><span>${cat.nome||'⚠ categoria'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`)+obsLinha;
+      // v2.9.36: nas saídas o campo fica embaixo do CONTATO, como "contato sem cadastro" (ex.: GABRIEL, que já saiu); nas entradas continua "+ obs" embaixo da categoria
+      const obsLinha=editavel?`<div style="margin-top:3px"><span tabindex="-1" onclick="editarObsLanc(${l.id})" title="${saida?'Nome de quem recebeu, sem precisar cadastrar contato (ex.: funcionário que já saiu, quem fez a panfletagem)':'Observação deste lançamento'}" style="cursor:pointer;font-size:11px;color:var(--muted)">${obsTxt?'📝 '+obsTxt:(saida?'+ contato sem cadastro':'+ obs')}</span></div>`:(obsTxt?`<div class="mut" style="font-size:11px;margin-top:3px">📝 ${obsTxt}</div>`:'');
+      const selCat=(editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatLanc(this,${l.id})"><span>${cat.nome||'⚠ categoria'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`)+(saida?'':obsLinha);
       // seletor de contato inline (vermelho se saída sem contato)
       const faltaContato=saida&&!l.contato_id&&!obsTxt&&!neutra;
-      const selCont=!saida?(contatoEntradaVale(cont.nome)?`<span class="mut" style="font-size:12px">${cont.nome}</span>`:''):editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(obsTxt?`<span class="mut" title="sem contato cadastrado — vale a observação">${obsTxt.slice(0,22)}</span>`:(saida?'⚠ contato ou obs':'— contato'))}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—');
+      const selCont=!saida?(contatoEntradaVale(cont.nome)?`<span class="mut" style="font-size:12px">${cont.nome}</span>`:''):editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(obsTxt?`<span class="mut" title="sem contato cadastrado — vale o nome escrito embaixo">sem cadastro</span>`:(saida?'⚠ contato':'— contato'))}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>${obsLinha}`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—')+obsLinha;
       // seletor de conta inline
       // conta: sempre Sicoob (banco), não precisa mostrar/editar na lista
       const ehCx=contaEhCaixinha(l.conta_id);const quem=nomeDe(l.criado_por)||(l.origem==='ofx'&&!l.criado_por&&l.fitid?'AUTOMÁTICO':'');
@@ -1677,7 +1678,7 @@
   // muda um campo direto na linha e salva no banco
 
   async function editarObsLanc(id){const l=LANC.find(x=>x.id===id);if(!l)return;if(bloqueadoPorFechamento(l.data,l.conta_id))return;
-    const v=prompt('Observação deste lançamento (ex.: MARIA — PANFLETAGEM VILA ISA). Deixe vazio para apagar.',l.documento||'');if(v==null)return;
+    const v=prompt(Number(l.valor)<0?'Contato sem cadastro: nome de quem recebeu (ex.: GABRIEL, MARIA — PANFLETAGEM). Não precisa cadastrar o contato. Deixe vazio para apagar.':'Observação deste lançamento. Deixe vazio para apagar.',l.documento||'');if(v==null)return;
     await mudarCampoLanc(id,'documento',v.trim()?v.trim().toUpperCase():null);lancSoAtualizar();}
   async function mudarCampoLanc(id,campo,valor){
     const l=LANC.find(x=>x.id===id);if(!l)return;
