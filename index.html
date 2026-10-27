@@ -22,6 +22,16 @@
   :root[data-theme="light"] ::-webkit-scrollbar-thumb{background:#c3cdc8}
   :root[data-theme="light"] .note{color:#2b47a8;background:rgba(59,99,217,.07);border-color:rgba(59,99,217,.25)}
   :root[data-theme="light"] .note b{color:#1d3480}
+  /* v2.9.70: etiquetas da Íris legíveis no modo claro */
+  .iris-tag{font-size:10.5px}
+  .iris-certeza{color:rgb(61,214,140);border-color:rgba(61,214,140,.45)!important;background:rgba(61,214,140,.08)}
+  .iris-confira{color:rgb(245,183,64);border-color:rgba(245,183,64,.45)!important;background:rgba(245,183,64,.08)}
+  .iris-gente{color:rgb(240,110,110);border-color:rgba(214,69,69,.5)!important;background:rgba(214,69,69,.08)}
+  .iris-nunca{color:rgb(150,168,158);border-color:rgba(143,161,151,.45)!important;background:rgba(143,161,151,.08)}
+  :root[data-theme="light"] .iris-certeza{color:#0b6a45;border-color:rgba(11,106,69,.55)!important;background:rgba(61,214,140,.14);font-weight:600}
+  :root[data-theme="light"] .iris-confira{color:#7a4a00;border-color:rgba(160,100,0,.6)!important;background:rgba(245,183,64,.18);font-weight:600}
+  :root[data-theme="light"] .iris-gente{color:#9e1f1f;border-color:rgba(158,31,31,.55)!important;background:rgba(214,69,69,.12);font-weight:600}
+  :root[data-theme="light"] .iris-nunca{color:#3f4b45;border-color:rgba(63,75,69,.45)!important;background:rgba(143,161,151,.16);font-weight:600}
   .iconbtn{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--txt);cursor:pointer;font-size:15px;display:grid;place-items:center;flex-shrink:0}
   .iconbtn.help{background:#1f9d6b;border-color:#1f9d6b;color:#fff;font-weight:800;font-size:16px}
   .iconbtn.help.cx{background:#2f6fd6;border-color:#2f6fd6;font-size:12px;width:auto;padding:0 9px;letter-spacing:-.5px}
@@ -285,12 +295,12 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.69', APP_DATA='27/10/2026';
+  const APP_VERSAO='2.9.71', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
   function alternarTema(){const atual=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';const novo=atual==='light'?'dark':'light';try{localStorage.setItem('caixarocha_tema',novo);}catch(e){}aplicarTema(novo);}
-  try{aplicarTema(localStorage.getItem('caixarocha_tema')||'dark');}catch(e){aplicarTema('dark');}
+  try{aplicarTema(localStorage.getItem('caixarocha_tema')||'light');}catch(e){aplicarTema('light');} // v2.9.71: o modo claro é o principal
 
   // ---- MANUAL (lê o arquivo manual.md que fica na mesma pasta do index.html) ----
   function mdParaHTML(md){
@@ -1528,7 +1538,7 @@
         if(d&&d.n/C.length>=0.7){o.cat=d.v;const dc=_irisDominante(C.filter(x=>Number(x.categoria_id)===d.v),'contato_id');o.cont=dc?dc.v:null;o.nivel='confira';o.fonte='parecido';o.motivo=`parecido com ${d.n} de antes (${palavraLegivel(kc)})`;}
         else if(_ensAcha(ensOutras,nd)){const e2=_ensAcha(ensOutras,nd);o.cat=e2.categoria_id||null;o.cont=e2.contato_id||null;o.nivel='confira';o.fonte='ensino-outra';o.motivo=`ensinado em ${lojaNomeCurto(e2.loja_id)}${e2.motivo?': '+e2.motivo:''}`;}
         else if((G[s+'|'+_irisKFull(l.descricao)]||{}).cat){const g=G[s+'|'+_irisKFull(l.descricao)];o.cat=g.cat;o.cont=g.cont||null;o.nivel='confira';o.fonte='grupo';o.motivo=`igual em outras lojas (${g.n}x)`;}
-        else if(IRIS_IA[l.id]&&(IRIS_IA[l.id].c||IRIS_IA[l.id].k)){const a=IRIS_IA[l.id];o.cat=a.c||null;o.cont=a.k||null;o.nivel='confira';o.fonte='ia';o.motivo='sugestão da IA'+(a.m?': '+a.m:'');}}
+        else if(IRIS_IA[l.id]&&((!l.categoria_id&&IRIS_IA[l.id].c)||IRIS_IA[l.id].k)){const a=IRIS_IA[l.id];o.cat=(!l.categoria_id&&a.c)||null;o.cont=a.k||null;o.nivel='confira';o.fonte='ia';o.motivo='sugestão da IA'+(a.m?': '+a.m:'');}}
       // valor fora do normal (só quando o histórico é estável)
       if(H.length>=3){const vs=H.map(x=>Math.abs(Number(x.valor))).sort((a,b)=>a-b),med=vs[Math.floor(vs.length/2)];
         if(med>0&&(vs[vs.length-1]-vs[0])/med<=0.5&&(v/med>1.5||v/med<0.6)){o.nivel='gente';o.motivo=`valor fora do normal: costuma ser ${BRL(med)}`;}}
@@ -1537,6 +1547,7 @@
         if(l.categoria_id&&o.cat&&Number(o.cat)!==Number(l.categoria_id)){o.nivel='confira';o.discorda=true;o.motivo=`antes foi ${_irisCatNome(o.cat)} (${o.motivo})`;}
         else if(l.categoria_id&&!o.cat&&o.nivel==='nunca'){o.nivel='confira';o.motivo='nunca visto antes: confira';}
         else if(l.contato_id&&o.cont&&Number(o.cont)!==Number(l.contato_id)&&o.nivel==='certeza'){o.nivel='confira';o.motivo=`contato diferente do costume (${_irisContNome(o.cont)})`;}}
+      if(!o.cont&&!l.contato_id&&IRIS_IA[l.id]&&IRIS_IA[l.id].k)o.cont=IRIS_IA[l.id].k; // contato sugerido pela IA
       const catFinal=l.categoria_id||o.cat,contFinal=l.contato_id||o.cont;
       const verm=catFinal?_irisVermelho(catFinal,l):'';if(verm){o.nivel='gente';o.motivo=verm;}
       if(o.nivel==='certeza'&&(!catFinal||(categoriaExigeContato(catFinal)&&!contFinal&&!String(l.documento||'').trim()))){o.nivel='confira';o.motivo+=' · falta o contato';}
@@ -1551,7 +1562,7 @@
     const ia=IRIS_IA_ESTADO==='olhando'?' · a IA está olhando os nunca vistos…':IRIS_IA_ESTADO==='sem-api'?' · a IA ainda não foi ligada na Vercel':IRIS_IA_ESTADO==='erro'?' · a IA não respondeu agora':'';
     return `<div class="card" style="margin-bottom:14px;border-color:rgba(59,99,217,.5);padding:13px 16px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">${irisAvatar(32)}
-        <div><b style="font-size:14.5px">Íris olhou ${R.size} lançamento(s) de ${MESES_NOME[mesSel]} sem conferir</b><div class="mut" style="font-size:11.5px">${MODULO_ATUAL==='diversas'?'na Diversas ela preenche tudo e confere sozinha o verde e o amarelo (fica no nome ÍRIS) · o vermelho fica para vocês':'ela preenche pelo que vocês já fizeram · só vira conferido quando uma pessoa confirma'}${ia}</div></div></div>
+        ${ehDono()&&MODULO_ATUAL!=='diversas'?`<button class="btn ghost" style="margin-left:auto;order:3;padding:5px 12px;font-size:12px" onclick="irisContatosTodosMeses()">Preencher contatos de todos os meses</button>`:''}<div><b style="font-size:14.5px">Íris olhou ${R.size} lançamento(s) de ${MESES_NOME[mesSel]} sem conferir</b><div class="mut" style="font-size:11.5px">${MODULO_ATUAL==='diversas'?'na Diversas ela preenche tudo e confere sozinha o verde e o amarelo (fica no nome ÍRIS) · o vermelho fica para vocês':'ela preenche pelo que vocês já fizeram · só vira conferido quando uma pessoa confirma'}${ia}</div></div></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px">
         ${box('certeza','var(--green)','61,214,140','Íris tem certeza','igual 3 vezes ou mais, ou ensinado')}
         ${box('confira','var(--amber)','245,183,64','Íris sugeriu, confira',nunca?`parecido ou novo · ${nunca} nunca visto(s)`:'parecido com algo de antes, ou novo')}
@@ -1564,11 +1575,11 @@
       :IRIS_FILTRO==='confira'&&ed&&nPre?`<button class="btn" style="font-weight:800" onclick="irisPreencherSugestoes()">Preencher as ${nPre} sugestões (sem conferir)</button>`:'';
     return `<div id="irisFiltroBar" class="note" style="border-color:var(--blue);display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">Mostrando só: <b>${tit}</b> · <b>${n}</b> lançamento(s)${IRIS_FILTRO==='certeza'?'<span class="mut" style="font-size:12px">dê uma olhada e confirme: ela preenche o que falta e marca conferido no seu nome</span>':''}<span style="margin-left:auto;display:flex;gap:8px">${acao}<button class="btn ghost" style="padding:4px 12px;font-size:12px" onclick="IRIS_FILTRO='';render()">Ver todos ✕</button></span></div>`;}
   function irisChipHTML(l){if(l.conferido_por||contaEhCaixinha(l.conta_id))return '';const r=irisAvaliar().get(l.id);if(!r)return '';
-    const rgb={certeza:'61,214,140',confira:'245,183,64',gente:'214,69,69',nunca:'143,161,151'}[r.nivel];
+    const cls='iris-'+r.nivel;
     const sug=r.preencher?` → ${_remEsc([!l.categoria_id&&r.cat?'categoria '+_irisCatNome(r.cat):'',!l.contato_id&&r.cont?'contato '+_irisContNome(r.cont):''].filter(Boolean).join(' · '))}`:'';
-    const usar=r.preencher&&podeEditar()?`<button tabindex="-1" class="catchip" onclick="irisUsar(${l.id})" title="Coloca o que a Íris sugeriu. Não marca conferido." style="cursor:pointer;font-size:10.5px;border-color:rgba(${rgb},.7);color:rgb(${rgb});font-weight:800">usar sugestão</button>`:'';
+    const usar=r.preencher&&podeEditar()?`<button tabindex="-1" onclick="irisUsar(${l.id})" title="Coloca o que a Íris sugeriu. Não marca conferido." class="catchip iris-tag ${cls}" style="cursor:pointer;font-weight:800">usar sugestão</button>`:'';
     const ens=l.categoria_id&&podeEditar()?`<button tabindex="-1" class="catchip" onclick="irisAbrirEnsinar(${l.id})" title="Explicar para a Íris como é este lançamento" style="cursor:pointer;font-size:10.5px">ensinar</button>`:'';
-    return `<span class="catchip" title="Íris: ${_remEsc(r.motivo)}" style="font-size:10.5px;border-color:rgba(${rgb},.45);color:rgb(${rgb});background:rgba(${rgb},.08)">Íris: ${_remEsc(r.motivo)}${sug}</span>${usar}${ens}`;}
+    return `<span class="catchip iris-tag ${cls}" title="Íris: ${_remEsc(r.motivo)}">Íris: ${_remEsc(r.motivo)}${sug}</span>${usar}${ens}`;}
   function _irisAplicarLocal(l,patch){Object.assign(l,patch);if('categoria_id' in patch){const c=CATS.find(x=>Number(x.id)===Number(patch.categoria_id));l.categorias=c?{nome:c.nome,grupo:c.grupo}:null;}
     if('contato_id' in patch){const c=CONTATOS.find(x=>Number(x.id)===Number(patch.contato_id));l.contatos=c?{nome:c.nome,tipo:c.tipo}:null;}}
   function _irisPatch(l,r){const p={};if(!l.categoria_id&&r.cat)p.categoria_id=Number(r.cat);if(!l.contato_id&&r.cont)p.contato_id=Number(r.cont);return p;}
@@ -1679,14 +1690,33 @@
       const lojas=LOJAS.filter(l=>!l.arquivada&&_modDe(l)!=='casa');
       for(const L of lojas){try{if(_modDe(L)!==MODULO_ATUAL)await trocarModulo(_modDe(L));lojaAtual=L.id;await carregarContas();await carregarFechamentos();
           for(const m of meses){mesSel=m;page='lanc';IRIS_GRUPO={loja:null,map:{},n:0};await viewLanc();await irisCarregarGrupo();await irisCarregarSugestoes();_irisIAEmCurso=false;await irisPedirIA();
-            if(MODULO_ATUAL==='diversas')await irisAutoDiversas();}
+            if(MODULO_ATUAL==='diversas')await irisAutoDiversas();else await irisAutoContatos();}
           log.push(lojaNomeCurto(L.id)+' ok');}catch(e){log.push(lojaNomeCurto(L.id)+' erro: '+(e.message||e));}}
       window.__roboFim={ok:true,log};}
     catch(e){window.__roboFim={ok:false,erro:String((e&&e.message)||e),log};}}
+  // v2.9.71: a Íris preenche sozinha o CONTATO que ela sugere (só o contato, nas saídas). A categoria continua com vocês.
+  async function irisAutoContatos(){if(!podeEditar()||MODULO_ATUAL==='diversas')return 0;_irisMemo.t=0;const R=irisAvaliar();
+    const lista=[...R.values()].map(r=>({r,l:LANC.find(x=>x.id===r.id)})).filter(({r,l})=>l&&!l.contato_id&&r.cont&&Number(l.valor)<0&&!(l.categorias&&l.categorias.grupo==='neutra')&&!bloqueadoPorFechamento(l.data,l.conta_id)&&CONTATOS.some(c=>Number(c.id)===Number(r.cont)&&!c.arquivado));
+    if(!lista.length)return 0;const g={};lista.forEach(({r,l})=>{(g[r.cont]=g[r.cont]||[]).push(l);});let n=0;
+    for(const [cid,ls] of Object.entries(g)){for(let i=0;i<ls.length;i+=200){const parte=ls.slice(i,i+200);const {data,error}=await sb.from('lancamentos').update({contato_id:Number(cid)}).in('id',parte.map(l=>l.id)).is('contato_id',null).select('id');
+      const sim=new Set((data||[]).map(x=>x.id));parte.forEach(l=>{if(!error&&sim.has(l.id)){_irisAplicarLocal(l,{contato_id:Number(cid)});n++;}});}}
+    _irisMemo.t=0;return n;}
+  // gestor: passa por todas as lojas e todos os meses do ano preenchendo os contatos
+  async function irisContatosTodosMeses(){if(!ehDono()||_autoRodando)return;const hoje=_hojeLocal(),mA=Number(hoje.slice(5,7))-1;
+    if(!confirm('A Íris vai passar por todas as lojas, de junho até agora, e preencher o CONTATO das saídas que ela sabe (pelo histórico, pelo que foi ensinado e pela IA). A categoria ela não mexe. Não marca conferido.\n\nPode levar alguns minutos. Começar?'))return;
+    _autoRodando=true;const antes={l:lojaAtual,m:mesSel,mod:MODULO_ATUAL,p:page};let tot=0;const veu=document.createElement('div');veu.id='autoVeu';veu.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center';document.body.appendChild(veu);
+    _salvandoN++;
+    try{const lojas=LOJAS.filter(l=>!l.arquivada&&!['diversas','casa'].includes(_modDe(l)));let k=0;
+      for(const L of lojas){if(_modDe(L)!==MODULO_ATUAL){MODULO_ATUAL=_modDe(L);}lojaAtual=L.id;await carregarContas();await carregarFechamentos();await carregarLancamentos();IRIS_GRUPO={loja:null,map:{},n:0};
+        for(let m=5;m<=mA;m++){k++;veu.innerHTML=`<div class="card" style="padding:16px 22px;font-size:14px"><span class="spin"></span> Íris preenchendo contatos · ${_remEsc(lojaNomeCurto(L.id))} · ${MESES_NOME[m]} (${k}/${lojas.length*(mA-4)})<br><span class="mut" style="font-size:12px">${tot} contato(s) preenchido(s) até agora · não feche esta aba</span></div>`;
+          mesSel=m;page='lanc';await irisCarregarGrupo();await irisCarregarSugestoes();_irisIAEmCurso=false;await irisPedirIA(true);tot+=await irisAutoContatos();}}}
+    catch(e){console.error(e);toast('Parou no meio: '+(e.message||e),'erro');}
+    finally{_salvandoN--;veu.remove();_autoRodando=false;MODULO_ATUAL=antes.mod;lojaAtual=antes.l;mesSel=antes.m;await carregarContas();await carregarFechamentos();if(antes.p==='lanc')await carregarLancamentos();page=antes.p;}
+    toast(`Íris preencheu ${tot} contato(s) de junho até agora.`,'ok');render();}
   // ---- IA para o que nunca apareceu (só sugere; vai para o amarelo) ----
-  async function irisPedirIA(){if(_irisIAEmCurso||page!=='lanc'||!podeEditar())return;const R=irisAvaliar();
-    const alvo=[...R.values()].filter(r=>r.nivel==='nunca').map(r=>LANC.find(x=>x.id===r.id)).filter(l=>l&&!l.categoria_id&&!IRIS_IA[l.id]).slice(0,180);
-    if(!alvo.length){if(MODULO_ATUAL==='diversas')await irisAutoDiversas();return;}_irisIAEmCurso=true;IRIS_IA_ESTADO='olhando';const p=document.getElementById('irisPainel');if(p)p.innerHTML=irisPainelHTML();
+  async function irisPedirIA(semAuto){if(_irisIAEmCurso||page!=='lanc'||!podeEditar())return;const R=irisAvaliar();
+    const alvo=[...R.values()].filter(r=>r.nivel==='nunca'||(!r.cont)).map(r=>LANC.find(x=>x.id===r.id)).filter(l=>l&&!IRIS_IA[l.id]&&(!l.categoria_id||(!l.contato_id&&Number(l.valor)<0&&!(l.categorias&&l.categorias.grupo==='neutra')))).slice(0,180);
+    if(!alvo.length){if(!semAuto){if(MODULO_ATUAL==='diversas')await irisAutoDiversas();else if(await irisAutoContatos())lancSoAtualizar();}return;}_irisIAEmCurso=true;IRIS_IA_ESTADO='olhando';const p=document.getElementById('irisPainel');if(p)p.innerHTML=irisPainelHTML();
     let token='';try{const {data}=await sb.auth.getSession();token=data&&data.session?data.session.access_token:'';}catch(e){}
     const cats=catsAtivas().map(c=>({id:c.id,nome:c.nome,grupo:c.grupo}));const conts=contatosAtivos().slice(0,700).map(c=>({id:c.id,nome:c.nome,tipo:c.tipo}));
     const ex=[];const vis=new Set();LANC.filter(l=>l.categoria_id&&l.conferido_por).forEach(l=>{const k=_irisKFull(l.descricao);if(vis.has(k)||ex.length>=60)return;vis.add(k);ex.push({d:l.descricao,v:Number(l.valor),c:_irisCatNome(l.categoria_id),k:l.contato_id?_irisContNome(l.contato_id):''});});
@@ -1702,7 +1732,7 @@
       parte.forEach(l=>{if(!IRIS_IA[l.id])IRIS_IA[l.id]={c:null,k:null,m:'',em:Date.now()};});}}
     catch(e){erro='erro';}
     try{const ent=Object.entries(IRIS_IA).sort((a,b)=>(b[1].em||0)-(a[1].em||0)).slice(0,4000);IRIS_IA=Object.fromEntries(ent);localStorage.setItem('fluxo_iris_ia',JSON.stringify(IRIS_IA));}catch(e){}
-    IRIS_IA_ESTADO=erro;_irisIAEmCurso=false;_irisMemo.t=0;if(page==='lanc'){lancSoAtualizar();if(MODULO_ATUAL==='diversas')await irisAutoDiversas();}}
+    IRIS_IA_ESTADO=erro;_irisIAEmCurso=false;_irisMemo.t=0;if(page==='lanc'&&!semAuto){if(MODULO_ATUAL==='diversas')await irisAutoDiversas();else await irisAutoContatos();lancSoAtualizar();}}
   function lancPronto(l){const cat=l.categorias;if(!l.categoria_id||!cat||cat.grupo==='adef')return false;
     if(categoriaExigeContato(l.categoria_id)&&!l.contato_id&&!String(l.documento||'').trim())return false; // v2.9.36: nome escrito em "contato sem cadastro" vale
     const n=String(cat.nome||'').toUpperCase(),r=l.ref_externa||'';
@@ -1947,8 +1977,8 @@
       const obsLinha=editavel?`<div style="margin-top:3px"><span tabindex="-1" onclick="editarObsLanc(${l.id})" title="${saida?'Nome de quem recebeu, sem precisar cadastrar contato (ex.: funcionário que já saiu, quem fez a panfletagem)':'Observação deste lançamento'}" style="cursor:pointer;font-size:11px;color:var(--muted)">${obsTxt?'📝 '+obsTxt:(saida?'+ contato sem cadastro':'+ obs')}</span></div>`:(obsTxt?`<div class="mut" style="font-size:11px;margin-top:3px">📝 ${obsTxt}</div>`:'');
       const selCat=(editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${neutra?'neutracat':''}" style="min-width:120px" onclick="abrirComboCatLanc(this,${l.id})"><span>${cat.nome||'⚠ categoria'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCat(${l.id})">+</button></div>`:`<span class="catchip ${neutra?'neutra':''}">${cat.nome||'—'}</span>`)+(neutra?`<div style="margin-top:3px"><span tabindex="-1" onclick="explicaNeutra()" title="Não entra no resultado. Clique para ver o que é neutra." style="cursor:pointer;font-size:10.5px;font-weight:700;color:var(--blue);background:rgba(125,162,255,.16);border:1px solid var(--blue);border-radius:10px;padding:0 7px">neutra · não entra no resultado nem no fechamento ⓘ</span></div>`:'')+(saida?'':obsLinha);
       // seletor de contato inline (vermelho se saída sem contato)
-      const faltaContato=saida&&!l.contato_id&&!obsTxt&&!neutra&&!String(l.ref_externa||'').startsWith('cxs:'); // v2.9.46: linha do Caixinha já tem cor própria
-      const selCont=!saida?(contatoEntradaVale(cont.nome)?`<span class="mut" style="font-size:12px">${cont.nome}</span>`:''):editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(obsTxt?`<span class="mut" title="sem contato cadastrado — vale o nome escrito embaixo">sem cadastro</span>`:(saida?'⚠ contato':'— contato'))}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>${obsLinha}`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—')+obsLinha;
+      const faltaContato=saida&&!l.contato_id&&!obsTxt&&!neutra&&!String(l.ref_externa||'').startsWith('cxs:')&&categoriaExigeContato(l.categoria_id); // v2.9.70: vermelho só onde o contato é obrigatório (Funcionários); nos outros é opcional // v2.9.46: linha do Caixinha já tem cor própria
+      const selCont=!saida?(contatoEntradaVale(cont.nome)?`<span class="mut" style="font-size:12px">${cont.nome}</span>`:''):editavel?`<div style="display:flex;gap:3px;align-items:center"><div class="combo ${faltaContato?'falta':''}" style="min-width:110px" onclick="abrirComboContLanc(this,${l.id})"><span>${cont.nome||(obsTxt?`<span class="mut" title="sem contato cadastrado — vale o nome escrito embaixo">sem cadastro</span>`:(faltaContato?'⚠ contato':'— contato'))}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContato(${l.id})">+</button></div>${obsLinha}`:(cont.nome?`<span class="contchip ${cont.tipo==='funcionario'?'func':'emp'}">${cont.nome}</span>`:'—')+obsLinha;
       // seletor de conta inline
       // conta: sempre Sicoob (banco), não precisa mostrar/editar na lista
       const ehCx=contaEhCaixinha(l.conta_id);const quem=nomeDe(l.criado_por)||(l.origem==='ofx'&&!l.criado_por&&l.fitid?'AUTOMÁTICO':'');
@@ -2320,6 +2350,30 @@
     let ok=0;for(const p of marc){const upd={categoria_id:p.r.categoria_id};if(!p.l.contato_id&&p.r.contato_id)upd.contato_id=p.r.contato_id;const {error}=await sb.from('lancamentos').update(upd).eq('id',p.l.id);if(!error)ok++;}
     fecharModal();toast(`${ok} lançamento(s) preenchidos pelas regras.`,'ok');viewLanc();
   }
+  // v2.9.70: Íris acha nomes repetidos (categoria ou contato) e junta num só — o que fica é o escolhido; os outros vão para arquivados
+  const _dupKey=n=>String(n||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9]/g,'');
+  let _dupUsos={};
+  async function irisDuplicados(tipo){const box=document.getElementById('irisDup');if(!box||!ehDono())return;
+    const lista=(tipo==='cat'?CATS:CONTATOS).filter(x=>!(tipo==='cat'?x.arquivada:x.arquivado));const g={};
+    lista.forEach(x=>{const k=_dupKey(x.nome)+'|'+(x.modulo||'')+'|'+(x.loja_id||'')+(tipo==='cat'?'|'+x.grupo:'|'+x.tipo);(g[k]=g[k]||[]).push(x);});
+    const grupos=Object.values(g).filter(a=>a.length>1);if(!grupos.length){box.innerHTML='';return;}
+    const col=tipo==='cat'?'categoria_id':'contato_id';
+    for(const a of grupos)for(const x of a){if(_dupUsos[tipo+x.id]==null){try{const {count}=await sb.from('lancamentos').select('id',{count:'exact',head:true}).eq(col,x.id);_dupUsos[tipo+x.id]=count||0;}catch(e){_dupUsos[tipo+x.id]=0;}}}
+    const fica=a=>{const up=a.filter(x=>x.nome===String(x.nome).toUpperCase());const base=up.length?up:a;return base.slice().sort((p,q)=>(_dupUsos[tipo+q.id]||0)-(_dupUsos[tipo+p.id]||0))[0];};
+    box.innerHTML=`<div class="card" style="margin-bottom:14px;border-color:rgba(59,99,217,.5)"><div style="display:flex;align-items:center;gap:10px">${irisAvatar(34)}<div><b>Íris achou ${grupos.length} nome(s) repetido(s) em ${tipo==='cat'?'categorias':'contatos'}</b><div class="mut" style="font-size:12px">escolha qual fica: os lançamentos, regras e Agenda dos outros passam para ele, e os outros vão para os arquivados (nada é apagado)</div></div></div>
+      ${grupos.map((a,gi)=>{const f=fica(a);return `<div style="border-top:1px solid var(--line);padding:10px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap">${a.map(x=>`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="radio" name="dup${tipo}${gi}" value="${x.id}" ${x.id===f.id?'checked':''}> <b>${_remEsc(x.nome)}</b> <span class="mut" style="font-size:11.5px">${_dupUsos[tipo+x.id]||0} lanç.</span></label>`).join('')}
+        ${tipo==='cont'&&a[0].tipo==='funcionario'?'<span style="color:var(--amber);font-size:11.5px">funcionário: confira se não são duas pessoas com o mesmo nome</span>':''}
+        <button class="btn" style="margin-left:auto;padding:5px 14px;font-size:12.5px;font-weight:800" onclick="irisJuntar('${tipo}',${gi},[${a.map(x=>x.id).join(',')}])">Juntar</button></div>`;}).join('')}</div>`;}
+  async function irisJuntar(tipo,gi,ids){if(!ehDono())return;const sel=document.querySelector(`input[name="dup${tipo}${gi}"]:checked`);if(!sel)return;const fica=Number(sel.value),sai=ids.filter(i=>i!==fica);
+    const L=(tipo==='cat'?CATS:CONTATOS),nf=(L.find(x=>x.id===fica)||{}).nome,col=tipo==='cat'?'categoria_id':'contato_id';
+    if(!confirm(`Juntar em "${nf}"?\n\nOs lançamentos, regras, recorrentes e Agenda dos outros ${sai.length} passam para "${nf}" e eles vão para os arquivados.`))return;
+    let erro='';_salvandoN++;
+    try{for(const t of ['lancamentos','contas_pagar','regras_palavras','regras','recorrentes','remanejos','iris_sugestoes']){const {error}=await sb.from(t).update({[col]:fica}).in(col,sai);if(error&&!/relation|exist|permission|policy/i.test(error.message||''))erro=erro||(t+': '+error.message);}
+      if(!erro){const {error}=await sb.from(tipo==='cat'?'categorias':'contatos').update(tipo==='cat'?{arquivada:true}:{arquivado:true}).in('id',sai);if(error)erro=error.message;}}
+    finally{_salvandoN--;}
+    if(erro){toast('Não juntou tudo: '+erro,'erro');return;}
+    sai.forEach(i=>{const x=L.find(y=>y.id===i);if(x){if(tipo==='cat')x.arquivada=true;else x.arquivado=true;}});LANC.forEach(l=>{if(sai.includes(Number(l[col]))){l[col]=fica;}});_dupUsos={};
+    toast(`Juntado em "${nf}".`,'ok');await carregarRegrasP();render();}
   function viewCategorias(){
     const aDef=catsAtivas().filter(c=>c.grupo==='adef');
     const aviso=aDef.length?`<div class="note soon">⚠️ <b>${aDef.length} categoria(s) ainda sem classificar (A definir).</b> Clique no grupo "A definir" abaixo e organize cada uma no lugar certo.</div>`:'';
@@ -2355,7 +2409,8 @@
     const painelRegras=`<div class="card" style="margin-bottom:14px"><div class="cardhead"><h3>🔑 Palavras que puxam sozinho</h3><span class="tag">${REGRAS_P.length} regra(s)</span></div>
       <p class="mut" style="font-size:12.5px;line-height:1.5;margin:6px 0 10px">Igual ao FaturaFácil: cada categoria tem palavras separadas por vírgula. Quando a descrição do extrato tiver uma delas, a categoria (e o contato, se a regra tiver) já vem preenchida na importação e no botão "Aplicar regras" de Lançamentos. Palavra mais longa ganha.</p>
       ${podeEditar()?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="gerarRegrasHistorico()">✨ Gerar palavras do histórico</button><span class="mut" style="font-size:12px;align-self:center">olha os meses já classificados e sugere as palavras — você aprova antes de salvar</span></div>`:''}</div>`;
-    document.getElementById('content').innerHTML=`<div class="note">🏷️ <b>Categorias por grupo do DRE.</b> Clique num grupo pra ver as categorias dele. Pra corrigir, é só trocar o grupo na setinha — salva na hora.</div>${aviso}${painelRegras}
+    setTimeout(()=>irisDuplicados('cat').catch(e=>console.error(e)),30);
+    document.getElementById('content').innerHTML=`<div id="irisDup"></div><div class="note">🏷️ <b>Categorias por grupo do DRE.</b> Clique num grupo pra ver as categorias dele. Pra corrigir, é só trocar o grupo na setinha — salva na hora.</div>${aviso}${painelRegras}
       ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>Nova categoria</h3></div>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><input id="ncTela" class="qin maiusc" placeholder="Nome" style="max-width:240px"><select id="ngTela" class="qin" style="max-width:180px"><option value="adef">A definir</option><option value="rec">Receita</option><option value="cmv">CMV</option><option value="imp">Imposto</option><option value="fixo">Custo Fixo</option><option value="nop">Não Operacional</option></select><button class="btn" onclick="addCatTela()">+ Adicionar</button></div></div>`:''}
       ${cards}
@@ -2411,7 +2466,8 @@
     const emp=contatosAtivos().filter(c=>c.tipo==='empresa').map(c=>linhaC(c,'🏢','emp')).join('');
     const fun=contatosAtivos().filter(c=>c.tipo==='funcionario').map(c=>linhaC(c,'👤','func')).join('');
     const arq=CONTATOS.filter(c=>c.arquivado).map(c=>`<div class="cfgrow" style="opacity:.6"><span class="contchip ${c.tipo==='funcionario'?'func':'emp'}">${c.tipo==='funcionario'?'👤':'🏢'} ${c.nome}</span><span class="arqbtn ativar" style="margin-left:auto" onclick="ativarContato(${c.id})">↩ reativar</span></div>`).join('');
-    document.getElementById('content').innerHTML=`<div class="note">👥 <b>Contatos</b> — empresas e funcionários. Cada um pode ter <b>🔑 palavras</b> que puxam o contato sozinho na importação do extrato (igual às categorias). O botão "Gerar palavras do histórico", em Categorias, também aprende o contato.</div>
+    setTimeout(()=>irisDuplicados('cont').catch(e=>console.error(e)),30);
+    document.getElementById('content').innerHTML=`<div id="irisDup"></div><div class="note">👥 <b>Contatos</b> — empresas e funcionários. Cada um pode ter <b>🔑 palavras</b> que puxam o contato sozinho na importação do extrato (igual às categorias). O botão "Gerar palavras do histórico", em Categorias, também aprende o contato.</div>
       ${podeEditar()?`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>Novo contato</h3></div>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><input id="nctTela" class="qin maiusc" placeholder="Nome" style="max-width:240px"><select id="ntTela" class="qin" style="max-width:180px"><option value="empresa">🏢 Empresa</option><option value="funcionario">👤 Funcionário</option></select><button class="btn" onclick="addContatoTela()">+ Adicionar</button></div></div>`:''}
       <div class="grid two">
@@ -5277,7 +5333,7 @@
       const clique=tipo&&!it.semClique?`onclick="${_dashOnClick(it,tipo)}" style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='transparent'"`:'style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"';
       return `<div ${clique}>
         <span style="width:11px;height:11px;border-radius:3px;background:${cor};flex-shrink:0"></span>
-        <span style="flex:1">${it.nome}${it.sub?` <span class="mut" style="font-size:11px">· ${it.sub}</span>`:''} <span class="mut" style="font-size:11px">${pct.toFixed(1).replace('.',',')}%${it.n?` · ${it.n} lanç.`:''}</span></span>
+        <span style="flex:1">${/^Sem (categoria|contato)$/.test(it.nome)?`<b style="color:var(--red)">${it.nome}</b>`:it.nome}${it.sub?` <span class="mut" style="font-size:11px">· ${it.sub}</span>`:''} <span class="mut" style="font-size:11px">${pct.toFixed(1).replace('.',',')}%${it.n?` · ${it.n} lanç.`:''}</span></span>
         <b style="font-variant-numeric:tabular-nums">${BRL(it.valor)}</b>${tipo?'<span class="mut" style="font-size:11px;margin-left:4px">›</span>':''}</div>`;
     }).join('');
   }

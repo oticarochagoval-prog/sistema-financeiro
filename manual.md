@@ -180,6 +180,19 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 
 - A tela separa pelo que o **banco escreve na linha**, e não pela categoria: **Juros** (conta garantida, cheque especial, adiantamento a depositante), **IOF** e **Tarifas do banco** (pacote de serviços, renovação de limite). Parcela de empréstimo, consórcio (DÉB.CONV), seguro e taxa da prefeitura **não entram**. Clicando na loja, aparece a divisão entre os três.
 
+### Modo claro, nomes repetidos e contato (v2.9.70)
+
+- As etiquetas da Íris (verde, amarelo, vermelho) ficaram **mais escuras e em negrito no modo claro**, para dar para ler.
+- **Nomes repetidos:** em Categorias e em Contatos, o gestor vê "Íris achou N nomes repetidos" (ex.: DESPESAS e DESPESAS, MIDIA e Mídia, EMPRESTIMOS e EMPRESTIMOS). Escolha qual fica (ela já marca o que está em MAIÚSCULO e é mais usado) e clique em **Juntar**: lançamentos, regras, recorrentes e Agenda passam para ele, e os outros vão para os arquivados. Nada é apagado. Em funcionário, ela avisa para conferir se não são duas pessoas com o mesmo nome.
+- **Contato:** o "⚠ contato" vermelho agora só aparece onde o contato é obrigatório (Funcionários). Nas outras categorias, o contato é opcional e aparece apagado ("— contato").
+
+### Modo claro principal e contatos automáticos (v2.9.71)
+
+- O Fluxo abre no **modo claro** (o principal). Quem preferir o escuro troca no botão do sol/lua, e fica guardado naquele computador.
+- No Dashboard, **Sem categoria** e **Sem contato** aparecem em vermelho e negrito. Clicando, abre a lista e o botão Abrir em Lançamentos.
+- **Contato automático:** a Íris preenche sozinha o **contato** das saídas que ela sabe (pelo histórico, pelo que foi ensinado, pelas outras lojas e pela IA). A **categoria** continua com vocês, menos na Diversas, onde ela já faz tudo. Não marca conferido. Isso roda ao abrir Lançamentos e no robô das 6h.
+- Gestor: no quadro da Íris em Lançamentos tem **Preencher contatos de todos os meses**. Ela passa por todas as lojas, de junho até agora.
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -831,6 +844,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.71 | Modo claro como principal; Sem categoria/Sem contato em vermelho no Dashboard; Íris preenche sozinha o contato das saídas (categoria fica com a equipe) + botão para todos os meses | — |
+| 27/10/2026 | 2.9.70 | Etiquetas da Íris legíveis no modo claro; Íris junta categorias/contatos repetidos (gestor escolhe qual fica, os outros vão para arquivados); contato vermelho só onde é obrigatório | — |
 | 27/10/2026 | 2.9.69 | Juros por loja: só juros, IOF e tarifas pelo texto do banco (empréstimo, consórcio e seguro fora) | — |
 | 27/10/2026 | 2.9.68 | Botão de confirmar no fim da lista (Íris verde, sugestões, ou todos os amarelos da lista, menos os "sempre com gente"); quadro da Íris perto da lista; sugestão diz categoria/contato; botões usar sugestão e ensinar | — |
 | 27/10/2026 | 2.9.67 | Busca todos os lançamentos (o banco só devolve 1000 por vez: loja grande perdia os últimos meses na tela); Juros por loja em ordem Rocha 1–11 + outras contas, mês a mês, com o detalhe por tipo | — |
