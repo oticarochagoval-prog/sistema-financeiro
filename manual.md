@@ -216,6 +216,11 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
   - **O robô das 6h** acerta o que entrou antes da outra ponta (últimos 60 dias, só o que não foi conferido).
   - O extrato entra pelo arquivo OFX (não tem importação automática), uma vez por semana. O quadro "Extrato em dia?" do Dashboard fica vermelho quando passa de 7 dias.
 
+### Trava: lançamento digitado que é de outra loja (v2.9.81)
+- Ao digitar um lançamento à mão, o Fluxo procura no extrato das outras lojas uma linha igual: mesmo dia, mesmo valor e mesmo nome. Se achar, avisa antes de salvar: "o extrato da Rocha 1 tem um lançamento igual a este". OK salva assim mesmo; Cancelar não salva.
+- Gasto dividido entre 3 ou mais lojas (rateio) não avisa.
+- Motivo: em 04/09, o junho da Rocha 1 foi digitado em parte na Rocha 3 (6 lançamentos, achados pela Rhaiane).
+
 ### Tarifa que não é tarifa, estornos e cheques (v2.9.80)
 - **Débito grande não é tarifa.** Débito automático acima de R$ 1.000 (ex.: DÉB.CONV.DEMAIS EMPRESAS de R$ 30 mil, que é a fatura do cartão) não entra mais como Tarifas Banco. Ele fica sem categoria. Se a Íris sugerir tarifa para ele ou para um cheque, a linha fica vermelha ("não parece tarifa"), para alguém olhar.
 - **A Íris não confere sozinha um palpite só da IA.** Ela preenche, mas o conferido fica para vocês.
@@ -899,6 +904,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.81 | Aviso antes de salvar lançamento digitado igual ao extrato de outra loja | 6 lançamentos da Rocha 1 que estavam na Rocha 3 (junho) → Lixeira |
 | 27/10/2026 | 2.9.80 | Débito grande não vira Tarifas Banco; tarifa em cheque ou débito alto fica vermelha; Íris não confere sozinha palpite da IA; estorno abate a despesa no Dashboard e no DRE | Cheques da 412619 → GRUPO VR (22) e regra criada, com autorização |
 | 27/10/2026 | 2.9.79 | Contas com o mesmo CNPJ (Casa/Rocha 1, Diversas/Rocha 2, Grupo VR/Rocha 3) separadas pela outra ponta da transferência; robô das 6h acerta depois; categorias DIVERSAS · CASA, COMPRAS · CONTA DIVERSAS, CASA · CONTA DIVERSAS | Rodado: 45 categorias, conta 412619 na Diversas, 5.471 entradas de junho para cá reclassificadas (só não conferidas) |
 | 27/10/2026 | 2.9.78 | Conta 412619 dentro da Diversas com a mesma regra; o Fluxo acha de qual conta veio pela outra ponta da transferência (Diversas x Rocha 2, Grupo VR x Rocha 3); Diversas → 412619 vira DIVERSAS · PARA CONTA 412619 | Categorias CONTA DIVERSAS, CONTA 412619 e PARA… |
