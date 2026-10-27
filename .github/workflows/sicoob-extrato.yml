@@ -12,6 +12,10 @@ on:
         description: 'Rodar só uma conta (ex.: ROCHA1). Deixe vazio para todas.'
         required: false
         default: ''
+      desde:
+        description: 'Buscar histórico desde esta data (AAAA-MM-DD, ex.: 2026-06-01). Deixe vazio no uso normal.'
+        required: false
+        default: ''
 
 concurrency:
   group: sicoob-extrato
@@ -20,7 +24,7 @@ concurrency:
 jobs:
   puxar:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,6 +34,7 @@ jobs:
         run: node robo/sicoob-extrato.mjs
         env:
           SO_CONTA: ${{ github.event.inputs.so_conta }}
+          DESDE: ${{ github.event.inputs.desde }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           SICOOB_PFX_ROCHA1: ${{ secrets.SICOOB_PFX_ROCHA1 }}

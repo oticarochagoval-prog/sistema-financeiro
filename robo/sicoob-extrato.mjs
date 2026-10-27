@@ -19,6 +19,7 @@ const SB_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const DIAS_PRA_TRAS = Number(process.env.DIAS_PRA_TRAS || 5); // reconfere os últimos dias (lançamento que cai atrasado)
 const SO_CONTA = (process.env.SO_CONTA || '').trim();            // rodar só uma conta (opcional, pelo botão do GitHub)
+const DESDE = /^\d{4}-\d{2}-\d{2}$/.test((process.env.DESDE || '').trim()) ? process.env.DESDE.trim() : ''; // buscar histórico a partir desta data (opcional)
 const TOKEN_URL = 'https://auth.sicoob.com.br/auth/realms/cooperado/protocol/openid-connect/token';
 const API = 'https://api.sicoob.com.br/conta-corrente/v4';
 
@@ -108,9 +109,12 @@ async function processarConta(c) {
   const hoje = hojeBR();
   let de = ult && ult[0] ? addDias(ult[0].data, -DIAS_PRA_TRAS) : (c.data_inicio || hoje.slice(0, 8) + '01');
   if (c.data_inicio && de < c.data_inicio) de = c.data_inicio;
+  if (DESDE) de = DESDE; // histórico pedido pelo botão do GitHub
+  const falhasMes = [];
 
   let total = 0, saldo = null;
   for (const p of pedacosPorMes(de, hoje)) {
+   try {
     const url = `${API}/extrato/${p.mes}/${p.ano}?diaInicial=${p.diaIni}&diaFinal=${p.diaFim}&numeroContaCorrente=${c.numero_conta}&agruparCNAB=false`;
     let r;
     try { r = await chamar(url, { agent, headers: H }); }
@@ -143,13 +147,18 @@ async function processarConta(c) {
       await sb('sicoob_extrato?on_conflict=transaction_id', { method: 'POST', body: linhas.slice(i, i + 500), prefer: 'resolution=merge-duplicates,return=minimal' });
     }
     total += linhas.length;
+   } catch (e) {
+      if (!DESDE) throw e;
+      falhasMes.push(`${String(p.mes).padStart(2, '0')}/${p.ano}: ${String(e.message || e).slice(0, 120)}`);
+      console.error(`  ${c.apelido} ${p.mes}/${p.ano} não veio: ${e.message}`);
+    }
   }
 
   await sb(`sicoob_contas?id=eq.${c.id}`, {
     method: 'PATCH', prefer: 'return=minimal',
     body: {
       cert_vence: cert.vence.toISOString().slice(0, 10), cert_titular: cert.titular,
-      ultima_execucao: new Date().toISOString(), ultimo_ok: new Date().toISOString(), ultimo_erro: null,
+      ultima_execucao: new Date().toISOString(), ultimo_ok: new Date().toISOString(), ultimo_erro: falhasMes.length ? ('Histórico incompleto: ' + falhasMes.join(' | ')).slice(0, 500) : null,
       ultimo_periodo: `${de} a ${hoje}`, ultima_qtd: total,
       saldo_atual: saldo && saldo.saldoAtual != null ? Number(saldo.saldoAtual) : null,
       saldo_limite: saldo && saldo.saldoLimite != null ? Number(saldo.saldoLimite) : null,
