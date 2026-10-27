@@ -283,7 +283,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.50', APP_DATA='24/10/2026';
+  const APP_VERSAO='2.9.56', APP_DATA='26/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1532,7 +1532,7 @@
 
   function render(){
     const V={confpix:viewConfPix,visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,remanejos:viewRemanejos,emprestimos:viewEmprestimos,recorrentes:viewRecorrentes,lixeira:viewLixeira,backup:viewBackup,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
-    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));preencherRemDash().catch(e=>console.error('rem dash',e));preencherPixDash().catch(e=>console.error('pix dash',e));preencherRankDash().catch(e=>console.error('rank dash',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
+    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));preencherRemDash().catch(e=>console.error('rem dash',e));preencherPixDash().catch(e=>console.error('pix dash',e));preencherRankDash().catch(e=>console.error('rank dash',e));preencherIrisDash().catch(e=>console.error('iris',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   let mesSel=new Date().getMonth();let _keepY=null;
@@ -1554,7 +1554,7 @@
       if(filtroDia && l.data!==filtroDia)return false;
       if(filtroConta==='caixinha'&&!contaEhCaixinha(l.conta_id))return false;
       if(filtroConta==='banco'&&contaEhCaixinha(l.conta_id))return false;
-      if(filtroTipoLanc==='ent'&&!(Number(l.valor)>0))return false;if(filtroTipoLanc==='sai'&&!(Number(l.valor)<0))return false;
+      if(filtroTipoLanc&&(contaEhCaixinha(l.conta_id)||(l.categorias&&l.categorias.grupo==='neutra')))return false; /* v2.9.51: Entradas/Saídas = de verdade, sem neutras nem Caixinha */ if(filtroTipoLanc==='ent'&&!(Number(l.valor)>0))return false;if(filtroTipoLanc==='sai'&&!(Number(l.valor)<0))return false;
       if(ocultarNeutras&&l.categorias&&l.categorias.grupo==='neutra')return false;
       if(soNeutras&&!(l.categorias&&l.categorias.grupo==='neutra'))return false; // v2.9.38: botão "ver só as neutras"
       if(!q)return true;
@@ -1607,7 +1607,7 @@
         <button class="addbtn" id="btnLancar" onclick="salvarLanc()">+ Lançar</button>
       </div>
       ${MODULO_ATUAL==='diversas'&&tipo==='des'?`<div style="margin-top:10px">${divBtnHTML('padding:6px 14px;font-size:12.5px')} <span class="mut" style="font-size:11.5px">cada loja ganha a parte dela na Agenda</span></div><div id="agDivPainel"></div>`:''}
-      <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho</span><span>👥 Categoria obrigatória · sem contato cadastrado? escreva quem foi na observação</span></div>
+      <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho · <b>hoje ou antes = pago</b> (fica aqui) · <b>depois de hoje = a pagar</b> (vai para a Agenda)</span><span>👥 Categoria obrigatória · sem contato cadastrado? escreva quem foi na observação</span></div>
     </div>`:'<div class="note">👁️ Seu acesso é somente leitura (contador). Você pode ver e exportar, mas não lançar.</div>';
     const diaLabel=filtroDia?isoParaBR(filtroDia):'Todos os dias';
     document.getElementById('content').innerHTML='<div id="lancConfTopo">'+conferePainelHTML()+'</div>'+avisoPixNovembro()+(MODULO_ATUAL==='diversas'?'<div id="divLentesAviso"></div>':'')+'<div id="ultimaImportLanc"></div>'+saldoBanco+formHTML+`
@@ -1655,6 +1655,9 @@
     return '';}
   function htmlResultadoLanc(rows,somaE,somaS){
     const editavel=podeEditar();
+    const _pm=`${ANO_FIXO}-${_mm(mesSel)}`,_mes=LANC.filter(l=>(l.data||'').slice(0,7)===_pm),_ehN=l=>!!(l.categorias&&l.categorias.grupo==='neutra');
+    const _gE=_mes.filter(l=>!contaEhCaixinha(l.conta_id)&&!_ehN(l)&&Number(l.valor)>0),_gS=_mes.filter(l=>!contaEhCaixinha(l.conta_id)&&!_ehN(l)&&Number(l.valor)<0),_gN=_mes.filter(l=>!contaEhCaixinha(l.conta_id)&&_ehN(l)),_gC=_mes.filter(l=>contaEhCaixinha(l.conta_id));
+    const _cf=g=>{const t=g.length,c=g.filter(l=>l.conferido_por).length;return t?` <span title="${c} conferido(s) de ${t}${t-c?' · faltam '+(t-c):''}" style="font-size:11px;font-weight:700;color:${c===t?'var(--green)':'var(--amber)'}">${c}/${t}${t-c?' · faltam '+(t-c):' ✓'}</span>`:'';}; // v2.9.51: quanto falta conferir em cada grupo
     let _neuE=0,_neuS=0;rows.forEach(l=>{if(contaEhCaixinha(l.conta_id)&&filtroConta!=='caixinha')return;if(!(l.categorias&&l.categorias.grupo==='neutra'))return;const v=Number(l.valor)||0;if(v>0)_neuE+=v;else _neuS+=-v;}); // v2.9.47: entradas/saídas de verdade = banco − neutras
     const tr=rows.map(l=>{
       const cat=l.categorias||{};const cont=l.contatos||{};const neutra=cat.grupo==='neutra';
@@ -1704,10 +1707,10 @@
         :(filtroConta==='caixinha'?`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="abrirContatoPadrao()">👤 Contato padrão por categoria</button>`:'');})()}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">dinheiro da gaveta: as saídas vêm sozinhas do Caixinha e não somam no saldo do banco (entram no resultado)</span>':''}<span style="margin-left:auto;display:flex;gap:8px;align-items:center">${lentesStatusHTML()}</span></div>${(()=>{const pend=LANC.filter(l=>{const n=String((l.categorias&&l.categorias.nome)||'').toUpperCase();const r=l.ref_externa||'';return (n===CAT_ESTORNAR&&!r.startsWith('cxb:'))||(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'));});return pend.length?`<div class="note" style="border-color:rgba(245,183,64,.45);margin-bottom:10px">🔁 <b>${pend.length} lançamento(s) do Banco Caixinha ainda não ligado(s)</b> — clique no botão amarelo de cada um ("Mandar pro Banco Caixinha" ou "Marcar devolução"). É isso que mantém o em aberto das lojas certo sem ninguém apagar nada.</div>`:'';})()}
       <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12.5px;flex-wrap:wrap">
         <span class="mut">${rows.length} lançamento(s)</span>
-        <span onclick="filtroTipoLanc=filtroTipoLanc==='ent'?'':'ent';_keepY=window.scrollY;render()" title="Entradas de verdade (sem as neutras). Entre parênteses: tudo que entrou no banco, como no extrato. Clique para ver só as entradas" style="cursor:pointer;color:var(--green);padding:1px 8px;border-radius:20px;border:1px solid ${filtroTipoLanc==='ent'?'var(--green)':'transparent'}">Entradas: <b>${BRL(somaE-_neuE)}</b> <span class="mut" style="font-size:11px">(banco ${BRL(somaE)})</span>${filtroTipoLanc==='ent'?' ✕':''}</span>
-        <span onclick="filtroTipoLanc=filtroTipoLanc==='sai'?'':'sai';_keepY=window.scrollY;render()" title="Saídas de verdade (sem as neutras). Entre parênteses: tudo que saiu do banco, como no extrato. Clique para ver só as saídas" style="cursor:pointer;color:var(--red);padding:1px 8px;border-radius:20px;border:1px solid ${filtroTipoLanc==='sai'?'var(--red)':'transparent'}">Saídas: <b>${BRL(somaS-_neuS)}</b> <span class="mut" style="font-size:11px">(banco ${BRL(somaS)})</span>${filtroTipoLanc==='sai'?' ✕':''}</span>
-        ${(()=>{const pref=`${ANO_FIXO}-${_mm(mesSel)}`;const nN=LANC.filter(l=>(l.data||'').slice(0,7)===pref&&!contaEhCaixinha(l.conta_id)&&l.categorias&&l.categorias.grupo==='neutra').length;return nN?`<span onclick="soNeutras=!soNeutras;_keepY=window.scrollY;render()" title="Clique para ver só as neutras (não entram no resultado), por ordem de data" style="cursor:pointer;color:var(--blue);font-weight:700;padding:1px 8px;border-radius:20px;border:1px solid ${soNeutras?'var(--blue)':'transparent'}">Neutras: ${nN} <span style="font-weight:500;font-size:11px">(entrou ${BRL(_neuE)} · saiu ${BRL(_neuS)})</span>${soNeutras?' ✕':''}</span>`:'';})()}
-        ${(()=>{const pref=`${ANO_FIXO}-${_mm(mesSel)}`;const lc=LANC.filter(l=>(l.data||'').slice(0,7)===pref&&contaEhCaixinha(l.conta_id)),nC=lc.length,tC=lc.reduce((a,l)=>a+Math.abs(Math.min(0,Number(l.valor))),0);return nC?`<span onclick="filtroConta=filtroConta==='caixinha'?'':'caixinha';_keepY=window.scrollY;render()" title="Dinheiro da gaveta (Caixinha). NÃO soma em Entradas, Saídas, Saldo nem no saldo do banco: o banco tem que bater com o extrato. Clique para ver só elas." style="cursor:pointer;color:#b07d00;font-weight:700;padding:1px 8px;border-radius:20px;border:1px solid ${filtroConta==='caixinha'?'#c9951a':'transparent'}">Caixinha: ${nC} · ${BRL(tC)} <span style="font-weight:500;font-size:11px">(não soma no banco)</span>${filtroConta==='caixinha'?' ✕':''}</span>`:'';})()}
+        <span onclick="filtroTipoLanc=filtroTipoLanc==='ent'?'':'ent';soNeutras=false;if(filtroConta==='caixinha')filtroConta='';_keepY=window.scrollY;render()" title="Entradas de verdade (sem as neutras). Entre parênteses: tudo que entrou no banco, como no extrato. Clique para ver só as entradas" style="cursor:pointer;color:var(--green);padding:1px 8px;border-radius:20px;border:1px solid ${filtroTipoLanc==='ent'?'var(--green)':'transparent'}">Entradas: <b>${BRL(somaE-_neuE)}</b> <span class="mut" style="font-size:11px">(banco ${BRL(somaE)})</span>${_cf(_gE)}${filtroTipoLanc==='ent'?' ✕':''}</span>
+        <span onclick="filtroTipoLanc=filtroTipoLanc==='sai'?'':'sai';soNeutras=false;if(filtroConta==='caixinha')filtroConta='';_keepY=window.scrollY;render()" title="Saídas de verdade (sem as neutras). Entre parênteses: tudo que saiu do banco, como no extrato. Clique para ver só as saídas" style="cursor:pointer;color:var(--red);padding:1px 8px;border-radius:20px;border:1px solid ${filtroTipoLanc==='sai'?'var(--red)':'transparent'}">Saídas: <b>${BRL(somaS-_neuS)}</b> <span class="mut" style="font-size:11px">(banco ${BRL(somaS)})</span>${_cf(_gS)}${filtroTipoLanc==='sai'?' ✕':''}</span>
+        ${(()=>{const pref=`${ANO_FIXO}-${_mm(mesSel)}`;const nN=LANC.filter(l=>(l.data||'').slice(0,7)===pref&&!contaEhCaixinha(l.conta_id)&&l.categorias&&l.categorias.grupo==='neutra').length;return nN?`<span onclick="soNeutras=!soNeutras;filtroTipoLanc='';if(filtroConta==='caixinha')filtroConta='';_keepY=window.scrollY;render()" title="Clique para ver só as neutras (não entram no resultado), por ordem de data" style="cursor:pointer;color:var(--blue);font-weight:700;padding:1px 8px;border-radius:20px;border:1px solid ${soNeutras?'var(--blue)':'transparent'}">Neutras: ${nN} <span style="font-weight:500;font-size:11px">(entrou ${BRL(_neuE)} · saiu ${BRL(_neuS)})</span>${_cf(_gN)}${soNeutras?' ✕':''}</span>`:'';})()}
+        ${(()=>{const pref=`${ANO_FIXO}-${_mm(mesSel)}`;const lc=LANC.filter(l=>(l.data||'').slice(0,7)===pref&&contaEhCaixinha(l.conta_id)),nC=lc.length,tC=lc.reduce((a,l)=>a+Math.abs(Math.min(0,Number(l.valor))),0);return nC?`<span onclick="filtroConta=filtroConta==='caixinha'?'':'caixinha';filtroTipoLanc='';soNeutras=false;_keepY=window.scrollY;render()" title="Dinheiro da gaveta (Caixinha). NÃO soma em Entradas, Saídas, Saldo nem no saldo do banco: o banco tem que bater com o extrato. Clique para ver só elas." style="cursor:pointer;color:#b07d00;font-weight:700;padding:1px 8px;border-radius:20px;border:1px solid ${filtroConta==='caixinha'?'#c9951a':'transparent'}">Caixinha: ${nC} · ${BRL(tC)} <span style="font-weight:500;font-size:11px">(não soma no banco)</span>${_cf(_gC)}${filtroConta==='caixinha'?' ✕':''}</span>`:'';})()}
         <span style="font-weight:700">Saldo: ${BRL(somaE-somaS)}</span>
         ${(()=>{const banco=rows.filter(l=>!contaEhCaixinha(l.conta_id)),cf=banco.filter(l=>l.conferido_por).length,am=banco.filter(l=>lancStatus(l)==='y').length,vm=banco.filter(l=>lancStatus(l)==='r').length;
           return banco.length?`<span style="font-size:12.5px"><b style="color:var(--green)">Conferidos ${cf} de ${banco.length}</b>${am?` · <span style="color:var(--amber)">${am} amarelos</span>`:''}${vm?` · <span style="color:var(--red)">${vm} vermelhos</span>`:''}</span>${filtroDia&&am&&podeEditar()?` <button class="btn ghost" style="padding:3px 9px;font-size:11.5px" onclick="lancConferirDia()">Conferir os ${am} amarelos do dia</button>`:''}`:'';})()}
@@ -1754,7 +1757,7 @@
       if(filtroDia && l.data!==filtroDia)return false;
       if(filtroConta==='caixinha'&&!contaEhCaixinha(l.conta_id))return false;
       if(filtroConta==='banco'&&contaEhCaixinha(l.conta_id))return false;
-      if(filtroTipoLanc==='ent'&&!(Number(l.valor)>0))return false;if(filtroTipoLanc==='sai'&&!(Number(l.valor)<0))return false;
+      if(filtroTipoLanc&&(contaEhCaixinha(l.conta_id)||(l.categorias&&l.categorias.grupo==='neutra')))return false; /* v2.9.51: Entradas/Saídas = de verdade, sem neutras nem Caixinha */ if(filtroTipoLanc==='ent'&&!(Number(l.valor)>0))return false;if(filtroTipoLanc==='sai'&&!(Number(l.valor)<0))return false;
       if(ocultarNeutras&&l.categorias&&l.categorias.grupo==='neutra')return false;
       if(soNeutras&&!(l.categorias&&l.categorias.grupo==='neutra'))return false; // v2.9.38: botão "ver só as neutras"
       if(!q)return true;
@@ -1827,9 +1830,10 @@
   async function salvarLancNaAgenda(o){const btn=document.getElementById('btnLancar');busy=true;if(btn){btn.disabled=true;btn.textContent='Salvando...';}
     let ini=1,n=1;if(o.parc){const [a,b]=String(o.parc).split('/').map(x=>parseInt(x,10));if(a>=1&&b>=a&&b<=60){ini=a;n=b;}}
     const rows=[];for(let k=ini;k<=n;k++){const m=mesShift(o.iso.slice(0,7),k-ini);const ult=Number(_fimMes(m).slice(8,10));
-      rows.push({loja_id:lojaAtual,descricao:o.desc,valor:o.v,vencimento:`${m}-${String(Math.min(Number(o.iso.slice(8,10)),ult)).padStart(2,'0')}`,categoria_id:o.catId?Number(o.catId):null,contato_id:o.contatoId?Number(o.contatoId):null,parcela:n>1?`${k}/${n}`:null,linha_digitavel:k===ini&&_agLido&&_agLido.linha?_agLido.linha:null,status:'aberto'});}
+      rows.push({loja_id:lojaAtual,descricao:o.desc,valor:o.v,vencimento:`${m}-${String(Math.min(Number(o.iso.slice(8,10)),ult)).padStart(2,'0')}`,categoria_id:o.catId?Number(o.catId):null,contato_id:o.contatoId?Number(o.contatoId):null,parcela:n>1?`${k}/${n}`:null,...(o.doc?{documento:String(o.doc).toUpperCase().slice(0,200)}:{}),linha_digitavel:k===ini&&_agLido&&_agLido.linha?_agLido.linha:null,status:'aberto'});}
     let {data:ins,error}=await sb.from('contas_pagar').insert(rows).select('id,vencimento,parcela');
     if(error&&/linha_digitavel/i.test(error.message||'')){rows.forEach(r=>delete r.linha_digitavel);({data:ins,error}=await sb.from('contas_pagar').insert(rows).select('id,vencimento,parcela'));}
+    if(error&&/documento/i.test(error.message||'')){rows.forEach(r=>delete r.documento);({data:ins,error}=await sb.from('contas_pagar').insert(rows).select('id,vencimento,parcela'));if(!error&&o.doc)toast('A observação não foi junto: falta a coluna no banco (v2.9.56).','erro');} // v2.9.56
     busy=false;if(btn){btn.disabled=false;btn.textContent='+ Lançar';}
     if(error){toast('Não consegui mandar para a Agenda: '+error.message,'erro');return;}
     let msg=rows.length>1?`📅 Vence ${isoParaBR(o.iso)}: ${rows.length} parcelas foram para a Agenda de pagamentos.`:`📅 Vence ${isoParaBR(o.iso)}: foi para a Agenda de pagamentos.`;
@@ -2741,13 +2745,13 @@
     const linhaImp=(r,i)=>{
       const valorTd=`<td class="amt ${r.amt>0?'green':'red'}" style="white-space:nowrap">${r.amt>0?'+':'-'}${BRL(Math.abs(r.amt))}</td>`;
       const data=`<td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td>`;
-      if(r.grupo==='ja')return `<tr style="opacity:.7">${data}<td>${r.desc}<div class="mut" style="font-size:11px;margin-top:2px">${r.jaImportado?'já importado antes (mesmo código do banco)':`já digitado: <b>${r.jaExiste.descricao||''}</b> — vai só ganhar o código do banco`}</div></td><td colspan="2">${r.jaImportado?'<span class="mut" style="font-size:11px">nada a fazer</span>':`<span class="arqbtn" style="cursor:pointer" onclick="IMPORT[${i}].grupo='falta';IMPORT[${i}].jaExiste=null;IMPORT[${i}].catId='';_keepY=window.scrollY;render()">não é esse — lançar como novo</span>`}</td>${valorTd}</tr>`;
+      if(r.grupo==='ja')return `<tr style="opacity:.7">${data}<td>${r.desc}<div class="mut" style="font-size:11px;margin-top:2px">${r.jaImportado?'já importado antes (mesmo código do banco)':`já digitado: <b>${r.jaExiste.descricao||''}</b> — vai só ganhar o código do banco`}${r.jaConfira?` <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--amber);color:var(--amber);font-weight:700">confira: lançado em ${isoParaBR(r.jaExiste.data).slice(0,5)}, no banco ${isoParaBR(r.iso).slice(0,5)}</span>`:''}</div></td><td colspan="2">${r.jaImportado?'<span class="mut" style="font-size:11px">nada a fazer</span>':`<span class="arqbtn" style="cursor:pointer" onclick="IMPORT[${i}].grupo='falta';IMPORT[${i}].jaExiste=null;IMPORT[${i}].catId='';_keepY=window.scrollY;render()">não é esse — lançar como novo</span>`}</td>${valorTd}</tr>`;
       if(r.grupo==='lentes')return `<tr style="opacity:.6">${data}<td>${r.desc}<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">🔗 já lançado pelas Lentes: ${r.jaLentes.descricao}</span></div></td><td colspan="2"><span class="arqbtn" onclick="IMPORT[${i}].jaLentes=null;IMPORT[${i}].grupo='falta';_keepY=window.scrollY;render()" style="cursor:pointer">⏭️ não lança de novo · <u>lançar mesmo assim</u></span></td>${valorTd}</tr>`;
       const destaque=!impSel(r)?'style="opacity:.45"':(r.corrigir?'style="background:rgba(245,183,64,.08)"':(r.estornar?'style="background:rgba(125,162,255,.07)"':''));
       const dataSel=`<td class="mut" style="white-space:nowrap"><label style="display:flex;gap:6px;align-items:center;cursor:pointer" title="Lançar esta linha agora?"><input type="checkbox" tabindex="-1" ${impSel(r)?'checked':''} onclick="event.stopPropagation();IMPORT[${i}].selManual=this.checked;_keepY=window.scrollY;render()">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</label></td>`;
       const etqRegra=r.regra?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 regra "${r.regra}"</span>${r.estornar?impEstornoHTML(r,i):''}</div>`:(r.sipag?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">💳 ${({antecipacao:'antecipação',debito:'débito',credito_parcela:'parcela de crédito',estorno:'estorno',outro:'Sipag'})[r.sipag.tipo]}${r.sipag.band?' · '+r.sipag.band:''}</span></div>`:(r.grupo==='adivinhado'?'<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">adivinhado</span></div>':''));
       const aprend=r.aprender?(r.aprender.salvo?`<div style="margin-top:4px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">🔑 vai lembrar "${palavraLegivel(r.aprender.palavra)}"</span></div>`:`<div style="margin-top:4px"><button class="catchip" style="font-size:10.5px;padding:2px 8px;cursor:pointer;border-color:var(--green);color:var(--green);background:rgba(61,214,140,.08)" onclick="lembrarRegraImport(${i})">🔑 Lembrar sempre: "${palavraLegivel(r.aprender.palavra)}" → ${(CATS.find(c=>String(c.id)===String(r.aprender.catId))||{}).nome||''}</button>${r.aprender.n?` <span class="mut" style="font-size:11px">· aplicado em mais ${r.aprender.n} linha(s) iguais</span>`:''}</div>`):(r.copiadoDe!=null?`<div class="mut" style="font-size:11px;margin-top:3px">↳ mesma categoria da linha parecida</div>`:'');
-      return `<tr ${destaque}${impSel(r)&&r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${dataSel}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${(()=>{if(r.amt>=0||r.agenda||r.grupo==='ja'||r.grupo==='lentes')return '';const pc=parcelaDoExtrato(r);return pc?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">parcela ${pc.a}/${pc.b}: as próximas vão para a Agenda</span></div>`:'';})()}${r.agenda?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">da Agenda: ${_remEsc(r.agenda.desc||'')}${r.agenda.parcela?' '+r.agenda.parcela:''}${r.agenda.juros?' · '+BRL(r.agenda.juros)+' de juros':''}</span></div>`:''}${r.rateio?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--amber);color:var(--amber)">conta dividida da DVL: é despesa${r.catId?' (confira a categoria)':' — escolha a categoria'}</span></div>`:''}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button>${(()=>{const t=catTransf();return t&&String(r.catId)===String(t.id)&&!r.corrigir?'':`<button class="miniadd" tabindex="-1" style="height:28px;font-size:11px;padding:0 7px;width:auto;white-space:nowrap" title="Não entra no resultado: vai como neutra (transferência/empréstimo). Fica guardada só para o saldo do banco bater — não precisa excluir." onclick="impNaoEntra(${i})">não entra</button>`;})()}</div>${r.obs||r._obsAberto?`<input class="qin maiusc" tabindex="-1" style="margin-top:4px;font-size:11.5px;padding:4px 8px;width:100%" value="${(r.obs||'').replace(/"/g,'&quot;')}" placeholder="observação (ex.: MARIA — PANFLETAGEM)" oninput="IMPORT[${i}].obs=this.value;IMPORT[${i}]._mexido=true">`:`<div style="margin-top:3px"><span tabindex="-1" onclick="IMPORT[${i}]._obsAberto=true;_keepY=window.scrollY;render()" style="cursor:pointer;font-size:11px;color:var(--muted)">+ obs</span></div>`}</td><td>${r.amt>0?`<span class="mut" style="font-size:12px">${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||''}</span>`:`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||(r.obs?`<span class="mut">${String(r.obs).slice(0,22).replace(/</g,'&lt;')}</span>`:'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div>`}</td>${valorTd}</tr>`;
+      return `<tr ${destaque}${impSel(r)&&r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${dataSel}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${(()=>{if(r.amt>=0||r.agenda||r.grupo==='ja'||r.grupo==='lentes')return '';const pc=parcelaDoExtrato(r);return pc?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">parcela ${pc.a}/${pc.b}: as próximas vão para a Agenda</span></div>`:'';})()}${r.agenda?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">da Agenda: ${_remEsc(r.agenda.desc||'')}${r.agenda.parcela?' '+r.agenda.parcela:''}${r.agenda.juros?' · '+BRL(r.agenda.juros)+' de juros':''}</span></div>`:''}${r.rateio?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--amber);color:var(--amber)">conta dividida da DVL: é despesa${r.catId?' (confira a categoria)':' — escolha a categoria'}</span></div>`:''}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button>${(()=>{const t=catTransf();return t&&String(r.catId)===String(t.id)&&!r.corrigir?'':`<button class="miniadd" tabindex="-1" style="height:28px;font-size:11px;padding:0 7px;width:auto;white-space:nowrap" title="Entra como NEUTRA (transferência entre lojas): aparece em Lançamentos, só não conta no resultado. Nada fica de fora." onclick="impNaoEntra(${i})">neutra</button>`;})()}</div>${r.obs||r._obsAberto?`<input class="qin maiusc" tabindex="-1" style="margin-top:4px;font-size:11.5px;padding:4px 8px;width:100%" value="${(r.obs||'').replace(/"/g,'&quot;')}" placeholder="observação (ex.: MARIA — PANFLETAGEM)" oninput="IMPORT[${i}].obs=this.value;IMPORT[${i}]._mexido=true">`:`<div style="margin-top:3px"><span tabindex="-1" onclick="IMPORT[${i}]._obsAberto=true;_keepY=window.scrollY;render()" style="cursor:pointer;font-size:11px;color:var(--muted)">+ obs</span></div>`}</td><td>${r.amt>0?`<span class="mut" style="font-size:12px">${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||''}</span>`:`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||(r.obs?`<span class="mut">${String(r.obs).slice(0,22).replace(/</g,'&lt;')}</span>`:'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div>`}</td>${valorTd}</tr>`;
     };
     const idx=IMPORT.map((r,i)=>i).filter(i=>IMPORT_TIPO==='ent'?IMPORT[i].amt>0:IMPORT_TIPO==='sai'?IMPORT[i].amt<0:true);
     const atencao=idx.filter(i=>{const r=IMPORT[i];return r.grupo==='falta'||!r.grupo||r.corrigir||r.estornar||r.resolvido||(!r.catId&&r.grupo!=='ja'&&r.grupo!=='lentes');});
@@ -2798,7 +2802,7 @@
           const e=sel.filter(r=>r.amt>0).length,s2=sel.length-e;
           return `<button class="btn" id="btnConfImport" onclick="confirmarImport()" ${sel.length?'':'disabled'} style="font-size:15px;padding:13px 32px">✓ Lançar as ${sel.length} marcadas (${e} entrada${e===1?'':'s'} · ${s2} saída${s2===1?'':'s'})${jaN?` e ligar ${jaN} já lançadas`:''}</button><div class="mut" style="font-size:11.5px;margin-top:8px">As ${nv.length-sel.length} desmarcadas não entram agora: aparecem de novo na próxima importação deste extrato — nada se perde nem duplica.</div>`;})()}
 
-        <button class="btn ghost" onclick="IMPORT=[];importObs='';importContaNova='';IMPORT_DEP=[];render()" style="margin-left:10px">Cancelar</button>
+        <button class="btn ghost" onclick="IMPORT=[];importObs='';importContaNova='';IMPORT_DEP=[];IMPORT_MES=null;render()" style="margin-left:10px">Cancelar</button>
       </div>`;
     if(_keepY!=null){const y=_keepY;_keepY=null;requestAnimationFrame(()=>window.scrollTo(0,y));}
   }
@@ -2872,14 +2876,15 @@
         const cv=c.cert_vence?`Certificado vence em ${_sicBR(c.cert_vence)}${d!=null?` (${d} dias)`:''}`:'';
         return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)">
           <div style="flex:1;min-width:240px"><b>${c.apelido}</b> <span class="mut">· conta ${String(c.numero_conta).replace(/(\d)(\d)$/,'$1-$2')}</span><div class="mut" style="font-size:12px;margin-top:3px">${st}</div>${cv?`<div class="mut" style="font-size:12px;margin-top:2px${d!=null&&d<=30?';color:var(--amber);font-weight:700':''}">${cv}</div>`:''}</div>
-          <button class="btn" onclick="puxarSicoob(${c.id})">Puxar do Sicoob</button></div>`;}).join('')}</div>`;}
-  async function sicoobMontarOFX(c){ // v2.9.25: mesmo OFX para o botão e para a entrada automática
+          <span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button class="btn" onclick="puxarSicoob(${c.id})">Puxar do Sicoob</button><span class="mut" style="font-size:12px">ou um mês antigo:</span><select id="sicMes${c.id}" class="qin" style="width:auto;height:34px;font-size:12.5px">${sicoobMesesOpcoes().map(ym=>`<option value="${ym}">${MESES_NOME[Number(ym.slice(5,7))-1]} ${ym.slice(0,4)}${Number(ym.slice(0,4))===ANO_FIXO&&mesFechadoISO(ym+'-15')?' (fechado)':''}</option>`).join('')}</select><button class="btn ghost" onclick="puxarSicoobMes(${c.id})">Puxar o mês</button></span></div>`;}).join('')}</div>`;}
+  async function sicoobMontarOFX(c,mesYm){ // v2.9.25: mesmo OFX para o botão e para a entrada automática · v2.9.54: mesYm = um mês fechado inteiro
     // começa um pouco antes do último dia já importado (o que já entrou aparece como "já lançado")
     let de=c.data_inicio||'2026-10-01';
     // v2.9.25: conta a partir da última importação COMPLETA (a entrada automática é parcial: o que ficou esperando continua aparecendo)
     try{const {data}=await sb.from('importacoes').select('periodo_ate').eq('loja_id',c.loja_id).not('periodo_ate','is',null).order('periodo_ate',{ascending:false}).limit(1);
       if(data&&data[0]&&data[0].periodo_ate){const x=addDias(String(data[0].periodo_ate).slice(0,10),-3);if(x>de)de=x;}}catch(e){}
-    let rows=[];for(let o=0;;o+=1000){const {data,error}=await sb.from('sicoob_extrato').select('transaction_id,data,data_hora,valor,historico,complemento,documento').eq('conta_id',c.id).gte('data',de).order('data').order('data_hora').order('transaction_id').range(o,o+999);
+    if(mesYm)de=mesYm+'-01';const ateMes=mesYm?_fimMes(mesYm):'9999-12-31';
+    let rows=[];for(let o=0;;o+=1000){const {data,error}=await sb.from('sicoob_extrato').select('transaction_id,data,data_hora,valor,historico,complemento,documento').eq('conta_id',c.id).gte('data',de).lte('data',ateMes).order('data').order('data_hora').order('transaction_id').range(o,o+999);
       if(error)return {erro:error.message};rows=rows.concat(data||[]);if(!data||data.length<1000)break;}
     if(!rows.length)return {vazio:true,de};
     // mesmo código de linha do OFX do Sicoob: data + valor em centavos + ordem no dia
@@ -2890,8 +2895,35 @@
       ofx+=`<STMTTRN>\n<TRNTYPE>${v<0?'DEBIT':'CREDIT'}\n<DTPOSTED>${dt}\n<TRNAMT>${v.toFixed(2)}\n<FITID>${dt}${cc}${seq[k]}\n<MEMO>${limpa(r.historico)}\n<NAME>${limpa(r.complemento)}\n</STMTTRN>\n`;});
     ofx+='</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>';
     return {ofx,rows};}
+  // ---- v2.9.54: puxar um mês antigo (junho em diante) do que o robô já guardou — um mês e uma loja por vez ----
+  let IMPORT_MES=null;
+  function sicoobMesesOpcoes(){const out=[];let ym='2026-06';const fim=_hojeLocal().slice(0,7);while(ym<=fim){out.push(ym);ym=mesShift(ym,1);}return out.reverse();}
+  async function puxarSicoobMes(contaId){const c=SICOOB_CONTAS.find(x=>x.id===contaId);if(!c)return;const sel=document.getElementById('sicMes'+contaId);const ym=sel?sel.value:'';if(!ym)return;
+    if(Number(ym.slice(0,4))===ANO_FIXO&&mesFechadoISO(ym+'-15')){toast(`${MESES_NOME[Number(ym.slice(5,7))-1]} está FECHADO nesta loja: nada é lançado em mês fechado. Reabra o mês primeiro, se precisar.`,'erro');return;}
+    const r=await sicoobMontarOFX(c,ym);
+    if(r.erro){toast('Erro ao ler o extrato automático: '+r.erro,'erro');return;}
+    if(r.vazio){toast(`O robô ainda não tem ${MESES_NOME[Number(ym.slice(5,7))-1]} desta conta. Peça para buscar o histórico.`,'erro');return;}
+    IMPORT_MES={ym,contaId};importObs='EXTRATO SICOOB · '+MESES_NOME[Number(ym.slice(5,7))-1].toUpperCase()+' (histórico)';
+    _IMP_API=true;toast(`${r.rows.length} linhas de ${MESES_NOME[Number(ym.slice(5,7))-1]}. Conferindo…`,'ok');
+    return _processarOFX(r.ofx,{value:''});}
+  // no fim do mês: o saldo do Fluxo bate com o do banco? banco = saldo de hoje − tudo que o robô viu depois do mês
+  async function sicoobConferirSaldoMes(info){try{const c=SICOOB_CONTAS.find(x=>x.id===info.contaId);if(!c||c.saldo_atual==null)return null;const fim=_fimMes(info.ym);
+      const {data:pr}=await sb.from('sicoob_extrato').select('data').eq('conta_id',c.id).order('data',{ascending:true}).limit(1);
+      const cobre=pr&&pr[0]&&pr[0].data<=addDias(fim,1);
+      let depois=0;for(let o=0;;o+=1000){const {data,error}=await sb.from('sicoob_extrato').select('valor').eq('conta_id',c.id).gte('data',addDias(fim,1)).order('transaction_id').range(o,o+999);if(error)break;(data||[]).forEach(x=>depois+=Number(x.valor)||0);if(!data||data.length<1000)break;}
+      const banco=Math.round((Number(c.saldo_atual)-depois)*100)/100;
+      const cb=CONTAS.find(x=>/sicoob/i.test(x.nome))||CONTAS.find(x=>!/caixinha/i.test(x.nome));if(!cb)return null;
+      let mov=0;for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('valor').eq('conta_id',cb.id).lte('data',fim).order('id').range(o,o+999);if(error)break;(data||[]).forEach(x=>mov+=Number(x.valor)||0);if(!data||data.length<1000)break;}
+      const fluxo=Math.round((Number(cb.saldo_inicial_banco||0)+mov)*100)/100;return {ym:info.ym,fim,banco,fluxo,dif:Math.round((fluxo-banco)*100)/100,cobre};}catch(e){return null;}}
+  function sicoobMostrarSaldoMes(r){if(!r)return;const ok=Math.abs(r.dif)<0.01,mes=MESES_NOME[Number(r.ym.slice(5,7))-1];
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
+      <h3>${ok?'✓':'⚠'} Saldo no fim de ${mes}</h3>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:6px 14px;font-size:14px;margin:8px 0"><span>Banco (Sicoob) em ${isoParaBR(r.fim)}</span><b>${BRL(r.banco)}</b><span>Fluxo em ${isoParaBR(r.fim)}</span><b>${BRL(r.fluxo)}</b><span>Diferença</span><b style="color:${ok?'var(--green)':'var(--red)'}">${ok?'bate ✓':BRL(r.dif)}</b></div>
+      ${!r.cobre?'<p class="mut" style="font-size:12px">O robô ainda não tem todos os dias depois deste mês: o saldo do banco é uma estimativa.</p>':''}
+      ${ok?'<p class="mut" style="font-size:12.5px">Pode ir para o próximo mês.</p>':'<p style="font-size:12.5px">Não bateu. Olhe o que ficou de fora (linhas que você deixou para depois) ou algo digitado à mão a mais. Também pode ser o saldo inicial da conta.</p>'}
+      <div class="modal-btns"><button class="btn" onclick="fecharModal()">Ok</button></div></div></div>`;}
   async function puxarSicoob(contaId){
-    const c=SICOOB_CONTAS.find(x=>x.id===contaId);if(!c)return;
+    const c=SICOOB_CONTAS.find(x=>x.id===contaId);if(!c)return;IMPORT_MES=null;
     const r=await sicoobMontarOFX(c);
     if(r.erro){toast('Erro ao ler o extrato automático: '+r.erro,'erro');return;}
     if(r.vazio){toast(`Nada novo do Sicoob desde ${_sicBR(r.de)}.`,'ok');return;}
@@ -2950,7 +2982,7 @@
   // O resto (palpite, falta, a estornar, dividido) fica esperando no Importar → Puxar do Sicoob.
   // Entra AMARELO: a equipe ainda confere no quadradinho.
   let _autoRodando=false,AUTO_ULT={};
-  function autoSeguro(r){if(r.grupo==='ja'||r.grupo==='lentes')return true;if(r.estornar&&r.cxMatch&&r.cxLoja)return true;if(r.cxDevolvido)return true;if(!r.catId||r.corrigir||r.estornar||r.rateio||r.socio||r.paraLoja)return false;
+  function autoSeguro(r){if(r.grupo==='ja'||r.grupo==='lentes')return true;if(r.jaTalvez)return false;if(r.estornar&&r.cxMatch&&r.cxLoja)return true;if(r.cxDevolvido)return true;if(!r.catId||r.corrigir||r.estornar||r.rateio||r.socio||r.paraLoja)return false;
     if(r.grupo==='dep')return IMPORT_CX_LOGIN; // sem o Caixinha aberto não dá pra casar o depósito da gaveta: espera
     return ['cartao','pix','regra','agenda','transf'].includes(r.grupo);}
   async function sicoobAutoEntrar(){
@@ -3009,7 +3041,7 @@
   async function lembrarContaLoja(){if(!importContaNova)return;const d=importContaNova;importContaNova='';
     try{const {error}=await sb.from('lojas').update({conta_banco:d}).eq('id',lojaAtual);if(!error){const L=LOJAS.find(l=>l.id===lojaAtual);if(L)L.conta_banco=d;}}catch(e){}}
   async function lerArquivoOFX(input){
-    const file=input.files[0];if(!file)return;_IMP_API=false;
+    const file=input.files[0];if(!file)return;_IMP_API=false;IMPORT_MES=null;
     const nomeArq=file.name.toLowerCase();
     // PDF do Sicoob: traz o texto inteiro de cada linha (o OFX corta em 32 letras)
     if(nomeArq.endsWith('.pdf')){let r;try{toast('Lendo o PDF do extrato…','ok');r=await pdfExtratoParaOFX(file);}catch(e){toast('Não consegui ler o PDF: '+(e.message||e),'erro');input.value='';return;}
@@ -3050,10 +3082,10 @@
       let LENT=[],EXIST=[];
       try{if(datas.length){
         const {data}=await sb.from('lancamentos').select('id,data,valor,descricao,fitid').eq('loja_id',lojaAtual).like('ref_externa','fz%').gte('data',addDias(datas[0],-3)).lte('data',addDias(datas[datas.length-1],3));LENT=data||[];
-        const {data:ex}=await sb.from('lancamentos').select('id,data,valor,descricao,fitid,origem,conta_id,categoria_id,ref_externa').eq('loja_id',lojaAtual).gte('data',addDias(datas[0],-2)).lte('data',addDias(datas[datas.length-1],2)).limit(5000);
+        const {data:ex}=await sb.from('lancamentos').select('id,data,valor,descricao,fitid,origem,conta_id,categoria_id,ref_externa').eq('loja_id',lojaAtual).gte('data',addDias(datas[0],-3)).lte('data',addDias(datas[datas.length-1],3)).limit(5000);
         EXIST=(ex||[]).filter(l=>!contaEhCaixinha(l.conta_id));
         // v2.9.11: contas abertas da Agenda (boleto pago que já estava lá entra com a categoria dela e dá baixa)
-        try{const {data:ag}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,categoria_id,contato_id').eq('loja_id',lojaAtual).eq('status','aberto').gte('vencimento',addDias(datas[0],-30)).lte('vencimento',addDias(datas[datas.length-1],7)).limit(2000);AGENDA_AB=ag||[];}catch(e){AGENDA_AB=[];}
+        try{let {data:ag,error:eag}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,categoria_id,contato_id,documento').eq('loja_id',lojaAtual).eq('status','aberto').gte('vencimento',addDias(datas[0],-30)).lte('vencimento',addDias(datas[datas.length-1],7)).limit(2000);if(eag&&/documento/i.test(eag.message||'')){({data:ag}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,categoria_id,contato_id').eq('loja_id',lojaAtual).eq('status','aberto').gte('vencimento',addDias(datas[0],-30)).lte('vencimento',addDias(datas[datas.length-1],7)).limit(2000));}AGENDA_AB=ag||[];}catch(e){AGENDA_AB=[];}
       }}catch(e){}
       const usados=new Set(),usadosEx=new Set(),usadosAg=new Set();
       const cents=v=>Math.round(Math.abs(Number(v))*100);
@@ -3069,12 +3101,15 @@
         if(ex){usadosEx.add(ex.id);item.grupo='ja';item.jaExiste=ex;item.jaImportado=true;return item;}
         ex=EXIST.find(l=>!usadosEx.has(l.id)&&(!l.fitid||_IMP_API)&&l.data===t.iso&&cents(l.valor)===cents(t.amt)&&Math.sign(Number(l.valor))===Math.sign(t.amt));
         if(ex){usadosEx.add(ex.id);item.grupo='ja';item.jaExiste=ex;return item;}
+        // v2.9.54: digitado à mão com data um pouco diferente (até 3 dias, mesmo valor) → já lançado, mas "confira"
+        {ex=EXIST.filter(l=>!usadosEx.has(l.id)&&(!l.fitid||_IMP_API)&&_dias(l.data,t.iso)<=3&&cents(l.valor)===cents(t.amt)&&Math.sign(Number(l.valor))===Math.sign(t.amt)).sort((a,b)=>_dias(a.data,t.iso)-_dias(b.data,t.iso))[0];
+          if(ex){if(silencioso){item.jaTalvez=true;}else{usadosEx.add(ex.id);item.grupo='ja';item.jaExiste=ex;item.jaConfira=true;return item;}}} // v2.9.55: na entrada automática, se parece já digitado (data até 3 dias), não entra sozinho: espera alguém conferir
         // 2) boleto de lentes já espelhado do Caixinha
         if(t.amt<0){const L=LENT.find(l=>!usados.has(l.id)&&Math.abs(Math.abs(Number(l.valor))-Math.abs(t.amt))<0.005&&_dias(l.data,t.iso)<=3);
           if(L){usados.add(L.id);item.grupo='lentes';item.jaLentes=L;return item;}}
         // 2b) saída que já estava na Agenda: mesmo valor (7 dias antes a 10 depois do vencimento) ou pago com juros (até 10% a mais, depois do vencimento)
         if(t.amt<0){const ag=agendaDoExtrato(t,usadosAg);if(ag){usadosAg.add(ag.c.id);item.agenda={id:ag.c.id,desc:ag.c.descricao,parcela:ag.c.parcela||'',juros:ag.juros};
-          if(ag.c.categoria_id){item.grupo='agenda';item.catId=ag.c.categoria_id;item.contatoId=ag.c.contato_id||null;return item;}
+          if(ag.c.documento)item.obs=ag.c.documento;if(ag.c.categoria_id){item.grupo='agenda';item.catId=ag.c.categoria_id;item.contatoId=ag.c.contato_id||null;return item;}
           if(ag.c.contato_id)item.contatoId=ag.c.contato_id;}}
         // 3) entradas: cartão, transferência de outra loja, Pix de cliente, depósito da gaveta — nada é ignorado
         if(t.amt>0){
@@ -3186,7 +3221,7 @@
       if(soTipo==='ent'&&!(r.amt>0)){pulados++;continue;}if(soTipo==='sai'&&!(r.amt<0)){pulados++;continue;}
       if(!impSel(r)){pulados++;continue;}
       if(r.grupo==='ja'&&r.jaExiste){
-        if(!r.jaImportado&&r.fitid){const {error}=await sb.from('lancamentos').update({fitid:r.fitid}).eq('id',r.jaExiste.id);if(!error)ligados++;}
+        if(!r.jaImportado&&r.fitid&&!r.jaExiste.fitid){const {error}=await sb.from('lancamentos').update({fitid:r.fitid}).eq('id',r.jaExiste.id);if(!error)ligados++;} // v2.9.54: não troca o código de quem já tem (OFX antigo)
         await gravarSipag(r,r.jaExiste.id);continue;}
       if(r.grupo==='lentes'&&r.jaLentes){if(r.fitid&&!r.jaLentes.fitid){try{await sb.from('lancamentos').update({fitid:r.fitid}).eq('id',r.jaLentes.id);}catch(e){}}ligados++;continue;}
       if(soClassificados&&!r.catId){pulados++;continue;}
@@ -3217,10 +3252,12 @@
       const ag=new Date().toISOString();for(const {m,r} of IMPORT_DEP){const lid=r._lancId||(r.jaExiste&&r.jaExiste.id);if(lid&&m.conf){try{await sb.from('lancamentos').update({ref_externa:'cxd:'+m.id,conferido_por:'CAIXINHA',conferido_em:ag}).eq('id',lid);}catch(e){}}} // v2.9.29
       IMPORT_DEP=[];}
     IMPORT=[];importObs='';importPeriodo={de:'',ate:''};IMPORT_TIPO='';IMP_MARC={modo:'todas',crit:[]};
+    const _mesInfo=auto?null:IMPORT_MES;IMPORT_MES=null;
     if(auto){if(cxCriou||cxLigou)CX.carregado=false;return {ok,ligados,pulados,erro,agBaixas,parcN};}
     toast(`${ok} novos lançados · ${ligados} ligados ao que já estava digitado · ${dup} já existiam · 💳 ${sip} créditos de cartão pra conciliação${erro?` · ${erro} com erro`:''}${fech?` · ${fech} em mês fechado (não lançados)`:''}${pulados?` · ${pulados} ficaram para a próxima importação`:''}${sipErr?` · conciliação: ${sipErr}`:''}${cxCriou?` · 🔁 ${cxCriou} mandados para o Banco Caixinha`:''}${cxLigou?` · 🔁 ${cxLigou} ligados ao que já estava no Banco Caixinha`:''}${cxErr?` · Banco Caixinha: ${cxErr}`:''}${depN?` · ${depN} depósito(s) da gaveta conferido(s) pelo extrato`:''}${cpfN?` · ${cpfN} funcionário(s) aprendido(s) pelo CPF`:''}${agBaixas?` · ${agBaixas} conta(s) da Agenda baixada(s)`:''}${parcN?` · ${parcN} parcela(s) seguinte(s) mandada(s) para a Agenda`:''}${depErr?` · Caixinha (depósitos): ${depErr}`:''}`, (erro>0||fech>0||sipErr||cxErr||depErr)?'erro':'ok');
     if(cxCriou||cxLigou)CX.carregado=false;
     NAV_CONF={};go('lanc');
+    if(_mesInfo){sicoobConferirSaldoMes(_mesInfo).then(sicoobMostrarSaldoMes).catch(()=>{});} // v2.9.54
   }
 
   // ---- A PAGAR ----
@@ -3320,7 +3357,7 @@
     let qp=sb.from('contas_pagar').select('*').eq('status','pago').gte('vencimento',de).lte('vencimento',ate);if(lojaIds)qp=qp.in('loja_id',lojaIds);
     const [ra,rp]=await Promise.all([qa,qp]);
     if(ra.error){AG_ERRO_TAB=/contas_pagar|relation|schema|exist/i.test(ra.error.message||'');}
-    [...(ra.data||[]),...(rp.data||[])].forEach(c=>itens.push({k:'c'+c.id,tipo:'conta',id:c.id,loja_id:c.loja_id,desc:c.descricao,valor:Number(c.valor),venc:c.vencimento,status:c.status,cat:nomeCat(c.categoria_id),parcela:c.parcela,pagoComo:c.pago_como,pagoEm:c.pago_em,critico:!!c.critico,rateioDe:c.rateio_de||null}));
+    [...(ra.data||[]),...(rp.data||[])].forEach(c=>itens.push({k:'c'+c.id,tipo:'conta',id:c.id,loja_id:c.loja_id,desc:c.descricao,valor:Number(c.valor),venc:c.vencimento,status:c.status,cat:nomeCat(c.categoria_id),parcela:c.parcela,pagoComo:c.pago_como,pagoEm:c.pago_em,critico:!!c.critico,rateioDe:c.rateio_de||null,doc:c.documento||''}));
     // A pagar antigo (lançamento marcado como não pago)
     try{let ql=sb.from('lancamentos').select('id,loja_id,descricao,valor,vencimento,data,categoria_id').eq('pago',false);if(lojaIds)ql=ql.in('loja_id',lojaIds);const {data}=await ql;
       (data||[]).forEach(l=>{const v=l.vencimento||l.data;if(v>ate)return;itens.push({k:'l'+l.id,tipo:'legado',id:l.id,loja_id:l.loja_id,desc:l.descricao,valor:Math.abs(Number(l.valor)),venc:v,status:'aberto',cat:nomeCat(l.categoria_id)});});}catch(e){}
@@ -3448,6 +3485,7 @@
       <h3>${i.desc}${i.parcela?' · '+i.parcela:''}</h3>
       <p style="margin:4px 0 10px"><b style="font-size:18px">${BRL(i.valor)}</b> · vence ${isoParaBR(i.venc)}${i.dia!==i.venc?` (paga na segunda, ${isoParaBR(i.dia).slice(0,5)})`:''}<br>
         <span class="mut">${lojaNomeCurto(i.loja_id)}${i.cat?' · '+i.cat:''}</span><br>
+        ${i.doc?`<span style="font-size:12.5px">📝 ${_remEsc(i.doc)}</span><br>`:''}
         <span class="mut" style="font-size:12px">${info}</span>
         ${i.status==='pago'?`<br><span style="color:var(--green);font-size:12.5px">✔ pago${i.pagoEm?' em '+isoParaBR(i.pagoEm):''}${i.pagoComo?' · '+i.pagoComo:''}</span>`:''}
         ${i.critico?'<br><span style="color:var(--red);font-size:12.5px">Não pode atrasar</span>':''}</p><div id="agPartes"></div>
@@ -3720,6 +3758,7 @@
       <div class="mut" style="font-size:11px;text-align:center;margin-top:8px">referente a ${mesNome} ${ANO_FIXO}</div></div>`;
 
     document.getElementById('content').innerHTML=`${seletor}
+      <div id="irisDash"></div>
       <div id="cartoesDash"></div>
       <div id="autoDash"></div>
       <div id="remDash"></div>
@@ -3901,6 +3940,49 @@
       <tr><td><b>Total</b></td><td class="amt" style="text-align:right"><b>${BRL(tb).replace('R$ ','')}</b></td><td class="amt" style="text-align:right"><b>${BRL(tl).replace('R$ ','')}</b></td><td></td><td class="mut" style="font-size:12px">${nDif} com diferença · ${nFalta} falta digitar</td><td></td></tr></tbody></table></div>
       <div class="mut" style="font-size:11.5px;margin-top:8px">Diferença de até R$ 1,00 conta como "bateu". "Faltam" = a Linx tem mais Pix do que caiu no banco.</div>`;}
   let _pixDashSeq=0;
+  // ---- v2.9.53: ÍRIS — resumo do dia de todas as empresas (só olha e avisa; não lança nem muda nada) ----
+  let IRIS_TODAS=false,_irisSeq=0;
+  async function preencherIrisDash(){const box=document.getElementById('irisDash');if(!box)return;const seq=++_irisSeq;
+    const pm=`${ANO_FIXO}-${_mm(mesSel)}`,ids=LOJAS.map(l=>l.id);if(!ids.length)return;
+    box.innerHTML='<div class="card" style="margin-bottom:14px;padding:12px 16px"><span class="mut" style="font-size:12.5px">Íris está olhando as empresas…</span></div>';
+    let cts=[],lc=[],ag=[];
+    try{const {data}=await sb.from('contas').select('id,loja_id,nome').in('loja_id',ids);cts=data||[];}catch(e){}
+    const cx=new Set(cts.filter(c=>/caixinha/i.test(c.nome||'')).map(c=>c.id));
+    try{for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('loja_id,conta_id,conferido_por,categoria_id,ref_externa').in('loja_id',ids).gte('data',pm+'-01').lte('data',_fimMes(pm)).order('id').range(o,o+999);if(error)break;lc=lc.concat(data||[]);if(!data||data.length<1000)break;}}catch(e){}
+    const hoje=_hojeLocal();try{const {data}=await sb.from('contas_pagar').select('loja_id,valor,vencimento').in('loja_id',ids).eq('status','aberto').gte('vencimento',hoje).lte('vencimento',addDias(hoje,6));ag=data||[];}catch(e){}
+    if(seq!==_irisSeq)return;
+    const catN=id=>{const c=CATS.find(x=>x.id===id);return c?String(c.nome).toUpperCase():'';};
+    const por={};LOJAS.forEach(l=>por[l.id]={l,t:0,cf:0,sc:0,cxsc:0,est:0,dev:0,ag:0});
+    lc.forEach(x=>{const o=por[x.loja_id];if(!o)return;const r=String(x.ref_externa||''),n=catN(x.categoria_id);
+      if(cx.has(x.conta_id)){if(r.startsWith('cxs:')&&!x.categoria_id)o.cxsc++;return;}
+      o.t++;if(x.conferido_por)o.cf++;if(!x.categoria_id)o.sc++;if(n===CAT_ESTORNAR&&!r.startsWith('cxb:'))o.est++;if(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'))o.dev++;});
+    ag.forEach(a=>{if(por[a.loja_id])por[a.loja_id].ag++;});
+    const lista=Object.values(por).filter(o=>o.t||o.cxsc||o.ag).sort((a,b)=>(b.t-b.cf)-(a.t-a.cf));
+    const nome=l=>lojaNomeCurto(l.id).replace(/^Laboratório \/ /,'');
+    const comRobo=new Set((SICOOB_CONTAS||[]).map(c=>Number(c.loja_id)));const semRobo=LOJAS.filter(l=>!comRobo.has(l.id)&&_modDe(l)==='oticas').map(nome);
+    const erros=(SICOOB_CONTAS||[]).filter(c=>c.ultimo_erro).map(c=>c.apelido);
+    const certs=(SICOOB_CONTAS||[]).filter(c=>c.cert_vence).map(c=>({a:c.apelido,d:c.cert_vence})).sort((a,b)=>a.d<b.d?-1:1);
+    const cert30=certs.filter(c=>_sicDiasAte(c.d)!=null&&_sicDiasAte(c.d)<=30);
+    const totEst=lista.reduce((a,o)=>a+o.est+o.dev,0),totAg=lista.reduce((a,o)=>a+o.ag,0),totCx=lista.reduce((a,o)=>a+o.cxsc,0);
+    const h=new Date().getHours(),saud=h<12?'Bom dia':(h<18?'Boa tarde':'Boa noite');
+    const dia=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'});
+    const linhas=(IRIS_TODAS?lista:lista.slice(0,8)).map(o=>{const f=o.t-o.cf,pc=o.t?Math.round(o.cf/o.t*100):0;
+      return `<tr style="cursor:pointer" onclick="irisAbrir(${o.l.id})" title="Abrir Lançamentos da ${_remEsc(nome(o.l))}"><td><b>${_remEsc(nome(o.l))}</b></td>
+        <td>${o.t?`<span style="display:inline-block;width:80px;height:6px;border-radius:4px;background:var(--line);overflow:hidden;vertical-align:middle;margin-right:6px"><i style="display:block;height:100%;width:${pc}%;background:var(--green)"></i></span>${o.cf}/${o.t} · ${f?`<b style="color:var(--amber)">faltam ${f}</b>`:'<b style="color:var(--green)">tudo conferido</b>'}`:'<span class="mut">sem extrato no mês</span>'}</td>
+        <td style="text-align:center">${o.sc?`<b style="color:var(--red)">${o.sc}</b>`:'<span class="mut">—</span>'}</td>
+        <td style="text-align:center">${o.cxsc?`<b style="color:var(--amber)">${o.cxsc}</b>`:'<span class="mut">—</span>'}</td>
+        <td style="text-align:center">${o.est+o.dev?`<b style="color:#8b5cf6">${o.est+o.dev}</b>`:'<span class="mut">—</span>'}</td>
+        <td style="text-align:center">${o.ag?`<b>${o.ag}</b>`:'<span class="mut">—</span>'}</td></tr>`;}).join('');
+    const avisos=[`<b>Robô do Sicoob:</b> ${(SICOOB_CONTAS||[]).length} conta(s) ${erros.length?`· <b style="color:var(--red)">com erro: ${erros.join(', ')}</b>`:'funcionando, nenhum erro'}${semRobo.length?` · faltam ligar: ${semRobo.join(', ')}`:''}${certs.length?` · certificado mais próximo: ${_sicBR(certs[0].d)} (${certs[0].a})`:''}`];
+    if(cert30.length)avisos.push(`<b style="color:var(--red)">Certificado vencendo:</b> ${cert30.map(c=>c.a+' em '+_sicBR(c.d)).join(', ')}`);
+    avisos.push(`<b>Banco Caixinha:</b> ${totEst?`${totEst} lançamento(s) esperando a Heloísa (roxo)`:'nada esperando a Heloísa'} · <b>Caixinha:</b> ${totCx?`${totCx} saída(s) sem categoria`:'tudo com categoria'} · <b>Agenda:</b> ${totAg?`${totAg} conta(s) vencendo nos próximos 7 dias`:'nada vencendo nos próximos 7 dias'}`);
+    box.innerHTML=`<div class="card" style="margin-bottom:14px;padding:14px 16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><div style="width:40px;height:40px;border-radius:50%;flex:none;background:radial-gradient(circle at 50% 50%,#1b2430 0 22%,#2f8f8a 23% 55%,#8fd3c7 56% 100%)"></div>
+        <div><div style="font-weight:800;font-size:16px">${saud}! Aqui é a Íris.</div><div class="mut" style="font-size:12px">${dia} · olhei ${LOJAS.length} empresas · ${MESES_NOME[mesSel]} · só olho e aviso, não mudo nada</div></div></div>
+      ${lista.length?`<div style="overflow-x:auto"><table style="font-size:12.5px"><thead><tr><th>Empresa</th><th>Conferidos</th><th style="text-align:center">Sem categoria</th><th style="text-align:center">Caixinha sem categoria</th><th style="text-align:center">Banco Caixinha</th><th style="text-align:center">Agenda 7 dias</th></tr></thead><tbody>${linhas}</tbody></table></div>
+      ${lista.length>8?`<div style="margin-top:6px"><span onclick="IRIS_TODAS=!IRIS_TODAS;preencherIrisDash()" style="cursor:pointer;font-size:12px;color:var(--muted);text-decoration:underline">${IRIS_TODAS?'mostrar menos':`ver todas (${lista.length})`}</span></div>`:''}`:'<div class="mut" style="font-size:13px">Nada para olhar neste mês.</div>'}
+      <div style="margin-top:10px;border-left:4px solid var(--amber);background:rgba(245,183,64,.08);border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.55">${avisos.join('<br>')}</div></div>`;}
+  async function irisAbrir(id){const L=LOJAS.find(l=>l.id===id);if(!L)return;if(_modDe(L)!==MODULO_ATUAL)await trocarModulo(_modDe(L));lojaAtual=id;const sel=document.getElementById('store');if(sel)sel.value=String(id);await carregarContas();await carregarFechamentos();renderNav();go('lanc');}
   // ---- v2.9.25: ranking do mês (todo mundo vê) + produtividade dos últimos 3 meses (só gestores: Lucas, Heloísa, Flávia) ----
   async function preencherRankDash(){const box=document.getElementById('rankDash');if(!box)return;
     const ym0=`${ANO_FIXO}-${_mm(mesSel)}`,meses=[mesShift(ym0,-2),mesShift(ym0,-1),ym0],gestor=veRemanejos();

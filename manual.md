@@ -74,6 +74,15 @@ Logo no alto de **Lançamentos** aparece o quadro **Conferidos · loja · mês**
 - No fim da linha fica o **quadradinho**. Quem marca fica gravado, com o nome e o dia em letra pequena embaixo. Linha vermelha não deixa marcar: primeiro resolve.
 - Com um dia escolhido, aparece **Conferir os N amarelos do dia**, para marcar todos de uma vez.
 
+## Íris · resumo do dia (v2.9.53)
+
+No alto do **Dashboard** aparece a **Íris**, a assistente do escritório. Ela **só olha e avisa**: não lança, não apaga, não muda nada.
+
+- Para **cada empresa** (todas, de todos os módulos), no mês escolhido: **conferidos** (ex.: 16/230 · faltam 214), **sem categoria**, **saídas do Caixinha sem categoria**, **Banco Caixinha esperando a Heloísa** (A ESTORNAR ou ESTORNO RECEBIDO sem ligação) e **contas da Agenda vencendo nos próximos 7 dias**. Em ordem de quem tem mais para conferir.
+- Clicando numa empresa, abre os Lançamentos dela.
+- Embaixo: o **robô do Sicoob** (quantas contas, erros, quais lojas faltam ligar, o certificado mais próximo de vencer, aviso vermelho se algum vence em 30 dias).
+- **WhatsApp:** o mesmo resumo por mensagem às 7h é o próximo passo (precisa ligar um número de WhatsApp).
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -325,6 +334,7 @@ Desde a v2.9.20 serve tanto o PDF do internet banking (computador) quanto o do *
 - **A ESTORNAR / ESTORNO RECEBIDO (BANCO CAIXINHA):** empréstimo que vai voltar e a volta dele (fica ligado ao Banco Caixinha).
 - **Não existe uma "neutra genérica"** de propósito: pôr tudo em neutra seria como excluir (sai do resultado). Na dúvida, pergunte para a Heloísa.
 - **Linha neutra com cor própria (v2.9.40):** fundo azulado, categoria com borda azul tracejada e a etiqueta **neutra · não entra no resultado nem no fechamento ⓘ**. O aviso vermelho embaixo da busca saiu: a própria linha já explica.
+- **Quanto falta conferir em cada grupo (v2.9.51):** ao lado de **Entradas**, **Saídas**, **Neutras** e **Caixinha** aparece, por exemplo, **45/50 · faltam 5** (amarelo) ou **50/50 ✓** (verde). Clicando no grupo, a lista mostra só ele, para conferir de uma vez. Entradas e Saídas mostram só as de verdade (sem neutras e sem Caixinha); um filtro desliga o outro.
 - **Entradas e Saídas de verdade (v2.9.47):** no alto da lista, **Entradas** e **Saídas** mostram o valor **sem as neutras** (o que de fato entrou e saiu da empresa, como no Dashboard). Entre parênteses fica o total do banco, igual ao extrato. O chip **Neutras** mostra quanto entrou e saiu de neutro. O **Saldo** continua sendo o do banco.
 - **Ver só as neutras (v2.9.44):** ao lado de Entradas e Saídas, no alto da lista, tem **Neutras: N** (em azul). Um clique mostra só as neutras, por data; clicando de novo (✕) volta tudo. O botão "esconder as neutras" saiu: as neutras sempre aparecem, em azul mais forte.
 
@@ -546,6 +556,14 @@ Lá em cima, na ordem: **Óticas Rocha · Diversas · Grupo de compras · GV Len
 
 ## Tudo se lança em Lançamentos (v2.9.12)
 
+**Nº do documento / observação (v2.9.56):** o campo opcional do formulário vai junto para a **Agenda** quando a conta é futura (aparece como 📝 ao abrir a conta na Agenda) e, quando o extrato dá baixa, passa para o lançamento pago.
+
+**Para a equipe ficar tranquila (v2.9.55):**
+- **Já pagou (hoje ou antes):** lance com a **data do pagamento** → fica em Lançamentos como **pago**. Quando o extrato chegar, o Fluxo reconhece como "já lançado" e não duplica (mesmo com até 3 dias de diferença na data, ele pede para conferir em vez de lançar de novo).
+- **Vai pagar depois (ex.: boleto da semana que vem):** lance com a **data do vencimento** → vai para a **Agenda** (a pagar). **Ninguém precisa lançar de novo:** quando o banco pagar, o extrato dá baixa sozinho na Agenda e a linha aparece em Lançamentos como paga.
+- **Só vira "pago" quando o dinheiro sai do banco** (o extrato mostra) ou quando foi lançado com data que já passou.
+
+
 A Agenda de pagamentos não tem mais o quadro "Lançar conta". Tudo se lança em **Lançamentos**, e o Fluxo decide sozinho para onde vai, sem botão:
 
 - **Despesa com data até hoje** (já paga): vira lançamento normal.
@@ -613,6 +631,15 @@ No menu, ao lado de **Importar extrato**, aparece **sozinho** (verde) na loja em
 - O quadro mostra quando o robô atualizou pela última vez, o saldo no banco e quando vence o certificado digital da empresa.
 - **Aviso no topo do sistema** (gestor e lançadores veem): certificado vencendo em 30 dias ou menos, certificado vencido, ou robô que falhou ou ficou mais de um dia e meio sem atualizar. Clicar no aviso abre o Importar.
 - Loja que ainda não está ligada à API continua com o OFX ou PDF, como antes.
+
+### Puxar um mês antigo (v2.9.54)
+
+No quadro **Importar sozinho** de cada loja, ao lado de **Puxar do Sicoob**, tem **ou um mês antigo:** com a lista de meses (junho em diante) e o botão **Puxar o mês**. Um mês e uma loja por vez, passando pela conferência de sempre.
+
+- **Mês fechado:** aparece "(fechado)" na lista e o Fluxo não deixa puxar; nada é lançado em mês fechado.
+- **Já lançado:** o que já estava (pelo código do banco, ou digitado à mão no mesmo dia e mesmo valor) aparece em "já lançado". Digitado à mão com data até **3 dias** diferente e mesmo valor também, com a etiqueta **confira: lançado em 05/09, no banco 03/09**. Se não for o mesmo, clique em "não é esse — lançar como novo".
+- **Saldo no fim do mês:** depois de confirmar, abre o quadro **Saldo no fim de Setembro**: banco × Fluxo, e se **bate ✓** ou a diferença. O saldo do banco é calculado pelo saldo de hoje menos tudo que o robô viu depois do mês.
+- O robô precisa ter guardado aquele mês. Se ainda não tiver, o Fluxo avisa.
 
 ### Entrada automática (v2.9.25)
 
@@ -703,6 +730,12 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 26/10/2026 | 2.9.56 | Nº documento / observação do lançamento vai para a Agenda (conta futura) e volta para o lançamento quando o extrato paga | Coluna documento em contas_pagar (Claude roda, com autorização) |
+| 26/10/2026 | 2.9.55 | Entrada automática não lança sozinha o que parece já digitado à mão com data até 3 dias diferente (espera conferir, não duplica) | Nenhum |
+| 26/10/2026 | 2.9.54 | Importar: puxar um mês antigo do robô (junho em diante), um mês e uma loja por vez; nunca em mês fechado; "já lançado" também com data até 3 dias diferente (etiqueta "confira"); quadro de saldo do fim do mês (banco × Fluxo). Lançamentos: dica "hoje ou antes = pago · depois de hoje = Agenda" | Nenhum |
+| 26/10/2026 | 2.9.53 | Íris no alto do Dashboard: resumo de todas as empresas (conferidos, sem categoria, Caixinha sem categoria, Banco Caixinha esperando, Agenda 7 dias) + robô e certificados; clicar abre a empresa | Nenhum |
+| 26/10/2026 | 2.9.52 | Importar: o botão "não entra" virou "neutra" (sempre entrou, como transferência neutra; nada fica de fora) | Nenhum |
+| 24/10/2026 | 2.9.51 | Conferidos por grupo ao lado de Entradas, Saídas, Neutras e Caixinha (45/50 · faltam 5); filtro Entradas/Saídas sem neutras e sem Caixinha | Nenhum |
 | 24/10/2026 | 2.9.50 | Liga sozinho ao Banco Caixinha: A ESTORNAR com empréstimo igual e entrada com devolução já marcada pela Heloísa (só liga, não cria) | Nenhum |
 | 24/10/2026 | 2.9.49 | Banco Caixinha travado na loja do extrato; criar empréstimo novo e marcar devolução só o gestor, com confirmação; equipe só liga ao que já existe (A ESTORNAR fica esperando a Heloísa) | Nenhum |
 | 24/10/2026 | 2.9.48 | "Quem vai devolver" virou lista organizada (Conta dividida · Outra loja · Outros · Outro), já vem sugerido (loja da descrição, CARTÕES ou DESPESAS DIVERSAS); linha que já está como A ESTORNAR mas sem ligação também mostra o roxo "Já está no Banco Caixinha: ligar" quando a Heloísa já anotou | Nenhum |
