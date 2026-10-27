@@ -285,7 +285,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.64', APP_DATA='27/10/2026';
+  const APP_VERSAO='2.9.65', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -2570,7 +2570,7 @@
 
   // v2.9.64: Íris confere o fechamento de todas as lojas do módulo: banco × Fluxo no fim do mês + o que falta resolver
   let IRIS_FECH_TODAS=false;
-  async function irisFechamentoPainel(){const box=document.getElementById('irisFech');if(!box)return;const ym=`${ANO_FIXO}-${_mm(mesSel)}`,fim=_fimMes(ym),mesN=MESES_NOME[mesSel];
+  async function irisFechamentoPainel(){const box=document.getElementById('irisFech');if(!box)return;if(!(SICOOB_CONTAS||[]).length){try{await sicoobCarregar();}catch(e){}}const ym=`${ANO_FIXO}-${_mm(mesSel)}`,fim=_fimMes(ym),mesN=MESES_NOME[mesSel];
     const lojas=lojasDoModulo().filter(l=>!l.arquivada);if(!lojas.length){box.innerHTML='';return;}const ids=lojas.map(l=>l.id);
     box.innerHTML=`<div class="card" style="margin-bottom:14px"><span class="mut" style="font-size:12.5px">Íris conferindo o fechamento de ${mesN} das ${lojas.length} empresas…</span></div>`;
     let cts=[],lc=[],fe=[];
@@ -2588,22 +2588,48 @@
       const cb=cts.find(x=>Number(x.loja_id)===L.id&&/sicoob/i.test(x.nome))||cts.find(x=>Number(x.loja_id)===L.id&&!/caixinha/i.test(x.nome||''));if(!cb)return;
       try{const {data:pr}=await sb.from('sicoob_extrato').select('data').eq('conta_id',c.id).order('data',{ascending:true}).limit(1);if(!(pr&&pr[0]&&pr[0].data<=addDias(fim,1)))return;
         let depois=0;for(let o=0;;o+=1000){const {data,error}=await sb.from('sicoob_extrato').select('valor').eq('conta_id',c.id).gte('data',addDias(fim,1)).order('transaction_id').range(o,o+999);if(error)break;(data||[]).forEach(x=>depois+=Number(x.valor)||0);if(!data||data.length<1000)break;}
-        let mov=0;for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('valor').eq('conta_id',cb.id).lte('data',fim).order('id').range(o,o+999);if(error)break;(data||[]).forEach(x=>mov+=Number(x.valor)||0);if(!data||data.length<1000)break;}
-        const o=por[L.id];o.banco=Math.round((Number(c.saldo_atual)-depois)*100)/100;o.fluxo=Math.round((Number(cb.saldo_inicial_banco||0)+mov)*100)/100;o.dif=Math.round((o.fluxo-o.banco)*100)/100;}catch(e){}}));
-    const lista=Object.values(por).map(o=>{const falta=[];if(o.t-o.cf)falta.push(`${o.t-o.cf} sem conferir`);if(o.sc)falta.push(`${o.sc} sem categoria`);if(o.bc)falta.push(`${o.bc} do Banco Caixinha sem ligar`);if(o.cxsc)falta.push(`${o.cxsc} do Caixinha sem categoria`);if(o.dif!=null&&Math.abs(o.dif)>=0.01)falta.push(`banco não bate (${BRL(o.dif)})`);
+        const ini=addDias(ym+'-01',-1);let noMesB=0;for(let o=0;;o+=1000){const {data,error}=await sb.from('sicoob_extrato').select('valor').eq('conta_id',c.id).gte('data',ym+'-01').lte('data',fim).order('transaction_id').range(o,o+999);if(error)break;(data||[]).forEach(x=>noMesB+=Number(x.valor)||0);if(!data||data.length<1000)break;}
+        let mov=0,noMesF=0;for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('valor,data').eq('conta_id',cb.id).lte('data',fim).order('id').range(o,o+999);if(error)break;(data||[]).forEach(x=>{mov+=Number(x.valor)||0;if(x.data>ini)noMesF+=Number(x.valor)||0;});if(!data||data.length<1000)break;}
+        const o=por[L.id];o.banco=Math.round((Number(c.saldo_atual)-depois)*100)/100;o.fluxo=Math.round((Number(cb.saldo_inicial_banco||0)+mov)*100)/100;o.dif=Math.round((o.fluxo-o.banco)*100)/100;
+        o.cobreMes=c.data_inicio?String(c.data_inicio).slice(0,10)<=ym+'-01':String(pr[0].data).slice(0,7)<=ym;o.movDif=o.cobreMes?Math.round((noMesF-noMesB)*100)/100:null;o.sic=c.id;o.cf_id=cb.id;}catch(e){console.error('irisFech',e);}}));
+    const lista=Object.values(por).map(o=>{const falta=[];if(o.t-o.cf)falta.push(`${o.t-o.cf} sem conferir`);if(o.sc)falta.push(`${o.sc} sem categoria`);if(o.bc)falta.push(`${o.bc} do Banco Caixinha sem ligar`);if(o.cxsc)falta.push(`${o.cxsc} do Caixinha sem categoria`);if(o.movDif!=null&&Math.abs(o.movDif)>=0.01)falta.push(`o mês não bate com o banco (${BRL(o.movDif)})`);else if(o.movDif==null&&o.dif!=null&&Math.abs(o.dif)>=0.01)falta.push(`banco não bate (${BRL(o.dif)})`);
       o.falta=falta;o.pronto=!falta.length&&o.t>0;return o;}).sort((a,b)=>(a.fechado-b.fechado)||(b.falta.length-a.falta.length));
     const nPronto=lista.filter(o=>o.pronto&&!o.fechado).length,nFech=lista.filter(o=>o.fechado).length;
     const vis=IRIS_FECH_TODAS?lista:lista.slice(0,8);const nomeL=o=>_remEsc(lojaNomeCurto(o.l.id).replace(/^Laboratório \/ /,''));
     box.innerHTML=`<div class="card" style="margin-bottom:14px;border-color:rgba(59,99,217,.5)">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px">${irisAvatar(40)}<div><b style="font-size:15px">Íris conferiu o fechamento de ${mesN}</b><div class="mut" style="font-size:12px">${nFech} fechada(s) · ${nPronto} pronta(s) para fechar · ${lista.filter(o=>!o.fechado&&!o.pronto&&o.t).length} com pendência · saldo do banco conferido onde tem robô do Sicoob</div></div></div>
-      <div style="overflow-x:auto"><table style="font-size:12.5px"><thead><tr><th>Empresa</th><th>Situação</th><th>Banco no fim do mês</th><th>Fluxo</th><th>O que falta</th><th></th></tr></thead><tbody>
+      <div style="overflow-x:auto"><table style="font-size:12.5px"><thead><tr><th>Empresa</th><th>Situação</th><th>Banco no fim do mês</th><th>Fluxo no fim do mês</th><th>O que falta</th><th></th></tr></thead><tbody>
       ${vis.map(o=>`<tr><td><b>${nomeL(o)}</b></td>
         <td>${o.fechado?'<b style="color:var(--green)">fechado</b>':o.pronto?'<b style="color:var(--green)">pronto para fechar</b>':o.t?'<b style="color:var(--amber)">pendente</b>':'<span class="mut">sem lançamentos</span>'}</td>
-        <td>${o.banco!=null?BRL(o.banco):'<span class="mut">sem robô</span>'}</td><td>${o.fluxo!=null?`${BRL(o.fluxo)} ${Math.abs(o.dif)<0.01?'<span style="color:var(--green);font-weight:700">bate</span>':''}`:'<span class="mut">—</span>'}</td>
+        <td>${o.banco!=null?BRL(o.banco):'<span class="mut">sem robô</span>'}</td><td>${o.fluxo!=null?`${BRL(o.fluxo)} ${Math.abs(o.dif)<0.01?'<span style="color:var(--green);font-weight:700">bate</span>':o.movDif!=null&&Math.abs(o.movDif)<0.01?`<div class="mut" style="font-size:11px">o mês bate · a diferença de ${BRL(o.dif)} vem de antes (saldo inicial)</div>`:''}`:'<span class="mut">—</span>'}${o.movDif!=null&&Math.abs(o.movDif)>=0.01?`<div><button class="btn ghost" style="padding:2px 9px;font-size:11px;margin-top:3px" onclick="irisDiasDiferentes(${o.l.id},${o.sic},${o.cf_id})">ver os dias que não batem</button></div>`:''}</td>
         <td style="font-size:12px">${o.fechado?'<span class="mut">—</span>':o.falta.length?o.falta.join(' · '):'<span class="mut">nada</span>'}</td>
         <td style="text-align:right">${o.l.id!==lojaAtual?`<button class="btn ghost" style="padding:3px 10px;font-size:11.5px" onclick="irisAbrirFech(${o.l.id})">abrir</button>`:'<span class="mut" style="font-size:11.5px">aberta</span>'}</td></tr>`).join('')}
       </tbody></table></div>${lista.length>8?`<div style="margin-top:6px"><span onclick="IRIS_FECH_TODAS=!IRIS_FECH_TODAS;irisFechamentoPainel()" style="cursor:pointer;font-size:12px;color:var(--muted);text-decoration:underline">${IRIS_FECH_TODAS?'mostrar menos':`ver todas (${lista.length})`}</span></div>`:''}
-      <div class="mut" style="font-size:11.5px;margin-top:8px">"pronto para fechar" = tudo conferido, com categoria, Banco Caixinha ligado e o banco batendo. Quem fecha continua sendo uma pessoa, aqui embaixo.</div></div>`;}
+      <div class="mut" style="font-size:11.5px;margin-top:8px">"pronto para fechar" = tudo conferido, com categoria, Banco Caixinha ligado e o movimento do mês batendo com o banco. Quem fecha continua sendo uma pessoa, aqui embaixo.</div></div>`;}
+  // v2.9.65: dia a dia do mês, banco × Fluxo: o que tem no banco e falta no Fluxo, e o que sobra no Fluxo (possível repetido)
+  async function irisDiasDiferentes(lojaId,sicId,contaId){const ym=`${ANO_FIXO}-${_mm(mesSel)}`,fim=_fimMes(ym);
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><span class="spin"></span> Íris comparando dia a dia…</div></div>`;
+    let B=[],F=[];
+    for(let o=0;;o+=1000){const {data,error}=await sb.from('sicoob_extrato').select('data,valor,historico,complemento').eq('conta_id',sicId).gte('data',ym+'-01').lte('data',fim).order('transaction_id').range(o,o+999);if(error)break;B=B.concat(data||[]);if(!data||data.length<1000)break;}
+    for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('id,data,valor,descricao,origem,criado_por').eq('conta_id',contaId).gte('data',ym+'-01').lte('data',fim).order('id').range(o,o+999);if(error)break;F=F.concat(data||[]);if(!data||data.length<1000)break;}
+    const cent=v=>Math.round(Number(v)*100);const dias={};
+    B.forEach(x=>{(dias[x.data]=dias[x.data]||{b:[],f:[]}).b.push(x);});F.forEach(x=>{(dias[x.data]=dias[x.data]||{b:[],f:[]}).f.push(x);});
+    // casa por valor dentro do dia; o que sobra no dia tenta casar com ±3 dias (data diferente)
+    const sobraB=[],sobraF=[];Object.keys(dias).sort().forEach(d=>{const fl=dias[d].f.slice();dias[d].b.forEach(x=>{const i=fl.findIndex(y=>cent(y.valor)===cent(x.valor));if(i>=0)fl.splice(i,1);else sobraB.push(x);});sobraF.push(...fl);});
+    for(let i=sobraB.length-1;i>=0;i--){const x=sobraB[i];const j=sobraF.findIndex(y=>cent(y.valor)===cent(x.valor)&&Math.abs((new Date(y.data)-new Date(x.data))/864e5)<=3);if(j>=0){sobraB.splice(i,1);sobraF.splice(j,1);}}
+    const tB=sobraB.reduce((a,x)=>a+Number(x.valor),0),tF=sobraF.reduce((a,x)=>a+Number(x.valor),0);
+    const linha=(d,txt,v,extra)=>`<tr><td class="mut" style="white-space:nowrap">${isoParaBR(d).slice(0,5)}</td><td>${_remEsc(txt)}${extra||''}</td><td style="text-align:right;white-space:nowrap;font-weight:700;color:${Number(v)<0?'var(--red)':'var(--green)'}">${BRL(Number(v))}</td><td style="text-align:right"><button class="btn ghost" style="padding:2px 9px;font-size:11px" onclick="irisAbrirDia(${lojaId},'${d}')">abrir o dia</button></td></tr>`;
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(820px,95vw);max-height:90vh;overflow:auto">
+      <div style="display:flex;align-items:center;gap:10px">${irisAvatar(38)}<div><h3 style="margin:0">${_remEsc(lojaNomeCurto(lojaId))} · ${MESES_NOME[mesSel]}: onde o Fluxo não bate com o banco</h3><div class="mut" style="font-size:12px">${B.length} linhas no banco · ${F.length} no Fluxo (conta do banco)</div></div><button class="delx" style="margin-left:auto;font-size:18px" onclick="fecharModal()">✕</button></div>
+      <h4 style="margin:14px 0 4px;font-size:13px">No banco, mas não no Fluxo · ${sobraB.length} (${BRL(tB)})</h4>
+      <div class="mut" style="font-size:11.5px;margin-bottom:4px">geralmente: ficou esperando em Importar (talvez repetido) ou alguém excluiu</div>
+      ${sobraB.length?`<table style="font-size:12.5px"><tbody>${sobraB.map(x=>linha(x.data,[x.historico,x.complemento].filter(Boolean).join(' · '),x.valor)).join('')}</tbody></table>`:'<div class="mut" style="font-size:12.5px">nada</div>'}
+      <h4 style="margin:14px 0 4px;font-size:13px">No Fluxo, mas não no banco · ${sobraF.length} (${BRL(tF)})</h4>
+      <div class="mut" style="font-size:11.5px;margin-bottom:4px">geralmente: lançado à mão em dobro (o banco já trouxe), ou lançado na conta do banco mas era da gaveta</div>
+      ${sobraF.length?`<table style="font-size:12.5px"><tbody>${sobraF.map(x=>linha(x.data,x.descricao||'—',x.valor,` <span class="mut" style="font-size:11px">· ${x.origem==='ofx'?'extrato':'à mão'}${x.criado_por?' · '+_remEsc(nomeDe(x.criado_por)||''):''}</span>`)).join('')}</tbody></table>`:'<div class="mut" style="font-size:12.5px">nada</div>'}
+    </div></div>`;}
+  async function irisAbrirDia(id,dia){fecharModal();const L=LOJAS.find(l=>l.id===id);if(!L)return;if(_modDe(L)!==MODULO_ATUAL)await trocarModulo(_modDe(L));lojaAtual=id;const sel=document.getElementById('store');if(sel)sel.value=String(id);
+    await carregarContas();await carregarFechamentos();renderNav();filtroDia=dia;go('lanc');}
   async function irisAbrirFech(id){const L=LOJAS.find(l=>l.id===id);if(!L)return;if(_modDe(L)!==MODULO_ATUAL)await trocarModulo(_modDe(L));lojaAtual=id;const sel=document.getElementById('store');if(sel)sel.value=String(id);await carregarContas();await carregarFechamentos();renderNav();go('fechamento');}
   async function viewFechamento(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';

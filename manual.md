@@ -146,6 +146,15 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 - **Sugestões da IA guardadas no banco** (tabela iris_sugestoes): o robô deixa pronto e ninguém paga duas vezes pela mesma sugestão.
 - **Fechamento assistido:** no alto de **Fechamento do mês**, a Íris confere todas as empresas do módulo. Para cada uma, mostra o saldo do banco no último dia × o Fluxo (onde tem robô do Sicoob) e o que falta: sem conferir, sem categoria, Banco Caixinha sem ligar e Caixinha sem categoria. A situação aparece como **fechado**, **pronto para fechar** ou **pendente**, com o botão **abrir**. Quem fecha continua sendo uma pessoa.
 
+### Fechamento: onde não bate com o banco (v2.9.65)
+
+- O quadro da Íris no Fechamento compara o **movimento do mês**: quanto o Fluxo mexeu na conta do banco no mês × quanto o banco mexeu. Se o mês bate, mas o saldo final não, aparece "o mês bate · a diferença vem de antes (saldo inicial)".
+- Quando o mês não bate, aparece o botão **ver os dias que não batem**, com duas listas:
+  - **No banco, mas não no Fluxo:** geralmente ficou esperando em Importar ou alguém excluiu.
+  - **No Fluxo, mas não no banco:** geralmente lançado à mão em dobro, ou lançado na conta do banco mas era da gaveta.
+- Cada linha tem **abrir o dia**, que vai para Lançamentos naquele dia, naquela loja.
+- Pix de cliente antes de outubro continua neutro (decisão de 27/10: nos meses antigos, em algumas lojas o À Vista da Linx já incluía o Pix).
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -797,6 +806,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.65 | Fechamento: confere o movimento do mês com o banco (separa erro do mês de erro de saldo inicial) e mostra dia a dia o que falta no Fluxo e o que sobra (possível repetido), com abrir o dia | — |
 | 27/10/2026 | 2.9.64 | Robô das 6h no GitHub (Íris lança, classifica, IA e Diversas sem ninguém abrir); sugestões da IA guardadas no banco; fechamento assistido (banco × Fluxo e pendências de todas as empresas) | Usuário ÍRIS no Supabase + segredos no GitHub; tabela iris_sugestoes (Claude roda, com autorização) |
 | 27/10/2026 | 2.9.63 | Íris com rosto e quadro novo no Dashboard (lancei hoje, conferi sozinha, confirmados, acerto, esperando); guia Como trabalhar com a Íris; botão Puxar os meses antigos de todas as lojas (gestor) | — |
 | 27/10/2026 | 2.9.62 | Íris importa sozinha: entrada automática do Sicoob lança todas as linhas (menos as que podem ser repetidas); quadro de todas as lojas em Importar extrato | — |
