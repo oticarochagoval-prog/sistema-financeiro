@@ -284,7 +284,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.61', APP_DATA='27/10/2026';
+  const APP_VERSAO='2.9.63', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1545,7 +1545,7 @@
     const box=(k,cor,rgb,tit,sub)=>`<div onclick="IRIS_FILTRO=IRIS_FILTRO==='${k}'?'':'${k}';irisIrLista()" style="cursor:pointer;border-radius:12px;padding:10px 13px;background:rgba(${rgb},.08);border:1px solid rgba(${rgb},${IRIS_FILTRO===k?'.9':'.35'})"><div style="font-size:24px;font-weight:800;color:${cor};line-height:1.1">${c[k]}</div><b style="font-size:13px">${tit}</b><div class="mut" style="font-size:11.5px">${sub}</div></div>`;
     const ia=IRIS_IA_ESTADO==='olhando'?' · a IA está olhando os nunca vistos…':IRIS_IA_ESTADO==='sem-api'?' · a IA ainda não foi ligada na Vercel':IRIS_IA_ESTADO==='erro'?' · a IA não respondeu agora':'';
     return `<div class="card" style="margin-bottom:14px;border-color:rgba(59,99,217,.5);padding:13px 16px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="width:26px;height:26px;border-radius:50%;background:radial-gradient(var(--panel) 34%,#4fd1c5 36%);flex:none"></span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">${irisAvatar(32)}
         <div><b style="font-size:14.5px">Íris olhou ${R.size} lançamento(s) de ${MESES_NOME[mesSel]} sem conferir</b><div class="mut" style="font-size:11.5px">${MODULO_ATUAL==='diversas'?'na Diversas ela preenche tudo e confere sozinha o verde e o amarelo (fica no nome ÍRIS) · o vermelho fica para vocês':'ela preenche pelo que vocês já fizeram · só vira conferido quando uma pessoa confirma'}${ia}</div></div></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px">
         ${box('certeza','var(--green)','61,214,140','Íris tem certeza','igual 3 vezes ou mais, ou ensinado')}
@@ -2947,11 +2947,31 @@
       </div>`;
   }
 
+  // v2.9.62: quadro de todas as lojas: até quando o banco mandou × até quando já está lançado
+  async function irisImportStatus(){const box=document.getElementById('irisImportStatus');if(!box)return;const pref=`${ANO_FIXO}-${_mm(mesSel)}`;
+    const lojas=LOJAS.filter(l=>!l.arquivada&&_modDe(l)!=='casa');const linhas=[];
+    await Promise.all(lojas.map(async L=>{const c=(SICOOB_CONTAS||[]).find(x=>Number(x.loja_id)===Number(L.id));let banco=null,lanc=null,semCat=0;
+      try{if(c){const {data}=await sb.from('sicoob_extrato').select('data').eq('conta_id',c.id).order('data',{ascending:false}).limit(1);banco=data&&data[0]?data[0].data:null;}
+        const {data:dl}=await sb.from('lancamentos').select('data').eq('loja_id',L.id).eq('origem','ofx').order('data',{ascending:false}).limit(1);lanc=dl&&dl[0]?dl[0].data:null;
+        const {count}=await sb.from('lancamentos').select('id',{count:'exact',head:true}).eq('loja_id',L.id).is('categoria_id',null).gte('data',pref+'-01').lte('data',_fimMes(pref));semCat=count||0;}catch(e){}
+      linhas.push({L,c,banco,lanc,semCat,esp:(AUTO_ULT[L.id]||{}).esperando||0});}));
+    linhas.sort((a,b)=>(a.L.nome||'').localeCompare(b.L.nome||'',undefined,{numeric:true}));
+    const br=d=>d?isoParaBR(d).slice(0,5):'—';
+    box.innerHTML=`<div class="card" style="margin-bottom:14px;border-color:rgba(59,99,217,.5)"><div style="display:flex;align-items:center;gap:10px">${irisAvatar(28)}<h3 style="font-size:14.5px;margin:0">Íris importa sozinha · todas as lojas</h3></div>
+      <div class="mut" style="font-size:12px;margin:4px 0 8px">sempre que alguém está com o Fluxo aberto (de hora em hora) · sem categoria de ${MESES_NOME[mesSel]} aparece em vermelho em Lançamentos, com a sugestão da Íris</div>
+      ${ehDono()?`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px"><button class="btn" style="font-weight:800" onclick="irisPuxarAntigos()">Puxar os meses antigos de todas as lojas</button><span class="mut" style="font-size:12px">o que o banco já mandou (ex.: junho a setembro) · não repete o que já está lançado · só gestor</span></div>`:''}
+      <div style="overflow-x:auto"><table style="font-size:12.5px"><thead><tr><th>Loja</th><th>Banco mandou até</th><th>Lançado até</th><th style="text-align:center">Sem categoria</th><th style="text-align:center">Esperando (talvez repetido)</th></tr></thead><tbody>
+      ${linhas.map(x=>{const ok=x.c&&x.banco&&x.lanc&&x.lanc>=x.banco;return `<tr><td><b>${_remEsc(lojaNomeCurto(x.L.id))}</b></td>
+        <td>${x.c?br(x.banco):'<span style="color:var(--red);font-weight:700">sem robô do banco</span>'}</td>
+        <td style="color:${!x.c?'inherit':ok?'var(--green)':'var(--amber)'};font-weight:700">${br(x.lanc)}${!x.c&&x.lanc&&x.lanc<addDias(_hojeLocal(),-7)?' <span style="color:var(--red)">· suba o arquivo</span>':''}</td>
+        <td style="text-align:center;${x.semCat?'color:var(--amber);font-weight:700':''}">${x.semCat||'—'}</td><td style="text-align:center;${x.esp?'color:var(--amber);font-weight:700':''}">${x.esp||'—'}</td></tr>`;}).join('')}
+      </tbody></table></div></div>`;}
   function viewImport(){
     if(IMPORT.length===0){
       document.getElementById('content').innerHTML=avisoPixNovembro()+`<div class="note">⤓ <b>Importar extrato OFX do Sicoob</b> — lê o arquivo, preenche data/descrição/valor, adivinha categoria e contato, separa transferências entre lojas e marca o que é cartão (conta) ou depósito (ignora, a Linx já contou). Você confere antes de lançar.</div>
       <div id="ultimaImport"></div>
       ${sicoobCardImport()}
+      <div id="irisImportStatus"></div>
       <div class="card"><div class="cardhead"><h3>Selecionar arquivo .OFX</h3><span class="tag">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</span></div>
         <div style="border:1.5px dashed #38465a;border-radius:14px;padding:34px;text-align:center;margin-top:12px">
           <div style="font-size:30px;margin-bottom:10px">⤓</div>
@@ -2959,7 +2979,7 @@
           <button class="btn" onclick="document.getElementById('ofxFile').click()">Escolher extrato (OFX ou PDF)</button>
           <div class="mut" style="margin-top:10px;font-size:12px">Baixe o extrato do Sicoob em OFX ou em PDF e selecione aqui. O PDF traz o texto completo de cada linha (ex.: SALARIO HELOISA nas transferências para a DVL).</div>
         </div></div>`;
-      mostrarUltimasImportacoes();
+      mostrarUltimasImportacoes();irisImportStatus().catch(e=>console.error(e));
       return;
     }
     // tabela de conferência — agrupada: na frente só o que precisa de atenção
@@ -3091,7 +3111,7 @@
     if(!cs.length){const ja=SICOOB_CONTAS.map(c=>_nomeLoja(Number(c.loja_id))||c.apelido).filter(Boolean);
       return ja.length?`<div class="note" style="margin-bottom:14px;font-size:12.5px">Esta loja ainda importa à mão (OFX ou PDF do Sicoob). <b>Importar sozinho</b> já funciona em: ${ja.join(', ')}. As outras entram conforme o certificado de cada empresa for cadastrado no Sicoob.</div>`:'';}
     return `<div class="card" style="margin-bottom:14px;border-left:4px solid ${cs.some(c=>c.ultimo_erro)?'var(--red)':'var(--green)'}"><div class="cardhead"><h3>Importar sozinho · extrato automático do Sicoob</h3><span class="tag">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</span></div>
-      <div class="mut" style="font-size:12.5px;margin:6px 0 12px"><b style="color:var(--green)">Importar sozinho: funcionando.</b> O robô busca o extrato no Sicoob às ${_roboHoras()} (hora de Brasília; às vezes atrasa alguns minutos). <b>O que vem todo classificado entra sozinho</b> (amarelo, falta só conferir). Clique em Puxar do Sicoob para resolver o que ficou esperando.${(()=>{const a=AUTO_ULT[lojaAtual];return a?`<br>Última entrada automática: ${a.em.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}${a.ok?` · ${a.ok} entraram`:''}${a.esperando?` · <b style="color:var(--amber)">${a.esperando} esperando você</b>`:' · nada esperando'}`:'';})()}</div>
+      <div class="mut" style="font-size:12.5px;margin:6px 0 12px"><b style="color:var(--green)">Importar sozinho: funcionando.</b> O robô busca o extrato no Sicoob às ${_roboHoras()} (hora de Brasília; às vezes atrasa alguns minutos). <b>A Íris lança tudo sozinha</b>, classificado ou não. Só fica esperando o que pode ser repetido (mesmo valor perto da data de algo que já está lá): clique em Puxar do Sicoob para resolver.${(()=>{const a=AUTO_ULT[lojaAtual];return a?`<br>Última entrada automática: ${a.em.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}${a.ok?` · ${a.ok} entraram`:''}${a.esperando?` · <b style="color:var(--amber)">${a.esperando} esperando você</b>`:' · nada esperando'}`:'';})()}</div>
       ${cs.map(c=>{const d=_sicDiasAte(c.cert_vence);
         const st=c.ultimo_erro?`<span style="color:var(--red)">Falhou na última vez: ${String(c.ultimo_erro).slice(0,160)}</span>`:(c.ultimo_ok?`Última vez ${new Date(c.ultimo_ok).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}${c.ultima_qtd!=null?` (${c.ultima_qtd} linhas)`:''} · próxima por volta de ${roboProxima()}${c.saldo_atual!=null?` · saldo no banco ${BRL(Number(c.saldo_atual))}`:''}`:'Ainda não rodou');
         const cv=c.cert_vence?`Certificado vence em ${_sicBR(c.cert_vence)}${d!=null?` (${d} dias)`:''}`:'';
@@ -3206,6 +3226,41 @@
   function autoSeguro(r){if(r.grupo==='ja'||r.grupo==='lentes')return true;if(r.jaTalvez)return false;if(r.estornar&&r.cxMatch&&r.cxLoja)return true;if(r.cxDevolvido)return true;if(!r.catId||r.corrigir||r.estornar||r.rateio||r.socio||r.paraLoja)return false;
     if(r.grupo==='dep')return IMPORT_CX_LOGIN; // sem o Caixinha aberto não dá pra casar o depósito da gaveta: espera
     return ['cartao','pix','regra','agenda','transf'].includes(r.grupo);}
+  // v2.9.62: a Íris lança TODAS as linhas do extrato automático (classificadas ou não). Só não lança o que pode ser repetido (fica esperando uma pessoa).
+  function autoIris(r){if(r.grupo==='ja'||r.grupo==='lentes')return true;return !r.jaTalvez;}
+  // uma conta (e, se vier, um mês fechado inteiro): monta o extrato, separa e lança o que a Íris pode lançar
+  async function _autoEntrarConta(c,ym,veu,msg){
+    const m=await sicoobMontarOFX(c,ym||undefined);if(!m||m.erro||m.vazio)return null;
+    if(veu){veu.innerHTML=`<div class="card" style="padding:16px 22px;font-size:14px"><span class="spin"></span> ${msg}</div>`;if(!document.getElementById(veu.id))document.body.appendChild(veu);}
+    lojaAtual=Number(c.loja_id);await carregarContas();await carregarFechamentos();
+    _IMP_API=true;importObs=ym?'ÍRIS · MÊS ANTIGO DO SICOOB':'ENTRADA AUTOMÁTICA DO SICOOB';
+    const ok=await _processarOFX(m.ofx,null,true);if(!ok||!IMPORT.length){IMPORT=[];importObs='';return null;}
+    let novos=0,esperando=0;IMPORT.forEach(r=>{const seg=autoIris(r);r.selManual=seg;if(seg&&r.grupo!=='ja'&&r.grupo!=='lentes')novos++;if(!seg)esperando++;});
+    IMPORT_DEP=(IMPORT_DEP||[]).filter(x=>x.r&&x.r.selManual);
+    const ligar=IMPORT.some(r=>r.grupo==='ja'&&r.jaExiste&&!r.jaImportado&&r.fitid);
+    if(!novos&&!ligar){IMPORT=[];importObs='';IMPORT_DEP=[];if(!ym)AUTO_ULT[c.loja_id]={esperando,em:new Date()};return {ok:0,esperando};}
+    IMP_MARC={modo:'nenhuma',crit:[]};
+    const r=await confirmarImport(false,'',true);IMPORT=[];importObs='';IMPORT_DEP=[];
+    if(!ym)AUTO_ULT[c.loja_id]={esperando,em:new Date(),ok:r&&r.ok||0};
+    return {ok:r&&r.ok||0,esperando};}
+  // v2.9.63: puxar os meses antigos que o robô do banco já trouxe (ex.: junho a setembro), de todas as lojas — só gestor
+  async function irisPuxarAntigos(){if(!ehDono()||_autoRodando)return;
+    const contas=SICOOB_CONTAS.filter(c=>c.loja_id&&LOJAS.some(l=>l.id===Number(c.loja_id)));if(!contas.length)return;
+    const atual=_hojeLocal().slice(0,7);let min=atual;
+    try{const {data}=await sb.from('sicoob_extrato').select('data').order('data').limit(1);if(data&&data[0])min=String(data[0].data).slice(0,7);}catch(e){}
+    const meses=[];for(let ym=min;ym<atual;ym=mesShift(ym,1))meses.push(ym);
+    if(!meses.length){toast('Não tem mês antigo no extrato do banco.','ok');return;}
+    const nomeM=ym=>MESES_NOME[Number(ym.slice(5,7))-1];
+    if(!confirm(`A Íris vai puxar ${nomeM(meses[0])} a ${nomeM(meses[meses.length-1])} de ${contas.length} conta(s) do Sicoob.\n\nO que já está lançado ela não repete. O que pode ser repetido (mesmo valor perto da data) fica esperando. Mês fechado ela não mexe.\n\nPode levar alguns minutos. Deixe esta aba aberta. Começar?`))return;
+    _autoRodando=true;const antes=lojaAtual;let tot=0,esp=0,n=0;const veu=document.createElement('div');veu.id='autoVeu';veu.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center';
+    _salvandoN++;
+    try{for(const ym of meses)for(const c of contas){n++;
+        const r=await _autoEntrarConta(c,ym,veu,`Íris puxando ${nomeM(ym)} · ${_remEsc(_nomeLoja(Number(c.loja_id))||c.apelido)} (${n}/${meses.length*contas.length})<br><span class="mut" style="font-size:12px">${tot} lançamento(s) entraram até agora · não feche esta aba</span>`);
+        if(r){tot+=r.ok;esp+=r.esperando;}}}
+    catch(e){console.error('meses antigos',e);toast('Parou no meio: '+(e.message||e)+'. Pode clicar de novo: ela continua de onde parou.','erro');}
+    finally{_salvandoN--;IMPORT=[];importObs='';IMPORT_DEP=[];_IMP_API=false;IMP_MARC={modo:'todas',crit:[]};
+      if(lojaAtual!==antes){lojaAtual=antes;await carregarContas();await carregarFechamentos();}const v=document.getElementById('autoVeu');if(v)v.remove();_autoRodando=false;}
+    toast(`Íris puxou os meses antigos: ${tot} lançamento(s) entraram.${esp?` ${esp} ficaram esperando (talvez repetidos): veja em Importar, mês a mês.`:''}`,'ok');NAV_CONF={};render();}
   async function sicoobAutoEntrar(){
     if(_autoRodando||!sb||!PERFIL||!['dono','operador','lancador'].includes(PERFIL.papel))return;
     if(IMPORT.length)return; // alguém está no meio de uma importação: deixa pra próxima
@@ -3213,19 +3268,8 @@
     _autoRodando=true;const antes=lojaAtual,res=[];
     const veu=document.createElement('div');veu.id='autoVeu';veu.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center';
     try{for(const c of contas){
-        const m=await sicoobMontarOFX(c);if(!m||m.erro||m.vazio)continue;
-        if(!document.getElementById('autoVeu')){veu.innerHTML='<div class="card" style="padding:16px 22px;font-size:14px"><span class="spin"></span> Lançando o extrato automático do Sicoob…</div>';document.body.appendChild(veu);}
-        lojaAtual=Number(c.loja_id);await carregarContas();await carregarFechamentos();
-        _IMP_API=true;importObs='ENTRADA AUTOMÁTICA DO SICOOB';
-        const ok=await _processarOFX(m.ofx,null,true);if(!ok||!IMPORT.length){IMPORT=[];importObs='';continue;}
-        let novos=0,esperando=0;IMPORT.forEach(r=>{const seg=autoSeguro(r);r.selManual=seg;if(seg&&r.grupo!=='ja'&&r.grupo!=='lentes')novos++;if(!seg)esperando++;});
-        IMPORT_DEP=(IMPORT_DEP||[]).filter(x=>x.r&&x.r.selManual);
-        const ligar=IMPORT.some(r=>r.grupo==='ja'&&r.jaExiste&&!r.jaImportado&&r.fitid);
-        if(!novos&&!ligar){IMPORT=[];importObs='';IMPORT_DEP=[];AUTO_ULT[c.loja_id]={esperando,em:new Date()};continue;}
-        IMP_MARC={modo:'nenhuma',crit:[]};
-        const r=await confirmarImport(false,'',true);
-        AUTO_ULT[c.loja_id]={esperando,em:new Date(),ok:r&&r.ok||0};
-        if(r&&r.ok)res.push(`${_nomeLoja(Number(c.loja_id))}: ${r.ok} lançamento(s) entraram sozinhos${esperando?` · ${esperando} esperando no Importar`:''}`);}
+        const r=await _autoEntrarConta(c,null,veu,'Lançando o extrato automático do Sicoob…');
+        if(r&&r.ok)res.push(`${_nomeLoja(Number(c.loja_id))}: ${r.ok} lançamento(s) entraram sozinhos${r.esperando?` · ${r.esperando} esperando no Importar`:''}`);}
     }catch(e){console.error('entrada automática',e);}
     finally{IMPORT=[];importObs='';IMPORT_DEP=[];_IMP_API=false;IMP_MARC={modo:'todas',crit:[]};
       if(lojaAtual!==antes){lojaAtual=antes;await carregarContas();await carregarFechamentos();}
@@ -4199,6 +4243,40 @@
   let _pixDashSeq=0;
   // ---- v2.9.53: ÍRIS — resumo do dia de todas as empresas (só olha e avisa; não lança nem muda nada) ----
   let IRIS_TODAS=false,_irisSeq=0;
+  // v2.9.63: rosto da Íris (um olho com a íris de verdade; olha de um lado pro outro e pisca)
+  function irisAvatar(px){const id='ia'+Math.random().toString(36).slice(2,7);px=px||56;
+    return `<svg viewBox="0 0 64 64" width="${px}" height="${px}" style="flex:none" aria-label="Íris"><defs>
+      <radialGradient id="${id}f" cx="50%" cy="40%" r="65%"><stop offset="0" stop-color="#1f3b4d"/><stop offset="1" stop-color="#0d1b24"/></radialGradient>
+      <radialGradient id="${id}i" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#b9f3e6"/><stop offset=".45" stop-color="#3fc7b4"/><stop offset=".8" stop-color="#2a7fb8"/><stop offset="1" stop-color="#1d4f7a"/></radialGradient>
+      <linearGradient id="${id}a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4fd1c5"/><stop offset="1" stop-color="#3b63d9"/></linearGradient>
+      <clipPath id="${id}c"><path d="M8 32 Q32 10 56 32 Q32 54 8 32Z"/></clipPath></defs>
+      <circle cx="32" cy="32" r="30" fill="url(#${id}f)" stroke="url(#${id}a)" stroke-width="2.5"/>
+      <g clip-path="url(#${id}c)"><path d="M8 32 Q32 10 56 32 Q32 54 8 32Z" fill="#eaf6f3"/>
+        <g class="irisOlhar"><circle cx="32" cy="32" r="11.5" fill="url(#${id}i)"/><circle cx="32" cy="32" r="11.5" fill="none" stroke="#174a6b" stroke-width="1"/>
+          <g stroke="#ffffff" stroke-opacity=".28" stroke-width=".7">${Array.from({length:12},(_,k)=>{const a=k*Math.PI/6;return `<line x1="${32+5.2*Math.cos(a)}" y1="${32+5.2*Math.sin(a)}" x2="${32+10.5*Math.cos(a)}" y2="${32+10.5*Math.sin(a)}"/>`;}).join('')}</g>
+          <circle cx="32" cy="32" r="4.6" fill="#0b1720"/><circle cx="35.2" cy="28.6" r="2.1" fill="#fff" fill-opacity=".9"/><circle cx="29.4" cy="35" r=".9" fill="#fff" fill-opacity=".6"/></g>
+        <rect class="irisPalp" x="6" y="8" width="52" height="0" fill="#0d1b24"/></g>
+      <path d="M8 32 Q32 10 56 32 Q32 54 8 32Z" fill="none" stroke="url(#${id}a)" stroke-width="1.6"/></svg>`;}
+  (function(){if(document.getElementById('irisCss'))return;const st=document.createElement('style');st.id='irisCss';
+    st.textContent='@keyframes irisOlhar{0%,18%{transform:translateX(0)}26%,42%{transform:translateX(-4px)}50%,66%{transform:translateX(4px)}74%,100%{transform:translateX(0)}}@keyframes irisPisca{0%,94%,100%{height:0}97%{height:48px}}.irisOlhar{animation:irisOlhar 9s ease-in-out infinite}.irisPalp{animation:irisPisca 6s linear infinite}@media (prefers-reduced-motion:reduce){.irisOlhar,.irisPalp{animation:none}}';
+    document.head.appendChild(st);})();
+  // guia para a equipe: o que a Íris faz sozinha e o que fica com vocês
+  function irisComoFunciona(){const passo=(n,cor,tit,txt)=>`<div style="display:flex;gap:11px;margin:9px 0"><div style="width:26px;height:26px;border-radius:50%;background:${cor};color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex:none">${n}</div><div><b>${tit}</b><div class="mut" style="font-size:12.5px;line-height:1.5">${txt}</div></div></div>`;
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(720px,95vw);max-height:92vh;overflow:auto">
+      <div style="display:flex;align-items:center;gap:12px">${irisAvatar(52)}<div><h3 style="margin:0">Como trabalhar com a Íris</h3><div class="mut" style="font-size:12.5px">a assistente do Fluxo · ela faz o trabalho repetido, vocês conferem</div></div><button class="delx" style="margin-left:auto;font-size:18px" onclick="fecharModal()">✕</button></div>
+      <h4 style="margin:16px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">O que ela faz sozinha</h4>
+      ${passo('✓','#2f9e78','Busca o extrato no Sicoob','O robô do banco traz o extrato às 5h37, 12h37 e 19h37.')}
+      ${passo('✓','#2f9e78','Lança todas as linhas','De hora em hora, com o Fluxo aberto, ela lança tudo do banco. Só não lança o que pode ser repetido (mesmo valor perto da data): isso fica em Importar → Puxar do Sicoob.')}
+      ${passo('✓','#2f9e78','Classifica','Pelo que vocês já fizeram antes, pelo que foi ensinado, pelas outras lojas e, no que nunca apareceu, pela IA.')}
+      ${passo('✓','#2f9e78','Diversas no automático','Na Diversas ela preenche tudo e confere sozinha o verde e o amarelo (fica no nome ÍRIS).')}
+      <h4 style="margin:16px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">O que vocês fazem · em Lançamentos, no quadro da Íris</h4>
+      ${passo(1,'#2f9e78','Verde · Íris tem certeza','Clique no verde, dê uma olhada na lista e clique em Confirmar. Ela marca conferido no nome de quem confirmou.')}
+      ${passo(2,'#c7861a','Amarelo · confira','Ela sugeriu. Se estiver certo, clique em usar e marque o conferido. Se estiver errado, troque a categoria ou o contato.')}
+      ${passo(3,'#d64545','Vermelho · sempre com vocês','Transferência entre lojas, estorno / Banco Caixinha e valor fora do normal. A Íris nunca dá esses como certos.')}
+      ${passo(4,'#3b63d9','Ensinar','Quando vocês corrigem, aparece no canto "Ensinar a Íris?". Escreva o porquê em poucas palavras e clique em Ensinar. Da próxima vez ela já sabe.')}
+      <div style="margin-top:14px;border-left:4px solid var(--blue);background:rgba(59,99,217,.08);border-radius:10px;padding:10px 13px;font-size:12.5px;line-height:1.6">
+        <b>Regras da casa:</b> nada vira conferido sem uma pessoa confirmar (fora da Diversas) · a Íris não troca o que vocês já escolheram · não exclua lançamento do banco: use "o que é?" ou deixe neutra · se o banco não confirmar, aparece <b>NÃO SALVOU</b> em vermelho: é só marcar de novo · dúvida: fale com o Lucas.</div>
+    </div></div>`;}
   async function preencherIrisDash(){const box=document.getElementById('irisDash');if(!box)return;const seq=++_irisSeq;
     const pm=`${ANO_FIXO}-${_mm(mesSel)}`,ids=LOJAS.map(l=>l.id);if(!ids.length)return;
     box.innerHTML='<div class="card" style="margin-bottom:14px;padding:12px 16px"><span class="mut" style="font-size:12.5px">Íris está olhando as empresas…</span></div>';
@@ -4206,6 +4284,9 @@
     try{const {data}=await sb.from('contas').select('id,loja_id,nome').in('loja_id',ids);cts=data||[];}catch(e){}
     const cx=new Set(cts.filter(c=>/caixinha/i.test(c.nome||'')).map(c=>c.id));
     try{for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('loja_id,conta_id,conferido_por,categoria_id,ref_externa').in('loja_id',ids).gte('data',pm+'-01').lte('data',_fimMes(pm)).order('id').range(o,o+999);if(error)break;lc=lc.concat(data||[]);if(!data||data.length<1000)break;}}catch(e){}
+    let kHoje=0,kIr=[];const _h0=new Date();_h0.setHours(0,0,0,0);
+    try{const {count}=await sb.from('lancamentos').select('id',{count:'exact',head:true}).in('loja_id',ids).eq('origem','ofx').is('criado_por',null).gte('criado_em',_h0.toISOString());kHoje=count||0;}catch(e){}
+    try{for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('iris,conferido_por').in('loja_id',ids).gte('data',pm+'-01').lte('data',_fimMes(pm)).not('iris','is',null).order('id').range(o,o+999);if(error)break;kIr=kIr.concat(data||[]);if(!data||data.length<1000)break;}}catch(e){}
     const hoje=_hojeLocal();try{const {data}=await sb.from('contas_pagar').select('loja_id,valor,vencimento').in('loja_id',ids).eq('status','aberto').gte('vencimento',hoje).lte('vencimento',addDias(hoje,6));ag=data||[];}catch(e){}
     if(seq!==_irisSeq)return;
     const catN=id=>{const c=CATS.find(x=>x.id===id);return c?String(c.nome).toUpperCase():'';};
@@ -4233,9 +4314,21 @@
     const avisos=[`<b>Robô do Sicoob:</b> ${(SICOOB_CONTAS||[]).length} conta(s) ${erros.length?`· <b style="color:var(--red)">com erro: ${erros.join(', ')}</b>`:'funcionando, nenhum erro'}${semRobo.length?` · faltam ligar: ${semRobo.join(', ')}`:''}${certs.length?` · certificado mais próximo: ${_sicBR(certs[0].d)} (${certs[0].a})`:''}`];
     if(cert30.length)avisos.push(`<b style="color:var(--red)">Certificado vencendo:</b> ${cert30.map(c=>c.a+' em '+_sicBR(c.d)).join(', ')}`);
     avisos.push(`<b>Banco Caixinha:</b> ${totEst?`${totEst} lançamento(s) esperando a Heloísa (roxo)`:'nada esperando a Heloísa'} · <b>Caixinha:</b> ${totCx?`${totCx} saída(s) sem categoria`:'tudo com categoria'} · <b>Agenda:</b> ${totAg?`${totAg} conta(s) vencendo nos próximos 7 dias`:'nada vencendo nos próximos 7 dias'}`);
-    box.innerHTML=`<div class="card" style="margin-bottom:14px;padding:14px 16px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><div style="width:40px;height:40px;border-radius:50%;flex:none;background:radial-gradient(circle at 50% 50%,#1b2430 0 22%,#2f8f8a 23% 55%,#8fd3c7 56% 100%)"></div>
-        <div><div style="font-weight:800;font-size:16px">${saud}! Aqui é a Íris.</div><div class="mut" style="font-size:12px">${dia} · olhei ${LOJAS.length} empresas · ${MESES_NOME[mesSel]} · só olho e aviso, não mudo nada</div></div></div>
+    const kSoz=kIr.filter(x=>x.conferido_por==='ÍRIS'&&x.iris!=='corrigida').length,kCor=kIr.filter(x=>x.iris==='corrigida').length,kConf=kIr.filter(x=>x.iris!=='corrigida'&&x.conferido_por&&x.conferido_por!=='ÍRIS').length,kBase=kSoz+kConf+kCor,kAc=kBase?Math.round((kSoz+kConf)/kBase*100):null;
+    const totFalta=lista.reduce((a,o)=>a+(o.t-o.cf),0),totSc=lista.reduce((a,o)=>a+o.sc,0);
+    const kpi=(n,t,cor,sub)=>`<div style="background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px"><div style="font-size:22px;font-weight:800;line-height:1.1;${cor?'color:'+cor:''}">${n}</div><div style="font-size:12px;font-weight:700;margin-top:2px">${t}</div>${sub?`<div class="mut" style="font-size:11px">${sub}</div>`:''}</div>`;
+    const rot=[['5h37 · 12h37 · 19h37','busca o extrato no Sicoob'],['de hora em hora','lança tudo e classifica'],['Diversas','preenche e confere sozinha'],['o resto','separa em verde, amarelo e vermelho para vocês']];
+    box.innerHTML=`<div class="card" style="margin-bottom:14px;padding:16px 18px;border-color:rgba(59,99,217,.45);background:linear-gradient(135deg,rgba(79,209,197,.07),rgba(59,99,217,.05) 60%,transparent)">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px">${irisAvatar(58)}
+        <div style="flex:1;min-width:220px"><div style="font-weight:800;font-size:17px">${saud}! Aqui é a Íris.</div><div class="mut" style="font-size:12.5px">${dia} · ${MESES_NOME[mesSel]} · eu lanço, classifico e separo · vocês conferem</div></div>
+        <button class="btn ghost" style="padding:6px 13px;font-size:12.5px;font-weight:700" onclick="irisComoFunciona()">Como trabalhar com a Íris</button></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
+        ${kpi(kHoje,'lancei do banco hoje','var(--blue)','sozinha, sem ninguém importar')}
+        ${kpi(kSoz,'conferi sozinha','var(--green)',MESES_NOME[mesSel]+' · Diversas')}
+        ${kpi(kConf,'preenchi e vocês confirmaram','',MESES_NOME[mesSel])}
+        ${kpi(kAc==null?'—':kAc+'%','acerto',kAc==null?'':kAc>=90?'var(--green)':kAc>=70?'var(--amber)':'var(--red)',kCor?`${kCor} corrigido(s) por vocês`:'nada corrigido')}
+        ${kpi(totFalta,'esperando vocês',totFalta?'var(--amber)':'var(--green)',totSc?`${totSc} sem categoria`:'tudo com categoria')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${rot.map(([a,b])=>`<span style="font-size:11.5px;border:1px solid var(--line);border-radius:20px;padding:3px 10px"><b>${a}</b> <span class="mut">${b}</span></span>`).join('')}</div>
       ${lista.length?`<div style="overflow-x:auto"><table style="font-size:12.5px"><thead><tr><th>Empresa</th><th>Conferidos</th><th style="text-align:center">Sem categoria</th><th style="text-align:center">Caixinha sem categoria</th><th style="text-align:center">Banco Caixinha</th><th style="text-align:center">Agenda 7 dias</th></tr></thead><tbody>${linhas}</tbody></table></div>
       ${lista.length>8?`<div style="margin-top:6px"><span onclick="IRIS_TODAS=!IRIS_TODAS;preencherIrisDash()" style="cursor:pointer;font-size:12px;color:var(--muted);text-decoration:underline">${IRIS_TODAS?'mostrar menos':`ver todas (${lista.length})`}</span></div>`:''}`:'<div class="mut" style="font-size:13px">Nada para olhar neste mês.</div>'}
       <div style="margin-top:10px;border-left:4px solid var(--amber);background:rgba(245,183,64,.08);border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.55">${avisos.join('<br>')}</div></div>`;}
@@ -4268,7 +4361,7 @@
           confirm=ir.filter(l=>l.iris!=='corrigida'&&l.conferido_por&&l.conferido_por!=='ÍRIS').length,espera=ir.filter(l=>l.iris!=='corrigida'&&!l.conferido_por).length,
           cert=ir.filter(l=>l.iris==='certeza').length,sug=ir.filter(l=>l.iris==='sugestao').length,ia=ir.filter(l=>l.iris==='ia').length,base=sozinha+confirm+corr,acerto=base?Math.round((sozinha+confirm)/base*100):0;
         const it=(n,t,cor)=>`<div><div style="font-size:22px;font-weight:800;${cor?'color:'+cor:''}">${n}</div><div class="mut" style="font-size:11.5px">${t}</div></div>`;
-        irisHTML=`<div class="card" style="margin-top:14px;border-color:rgba(59,99,217,.5)"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="width:22px;height:22px;border-radius:50%;background:radial-gradient(var(--panel) 34%,#4fd1c5 36%);flex:none"></span><h3 style="font-size:14.5px;margin:0">Íris em ${MESES_NOME[mesSel]} · ${modNome}</h3><span class="mut" style="font-size:12px;margin-left:auto">acerto <b style="color:${acerto>=90?'var(--green)':acerto>=70?'var(--amber)':'var(--red)'}">${acerto}%</b> · o que ninguém precisou corrigir</span></div>
+        irisHTML=`<div class="card" style="margin-top:14px;border-color:rgba(59,99,217,.5)"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">${irisAvatar(28)}<h3 style="font-size:14.5px;margin:0">Íris em ${MESES_NOME[mesSel]} · ${modNome}</h3><span class="mut" style="font-size:12px;margin-left:auto">acerto <b style="color:${acerto>=90?'var(--green)':acerto>=70?'var(--amber)':'var(--red)'}">${acerto}%</b> · o que ninguém precisou corrigir</span></div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:10px">${it(sozinha,'conferiu sozinha','var(--green)')}${it(confirm,'preencheu e vocês confirmaram','var(--blue)')}${it(corr,'vocês corrigiram',corr?'var(--red)':'')}${it(espera,'preencheu, falta conferir','var(--amber)')}</div>
           <div class="mut" style="font-size:11.5px;margin-top:8px">tinha certeza em ${cert} · sugeriu ${sug} · pela IA ${ia}</div></div>`;}}catch(e){}
     let html=resumo+irisHTML+`<div class="grid two" style="margin-top:14px">${doMes(conf,'Ranking de '+MESES_NOME[mesSel]+' · quem conferiu','lançamentos marcados como conferidos · '+modNome)}${doMes(imp,'Ranking de '+MESES_NOME[mesSel]+' · quem importou extrato','linhas lançadas pela importação · '+modNome)}</div>`;
