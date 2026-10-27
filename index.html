@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.77', APP_DATA='27/10/2026';
+  const APP_VERSAO='2.9.78', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -2987,6 +2987,11 @@
     o=daRazao(d);if(o)return o;
     if(!raz){const r=empresaDoGrupo(f);if(r)return r.toUpperCase();}
     return null;}
+  // v2.9.78: a "empresa" de uma conta do Fluxo (para a outra ponta da transferência)
+  function empresaDaLoja(L){if(!L)return null;const ch=cxChaveLoja(L.nome),n=normDesc(L.nome);if(/412619/.test(String(L.conta_banco||'')+' '+L.nome))return 'CONTA 412619';
+    if(/^r\d+$/.test(ch))return 'ROCHA '+ch.slice(1);if(ch==='gv')return 'GV OPTICAL';if(/FZ GRIFES/.test(n))return 'FZ GRIFES';if(/GRUPO VR/.test(n))return 'GRUPO VR';if(/FZ COMERCIO/.test(n))return 'FZ COMERCIO';
+    if(/DIVERSAS/.test(n))return 'CONTA DIVERSAS';if(/^CASA/.test(n))return 'CASA';return null;}
+  const _rotEmpresa=org=>({'GRUPO VR':'Grupo VR','CONTA DIVERSAS':'Conta Diversas','CONTA 412619':'Conta 412619','GV OPTICAL':'GV Lentes','FZ COMERCIO':'FZ Comércio','FZ GRIFES':'FZ Grifes','CASA':'Casa'})[org]||String(org||'').replace(/^ROCHA/,'Rocha');
   const _nomeEmpresa=org=>org==='GV OPTICAL'?'GV LENTES':org==='FZ COMERCIO'?'FZ COMÉRCIO':org;
   // categoria da empresa no módulo: "DIVERSAS · ROCHA 2", "CASA · GV LENTES"… (null se a categoria não existe — aí fica como antes)
   function catGrupoModulo(m,org){const p=MOD_GRUPO_CAT[m];if(!p||!org)return null;const alvo=normDesc(p+' · '+_nomeEmpresa(org));return catsAtivas().find(c=>normDesc(c.nome)===alvo)||null;}
@@ -3580,6 +3585,14 @@
         // v2.9.11: contas abertas da Agenda (boleto pago que já estava lá entra com a categoria dela e dá baixa)
         try{let {data:ag,error:eag}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,categoria_id,contato_id,documento').eq('loja_id',lojaAtual).eq('status','aberto').gte('vencimento',addDias(datas[0],-30)).lte('vencimento',addDias(datas[datas.length-1],7)).limit(2000);if(eag&&/documento/i.test(eag.message||'')){({data:ag}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,categoria_id,contato_id').eq('loja_id',lojaAtual).eq('status','aberto').gte('vencimento',addDias(datas[0],-30)).lte('vencimento',addDias(datas[datas.length-1],7)).limit(2000));}AGENDA_AB=ag||[];}catch(e){AGENDA_AB=[];}
       }}catch(e){}
+      // v2.9.78: nos módulos Diversas / Grupo de compras / Casa, procura a outra ponta (mesmo valor ao contrário, mesmo dia, em outra conta do grupo) para saber de qual empresa veio
+      let CONTRA=[];try{if(datas.length&&_modGrupo()){const {data:ct}=await sbTudo(()=>sb.from('lancamentos').select('loja_id,data,valor').gte('data',addDias(datas[0],-1)).lte('data',addDias(datas[datas.length-1],1)).order('id'));CONTRA=(ct||[]).filter(x=>x.loja_id!==lojaAtual);}}catch(e){}
+      const outraPonta=t=>{const c=Math.round(Math.abs(t.amt)*100);const lj=[...new Set(CONTRA.filter(x=>_dias(x.data,t.iso)<=1&&Math.round(Math.abs(Number(x.valor))*100)===c&&Math.sign(Number(x.valor))===-Math.sign(t.amt)).map(x=>x.loja_id))];
+        return lj.length===1?empresaDaLoja(LOJAS.find(l=>l.id===lj[0])):null;};
+      // a outra ponta só vale se bater com o CNPJ do extrato (Diversas é CNPJ da Rocha 2, Grupo VR da Rocha 3, FZ Grifes da FZ Comércio, 412619 é o CPF do Lucas)
+      const CNPJ_DA={'CONTA DIVERSAS':'ROCHA 2','GRUPO VR':'ROCHA 3','FZ GRIFES':'FZ COMERCIO','CASA':'ROCHA 1','CONTA 412619':'LUCAS'};
+      const origemDe=(t,full,desc,raz)=>{const o=raz!==undefined?raz:empresaOrigem(full,desc),c=outraPonta(t);if(!c)return o;const dono=CNPJ_DA[c]||c;
+        if(o)return dono===o?c:o;return /LUCAS GOMES ROCH/.test(normDesc(full))&&dono==='LUCAS'?c:null;};
       const usados=new Set(),usadosEx=new Set(),usadosAg=new Set();
       const cents=v=>Math.round(Math.abs(Number(v))*100);
       const porFitid={};EXIST.forEach(l=>{if(l.fitid)porFitid[l.fitid]=l;});
@@ -3615,9 +3628,9 @@
             if(cv&&Lg&&(_modDe(Lg)==='laboratorio'||cxChaveLoja(Lg.nome)==='gv')&&/OTICA ROCHA|ROCHA PRODUTOS|ROCHA COMERCIO/i.test(full)){const comp=normDesc(complementoFavorecido(full)||full);
               if(/GV OPTICAL|FREEFORM|LENTE|\bREF\b/.test(comp)&&!/SALARIO|FERIAS|ESTORN|EMPREST/.test(comp)){item.grupo='regra';item.catId=cv.id;item.regra='loja pagando o laboratório';return item;}}}
           // v2.9.77: Diversas, Grupo de compras e Casa — dinheiro das empresas do grupo entra na categoria da empresa (DIVERSAS · ROCHA 1…); neutro só se for empréstimo
-          {const mg=_modGrupo();if(mg){const org=empresaOrigem(full,item.desc);
+          {const mg=_modGrupo();if(mg){const org=origemDe(t,full,item.desc);
             if(org&&!ehEmprestimoTexto(item.desc+' '+full)){const cg=catGrupoModulo(mg,org)||(mg==='casa'?catPorNome('CASA · RETIRADA DAS EMPRESAS'):null);
-              if(cg){item.grupo='regra';item.catId=cg.id;item.regra='veio da '+_nomeEmpresa(org).replace(/^ROCHA/,'Rocha');return item;}}}}
+              if(cg){item.grupo='regra';item.catId=cg.id;item.regra='veio de: '+_rotEmpresa(org);return item;}}}}
           if(/OTICA ROCHA|ROCHA COMERCIO|GV OPTICAL/i.test(full)||empresaDoGrupo(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';return item;}
           if(/LUCAS GOMES ROCH/i.test(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;item.socio=true;return item;}
           if(/PIX/i.test(full)){item.grupo='pix';const cv=t.iso>=PIX_VENDA_DESDE?(catPorNome(CAT_PIX_VENDA)||cPix):cPix;item.catId=cv?cv.id:'';return item;}
@@ -3644,8 +3657,11 @@
             // para a DVL com motivo (conta dividida: CEMIG ESCRITÓRIO, ESTOJOS, PANFLETOS…): é despesa, não neutra
             if(/OTICA ROCHA DVL/.test(favN)){item.rateio=true;item.complemento=comp;const cn=adivinhaCat(comp);const c=cn&&cn!=='__IGNORAR__'&&cn!=='Cartão'?catsAtivas().find(x=>x.nome===cn):null;item.catId=c?c.id:'';item.grupo=c?'adivinhado':'falta';if(c)item.corrigir=true;return item;}}
           // v2.9.77: em Diversas, Grupo de compras e Casa, mandar para empresa do grupo não é neutro (só se for empréstimo): alguém escolhe a categoria
-          {const mg=_modGrupo(),org=grupoEmp?grupoEmp.toUpperCase():empresaOrigem(full,item.desc);
-            if(mg&&org&&!ehEmprestimoTexto((comp||'')+' '+item.desc)){item.grupo='falta';item.catId='';item.paraLoja=grupoEmp;item.complemento=comp;item.regra='para '+_nomeEmpresa(org)+': escolha a categoria';return item;}}
+          {const mg=_modGrupo();let org=mg?origemDe(t,full,item.desc,grupoEmp?grupoEmp.toUpperCase():empresaOrigem(full,item.desc)):null;
+            if(mg==='diversas'&&!org&&/LUCAS GOMES ROCH/.test(favN)&&/\bCHQ\b|CHEQ|412619/.test(normDesc(full)))org='CONTA 412619'; // Diversas mandando para a conta dos cheques
+            const cPara=mg&&org?catPorNome(MOD_GRUPO_CAT[mg]+' · PARA '+_nomeEmpresa(org)):null;
+            if(cPara){item.grupo='regra';item.catId=cPara.id;item.paraLoja=grupoEmp;item.complemento=comp;item.regra='para: '+_rotEmpresa(org);return item;}
+            if(mg&&org&&!ehEmprestimoTexto((comp||'')+' '+item.desc)){item.grupo='falta';item.catId='';item.paraLoja=grupoEmp;item.complemento=comp;item.regra='para: '+_rotEmpresa(org)+' (escolha a categoria)';return item;}}
           item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;item.paraLoja=grupoEmp;item.complemento=comp;return item;}
         // (v2.9.7) favorecido que não é do grupo (fornecedor, pessoa): segue as palavras-chave como qualquer pagamento
         // "ESTORNAD" = "VAI ESTORNAR" cortado (o Pix só guarda poucas letras da mensagem)

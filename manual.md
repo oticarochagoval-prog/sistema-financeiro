@@ -205,7 +205,12 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 - Saída para empresa do grupo nesses módulos fica **sem categoria**, para alguém escolher. Empréstimo continua neutro.
 - No Dashboard desses módulos, o quadro de receitas mostra quanto veio de cada empresa, Rocha 1 a 11 em ordem.
 - **GV Lentes não mudou.**
-- Conta **412619** (CPF do Lucas, cheques do Grupo VR) entrou no Grupo de compras como "Conta 412619 (cheques)". O extrato dela é importado pelo arquivo OFX.
+- Conta **412619** (CPF do Lucas, cheques) fica **dentro da Diversas**, como "Conta 412619 (cheques)", com a mesma regra (v2.9.78):
+  - O que entra nela vai para a categoria de quem mandou: DIVERSAS · ROCHA 1…, DIVERSAS · GRUPO VR ou DIVERSAS · CONTA DIVERSAS.
+  - O Fluxo descobre de qual conta veio procurando a outra ponta: mesmo valor, ao contrário, no mesmo dia, numa conta do grupo. Assim ele separa o que veio da Diversas do que veio da Rocha 2 (mesmo CNPJ), e o que veio do Grupo VR do que veio da Rocha 3.
+  - Quando a Diversas manda para a 412619, a saída na Diversas fica DIVERSAS · PARA CONTA 412619. No total da Diversas, ela anula com a entrada.
+  - A Íris preenche todas as categorias dela, igual faz na Diversas.
+  - O extrato entra pelo arquivo OFX (não tem importação automática), uma vez por semana. O quadro "Extrato em dia?" do Dashboard fica vermelho quando passa de 7 dias.
 
 ### Conferir mais rápido (v2.9.76)
 
@@ -884,6 +889,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.78 | Conta 412619 dentro da Diversas com a mesma regra; o Fluxo acha de qual conta veio pela outra ponta da transferência (Diversas x Rocha 2, Grupo VR x Rocha 3); Diversas → 412619 vira DIVERSAS · PARA CONTA 412619 | Categorias CONTA DIVERSAS, CONTA 412619 e PARA… |
 | 27/10/2026 | 2.9.77 | Diversas, Grupo de compras e Casa: entrada de empresa do grupo vai para a categoria da empresa (ROCHA 1…11, GV Lentes, FZ); neutro só empréstimo que volta; Dashboard mostra receita por empresa; conta 412619 no Grupo de compras. GV Lentes sem mudança | Categorias novas; junho para cá reclassificado (só não conferidos) |
 | 27/10/2026 | 2.9.76 | Completou categoria/contato/sugestão = conferido no nome de quem fez; categorias que a Íris confere sozinha (VENDA PIX, Cartão, PIX DE CLIENTE, Tarifas de verdade); atalhos ↑↓, Espaço, U | Coluna auto_conferir em categorias (rodada com autorização) |
 | 27/10/2026 | 2.9.75 | CPF do sócio nunca é aprendido como funcionário (conserto do contato RYAN em 107 lançamentos, regra desligada) | Rodado com autorização, backup antes |
