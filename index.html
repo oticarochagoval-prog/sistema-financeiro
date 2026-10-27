@@ -272,6 +272,7 @@
   function nomeTodas(){return MODULO_ATUAL==='oticas'?'Grupo todo':'Todas as empresas';}
   let lojaAtual=null;
   let page='visao', tipo='des', q='', busy=false;
+  const ROBO=/[?&]robo=1\b/.test(location.search); // v2.9.64: a Íris rodando sozinha no servidor (6h)
   let filtroDia=''; // '' = todos os dias; senão 'YYYY-MM-DD'
   let soNeutras=false;
   let DASH_FILTRO=null; // v2.9.59: filtro que vem do Dashboard {k:'cat'|'cont', v, sinal, rot}
@@ -284,7 +285,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.63', APP_DATA='27/10/2026';
+  const APP_VERSAO='2.9.64', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -370,6 +371,7 @@
     await carregarBase();
     renderNav();render();
     setTimeout(()=>{lentesSincronizar(true).catch(e=>console.error('lentes',e));},800);
+    if(ROBO&&PERFIL&&PERFIL.nome==='ÍRIS')setTimeout(()=>roboRodar(),1500);
     setTimeout(()=>{sicoobCarregar().catch(e=>console.error('sicoob',e));},1200);
   }
   async function carregarBase(){
@@ -1620,6 +1622,12 @@
     if(error){toast('Não consegui ensinar: '+error.message,'erro');return;}
     await carregarRegrasP();irisFecharEnsinar();_irisMemo.t=0;
     toast(`Íris aprendeu: quando aparecer "${palavraLegivel(palavra)}" é ${[_irisCatNome(l.categoria_id),l.contato_id?_irisContNome(l.contato_id):''].filter(Boolean).join(' · ')}.${semMot?' (O porquê não foi junto: falta a coluna no banco.)':''}`,'ok');lancSoAtualizar();}
+  // v2.9.64: sugestões da IA ficam guardadas no banco (o robô das 6h já deixa pronto; ninguém paga duas vezes)
+  let _irisSugTab=true;
+  async function irisCarregarSugestoes(){if(!_irisSugTab)return;const pref=`${ANO_FIXO}-${_mm(mesSel)}`;const ids=LANC.filter(l=>(l.data||'').slice(0,7)===pref&&!l.categoria_id&&!IRIS_IA[l.id]).map(l=>l.id);
+    for(let i=0;i<ids.length;i+=300){try{const {data,error}=await sb.from('iris_sugestoes').select('lancamento_id,categoria_id,contato_id,motivo').in('lancamento_id',ids.slice(i,i+300));
+      if(error){if(/iris_sugestoes|relation|exist/i.test(error.message||''))_irisSugTab=false;return;}(data||[]).forEach(r=>{IRIS_IA[r.lancamento_id]={c:r.categoria_id||null,k:r.contato_id||null,m:r.motivo||'',em:Date.now()};});}catch(e){return;}}
+    _irisMemo.t=0;}
   // v2.9.61: o que as outras lojas já conferiram também ensina (ex.: o que a Íris aprende nas Óticas vale como sugestão na Diversas)
   async function irisCarregarGrupo(){if(IRIS_GRUPO.loja===lojaAtual)return;const loja=lojaAtual,de=mesShift(`${ANO_FIXO}-${_mm(mesSel)}`,-4)+'-01';let rows=[];
     try{for(let o=0;o<6000;o+=1000){const {data,error}=await sb.from('lancamentos').select('descricao,valor,categoria_id,contato_id,loja_id,conferido_por').gte('data',de).neq('loja_id',loja).order('id',{ascending:false}).range(o,o+999);if(error)break;rows=rows.concat(data||[]);if(!data||data.length<1000)break;}}catch(e){}
@@ -1658,6 +1666,18 @@
       if(pre||cf)toast(`Íris na Diversas: preencheu ${pre} e conferiu ${cf}.${resto?` ${resto} ficaram para vocês (vermelhos ou sem como decidir).`:''}`,'ok');
       _irisMemo.t=0;if(page==='lanc')lancSoAtualizar();}
     finally{_irisAutoEmCurso=false;}}
+  // v2.9.64: rotina do robô (GitHub, todo dia 6h): lança o extrato de todas as lojas, classifica, pede a IA e faz a Diversas
+  async function roboRodar(){const log=[];const espera=ms=>new Promise(r=>setTimeout(r,ms));
+    try{await espera(3000);let n=0;while(_autoRodando&&n++<600)await espera(1000);
+      await sicoobAutoEntrar();log.push('extrato do Sicoob lançado');
+      const hoje=_hojeLocal(),mAtual=Number(hoje.slice(5,7))-1,meses=Number(hoje.slice(8,10))<=10&&mAtual>0?[mAtual-1,mAtual]:[mAtual];
+      const lojas=LOJAS.filter(l=>!l.arquivada&&_modDe(l)!=='casa');
+      for(const L of lojas){try{if(_modDe(L)!==MODULO_ATUAL)await trocarModulo(_modDe(L));lojaAtual=L.id;await carregarContas();await carregarFechamentos();
+          for(const m of meses){mesSel=m;page='lanc';IRIS_GRUPO={loja:null,map:{},n:0};await viewLanc();await irisCarregarGrupo();await irisCarregarSugestoes();_irisIAEmCurso=false;await irisPedirIA();
+            if(MODULO_ATUAL==='diversas')await irisAutoDiversas();}
+          log.push(lojaNomeCurto(L.id)+' ok');}catch(e){log.push(lojaNomeCurto(L.id)+' erro: '+(e.message||e));}}
+      window.__roboFim={ok:true,log};}
+    catch(e){window.__roboFim={ok:false,erro:String((e&&e.message)||e),log};}}
   // ---- IA para o que nunca apareceu (só sugere; vai para o amarelo) ----
   async function irisPedirIA(){if(_irisIAEmCurso||page!=='lanc'||!podeEditar())return;const R=irisAvaliar();
     const alvo=[...R.values()].filter(r=>r.nivel==='nunca').map(r=>LANC.find(x=>x.id===r.id)).filter(l=>l&&!l.categoria_id&&!IRIS_IA[l.id]).slice(0,180);
@@ -1671,8 +1691,9 @@
       const resp=await fetch('/api/iris-sugerir',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+token,apikey:window.SUPABASE_ANON_KEY||''},
         body:JSON.stringify({forcar:MODULO_ATUAL==='diversas',loja:lojaNomeCurto(lojaAtual),itens:parte.map(l=>({i:l.id,d:l.descricao,v:Number(l.valor),dt:l.data})),categorias:cats,contatos:conts,exemplos:ex,ensinos:ens})});
       if(resp.status===404){erro='sem-api';break;}let j={};try{j=await resp.json();}catch(e){}if(!resp.ok){erro='erro';break;}
-      (j.sugestoes||[]).forEach(s=>{const id=Number(s.i);if(!parte.some(l=>l.id===id))return;const c=CATS.some(x=>Number(x.id)===Number(s.c))?Number(s.c):null,k=CONTATOS.some(x=>Number(x.id)===Number(s.k))?Number(s.k):null;
-        IRIS_IA[id]={c,k,m:String(s.m||'').slice(0,80),em:Date.now()};});
+      const _grava=[];(j.sugestoes||[]).forEach(s=>{const id=Number(s.i);if(!parte.some(l=>l.id===id))return;const c=CATS.some(x=>Number(x.id)===Number(s.c))?Number(s.c):null,k=CONTATOS.some(x=>Number(x.id)===Number(s.k))?Number(s.k):null;
+        IRIS_IA[id]={c,k,m:String(s.m||'').slice(0,80),em:Date.now()};if(c||k)_grava.push({lancamento_id:id,categoria_id:c,contato_id:k,motivo:IRIS_IA[id].m||null});});
+      if(_grava.length&&_irisSugTab){try{const {error:eg}=await sb.from('iris_sugestoes').upsert(_grava,{onConflict:'lancamento_id'});if(eg&&/iris_sugestoes|relation|exist/i.test(eg.message||''))_irisSugTab=false;}catch(e){}}
       parte.forEach(l=>{if(!IRIS_IA[l.id])IRIS_IA[l.id]={c:null,k:null,m:'',em:Date.now()};});}}
     catch(e){erro='erro';}
     try{const ent=Object.entries(IRIS_IA).sort((a,b)=>(b[1].em||0)-(a[1].em||0)).slice(0,4000);IRIS_IA=Object.fromEntries(ent);localStorage.setItem('fluxo_iris_ia',JSON.stringify(IRIS_IA));}catch(e){}
@@ -1757,7 +1778,7 @@
   }
 
   // Lançamentos: depois de desenhar (inclusive após salvar/editar/excluir), atualiza o saldo do dia 1º e os cartões da loja
-  async function viewLanc(){divGerarRecorrentes().catch(()=>{});await viewLancBase();setTimeout(async()=>{try{await irisCarregarGrupo();if(page==='lanc')lancSoAtualizar();await irisPedirIA();}catch(e){console.error(e);}},1200);navConfAtualizar().catch(()=>{});lancCarregarCxBg();if(MODULO_ATUAL==='diversas'){preencherAvisoLentes().catch(()=>{});if(document.getElementById('agDivPainel'))agCarregarRegras().then(()=>agDivRender()).catch(()=>{});}if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
+  async function viewLanc(){divGerarRecorrentes().catch(()=>{});await viewLancBase();if(!ROBO)setTimeout(async()=>{try{await irisCarregarGrupo();await irisCarregarSugestoes();if(page==='lanc')lancSoAtualizar();await irisPedirIA();}catch(e){console.error(e);}},1200);navConfAtualizar().catch(()=>{});lancCarregarCxBg();if(MODULO_ATUAL==='diversas'){preencherAvisoLentes().catch(()=>{});if(document.getElementById('agDivPainel'))agCarregarRegras().then(()=>agDivRender()).catch(()=>{});}if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
   async function viewLancBase(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando lançamentos...</div>';
     await carregarLancamentos();
@@ -2547,6 +2568,43 @@
   let _escadas=[]; // último cálculo da tela (pra fechar o mês)
   function _fmtTs(ts){if(!ts)return '';const d=new Date(ts);return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
 
+  // v2.9.64: Íris confere o fechamento de todas as lojas do módulo: banco × Fluxo no fim do mês + o que falta resolver
+  let IRIS_FECH_TODAS=false;
+  async function irisFechamentoPainel(){const box=document.getElementById('irisFech');if(!box)return;const ym=`${ANO_FIXO}-${_mm(mesSel)}`,fim=_fimMes(ym),mesN=MESES_NOME[mesSel];
+    const lojas=lojasDoModulo().filter(l=>!l.arquivada);if(!lojas.length){box.innerHTML='';return;}const ids=lojas.map(l=>l.id);
+    box.innerHTML=`<div class="card" style="margin-bottom:14px"><span class="mut" style="font-size:12.5px">Íris conferindo o fechamento de ${mesN} das ${lojas.length} empresas…</span></div>`;
+    let cts=[],lc=[],fe=[];
+    try{const {data}=await sb.from('contas').select('id,loja_id,nome,saldo_inicial_banco').in('loja_id',ids);cts=data||[];}catch(e){}
+    try{for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('loja_id,conta_id,conferido_por,categoria_id,ref_externa').in('loja_id',ids).gte('data',ym+'-01').lte('data',fim).order('id').range(o,o+999);if(error)break;lc=lc.concat(data||[]);if(!data||data.length<1000)break;}}catch(e){}
+    try{const {data}=await sb.from('fechamentos').select('loja_id,fechado,fechado_por').in('loja_id',ids).eq('ano',ANO_FIXO).eq('mes',mesSel+1);fe=data||[];}catch(e){}
+    const cx=new Set(cts.filter(c=>/caixinha/i.test(c.nome||'')).map(c=>c.id));const catN=id=>{const c=CATS.find(x=>x.id===id);return c?String(c.nome).toUpperCase():'';};
+    const por={};lojas.forEach(l=>por[l.id]={l,t:0,cf:0,sc:0,cxsc:0,bc:0,banco:null,fluxo:null,dif:null,fechado:false});
+    lc.forEach(x=>{const o=por[x.loja_id];if(!o)return;const r=String(x.ref_externa||''),n=catN(x.categoria_id);
+      if(cx.has(x.conta_id)){if(r.startsWith('cxs:')&&!x.categoria_id)o.cxsc++;return;}
+      o.t++;if(x.conferido_por)o.cf++;if(!x.categoria_id)o.sc++;if((n===CAT_ESTORNAR&&!r.startsWith('cxb:'))||(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:')))o.bc++;});
+    fe.forEach(f=>{if(por[f.loja_id]&&f.fechado)por[f.loja_id].fechado=true;});
+    // banco × Fluxo no último dia do mês (só onde tem robô do Sicoob)
+    await Promise.all(lojas.map(async L=>{const c=(SICOOB_CONTAS||[]).find(x=>Number(x.loja_id)===Number(L.id));if(!c||c.saldo_atual==null)return;
+      const cb=cts.find(x=>Number(x.loja_id)===L.id&&/sicoob/i.test(x.nome))||cts.find(x=>Number(x.loja_id)===L.id&&!/caixinha/i.test(x.nome||''));if(!cb)return;
+      try{const {data:pr}=await sb.from('sicoob_extrato').select('data').eq('conta_id',c.id).order('data',{ascending:true}).limit(1);if(!(pr&&pr[0]&&pr[0].data<=addDias(fim,1)))return;
+        let depois=0;for(let o=0;;o+=1000){const {data,error}=await sb.from('sicoob_extrato').select('valor').eq('conta_id',c.id).gte('data',addDias(fim,1)).order('transaction_id').range(o,o+999);if(error)break;(data||[]).forEach(x=>depois+=Number(x.valor)||0);if(!data||data.length<1000)break;}
+        let mov=0;for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('valor').eq('conta_id',cb.id).lte('data',fim).order('id').range(o,o+999);if(error)break;(data||[]).forEach(x=>mov+=Number(x.valor)||0);if(!data||data.length<1000)break;}
+        const o=por[L.id];o.banco=Math.round((Number(c.saldo_atual)-depois)*100)/100;o.fluxo=Math.round((Number(cb.saldo_inicial_banco||0)+mov)*100)/100;o.dif=Math.round((o.fluxo-o.banco)*100)/100;}catch(e){}}));
+    const lista=Object.values(por).map(o=>{const falta=[];if(o.t-o.cf)falta.push(`${o.t-o.cf} sem conferir`);if(o.sc)falta.push(`${o.sc} sem categoria`);if(o.bc)falta.push(`${o.bc} do Banco Caixinha sem ligar`);if(o.cxsc)falta.push(`${o.cxsc} do Caixinha sem categoria`);if(o.dif!=null&&Math.abs(o.dif)>=0.01)falta.push(`banco não bate (${BRL(o.dif)})`);
+      o.falta=falta;o.pronto=!falta.length&&o.t>0;return o;}).sort((a,b)=>(a.fechado-b.fechado)||(b.falta.length-a.falta.length));
+    const nPronto=lista.filter(o=>o.pronto&&!o.fechado).length,nFech=lista.filter(o=>o.fechado).length;
+    const vis=IRIS_FECH_TODAS?lista:lista.slice(0,8);const nomeL=o=>_remEsc(lojaNomeCurto(o.l.id).replace(/^Laboratório \/ /,''));
+    box.innerHTML=`<div class="card" style="margin-bottom:14px;border-color:rgba(59,99,217,.5)">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px">${irisAvatar(40)}<div><b style="font-size:15px">Íris conferiu o fechamento de ${mesN}</b><div class="mut" style="font-size:12px">${nFech} fechada(s) · ${nPronto} pronta(s) para fechar · ${lista.filter(o=>!o.fechado&&!o.pronto&&o.t).length} com pendência · saldo do banco conferido onde tem robô do Sicoob</div></div></div>
+      <div style="overflow-x:auto"><table style="font-size:12.5px"><thead><tr><th>Empresa</th><th>Situação</th><th>Banco no fim do mês</th><th>Fluxo</th><th>O que falta</th><th></th></tr></thead><tbody>
+      ${vis.map(o=>`<tr><td><b>${nomeL(o)}</b></td>
+        <td>${o.fechado?'<b style="color:var(--green)">fechado</b>':o.pronto?'<b style="color:var(--green)">pronto para fechar</b>':o.t?'<b style="color:var(--amber)">pendente</b>':'<span class="mut">sem lançamentos</span>'}</td>
+        <td>${o.banco!=null?BRL(o.banco):'<span class="mut">sem robô</span>'}</td><td>${o.fluxo!=null?`${BRL(o.fluxo)} ${Math.abs(o.dif)<0.01?'<span style="color:var(--green);font-weight:700">bate</span>':''}`:'<span class="mut">—</span>'}</td>
+        <td style="font-size:12px">${o.fechado?'<span class="mut">—</span>':o.falta.length?o.falta.join(' · '):'<span class="mut">nada</span>'}</td>
+        <td style="text-align:right">${o.l.id!==lojaAtual?`<button class="btn ghost" style="padding:3px 10px;font-size:11.5px" onclick="irisAbrirFech(${o.l.id})">abrir</button>`:'<span class="mut" style="font-size:11.5px">aberta</span>'}</td></tr>`).join('')}
+      </tbody></table></div>${lista.length>8?`<div style="margin-top:6px"><span onclick="IRIS_FECH_TODAS=!IRIS_FECH_TODAS;irisFechamentoPainel()" style="cursor:pointer;font-size:12px;color:var(--muted);text-decoration:underline">${IRIS_FECH_TODAS?'mostrar menos':`ver todas (${lista.length})`}</span></div>`:''}
+      <div class="mut" style="font-size:11.5px;margin-top:8px">"pronto para fechar" = tudo conferido, com categoria, Banco Caixinha ligado e o banco batendo. Quem fecha continua sendo uma pessoa, aqui embaixo.</div></div>`;}
+  async function irisAbrirFech(id){const L=LOJAS.find(l=>l.id===id);if(!L)return;if(_modDe(L)!==MODULO_ATUAL)await trocarModulo(_modDe(L));lojaAtual=id;const sel=document.getElementById('store');if(sel)sel.value=String(id);await carregarContas();await carregarFechamentos();renderNav();go('fechamento');}
   async function viewFechamento(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
     await carregarContas();await carregarLancAno();await carregarFechamentos();
@@ -2603,7 +2661,8 @@
         ${semCat?`<p style="font-size:13px;color:var(--amber);margin-top:8px">⚠️ <b>${semCat} lançamento(s)</b> de ${mesNome} sem categoria. Dá pra fechar, mas o DRE fica errado — <a style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="go('lanc')">resolver em Lançamentos</a>.</p>`:''}
         <textarea id="motivoFech" placeholder="Motivo, se alguma conta não bateu (obrigatório nesse caso)" style="width:100%;min-height:64px;margin-top:10px;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--txt);padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical;outline:none"></textarea>
         ${podeExcluir()?`<button class="btn" style="margin-top:10px" onclick="fecharMes()">🔐 Fechar ${mesNome}</button>`:'<p class="mut" style="font-size:12px;margin-top:8px">Fechar o mês: Lucas ou Heloísa.</p>'}`;
-    document.getElementById('content').innerHTML=`<div class="note">🔐 <b>Fechamento do mês</b> — a conta do dinheiro, igual ao extrato: <b>quanto tinha, quanto entrou, quanto saiu, quanto tem que ter</b>. Bateu com o app do banco, o mês fecha.</div>
+    setTimeout(()=>irisFechamentoPainel().catch(e=>console.error(e)),50);
+    document.getElementById('content').innerHTML=`<div id="irisFech"></div><div class="note">🔐 <b>Fechamento do mês</b> — a conta do dinheiro, igual ao extrato: <b>quanto tinha, quanto entrou, quanto saiu, quanto tem que ter</b>. Bateu com o app do banco, o mês fecha.</div>
     <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">${seletorMes()}<div id="saldoDia1" style="flex:1;min-width:280px"></div></div>
     ${escadasHTML||'<div class="card" style="margin-bottom:12px"><p class="mut" style="font-size:13px">Nenhuma conta de banco cadastrada. Vá em <b>Configurações</b>.</p></div>'}
     <div class="card" style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span>💳 <b>Cartão × Sipag de ${mesNome}</b> <span class="mut" style="font-size:12px">— confere depósito por depósito o que o Cartões previu com o que caiu no Sicoob</span></span><button class="btn ghost" style="margin-left:auto;padding:5px 12px" onclick="go('concsipag')">Abrir conferência →</button></div>

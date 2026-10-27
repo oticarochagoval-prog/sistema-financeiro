@@ -1,0 +1,28 @@
+# Íris · robô das 6h (v2.9.64)
+# Todo dia às 6h (Brasília) abre o Fluxo como ÍRIS, lança o extrato do Sicoob de todas as lojas,
+# classifica, pede sugestão à IA e faz a Diversas. Também dá para rodar na hora: Actions → Íris robô → Run workflow.
+# Login da Íris: Settings → Secrets and variables → Actions → IRIS_EMAIL e IRIS_SENHA (nunca no código).
+name: Íris robô
+on:
+  schedule:
+    - cron: '7 9 * * *'   # 09:07 UTC = 06:07 em Brasília
+  workflow_dispatch: {}
+jobs:
+  iris:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar o navegador
+        run: |
+          npm install --no-save playwright@1.48.2
+          npx playwright install --with-deps chromium
+      - name: Íris trabalha
+        env:
+          IRIS_EMAIL: ${{ secrets.IRIS_EMAIL }}
+          IRIS_SENHA: ${{ secrets.IRIS_SENHA }}
+          FLUXO_URL: https://sistema-financeiro-red-phi.vercel.app/
+        run: node robo/iris-robo.js

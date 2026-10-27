@@ -137,6 +137,15 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 - **Meses antigos:** em Importar extrato, o gestor tem o botão **Puxar os meses antigos de todas as lojas**. A Íris lança o que o banco já mandou, de junho até o mês passado. O que já está lançado ela não repete, o que pode ser repetido fica esperando, e mês fechado ela não mexe. Se parar no meio, é só clicar de novo.
 - **Custo da IA:** só o que nunca apareceu vai para a IA, e cada lançamento uma vez só. O resto (histórico, regras, ensinos) não custa nada. Sai pela mesma chave da leitura de boleto, na conta da Anthropic.
 
+### Robô das 6h e fechamento assistido (v2.9.64)
+
+- **Robô das 6h:** todo dia às 6h (Brasília), o GitHub abre o Fluxo como **ÍRIS**, mesmo sem ninguém com o Fluxo aberto. Ela lança o extrato do Sicoob de todas as lojas, classifica, pede a IA para o que nunca apareceu e faz a Diversas. Até o dia 10, ela também passa no mês anterior.
+  - Arquivos: `.github/workflows/iris-robo.yml` e `robo/iris-robo.js`.
+  - O login da Íris fica nos segredos do GitHub (IRIS_EMAIL e IRIS_SENHA), nunca no código.
+  - Para rodar na hora: GitHub → Actions → Íris robô → Run workflow.
+- **Sugestões da IA guardadas no banco** (tabela iris_sugestoes): o robô deixa pronto e ninguém paga duas vezes pela mesma sugestão.
+- **Fechamento assistido:** no alto de **Fechamento do mês**, a Íris confere todas as empresas do módulo. Para cada uma, mostra o saldo do banco no último dia × o Fluxo (onde tem robô do Sicoob) e o que falta: sem conferir, sem categoria, Banco Caixinha sem ligar e Caixinha sem categoria. A situação aparece como **fechado**, **pronto para fechar** ou **pendente**, com o botão **abrir**. Quem fecha continua sendo uma pessoa.
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -788,6 +797,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.64 | Robô das 6h no GitHub (Íris lança, classifica, IA e Diversas sem ninguém abrir); sugestões da IA guardadas no banco; fechamento assistido (banco × Fluxo e pendências de todas as empresas) | Usuário ÍRIS no Supabase + segredos no GitHub; tabela iris_sugestoes (Claude roda, com autorização) |
 | 27/10/2026 | 2.9.63 | Íris com rosto e quadro novo no Dashboard (lancei hoje, conferi sozinha, confirmados, acerto, esperando); guia Como trabalhar com a Íris; botão Puxar os meses antigos de todas as lojas (gestor) | — |
 | 27/10/2026 | 2.9.62 | Íris importa sozinha: entrada automática do Sicoob lança todas as linhas (menos as que podem ser repetidas); quadro de todas as lojas em Importar extrato | — |
 | 27/10/2026 | 2.9.61 | Íris na Diversas: preenche tudo e confere sozinha o verde e o amarelo (nome ÍRIS); aprende com o que as outras lojas conferiram e ensinaram; correção registrada; quadro de produtividade da Íris no Dashboard | Coluna iris em lancamentos (rodada com autorização) |
