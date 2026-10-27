@@ -216,6 +216,12 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
   - **O robô das 6h** acerta o que entrou antes da outra ponta (últimos 60 dias, só o que não foi conferido).
   - O extrato entra pelo arquivo OFX (não tem importação automática), uma vez por semana. O quadro "Extrato em dia?" do Dashboard fica vermelho quando passa de 7 dias.
 
+### Tarifa que não é tarifa, estornos e cheques (v2.9.80)
+- **Débito grande não é tarifa.** Débito automático acima de R$ 1.000 (ex.: DÉB.CONV.DEMAIS EMPRESAS de R$ 30 mil, que é a fatura do cartão) não entra mais como Tarifas Banco. Ele fica sem categoria. Se a Íris sugerir tarifa para ele ou para um cheque, a linha fica vermelha ("não parece tarifa"), para alguém olhar.
+- **A Íris não confere sozinha um palpite só da IA.** Ela preenche, mas o conferido fica para vocês.
+- **Estorno abate a despesa.** Ex.: ESTORNO DÉB. CONV. SEGUROS. Ele não aparece mais como receita no Dashboard e no DRE: diminui a despesa da mesma categoria.
+- **Conta 412619:** todo cheque (CHEQUE COMPE INTEGRADA, CHQ COOP) é do Grupo VR. Isso é regra ensinada; os de junho a outubro já foram acertados.
+
 ### Conferir mais rápido (v2.9.76)
 
 - **Completou, conferiu.** Ao completar o que faltava na linha (categoria, contato ou usar sugestão), o lançamento já fica conferido no nome de quem completou. O que a Íris marca como "sempre com gente" continua manual.
@@ -893,6 +899,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.80 | Débito grande não vira Tarifas Banco; tarifa em cheque ou débito alto fica vermelha; Íris não confere sozinha palpite da IA; estorno abate a despesa no Dashboard e no DRE | Cheques da 412619 → GRUPO VR (22) e regra criada, com autorização |
 | 27/10/2026 | 2.9.79 | Contas com o mesmo CNPJ (Casa/Rocha 1, Diversas/Rocha 2, Grupo VR/Rocha 3) separadas pela outra ponta da transferência; robô das 6h acerta depois; categorias DIVERSAS · CASA, COMPRAS · CONTA DIVERSAS, CASA · CONTA DIVERSAS | Rodado: 45 categorias, conta 412619 na Diversas, 5.471 entradas de junho para cá reclassificadas (só não conferidas) |
 | 27/10/2026 | 2.9.78 | Conta 412619 dentro da Diversas com a mesma regra; o Fluxo acha de qual conta veio pela outra ponta da transferência (Diversas x Rocha 2, Grupo VR x Rocha 3); Diversas → 412619 vira DIVERSAS · PARA CONTA 412619 | Categorias CONTA DIVERSAS, CONTA 412619 e PARA… |
 | 27/10/2026 | 2.9.77 | Diversas, Grupo de compras e Casa: entrada de empresa do grupo vai para a categoria da empresa (ROCHA 1…11, GV Lentes, FZ); neutro só empréstimo que volta; Dashboard mostra receita por empresa; conta 412619 no Grupo de compras. GV Lentes sem mudança | Categorias novas; junho para cá reclassificado (só não conferidos) |
