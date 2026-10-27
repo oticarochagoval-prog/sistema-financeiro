@@ -274,6 +274,7 @@
   let page='visao', tipo='des', q='', busy=false;
   let filtroDia=''; // '' = todos os dias; senão 'YYYY-MM-DD'
   let soNeutras=false;
+  let DASH_FILTRO=null; // v2.9.59: filtro que vem do Dashboard {k:'cat'|'cont', v, sinal, rot}
   let ocultarNeutras=false; // v2.9.44: o botão "esconder as neutras" saiu; neutras sempre aparecem (filtro "Neutras" mostra só elas)
   try{localStorage.removeItem('fluxo_ocultar_neutras');}catch(e){}
   let filtroTipoLanc=''; // '' · 'ent' (só entradas) · 'sai' (só saídas)
@@ -283,7 +284,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.58', APP_DATA='27/10/2026';
+  const APP_VERSAO='2.9.60', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1356,7 +1357,7 @@
   }
   function abrirMenuCel(){const s=document.getElementById('side');if(s)s.classList.remove('collapsed');document.body.classList.add('menu-aberto');}
   function fecharMenuCel(){document.body.classList.remove('menu-aberto');}
-  function go(p){fecharMenuCel();page=p;q='';document.getElementById('ptitle').textContent=TITLES[p]||p;renderNav();render();}
+  function go(p){fecharMenuCel();if(p!=='lanc'){DASH_FILTRO=null;IRIS_FILTRO='';irisFecharEnsinar();}page=p;q='';document.getElementById('ptitle').textContent=TITLES[p]||p;renderNav();render();}
   function toggleMenu(){const s=document.getElementById('side');s.classList.toggle('collapsed');const c=s.classList.contains('collapsed');const b=document.getElementById('burgerBtn');b.title=c?'Abrir menu':'Fechar menu';b.innerHTML=c?'›':'‹';}
 
   function catsAtivas(){return CATS.filter(c=>!c.arquivada&&_visivelNoModulo(c));}
@@ -1421,8 +1422,8 @@
     list.innerHTML=html;const selEl=list.querySelector('.comboitem.sel');if(selEl&&selEl.scrollIntoView)selEl.scrollIntoView({block:'nearest'});
   }
   function _comboPick(id){const fn=_comboApply,ix=_comboOrigIdx;fecharCombo();if(fn)fn(id||null);if(ix>=0)setTimeout(()=>_focarCombo(ix+1,0),120);}
-  function abrirComboCatLanc(el,id){_abrirCombo(el,_comboItemsCat(),async v=>{await mudarCampoLanc(id,'categoria_id',v);lancSoAtualizar();});}
-  function abrirComboContLanc(el,id){_abrirCombo(el,_comboItemsCont(),async v=>{await mudarCampoLanc(id,'contato_id',v);lancSoAtualizar();});}
+  function abrirComboCatLanc(el,id){_abrirCombo(el,_comboItemsCat(),async v=>{const _a=irisAntes(id);await mudarCampoLanc(id,'categoria_id',v);_irisMemo.t=0;lancSoAtualizar();irisTalvezEnsinar(id,_a);});}
+  function abrirComboContLanc(el,id){_abrirCombo(el,_comboItemsCont(),async v=>{const _a=irisAntes(id);await mudarCampoLanc(id,'contato_id',v);_irisMemo.t=0;lancSoAtualizar();irisTalvezEnsinar(id,_a);});}
   // chave pra "aprender": as 2 primeiras palavras que importam da descrição do banco
   // CNPJ (14 dígitos) ou CPF mascarado (***.502.576-**) que vem na descrição do Pix/TED
   function docDaDesc(desc){const t=String(desc||'');
@@ -1464,7 +1465,7 @@
     try{const {data,error}=await sb.from('lancamentos').update(up).eq('id',id).select('id,conferido_por');
       if(error)throw new Error(/conferido/i.test(error.message||'')?'falta a coluna de conferido no banco':error.message);
       if(!data||!data.length)throw new Error('o banco não confirmou a gravação');
-      Object.assign(l,up);}
+      Object.assign(l,up);_irisMemo.t=0;}
     catch(e){toast('NÃO SALVOU o conferido de '+(l.descricao||'')+': '+(e.message||e)+'. Marque de novo.','erro');}
     finally{_salvandoN--;}
     lancSoAtualizar();}
@@ -1480,6 +1481,158 @@
   window.addEventListener('unhandledrejection',e=>_avisarErroGlobal(e.reason));
   window.addEventListener('error',e=>_avisarErroGlobal(e.error||e.message));
   window.addEventListener('beforeunload',e=>{if(_salvandoN>0){e.preventDefault();e.returnValue='Ainda salvando. Espere um segundo.';return e.returnValue;}});
+  // ===================== v2.9.60: Íris confere os lançamentos =====================
+  // Ela olha o mês e separa: CERTEZA (igual 3+ vezes no histórico ou ensinado), CONFIRA (parecido, nunca visto ou sugestão da IA)
+  // e COM GENTE (neutras/transferência, estorno/Banco Caixinha, valor fora do normal). Nada vira conferido sem uma pessoa confirmar.
+  let IRIS_FILTRO='',IRIS_IA={},IRIS_IA_ESTADO='',_irisMemo={k:'',t:0,n:-1,res:null},_irisIAEmCurso=false;
+  try{IRIS_IA=JSON.parse(localStorage.getItem('fluxo_iris_ia')||'{}')||{};}catch(e){IRIS_IA={};}
+  function _irisKFull(d){const doc=docDaDesc(d);if(doc&&/PIX|TED|TRANSF|DOC\b|PAGAMENTO/i.test(String(d)))return '#DOC:'+doc;return normDesc(String(d||'').replace(/\d+/g,' ')).replace(/\s+/g,' ').trim();}
+  const _irisCatNome=id=>((CATS.find(c=>Number(c.id)===Number(id))||{}).nome)||'';
+  const _irisContNome=id=>((CONTATOS.find(c=>Number(c.id)===Number(id))||{}).nome)||'';
+  function _irisVermelho(catId,l){const c=CATS.find(x=>Number(x.id)===Number(catId))||{};const n=String(c.nome||'').toUpperCase(),r=String(l.ref_externa||'');
+    if(c.grupo==='neutra')return /TRANSF/i.test(n)?'transferência entre lojas: uma pessoa sempre confere':'neutra: uma pessoa sempre confere';
+    if(n===CAT_ESTORNAR||n===CAT_ESTORNO_REC||r.startsWith('cxb:')||r.startsWith('cxp:'))return 'estorno / Banco Caixinha: uma pessoa sempre confere';
+    return '';}
+  function _irisDominante(arr,campo){const cnt={};arr.forEach(x=>{const v=x[campo];if(v)cnt[v]=(cnt[v]||0)+1;});const e=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];return e?{v:Number(e[0]),n:e[1]}:null;}
+  function irisAvaliar(){const pref=`${ANO_FIXO}-${_mm(mesSel)}`;
+    if(_irisMemo.res&&Date.now()-_irisMemo.t<250&&_irisMemo.n===LANC.length)return _irisMemo.res;
+    let h=0;LANC.forEach(l=>{h=(h*31+(Number(l.id)||0)+(Number(l.categoria_id)||0)*7+(Number(l.contato_id)||0)*13+(l.conferido_por?1:0)+(l.documento?3:0))%1000000007;});
+    const key=`${lojaAtual}|${pref}|${LANC.length}|${h}|${REGRAS_P.length}|${Object.keys(IRIS_IA).length}`;
+    if(_irisMemo.k===key){_irisMemo.t=Date.now();return _irisMemo.res;}
+    // histórico: os outros meses (o que a equipe já fez) + o que já foi conferido neste mês
+    const hist={},histC={};
+    LANC.forEach(l=>{if(!l.categoria_id||contaEhCaixinha(l.conta_id))return;if((l.data||'').slice(0,7)===pref&&!l.conferido_por)return;
+      const s=Math.sign(Number(l.valor));(hist[s+'|'+_irisKFull(l.descricao)]=hist[s+'|'+_irisKFull(l.descricao)]||[]).push(l);
+      const kc=chaveAprender(l.descricao);if(kc)(histC[s+'|'+kc]=histC[s+'|'+kc]||[]).push(l);});
+    const ensinos=REGRAS_P.filter(r=>r.origem==='iris'&&r.ativa!==false&&(!r.loja_id||Number(r.loja_id)===Number(lojaAtual)));
+    const res=new Map();
+    LANC.forEach(l=>{if((l.data||'').slice(0,7)!==pref||l.conferido_por||contaEhCaixinha(l.conta_id))return;
+      const s=Math.sign(Number(l.valor)),v=Math.abs(Number(l.valor)),H=hist[s+'|'+_irisKFull(l.descricao)]||[];
+      const o={id:l.id,nivel:'nunca',motivo:'nunca visto',cat:null,cont:null,fonte:''};
+      const nd=' '+normDesc(l.descricao)+' ';
+      const ens=ensinos.filter(r=>{const p=' '+normDesc(r.palavra)+' ';return p.trim()&&nd.includes(p);}).sort((a,b)=>String(b.palavra).length-String(a.palavra).length)[0];
+      if(ens&&(ens.categoria_id||ens.contato_id)){o.cat=ens.categoria_id||null;o.cont=ens.contato_id||null;o.nivel='certeza';o.fonte='ensino';o.motivo=`ensinado${ens.motivo?': '+ens.motivo:' ('+palavraLegivel(ens.palavra)+')'}`;}
+      else if(H.length>=3&&new Set(H.map(x=>Number(x.categoria_id))).size===1&&new Set(H.filter(x=>x.contato_id).map(x=>Number(x.contato_id))).size<=1){
+        o.cat=Number(H[0].categoria_id);const hc=H.find(x=>x.contato_id);o.cont=hc?Number(hc.contato_id):null;o.nivel='certeza';o.fonte='historico';o.motivo=`igual ${H.length} vezes antes`;}
+      else if(H.length){const d=_irisDominante(H,'categoria_id');if(d&&d.n/H.length>=0.7){o.cat=d.v;const dc=_irisDominante(H.filter(x=>Number(x.categoria_id)===d.v),'contato_id');o.cont=dc?dc.v:null;o.nivel='confira';o.fonte='historico';o.motivo=H.length<3?`já apareceu ${H.length} ${H.length>1?'vezes':'vez'}, ainda pouco`:`${d.n} de ${H.length} vezes foi assim`;}
+        else{o.nivel='confira';o.motivo='antes variou entre categorias';}}
+      else{const kc=chaveAprender(l.descricao),C=kc?histC[s+'|'+kc]||[]:[];const d=C.length?_irisDominante(C,'categoria_id'):null;
+        if(d&&d.n/C.length>=0.7){o.cat=d.v;const dc=_irisDominante(C.filter(x=>Number(x.categoria_id)===d.v),'contato_id');o.cont=dc?dc.v:null;o.nivel='confira';o.fonte='parecido';o.motivo=`parecido com ${d.n} de antes (${palavraLegivel(kc)})`;}
+        else if(IRIS_IA[l.id]&&(IRIS_IA[l.id].c||IRIS_IA[l.id].k)){const a=IRIS_IA[l.id];o.cat=a.c||null;o.cont=a.k||null;o.nivel='confira';o.fonte='ia';o.motivo='sugestão da IA'+(a.m?': '+a.m:'');}}
+      // valor fora do normal (só quando o histórico é estável)
+      if(H.length>=3){const vs=H.map(x=>Math.abs(Number(x.valor))).sort((a,b)=>a-b),med=vs[Math.floor(vs.length/2)];
+        if(med>0&&(vs[vs.length-1]-vs[0])/med<=0.5&&(v/med>1.5||v/med<0.6)){o.nivel='gente';o.motivo=`valor fora do normal: costuma ser ${BRL(med)}`;}}
+      // compara com o que já está na linha
+      if(o.nivel!=='gente'){
+        if(l.categoria_id&&o.cat&&Number(o.cat)!==Number(l.categoria_id)){o.nivel='confira';o.motivo=`antes foi ${_irisCatNome(o.cat)} (${o.motivo})`;}
+        else if(l.categoria_id&&!o.cat&&o.nivel==='nunca'){o.nivel='confira';o.motivo='nunca visto antes: confira';}
+        else if(l.contato_id&&o.cont&&Number(o.cont)!==Number(l.contato_id)&&o.nivel==='certeza'){o.nivel='confira';o.motivo=`contato diferente do costume (${_irisContNome(o.cont)})`;}}
+      const catFinal=l.categoria_id||o.cat,contFinal=l.contato_id||o.cont;
+      const verm=catFinal?_irisVermelho(catFinal,l):'';if(verm){o.nivel='gente';o.motivo=verm;}
+      if(o.nivel==='certeza'&&(!catFinal||(categoriaExigeContato(catFinal)&&!contFinal&&!String(l.documento||'').trim()))){o.nivel='confira';o.motivo+=' · falta o contato';}
+      o.preencher=(!l.categoria_id&&!!o.cat)||(!l.contato_id&&!!o.cont&&Number(o.cat||l.categoria_id)===Number(catFinal));
+      res.set(l.id,o);});
+    _irisMemo={k:key,t:Date.now(),n:LANC.length,res};return res;}
+  const _irisGrupo=n=>n==='nunca'?'confira':n;
+  function irisFiltroOk(l){if(!IRIS_FILTRO)return true;const r=irisAvaliar().get(l.id);return !!r&&_irisGrupo(r.nivel)===IRIS_FILTRO;}
+  function irisPainelHTML(){const R=irisAvaliar();if(!R.size)return '';const c={certeza:0,confira:0,gente:0};let nunca=0,semCat=0;
+    R.forEach(r=>{c[_irisGrupo(r.nivel)]++;if(r.nivel==='nunca')nunca++;});
+    const box=(k,cor,rgb,tit,sub)=>`<div onclick="IRIS_FILTRO=IRIS_FILTRO==='${k}'?'':'${k}';irisIrLista()" style="cursor:pointer;border-radius:12px;padding:10px 13px;background:rgba(${rgb},.08);border:1px solid rgba(${rgb},${IRIS_FILTRO===k?'.9':'.35'})"><div style="font-size:24px;font-weight:800;color:${cor};line-height:1.1">${c[k]}</div><b style="font-size:13px">${tit}</b><div class="mut" style="font-size:11.5px">${sub}</div></div>`;
+    const ia=IRIS_IA_ESTADO==='olhando'?' · a IA está olhando os nunca vistos…':IRIS_IA_ESTADO==='sem-api'?' · a IA ainda não foi ligada na Vercel':IRIS_IA_ESTADO==='erro'?' · a IA não respondeu agora':'';
+    return `<div class="card" style="margin-bottom:14px;border-color:rgba(59,99,217,.5);padding:13px 16px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="width:26px;height:26px;border-radius:50%;background:radial-gradient(var(--panel) 34%,#4fd1c5 36%);flex:none"></span>
+        <div><b style="font-size:14.5px">Íris olhou ${R.size} lançamento(s) de ${MESES_NOME[mesSel]} sem conferir</b><div class="mut" style="font-size:11.5px">ela preenche pelo que vocês já fizeram · só vira conferido quando uma pessoa confirma${ia}</div></div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px">
+        ${box('certeza','var(--green)','61,214,140','Íris tem certeza','igual 3 vezes ou mais, ou ensinado')}
+        ${box('confira','var(--amber)','245,183,64','Íris sugeriu, confira',nunca?`parecido ou novo · ${nunca} nunca visto(s)`:'parecido com algo de antes, ou novo')}
+        ${box('gente','var(--red)','214,69,69','Sempre com gente','neutras, transferência, estorno, valor fora do normal')}</div></div>`;}
+  function irisIrLista(){_keepY=window.scrollY;render();setTimeout(()=>{const b=document.getElementById('irisFiltroBar');if(b)b.scrollIntoView({block:'center'});},350);}
+  function irisFiltroBarra(n){if(!IRIS_FILTRO)return '';const R=irisAvaliar();const pend=[...R.values()].filter(r=>_irisGrupo(r.nivel)===IRIS_FILTRO);
+    const nPre=pend.filter(r=>r.preencher).length;const ed=podeEditar();
+    const tit={certeza:'Íris tem certeza',confira:'Íris sugeriu, confira',gente:'Sempre com gente'}[IRIS_FILTRO];
+    const acao=IRIS_FILTRO==='certeza'&&ed&&pend.length?`<button class="btn" style="font-weight:800;background:var(--green);border-color:var(--green);color:#04130c" onclick="irisConfirmarCerteza()">Confirmar os ${pend.length}</button>`
+      :IRIS_FILTRO==='confira'&&ed&&nPre?`<button class="btn" style="font-weight:800" onclick="irisPreencherSugestoes()">Preencher as ${nPre} sugestões (sem conferir)</button>`:'';
+    return `<div id="irisFiltroBar" class="note" style="border-color:var(--blue);display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">Mostrando só: <b>${tit}</b> · <b>${n}</b> lançamento(s)${IRIS_FILTRO==='certeza'?'<span class="mut" style="font-size:12px">dê uma olhada e confirme: ela preenche o que falta e marca conferido no seu nome</span>':''}<span style="margin-left:auto;display:flex;gap:8px">${acao}<button class="btn ghost" style="padding:4px 12px;font-size:12px" onclick="IRIS_FILTRO='';render()">Ver todos ✕</button></span></div>`;}
+  function irisChipHTML(l){if(l.conferido_por||contaEhCaixinha(l.conta_id))return '';const r=irisAvaliar().get(l.id);if(!r)return '';
+    const rgb={certeza:'61,214,140',confira:'245,183,64',gente:'214,69,69',nunca:'143,161,151'}[r.nivel];
+    const sug=r.preencher?` → ${_remEsc([!l.categoria_id&&r.cat?_irisCatNome(r.cat):'',!l.contato_id&&r.cont?_irisContNome(r.cont):''].filter(Boolean).join(' · '))}`:'';
+    const usar=r.preencher&&podeEditar()?`<button tabindex="-1" class="catchip" onclick="irisUsar(${l.id})" style="cursor:pointer;font-size:10.5px;border-color:rgba(${rgb},.7);color:rgb(${rgb});font-weight:800">usar</button>`:'';
+    return `<span class="catchip" title="Íris: ${_remEsc(r.motivo)}" style="font-size:10.5px;border-color:rgba(${rgb},.45);color:rgb(${rgb});background:rgba(${rgb},.08)">Íris: ${_remEsc(r.motivo)}${sug}</span>${usar}`;}
+  function _irisAplicarLocal(l,patch){Object.assign(l,patch);if('categoria_id' in patch){const c=CATS.find(x=>Number(x.id)===Number(patch.categoria_id));l.categorias=c?{nome:c.nome,grupo:c.grupo}:null;}
+    if('contato_id' in patch){const c=CONTATOS.find(x=>Number(x.id)===Number(patch.contato_id));l.contatos=c?{nome:c.nome,tipo:c.tipo}:null;}}
+  function _irisPatch(l,r){const p={};if(!l.categoria_id&&r.cat)p.categoria_id=Number(r.cat);if(!l.contato_id&&r.cont)p.contato_id=Number(r.cont);return p;}
+  // grava o preenchimento em grupos (mesma categoria/contato = um update só) e só aplica o que o banco confirmou
+  async function _irisPreencher(lista){let ok=0,falha=0;const grupos={};
+    lista.forEach(({l,r})=>{const p=_irisPatch(l,r);if(!Object.keys(p).length)return;const k=JSON.stringify(p);(grupos[k]=grupos[k]||{p,ls:[]}).ls.push(l);});
+    for(const g of Object.values(grupos)){for(let i=0;i<g.ls.length;i+=200){const parte=g.ls.slice(i,i+200);
+      const {data,error}=await sb.from('lancamentos').update(g.p).in('id',parte.map(l=>l.id)).select('id');
+      const sim=new Set((data||[]).map(x=>x.id));parte.forEach(l=>{if(!error&&sim.has(l.id)){_irisAplicarLocal(l,g.p);ok++;}else falha++;});}}
+    return {ok,falha};}
+  async function irisUsar(id){const l=LANC.find(x=>x.id===id),r=irisAvaliar().get(id);if(!l||!r||!r.preencher)return;if(bloqueadoPorFechamento(l.data,l.conta_id))return;
+    _salvandoN++;let out;try{out=await _irisPreencher([{l,r}]);}finally{_salvandoN--;}
+    if(out.falha)toast('NÃO SALVOU a sugestão da Íris. Tente de novo.','erro');_irisMemo.t=0;lancSoAtualizar();}
+  async function irisPreencherSugestoes(){const R=irisAvaliar();const lista=[...R.values()].filter(r=>_irisGrupo(r.nivel)==='confira'&&r.preencher).map(r=>({l:LANC.find(x=>x.id===r.id),r})).filter(x=>x.l&&!bloqueadoPorFechamento(x.l.data,x.l.conta_id));
+    if(!lista.length)return;if(!confirm(`Preencher as ${lista.length} sugestões da Íris?\n\nEla coloca a categoria e o contato que estão faltando. NÃO marca conferido: confira e marque depois.`))return;
+    _salvandoN++;let out;try{out=await _irisPreencher(lista);}finally{_salvandoN--;}
+    toast(out.falha?`${out.ok} preenchidos. ${out.falha} NÃO salvaram: tente de novo.`:`${out.ok} preenchidos. Agora confira e marque.`,out.falha?'erro':'ok');_irisMemo.t=0;lancSoAtualizar();}
+  async function irisConfirmarCerteza(){const R=irisAvaliar();const lista=[...R.values()].filter(r=>r.nivel==='certeza').map(r=>({l:LANC.find(x=>x.id===r.id),r})).filter(x=>x.l&&!x.l.conferido_por&&!bloqueadoPorFechamento(x.l.data,x.l.conta_id));
+    if(!lista.length){toast('Nada para confirmar.','ok');return;}
+    const nPre=lista.filter(x=>Object.keys(_irisPatch(x.l,x.r)).length).length;
+    if(!confirm(`Confirmar os ${lista.length} lançamentos que a Íris tem certeza?\n\n${nPre?`Ela preenche o que falta em ${nPre} e `:''}marca conferido no nome de ${PERFIL.nome}.\nDeu uma olhada na lista? OK = confirmar.`))return;
+    _salvandoN++;let pre={ok:0,falha:0},cf=0,cfFalha=0;
+    try{pre=await _irisPreencher(lista);
+      const prontos=lista.map(x=>x.l).filter(l=>lancPronto(l)&&!l.conferido_por);const up={conferido_por:PERFIL.nome,conferido_em:new Date().toISOString()};
+      for(let i=0;i<prontos.length;i+=200){const parte=prontos.slice(i,i+200);const {data,error}=await sb.from('lancamentos').update(up).in('id',parte.map(l=>l.id)).select('id');
+        const sim=new Set((data||[]).map(x=>x.id));parte.forEach(l=>{if(!error&&sim.has(l.id)){Object.assign(l,up);cf++;}else cfFalha++;});}}
+    finally{_salvandoN--;}
+    const nao=lista.length-cf;toast(nao?`${cf} conferidos. ${nao} NÃO foram (continuam na lista): confira um por um.`:`${cf} conferidos com a Íris.`,nao?'erro':'ok');
+    _irisMemo.t=0;if(![...irisAvaliar().values()].some(r=>r.nivel==='certeza'))IRIS_FILTRO='';lancSoAtualizar();}
+  // ---- ensinar a Íris: quando corrige categoria/contato, aparece o cartãozinho (opcional) ----
+  function irisAntes(id){const l=LANC.find(x=>x.id===id);const r=irisAvaliar().get(id);return l?{cat:l.categoria_id,cont:l.contato_id,sug:r?{cat:r.cat,cont:r.cont}:null}:null;}
+  function irisTalvezEnsinar(id,antes){const l=LANC.find(x=>x.id===id);if(!l||!antes||!l.categoria_id||!podeEditar())return;
+    const mudouCat=antes.cat&&Number(antes.cat)!==Number(l.categoria_id),mudouCont=antes.cont&&l.contato_id&&Number(antes.cont)!==Number(l.contato_id);
+    const contraIris=antes.sug&&((antes.sug.cat&&Number(antes.sug.cat)!==Number(l.categoria_id))||(antes.sug.cont&&l.contato_id&&Number(antes.sug.cont)!==Number(l.contato_id)));
+    if(!mudouCat&&!mudouCont&&!contraIris)return;
+    const _kf=_irisKFull(l.descricao);const k=/^#DOC:/.test(_kf)?_kf:_kf.split(' ').filter(t=>t.length>=2).slice(0,6).join(' ');if(!k)return; // bem específico: a descrição inteira (sem números); dá para encurtar
+    const ehDoc=/^#DOC:/.test(k);const alvo=[_irisCatNome(l.categoria_id),l.contato_id?_irisContNome(l.contato_id):''].filter(Boolean).join(' · ');
+    let el=document.getElementById('irisEnsinar');if(!el){el=document.createElement('div');el.id='irisEnsinar';document.body.appendChild(el);}
+    el.setAttribute('style','position:fixed;right:18px;bottom:18px;z-index:60;width:min(430px,92vw);background:var(--panel);border:1px solid var(--blue);border-radius:14px;padding:13px 15px;box-shadow:0 10px 30px rgba(0,0,0,.35)');
+    el.dataset.id=id;el.dataset.k=k;
+    el.innerHTML=`<div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:13.5px">Ensinar a Íris?</b><span class="mut" style="font-size:11.5px">opcional</span></div>
+      <div class="mut" style="font-size:12px;margin:4px 0 6px">Quando aparecer</div>
+      ${ehDoc?`<div style="font-size:13px;font-weight:700">${_remEsc(palavraLegivel(k))}</div>`:`<input id="irisEnsPal" class="qin maiusc" style="width:100%;padding:7px 9px" value="${_remEsc(k)}">`}
+      <div class="mut" style="font-size:12px;margin:6px 0 2px">é <b style="color:var(--txt)">${_remEsc(alvo)}</b>, porque</div>
+      <input id="irisEnsMot" class="qin" style="width:100%;padding:7px 9px" placeholder="ex.: é o boleto de lentes da Águia Branca pago pela DVL" onkeydown="if(event.key==='Enter')irisEnsinar()">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:9px"><button class="btn ghost" style="padding:5px 12px;font-size:12px" onclick="irisFecharEnsinar()">Agora não</button><button class="btn" style="padding:5px 12px;font-size:12px;font-weight:800;background:var(--blue);border-color:var(--blue);color:#fff" onclick="irisEnsinar()">Ensinar</button></div>`;}
+  function irisFecharEnsinar(){const el=document.getElementById('irisEnsinar');if(el)el.remove();}
+  async function irisEnsinar(){const el=document.getElementById('irisEnsinar');if(!el)return;const l=LANC.find(x=>x.id===Number(el.dataset.id));if(!l)return irisFecharEnsinar();
+    const pi=document.getElementById('irisEnsPal');const palavra=(pi?pi.value:el.dataset.k).trim().toUpperCase();if(!palavra||(!/^#DOC:/.test(palavra)&&normDesc(palavra).length<3)){toast('Escreva a palavra que aparece na descrição.','erro');return;}
+    const motivo=((document.getElementById('irisEnsMot')||{}).value||'').trim().slice(0,200);
+    const row={palavra,categoria_id:l.categoria_id||null,contato_id:l.contato_id||null,loja_id:lojaAtual,origem:'iris',ativa:true,criado_por:USER.id};
+    let {error}=await sb.from('regras_palavras').insert(motivo?Object.assign({motivo},row):row);
+    let semMot=false;if(error&&/motivo/i.test(error.message||'')){semMot=true;({error}=await sb.from('regras_palavras').insert(row));}
+    if(error){toast('Não consegui ensinar: '+error.message,'erro');return;}
+    await carregarRegrasP();irisFecharEnsinar();_irisMemo.t=0;
+    toast(`Íris aprendeu: quando aparecer "${palavraLegivel(palavra)}" é ${[_irisCatNome(l.categoria_id),l.contato_id?_irisContNome(l.contato_id):''].filter(Boolean).join(' · ')}.${semMot?' (O porquê não foi junto: falta a coluna no banco.)':''}`,'ok');lancSoAtualizar();}
+  // ---- IA para o que nunca apareceu (só sugere; vai para o amarelo) ----
+  async function irisPedirIA(){if(_irisIAEmCurso||page!=='lanc'||!podeEditar())return;const R=irisAvaliar();
+    const alvo=[...R.values()].filter(r=>r.nivel==='nunca').map(r=>LANC.find(x=>x.id===r.id)).filter(l=>l&&!l.categoria_id&&!IRIS_IA[l.id]).slice(0,180);
+    if(!alvo.length)return;_irisIAEmCurso=true;IRIS_IA_ESTADO='olhando';const p=document.getElementById('irisPainel');if(p)p.innerHTML=irisPainelHTML();
+    let token='';try{const {data}=await sb.auth.getSession();token=data&&data.session?data.session.access_token:'';}catch(e){}
+    const cats=catsAtivas().map(c=>({id:c.id,nome:c.nome,grupo:c.grupo}));const conts=contatosAtivos().slice(0,700).map(c=>({id:c.id,nome:c.nome,tipo:c.tipo}));
+    const ex=[];const vis=new Set();LANC.filter(l=>l.categoria_id&&l.conferido_por).forEach(l=>{const k=_irisKFull(l.descricao);if(vis.has(k)||ex.length>=60)return;vis.add(k);ex.push({d:l.descricao,v:Number(l.valor),c:_irisCatNome(l.categoria_id),k:l.contato_id?_irisContNome(l.contato_id):''});});
+    const ens=REGRAS_P.filter(r=>r.origem==='iris').slice(0,60).map(r=>({p:palavraLegivel(r.palavra),c:_irisCatNome(r.categoria_id),k:r.contato_id?_irisContNome(r.contato_id):'',m:r.motivo||''}));
+    let erro='';
+    try{for(let i=0;i<alvo.length;i+=60){const parte=alvo.slice(i,i+60);
+      const resp=await fetch('/api/iris-sugerir',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+token,apikey:window.SUPABASE_ANON_KEY||''},
+        body:JSON.stringify({loja:lojaNomeCurto(lojaAtual),itens:parte.map(l=>({i:l.id,d:l.descricao,v:Number(l.valor),dt:l.data})),categorias:cats,contatos:conts,exemplos:ex,ensinos:ens})});
+      if(resp.status===404){erro='sem-api';break;}let j={};try{j=await resp.json();}catch(e){}if(!resp.ok){erro='erro';break;}
+      (j.sugestoes||[]).forEach(s=>{const id=Number(s.i);if(!parte.some(l=>l.id===id))return;const c=CATS.some(x=>Number(x.id)===Number(s.c))?Number(s.c):null,k=CONTATOS.some(x=>Number(x.id)===Number(s.k))?Number(s.k):null;
+        IRIS_IA[id]={c,k,m:String(s.m||'').slice(0,80),em:Date.now()};});
+      parte.forEach(l=>{if(!IRIS_IA[l.id])IRIS_IA[l.id]={c:null,k:null,m:'',em:Date.now()};});}}
+    catch(e){erro='erro';}
+    try{const ent=Object.entries(IRIS_IA).sort((a,b)=>(b[1].em||0)-(a[1].em||0)).slice(0,4000);IRIS_IA=Object.fromEntries(ent);localStorage.setItem('fluxo_iris_ia',JSON.stringify(IRIS_IA));}catch(e){}
+    IRIS_IA_ESTADO=erro;_irisIAEmCurso=false;_irisMemo.t=0;if(page==='lanc')lancSoAtualizar();}
   function lancPronto(l){const cat=l.categorias;if(!l.categoria_id||!cat||cat.grupo==='adef')return false;
     if(categoriaExigeContato(l.categoria_id)&&!l.contato_id&&!String(l.documento||'').trim())return false; // v2.9.36: nome escrito em "contato sem cadastro" vale
     const n=String(cat.nome||'').toUpperCase(),r=l.ref_externa||'';
@@ -1499,7 +1652,7 @@
     try{for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('conta_id,conferido_por').eq('loja_id',loja).gte('data',pref+'-01').lte('data',_fimMes(pref)).order('id').range(o,o+999);if(error)return;
       (data||[]).forEach(l=>{if(contaEhCaixinha(l.conta_id))return;t++;if(l.conferido_por)cf++;});if(!data||data.length<1000)break;}}catch(e){return;}
     if(seq!==_navConfSeq||loja!==lojaAtual)return;NAV_CONF[k]={t,cf,em:Date.now()};_navConfPinta();}
-  function lancSoAtualizar(){filtrarLanc(q);navConfAtualizar();const t=document.getElementById('lancConfTopo');if(t)t.innerHTML=conferePainelHTML();const f=document.getElementById('lancFaixa');if(f)f.innerHTML=faixaDiasHTML();}
+  function lancSoAtualizar(){filtrarLanc(q);navConfAtualizar();const t=document.getElementById('lancConfTopo');if(t)t.innerHTML=conferePainelHTML();const ip=document.getElementById('irisPainel');if(ip)ip.innerHTML=irisPainelHTML();const f=document.getElementById('lancFaixa');if(f)f.innerHTML=faixaDiasHTML();}
   // v2.9.26: logo no alto de Lançamentos — quantos conferidos da loja no mês (chama atenção quando está zerado)
   function conferePainelHTML(){const pref=`${ANO_FIXO}-${_mm(mesSel)}`;let t=0,cf=0,am=0,vm=0,parou=null;
     LANC.forEach(l=>{if((l.data||'').slice(0,7)!==pref||contaEhCaixinha(l.conta_id))return;t++;const st=lancStatus(l);if(st==='ok')cf++;else{if(st==='y')am++;else vm++;if(!parou||l.data<parou)parou=l.data;}});
@@ -1560,7 +1713,7 @@
   }
 
   // Lançamentos: depois de desenhar (inclusive após salvar/editar/excluir), atualiza o saldo do dia 1º e os cartões da loja
-  async function viewLanc(){divGerarRecorrentes().catch(()=>{});await viewLancBase();navConfAtualizar().catch(()=>{});lancCarregarCxBg();if(MODULO_ATUAL==='diversas'){preencherAvisoLentes().catch(()=>{});if(document.getElementById('agDivPainel'))agCarregarRegras().then(()=>agDivRender()).catch(()=>{});}if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
+  async function viewLanc(){divGerarRecorrentes().catch(()=>{});await viewLancBase();setTimeout(()=>irisPedirIA().catch(()=>{}),1500);navConfAtualizar().catch(()=>{});lancCarregarCxBg();if(MODULO_ATUAL==='diversas'){preencherAvisoLentes().catch(()=>{});if(document.getElementById('agDivPainel'))agCarregarRegras().then(()=>agDivRender()).catch(()=>{});}if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
   async function viewLancBase(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando lançamentos...</div>';
     await carregarLancamentos();
@@ -1576,6 +1729,8 @@
       if(filtroTipoLanc&&(contaEhCaixinha(l.conta_id)||(l.categorias&&l.categorias.grupo==='neutra')))return false; /* v2.9.51: Entradas/Saídas = de verdade, sem neutras nem Caixinha */ if(filtroTipoLanc==='ent'&&!(Number(l.valor)>0))return false;if(filtroTipoLanc==='sai'&&!(Number(l.valor)<0))return false;
       if(ocultarNeutras&&l.categorias&&l.categorias.grupo==='neutra')return false;
       if(soNeutras&&!(l.categorias&&l.categorias.grupo==='neutra'))return false; // v2.9.38: botão "ver só as neutras"
+      if(DASH_FILTRO&&!dashFiltroOk(l))return false;
+      if(IRIS_FILTRO&&!irisFiltroOk(l))return false;
       if(!q)return true;
       const cat=(l.categorias&&l.categorias.nome)||'';const cont=(l.contatos&&l.contatos.nome)||'';
       const txt=(l.descricao||'').toLowerCase().includes(q.toLowerCase())||cat.toLowerCase().includes(q.toLowerCase())||cont.toLowerCase().includes(q.toLowerCase());
@@ -1629,7 +1784,7 @@
       <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho · <b>hoje ou antes = pago</b> (fica aqui) · <b>depois de hoje = a pagar</b> (vai para a Agenda)</span><span>👥 Categoria obrigatória · sem contato cadastrado? escreva quem foi na observação</span></div>
     </div>`:'<div class="note">👁️ Seu acesso é somente leitura (contador). Você pode ver e exportar, mas não lançar.</div>';
     const diaLabel=filtroDia?isoParaBR(filtroDia):'Todos os dias';
-    document.getElementById('content').innerHTML='<div id="lancConfTopo">'+conferePainelHTML()+'</div>'+avisoPixNovembro()+(MODULO_ATUAL==='diversas'?'<div id="divLentesAviso"></div>':'')+'<div id="ultimaImportLanc"></div>'+saldoBanco+formHTML+`
+    document.getElementById('content').innerHTML='<div id="lancConfTopo">'+conferePainelHTML()+'</div>'+'<div id="irisPainel">'+irisPainelHTML()+'</div>'+avisoPixNovembro()+(MODULO_ATUAL==='diversas'?'<div id="divLentesAviso"></div>':'')+'<div id="ultimaImportLanc"></div>'+saldoBanco+formHTML+`
       <div style="font-size:13px;font-weight:700;color:var(--txt);margin:22px 0 12px;display:flex;align-items:center;gap:7px;border-top:1px solid var(--line);padding-top:18px">🔍 LANÇAMENTOS CADASTRADOS <span class="mut" style="font-weight:400;font-size:12px">— consultar e editar</span></div>
       <div style="display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 14px;width:fit-content;margin-bottom:12px">
         <button class="burger" style="width:32px;height:32px" title="Mês anterior" onclick="navMes(-1)">‹</button>
@@ -1698,6 +1853,7 @@
       else if(_devol)vaiEst=_roxo(`lancLigarDevolucao(${l.id},'${_devol.c.id}',${_devol.i})`,`Devolução já marcada no Caixinha (${isoParaBR(_devol.d).slice(0,5)}): ligar`,'A Heloísa já marcou no Caixinha que este empréstimo voltou (mesmo valor). Clique para ligar: vira ESTORNO RECEBIDO');
       else if(_volta)vaiEst=_roxo(`lancVoltouEstorno(${l.id})`,`Voltou do empréstimo? ${_remEsc(_cxNomeCaixa(_volta.caixinha_id))} ${isoParaBR(_volta.data).slice(0,5)}`,'Tem um empréstimo em aberto no Banco Caixinha com este mesmo valor');
       else if(_sug&&editavel&&!_ehCxb&&!_ehLentes)vaiEst=_roxo(`lancVaiEstornar(${l.id})`,'Vai estornar?','A descrição fala em EXT/ESTORNAR: mandar pro Banco Caixinha');
+      vaiEst+=irisChipHTML(l);
       if(editavel&&!_ehCxb&&!_ehLentes&&!contaEhCaixinha(l.conta_id))vaiEst+=`<button tabindex="-1" class="catchip" onclick="lancOQueE(this,${l.id})" title="Escolher o que é este lançamento (empréstimo, devolução, depósito, transferência, venda) sem excluir" style="cursor:pointer;font-size:10.5px;padding:2px 9px;color:var(--muted)">o que é? ▾</button>`;
       // v2.9.36: nas saídas o campo fica embaixo do CONTATO, como "contato sem cadastro" (ex.: GABRIEL, que já saiu); nas entradas continua "+ obs" embaixo da categoria
       const obsLinha=editavel?`<div style="margin-top:3px"><span tabindex="-1" onclick="editarObsLanc(${l.id})" title="${saida?'Nome de quem recebeu, sem precisar cadastrar contato (ex.: funcionário que já saiu, quem fez a panfletagem)':'Observação deste lançamento'}" style="cursor:pointer;font-size:11px;color:var(--muted)">${obsTxt?'📝 '+obsTxt:(saida?'+ contato sem cadastro':'+ obs')}</span></div>`:(obsTxt?`<div class="mut" style="font-size:11px;margin-top:3px">📝 ${obsTxt}</div>`:'');
@@ -1721,7 +1877,7 @@
     const nCx=LANC.filter(l=>contaEhCaixinha(l.conta_id)&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
     const chip=(v,txt)=>`<button class="btn ghost" style="padding:4px 10px;font-size:12px;${filtroConta===v?'border-color:var(--green);color:var(--green)':''}" onclick="filtroConta='${v}';render()">${txt}</button>`;
     const nSemCat=LANC.filter(l=>!l.categoria_id&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
-    return `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">${chip('','Todos')}${chip('banco','🏦 Sicoob')}${chip('caixinha',`💵 Caixinha${nCx?` (${nCx})`:''}`)}${podeEditar()&&nSemCat?`<button class="btn" style="padding:4px 10px;font-size:12px;margin-left:auto" onclick="aplicarRegrasNoMes()">🔑 Aplicar regras nos ${nSemCat} sem categoria</button>`:''}${(()=>{if(!podeEditar())return '';const n=cxSemContato().length;
+    return `${dashFiltroBarra(rows.length)}${irisFiltroBarra(rows.length)}<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">${chip('','Todos')}${chip('banco','🏦 Sicoob')}${chip('caixinha',`💵 Caixinha${nCx?` (${nCx})`:''}`)}${podeEditar()&&nSemCat?`<button class="btn" style="padding:4px 10px;font-size:12px;margin-left:auto" onclick="aplicarRegrasNoMes()">🔑 Aplicar regras nos ${nSemCat} sem categoria</button>`:''}${(()=>{if(!podeEditar())return '';const n=cxSemContato().length;
       return n?`<button class="btn" style="padding:4px 10px;font-size:12px" onclick="abrirContatoPadrao()" title="Escolha uma vez o contato de cada categoria do Caixinha; daí pra frente ele vem sozinho">👤 Contato dos ${n} do Caixinha sem contato</button>`
         :(filtroConta==='caixinha'?`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="abrirContatoPadrao()">👤 Contato padrão por categoria</button>`:'');})()}${filtroConta==='caixinha'?'<span class="mut" style="font-size:12px">dinheiro da gaveta: as saídas vêm sozinhas do Caixinha e não somam no saldo do banco (entram no resultado)</span>':''}<span style="margin-left:auto;display:flex;gap:8px;align-items:center">${lentesStatusHTML()}</span></div>${(()=>{const pend=LANC.filter(l=>{const n=String((l.categorias&&l.categorias.nome)||'').toUpperCase();const r=l.ref_externa||'';return (n===CAT_ESTORNAR&&!r.startsWith('cxb:'))||(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'));});return pend.length?`<div class="note" style="border-color:rgba(245,183,64,.45);margin-bottom:10px">🔁 <b>${pend.length} lançamento(s) do Banco Caixinha ainda não ligado(s)</b> — clique no botão amarelo de cada um ("Mandar pro Banco Caixinha" ou "Marcar devolução"). É isso que mantém o em aberto das lojas certo sem ninguém apagar nada.</div>`:'';})()}
       <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12.5px;flex-wrap:wrap">
@@ -1779,6 +1935,8 @@
       if(filtroTipoLanc&&(contaEhCaixinha(l.conta_id)||(l.categorias&&l.categorias.grupo==='neutra')))return false; /* v2.9.51: Entradas/Saídas = de verdade, sem neutras nem Caixinha */ if(filtroTipoLanc==='ent'&&!(Number(l.valor)>0))return false;if(filtroTipoLanc==='sai'&&!(Number(l.valor)<0))return false;
       if(ocultarNeutras&&l.categorias&&l.categorias.grupo==='neutra')return false;
       if(soNeutras&&!(l.categorias&&l.categorias.grupo==='neutra'))return false; // v2.9.38: botão "ver só as neutras"
+      if(DASH_FILTRO&&!dashFiltroOk(l))return false;
+      if(IRIS_FILTRO&&!irisFiltroOk(l))return false;
       if(!q)return true;
       const cat=(l.categorias&&l.categorias.nome)||'';const cont=(l.contatos&&l.contatos.nome)||'';
       const txt=(l.descricao||'').toLowerCase().includes(q.toLowerCase())||cat.toLowerCase().includes(q.toLowerCase())||cont.toLowerCase().includes(q.toLowerCase());
@@ -3740,23 +3898,25 @@
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando dashboard...</div>';
     await carregarLancAno();
     // carrega lançamentos completos do mês (com descrição e contato) pra janela de detalhes
-    const {data:lancCompletos}=await sb.from('lancamentos').select('data,valor,descricao,categorias(nome,grupo),contatos(nome)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').limit(5000);
+    const {data:lancCompletos}=await sb.from('lancamentos').select('id,data,valor,descricao,documento,categoria_id,contato_id,conta_id,categorias(nome,grupo),contatos(nome)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').limit(5000);
     _lancMesDash=(lancCompletos||[]).filter(l=>{const m=parseInt(l.data.split('-')[1],10)-1;return m===mesSel;});
     const lojaNome=LOJAS.find(l=>l.id===lojaAtual)?.nome||'';
     // separa receitas e despesas do MÊS selecionado, por categoria (mesmo sem grupo definido)
-    const receitasCat={},despesasCat={};
+    const receitasCat={},despesasCat={},receitasN={},despesasN={},contCat={};
     let entradaMes=0,saidaMes=0;
     LANC_ANO.forEach(l=>{
       const m=parseInt(l.data.split('-')[1],10)-1;if(m!==mesSel)return;
       const g=l.categorias&&l.categorias.grupo;if(g==='neutra')return; // transferências fora
       const nome=(l.categorias&&l.categorias.nome)||'Sem categoria';
       const v=Number(l.valor);
-      if(v>0){entradaMes+=v;receitasCat[nome]=(receitasCat[nome]||0)+v;}
-      else{saidaMes+=Math.abs(v);despesasCat[nome]=(despesasCat[nome]||0)+Math.abs(v);}
+      if(v>0){entradaMes+=v;receitasCat[nome]=(receitasCat[nome]||0)+v;receitasN[nome]=(receitasN[nome]||0)+1;}
+      else{saidaMes+=Math.abs(v);despesasCat[nome]=(despesasCat[nome]||0)+Math.abs(v);despesasN[nome]=(despesasN[nome]||0)+1;
+        const ck=l.contato_id?String(l.contato_id):'sem';const o=contCat[ck]||(contCat[ck]={nome:l.contato_id?((l.contatos&&l.contatos.nome)||'Contato'):'Sem contato',valor:0,n:0,key:ck});o.valor+=Math.abs(v);o.n++;}
     });
     // transforma em listas ordenadas da maior pra menor
-    const receitas=Object.entries(receitasCat).map(([nome,valor])=>({nome,valor})).sort((a,b)=>b.valor-a.valor);
-    const despesas=Object.entries(despesasCat).map(([nome,valor])=>({nome,valor})).sort((a,b)=>b.valor-a.valor);
+    const receitas=Object.entries(receitasCat).map(([nome,valor])=>({nome,valor,n:receitasN[nome]})).sort((a,b)=>b.valor-a.valor);
+    const despesas=Object.entries(despesasCat).map(([nome,valor])=>({nome,valor,n:despesasN[nome]})).sort((a,b)=>b.valor-a.valor);
+    const contatosDes=dashContatosLista(Object.values(contCat));
     const resultMes=entradaMes-saidaMes;
     // DRE do mês (por grupo)
     const gr={rec:0,cmv:0,imp:0,fixo:0,nop:0};
@@ -3829,6 +3989,7 @@
       <div class="grid two">
         ${graficoCard('💸 Despesas pagas',despesas,saidaMes,'var(--red)',mesNome,'des')}
         ${graficoCard('💰 Receitas / Entradas',_recLista(receitas,receitasCat,entradaMes,mesSel),entradaMes,'var(--green)',mesNome,'rec')}
+        ${graficoCard('👤 Despesas pagas por contato',contatosDes,saidaMes,'var(--red)',mesNome,'cont')}
         ${graficoCard('🧾 A pagar em '+mesNome,apagarLista,totalApagar,'var(--amber)','')}
         ${dreCard}
         ${fechCard}
@@ -4800,6 +4961,35 @@
 
   // ====== GRÁFICO DE ROSCA (SVG puro) ======
   const CORES_GRAF=['#3ddc91','#7da2ff','#e8c468','#ff6b6b','#c084fc','#4dd4d4','#f5905a','#a0d468','#ec87c0','#5d9cec','#aab2bd','#ffce54','#48cfad','#ed5565','#967adc'];
+  // v2.9.59: clique no gráfico do Dashboard (categoria ou contato) e filtro que leva para Lançamentos
+  function _dashOnClick(it,tipo){return tipo==='cont'?`abrirDetalheContato('${it.key}')`:`abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')`;}
+  // contatos: os 8 maiores, depois "Outros" juntos; "Sem contato" sempre aparece separado no fim
+  function dashContatosLista(arr){const sem=arr.find(x=>x.key==='sem'),com=arr.filter(x=>x.key!=='sem').sort((a,b)=>b.valor-a.valor);
+    const top=com.slice(0,8),resto=com.slice(8),out=[...top];
+    if(resto.length)out.push({nome:`Outros (${resto.length} contatos)`,valor:resto.reduce((t,x)=>t+x.valor,0),n:resto.reduce((t,x)=>t+x.n,0),key:'outros'});
+    if(sem)out.push(sem);return out;}
+  function dashFiltroOk(l){const f=DASH_FILTRO;if(!f)return true;const v=Number(l.valor);
+    if(f.sinal==='des'&&!(v<0))return false;if(f.sinal==='rec'&&!(v>0))return false;if(l.categorias&&l.categorias.grupo==='neutra')return false;
+    if(f.k==='cat')return f.v==='sem'?!l.categoria_id:Number(l.categoria_id)===Number(f.v);
+    if(f.k==='cont'){if(f.v==='sem')return !l.contato_id;if(f.v==='outros')return !!l.contato_id&&!(f.top||[]).includes(String(l.contato_id));return String(l.contato_id)===String(f.v);}
+    return true;}
+  function dashIrLanc(k,v,sinal,rot,top){DASH_FILTRO={k,v,sinal,rot,top:top||null};filtroDia='';filtroConta='';filtroTipoLanc='';soNeutras=false;fecharModal();go('lanc');let n=0,yAnt=-1;const t=setInterval(()=>{n++;const b=document.getElementById('dashFiltroBar');if(n>60||(yAnt>=0&&Math.abs(scrollY-yAnt)>5)){clearInterval(t);return;}if(b){b.scrollIntoView({block:'center'});yAnt=scrollY;}},100);} // fica de olho 6s: os quadros de cima carregam depois e empurram a lista
+  function dashFiltroBarra(n){const f=DASH_FILTRO;if(!f)return '';
+    return `<div id="dashFiltroBar" class="note" style="border-color:var(--blue);display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">Mostrando só: <b>${_remEsc(f.rot)}</b> · ${f.sinal==='rec'?'entradas':'despesas'} de ${MESES_NOME[mesSel]} · <b>${n}</b> lançamento(s)<button class="btn ghost" style="margin-left:auto;padding:4px 12px;font-size:12px" onclick="DASH_FILTRO=null;render()">Ver todos ✕</button></div>`;}
+  function _dashBotaoLanc(k,v,sinal,rot,top){return `<button class="btn" style="font-weight:800" onclick='dashIrLanc(${JSON.stringify(k)},${JSON.stringify(v)},${JSON.stringify(sinal)},${JSON.stringify(rot).replace(/'/g,"&#39;")},${JSON.stringify(top||null)})'>Abrir em Lançamentos →</button>`;}
+  function abrirDetalheContato(key){const neu=l=>l.categorias&&l.categorias.grupo==='neutra';
+    const desMes=_lancMesDash.filter(l=>!neu(l)&&Number(l.valor)<0);
+    const tot={};desMes.forEach(l=>{if(l.contato_id){const k=String(l.contato_id);tot[k]=(tot[k]||0)+Math.abs(Number(l.valor));}});
+    const top=Object.entries(tot).sort((a,b)=>b[1]-a[1]).slice(0,8).map(x=>x[0]);
+    const lista=desMes.filter(l=>key==='sem'?!l.contato_id:key==='outros'?(!!l.contato_id&&!top.includes(String(l.contato_id))):String(l.contato_id)===key).sort((a,b)=>a.data.localeCompare(b.data));
+    const nome=key==='sem'?'Sem contato':key==='outros'?'Outros contatos':((lista[0]&&lista[0].contatos&&lista[0].contatos.nome)||'Contato');
+    let total=0;const rows=lista.map(l=>{total+=Math.abs(Number(l.valor));return `<tr><td class="mut" style="white-space:nowrap">${isoParaBR(l.data).slice(0,5)}</td><td>${l.descricao||'—'}</td><td class="mut">${key==='outros'?((l.contatos&&l.contatos.nome)||'')+' · ':''}${(l.categorias&&l.categorias.nome)||'Sem categoria'}</td><td class="amt red" style="white-space:nowrap;text-align:right">-${BRL(Math.abs(l.valor))}</td></tr>`;}).join('');
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="max-width:640px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0">${_remEsc(nome)}</h3><button class="delx" style="font-size:18px" onclick="fecharModal()">✕</button></div>
+      <p style="margin-top:0">${lista.length} lançamento(s) de despesa em ${MESES_NOME[mesSel]} ${ANO_FIXO}</p>
+      <div style="max-height:60vh;overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="mut" style="text-align:center;padding:20px">Nenhum lançamento</td></tr>'}</tbody></table></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;border-top:2px solid var(--line);margin-top:10px;padding-top:10px;gap:10px"><b>Total <span style="color:var(--red);font-size:16px">${BRL(total)}</span></b>${lista.length?_dashBotaoLanc('cont',key,'des',nome,top):''}</div>
+    </div></div>`;}
   function donut(itens,total,tipo){
     // itens: [{nome,valor,pct}] já ordenados. total: soma. tipo: 'rec' ou 'des' pra abrir detalhes
     if(total<=0||itens.length===0)return '<div class="empty" style="padding:30px"><div class="big">📊</div>Sem dados neste mês</div>';
@@ -4817,7 +5007,7 @@
       // rótulo de % na fatia (só se >5%)
       let lbl='';
       if(frac>0.05){const mid=(ang+ (ang-frac*Math.PI*2))/2;const lx=cx+(R+r)/2*Math.cos(mid),ly=cy+(R+r)/2*Math.sin(mid);lbl=`<text x="${lx}" y="${ly}" fill="#04130c" font-size="10" font-weight="800" text-anchor="middle" dominant-baseline="middle" style="pointer-events:none">${(frac*100).toFixed(1).replace('.',',')}%</text>`;}
-      const clique=tipo&&!it.semClique?`onclick="abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')" style="cursor:pointer"`:'';
+      const clique=tipo&&!it.semClique?`onclick="${_dashOnClick(it,tipo)}" style="cursor:pointer"`:'';
       return `<path d="${path}" fill="${cor}" ${clique}><title>${it.nome}: ${BRL(it.valor)}</title></path>${lbl}`;
     }).join('');
     return `<svg viewBox="0 0 180 180" style="width:180px;height:180px;flex-shrink:0">${arcs}</svg>`;
@@ -4825,10 +5015,10 @@
   function legenda(itens,total,tipo){
     return itens.map((it,i)=>{
       const cor=CORES_GRAF[i%CORES_GRAF.length];const pct=total>0?(it.valor/total*100):0;
-      const clique=tipo&&!it.semClique?`onclick="abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')" style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='transparent'"`:'style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"';
+      const clique=tipo&&!it.semClique?`onclick="${_dashOnClick(it,tipo)}" style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='transparent'"`:'style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"';
       return `<div ${clique}>
         <span style="width:11px;height:11px;border-radius:3px;background:${cor};flex-shrink:0"></span>
-        <span style="flex:1">${it.nome}${it.sub?` <span class="mut" style="font-size:11px">· ${it.sub}</span>`:''} <span class="mut" style="font-size:11px">${pct.toFixed(1).replace('.',',')}%</span></span>
+        <span style="flex:1">${it.nome}${it.sub?` <span class="mut" style="font-size:11px">· ${it.sub}</span>`:''} <span class="mut" style="font-size:11px">${pct.toFixed(1).replace('.',',')}%${it.n?` · ${it.n} lanç.`:''}</span></span>
         <b style="font-variant-numeric:tabular-nums">${BRL(it.valor)}</b>${tipo?'<span class="mut" style="font-size:11px;margin-left:4px">›</span>':''}</div>`;
     }).join('');
   }
@@ -4861,7 +5051,7 @@
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0">${nomeCat}</h3><button class="delx" style="font-size:18px" onclick="fecharModal()">✕</button></div>
       <p style="margin-top:0">${lista.length} lançamento(s) em ${MESES_NOME[mesSel]} ${ANO_FIXO}</p>
       <div style="max-height:60vh;overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Contato</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="mut" style="text-align:center;padding:20px">Nenhum lançamento</td></tr>'}</tbody></table></div>
-      <div style="display:flex;justify-content:space-between;border-top:2px solid var(--line);margin-top:10px;padding-top:10px"><b>Total</b><b style="color:${cor};font-size:16px">${BRL(total)}</b></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;border-top:2px solid var(--line);margin-top:10px;padding-top:10px;gap:10px"><b>Total <span style="color:${cor};font-size:16px">${BRL(total)}</span></b>${(()=>{if(!lista.length)return '';const c=nomeCat==='Sem categoria'?'sem':(CATS.find(x=>x.nome===nomeCat)||{}).id;return c?_dashBotaoLanc('cat',c,tipo,nomeCat):'';})()}</div>
     </div></div>`;
   }
 

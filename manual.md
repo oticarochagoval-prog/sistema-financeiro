@@ -88,6 +88,26 @@ No alto do **Dashboard** aparece a **Íris**, a assistente do escritório. Ela *
 - Embaixo: o **robô do Sicoob** (quantas contas, erros, quais lojas faltam ligar, o certificado mais próximo de vencer, aviso vermelho se algum vence em 30 dias).
 - **WhatsApp:** o mesmo resumo por mensagem às 7h é o próximo passo (precisa ligar um número de WhatsApp).
 
+## Dashboard: quantos lançamentos e por contato (v2.9.59)
+
+- **Despesas pagas** e **Receitas** mostram, ao lado da porcentagem, **quantos lançamentos** tem cada categoria (ex.: Funcionários 21,4% · 12 lanç.).
+- Novo quadro **Despesas pagas por contato**: os 8 maiores, depois "Outros (N contatos)" juntos e, no fim, **Sem contato**.
+- Clicando numa categoria ou num contato, abre a lista. Embaixo tem o botão **Abrir em Lançamentos →**: ele leva para Lançamentos mostrando **só aqueles** (ex.: os 2 sem categoria), já na lista. Arrumou um, ele some da lista. Para ver tudo de novo, clique em **Ver todos ✕**. Saindo de Lançamentos, o filtro some sozinho.
+
+## Íris confere os lançamentos (v2.9.60)
+
+No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançamentos do mês que ainda não foram conferidos e separa em três grupos (clique no grupo para ver só ele):
+
+- **Íris tem certeza (verde):** a mesma descrição já apareceu **3 vezes ou mais**, sempre com a mesma categoria e o mesmo contato, e com o valor de sempre. Ou alguém já **ensinou** a Íris. Dê uma olhada na lista e clique em **Confirmar os N**: ela preenche o que falta e marca conferido **no nome de quem confirmou**. Só grava o que o banco confirmar.
+- **Íris sugeriu, confira (amarelo):** é parecido com algo de antes, apareceu poucas vezes, ou nunca apareceu. Para o que **nunca apareceu**, a Íris pede uma sugestão à **IA**. Na linha aparece "Íris: … → categoria · contato" com o botão **usar**. Também dá para **Preencher as N sugestões (sem conferir)** de uma vez. Depois confira e marque normalmente.
+- **Sempre com gente (vermelho):** neutras e **transferência entre lojas**, estorno e Banco Caixinha, e **valor fora do normal** (ex.: salário que costuma ser R$ 3.000 e veio R$ 9.000). A Íris nunca dá esses como certos.
+
+**Nada vira conferido sem uma pessoa confirmar.** A Íris não troca categoria que alguém já escolheu. Quando discorda, ela só avisa ("antes foi …").
+
+**Ensinar a Íris:** quando alguém **corrige** a categoria ou o contato (ou escolhe diferente do que a Íris sugeriu), aparece no canto um cartãozinho: "Quando aparecer [descrição] é [categoria · contato], porque [motivo]". É opcional: **Ensinar** ou **Agora não**. A palavra já vem bem específica, a descrição inteira sem números, e dá para encurtar. O ensino vale para aquela loja. Também passa a classificar sozinho na importação do extrato.
+
+**IA:** usa a mesma chave da leitura de boleto, guardada na Vercel. Ela só sugere e não grava nada. Cada lançamento é perguntado uma vez só.
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -739,6 +759,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.60 | Íris confere: separa o mês em certeza / confira / sempre com gente; confirmar em lote (conferido no nome de quem confirma); sugestão da IA para o que nunca apareceu; ensinar a Íris ao corrigir | Coluna motivo em regras_palavras (Claude roda, com autorização); arquivo novo api/iris-sugerir.js |
+| 27/10/2026 | 2.9.59 | Dashboard: quantos lançamentos em cada categoria; novo quadro Despesas pagas por contato; clicar abre a lista com o botão Abrir em Lançamentos (filtra só aqueles) | — |
 | 27/10/2026 | 2.9.58 | Conferido: corrigido o erro que não gravava a marcação um por um (desde a 2.9.44); agora só fica marcado com a confirmação do banco, desmarca e avisa NÃO SALVOU se falhar; aviso vermelho para qualquer erro escondido; não fecha a aba no meio de um salvamento | — |
 | 27/10/2026 | 2.9.57 | Botão + Lançar na agenda na própria Agenda de pagamentos: fica só na Agenda, não vai para Lançamentos (com observação, parcelas, foto do boleto e divisão na Diversas) | — |
 | 26/10/2026 | 2.9.56 | Nº documento / observação do lançamento vai para a Agenda (conta futura) e volta para o lançamento quando o extrato paga | Coluna documento em contas_pagar (Claude roda, com autorização) |
