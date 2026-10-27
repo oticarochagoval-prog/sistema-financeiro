@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.78', APP_DATA='27/10/2026';
+  const APP_VERSAO='2.9.79', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1698,6 +1698,8 @@
         try{for(const ym of yms)for(const c of contas){try{const r=await _autoEntrarConta(c,ym,null,'');if(r)nOk+=r.ok;}catch(e){log.push((_nomeLoja(Number(c.loja_id))||c.apelido)+' '+ym+' erro: '+(e.message||e));}}}
         finally{_autoRodando=false;IMPORT=[];importObs='';IMPORT_DEP=[];_IMP_API=false;IMP_MARC={modo:'todas',crit:[]};}
         log.push(`extrato do Sicoob conferido (mês inteiro): ${nOk} lançamento(s) entraram`);}
+      // v2.9.79: Casa (Rocha 1), Diversas (Rocha 2) e Grupo VR (Rocha 3) têm o CNPJ de uma loja: o banco separa pela outra ponta (mesmo valor saindo da outra conta)
+      try{const {data:aj,error:eaj}=await sb.rpc('ajustar_origem_grupo');if(!eaj)log.push('origem das transferências do grupo ajustada: '+(aj||0));}catch(e){}
       const hoje=_hojeLocal(),mAtual=Number(hoje.slice(5,7))-1,meses=Number(hoje.slice(8,10))<=10&&mAtual>0?[mAtual-1,mAtual]:[mAtual];
       const lojas=LOJAS.filter(l=>!l.arquivada&&_modDe(l)!=='casa');
       for(const L of lojas){try{if(_modDe(L)!==MODULO_ATUAL)await trocarModulo(_modDe(L));lojaAtual=L.id;await carregarContas();await carregarFechamentos();
@@ -2989,10 +2991,10 @@
     return null;}
   // v2.9.78: a "empresa" de uma conta do Fluxo (para a outra ponta da transferência)
   function empresaDaLoja(L){if(!L)return null;const ch=cxChaveLoja(L.nome),n=normDesc(L.nome);if(/412619/.test(String(L.conta_banco||'')+' '+L.nome))return 'CONTA 412619';
-    if(/^r\d+$/.test(ch))return 'ROCHA '+ch.slice(1);if(ch==='gv')return 'GV OPTICAL';if(/FZ GRIFES/.test(n))return 'FZ GRIFES';if(/GRUPO VR/.test(n))return 'GRUPO VR';if(/FZ COMERCIO/.test(n))return 'FZ COMERCIO';
+    if(/OCULOS/.test(n))return 'OCULOS';if(/^r\d+$/.test(ch))return 'ROCHA '+ch.slice(1);if(ch==='gv')return 'GV OPTICAL';if(/FZ GRIFES/.test(n))return 'FZ GRIFES';if(/GRUPO VR/.test(n))return 'GRUPO VR';if(/FZ COMERCIO/.test(n))return 'FZ COMERCIO';
     if(/DIVERSAS/.test(n))return 'CONTA DIVERSAS';if(/^CASA/.test(n))return 'CASA';return null;}
-  const _rotEmpresa=org=>({'GRUPO VR':'Grupo VR','CONTA DIVERSAS':'Conta Diversas','CONTA 412619':'Conta 412619','GV OPTICAL':'GV Lentes','FZ COMERCIO':'FZ Comércio','FZ GRIFES':'FZ Grifes','CASA':'Casa'})[org]||String(org||'').replace(/^ROCHA/,'Rocha');
-  const _nomeEmpresa=org=>org==='GV OPTICAL'?'GV LENTES':org==='FZ COMERCIO'?'FZ COMÉRCIO':org;
+  const _rotEmpresa=org=>({'OCULOS':'Óculos','GRUPO VR':'Grupo VR','CONTA DIVERSAS':'Conta Diversas','CONTA 412619':'Conta 412619','GV OPTICAL':'GV Lentes','FZ COMERCIO':'FZ Comércio','FZ GRIFES':'FZ Grifes','CASA':'Casa'})[org]||String(org||'').replace(/^ROCHA/,'Rocha');
+  const _nomeEmpresa=org=>org==='GV OPTICAL'?'GV LENTES':org==='FZ COMERCIO'?'FZ COMÉRCIO':org==='OCULOS'?'ÓCULOS':org;
   // categoria da empresa no módulo: "DIVERSAS · ROCHA 2", "CASA · GV LENTES"… (null se a categoria não existe — aí fica como antes)
   function catGrupoModulo(m,org){const p=MOD_GRUPO_CAT[m];if(!p||!org)return null;const alvo=normDesc(p+' · '+_nomeEmpresa(org));return catsAtivas().find(c=>normDesc(c.nome)===alvo)||null;}
   // classifica recebimento pro fluxo misto do Lucas
@@ -3586,11 +3588,11 @@
         try{let {data:ag,error:eag}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,categoria_id,contato_id,documento').eq('loja_id',lojaAtual).eq('status','aberto').gte('vencimento',addDias(datas[0],-30)).lte('vencimento',addDias(datas[datas.length-1],7)).limit(2000);if(eag&&/documento/i.test(eag.message||'')){({data:ag}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,categoria_id,contato_id').eq('loja_id',lojaAtual).eq('status','aberto').gte('vencimento',addDias(datas[0],-30)).lte('vencimento',addDias(datas[datas.length-1],7)).limit(2000));}AGENDA_AB=ag||[];}catch(e){AGENDA_AB=[];}
       }}catch(e){}
       // v2.9.78: nos módulos Diversas / Grupo de compras / Casa, procura a outra ponta (mesmo valor ao contrário, mesmo dia, em outra conta do grupo) para saber de qual empresa veio
-      let CONTRA=[];try{if(datas.length&&_modGrupo()){const {data:ct}=await sbTudo(()=>sb.from('lancamentos').select('loja_id,data,valor').gte('data',addDias(datas[0],-1)).lte('data',addDias(datas[datas.length-1],1)).order('id'));CONTRA=(ct||[]).filter(x=>x.loja_id!==lojaAtual);}}catch(e){}
+      let CONTRA=[];try{if(datas.length&&_modGrupo()){const {data:ct}=await sbTudo(()=>sb.from('lancamentos').select('loja_id,data,valor,descricao').gte('data',addDias(datas[0],-1)).lte('data',addDias(datas[datas.length-1],1)).order('id'));CONTRA=(ct||[]).filter(x=>x.loja_id!==lojaAtual&&/·\s*(para|de)\s|TRANSF|LUCAS GOMES/i.test(x.descricao||''));}}catch(e){}
       const outraPonta=t=>{const c=Math.round(Math.abs(t.amt)*100);const lj=[...new Set(CONTRA.filter(x=>_dias(x.data,t.iso)<=1&&Math.round(Math.abs(Number(x.valor))*100)===c&&Math.sign(Number(x.valor))===-Math.sign(t.amt)).map(x=>x.loja_id))];
         return lj.length===1?empresaDaLoja(LOJAS.find(l=>l.id===lj[0])):null;};
       // a outra ponta só vale se bater com o CNPJ do extrato (Diversas é CNPJ da Rocha 2, Grupo VR da Rocha 3, FZ Grifes da FZ Comércio, 412619 é o CPF do Lucas)
-      const CNPJ_DA={'CONTA DIVERSAS':'ROCHA 2','GRUPO VR':'ROCHA 3','FZ GRIFES':'FZ COMERCIO','CASA':'ROCHA 1','CONTA 412619':'LUCAS'};
+      const CNPJ_DA={'CONTA DIVERSAS':'ROCHA 2','GRUPO VR':'ROCHA 3','OCULOS':'ROCHA 3','FZ GRIFES':'FZ COMERCIO','CASA':'ROCHA 1','CONTA 412619':'LUCAS'};
       const origemDe=(t,full,desc,raz)=>{const o=raz!==undefined?raz:empresaOrigem(full,desc),c=outraPonta(t);if(!c)return o;const dono=CNPJ_DA[c]||c;
         if(o)return dono===o?c:o;return /LUCAS GOMES ROCH/.test(normDesc(full))&&dono==='LUCAS'?c:null;};
       const usados=new Set(),usadosEx=new Set(),usadosAg=new Set();

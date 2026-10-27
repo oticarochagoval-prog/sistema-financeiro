@@ -210,6 +210,10 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
   - O Fluxo descobre de qual conta veio procurando a outra ponta: mesmo valor, ao contrário, no mesmo dia, numa conta do grupo. Assim ele separa o que veio da Diversas do que veio da Rocha 2 (mesmo CNPJ), e o que veio do Grupo VR do que veio da Rocha 3.
   - Quando a Diversas manda para a 412619, a saída na Diversas fica DIVERSAS · PARA CONTA 412619. No total da Diversas, ela anula com a entrada.
   - A Íris preenche todas as categorias dela, igual faz na Diversas.
+- **Contas com o mesmo CNPJ nunca se misturam** (v2.9.79). A Casa usa o CNPJ da Rocha 1, a Diversas o da Rocha 2, o Grupo VR e a Óculos o da Rocha 3, a FZ Grifes o da FZ Comércio.
+  - **Na importação**: o extrato só entra na conta certa, porque o Fluxo confere o número da conta do arquivo (Rocha 2 = 447447, Diversas = 498785). Extrato de outra conta é barrado e nada entra.
+  - **Na categoria de entrada**: o Fluxo olha a outra ponta (mesmo valor saindo da outra conta no mesmo dia) para saber se veio da Rocha 2 ou da Diversas, ou se veio da Rocha 1 ou da Casa. Categorias para isso: DIVERSAS · CASA, COMPRAS · CONTA DIVERSAS, CASA · CONTA DIVERSAS.
+  - **O robô das 6h** acerta o que entrou antes da outra ponta (últimos 60 dias, só o que não foi conferido).
   - O extrato entra pelo arquivo OFX (não tem importação automática), uma vez por semana. O quadro "Extrato em dia?" do Dashboard fica vermelho quando passa de 7 dias.
 
 ### Conferir mais rápido (v2.9.76)
@@ -889,6 +893,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.79 | Contas com o mesmo CNPJ (Casa/Rocha 1, Diversas/Rocha 2, Grupo VR/Rocha 3) separadas pela outra ponta da transferência; robô das 6h acerta depois; categorias DIVERSAS · CASA, COMPRAS · CONTA DIVERSAS, CASA · CONTA DIVERSAS | Rodado: 45 categorias, conta 412619 na Diversas, 5.471 entradas de junho para cá reclassificadas (só não conferidas) |
 | 27/10/2026 | 2.9.78 | Conta 412619 dentro da Diversas com a mesma regra; o Fluxo acha de qual conta veio pela outra ponta da transferência (Diversas x Rocha 2, Grupo VR x Rocha 3); Diversas → 412619 vira DIVERSAS · PARA CONTA 412619 | Categorias CONTA DIVERSAS, CONTA 412619 e PARA… |
 | 27/10/2026 | 2.9.77 | Diversas, Grupo de compras e Casa: entrada de empresa do grupo vai para a categoria da empresa (ROCHA 1…11, GV Lentes, FZ); neutro só empréstimo que volta; Dashboard mostra receita por empresa; conta 412619 no Grupo de compras. GV Lentes sem mudança | Categorias novas; junho para cá reclassificado (só não conferidos) |
 | 27/10/2026 | 2.9.76 | Completou categoria/contato/sugestão = conferido no nome de quem fez; categorias que a Íris confere sozinha (VENDA PIX, Cartão, PIX DE CLIENTE, Tarifas de verdade); atalhos ↑↓, Espaço, U | Coluna auto_conferir em categorias (rodada com autorização) |
