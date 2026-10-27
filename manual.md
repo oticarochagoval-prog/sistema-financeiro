@@ -167,6 +167,19 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 - **Conserto importante:** o banco devolve no máximo 1000 linhas por vez. Loja com mais de 1000 lançamentos no ano (Rocha 1, Diversas, GV…) **não mostrava os últimos meses** na tela, no Dashboard, no saldo e nos conferidos. Agora o Fluxo busca tudo, de 1000 em 1000. Os lançamentos sempre estiveram no banco: só não apareciam.
 - **Juros por loja:** Rocha 1 a Rocha 11 em ordem, depois as outras contas do grupo (GV, FZ, Grupo VR, Diversas, Casa), mês a mês, a partir do primeiro mês com dado. Clique na loja para ver o que é cada valor: Empréstimo (parcelas), Tarifas Banco e Juros Cheque Especial. Em cima ficam o mês atual, o mês passado e o total do ano por tipo.
 
+### Confirmar no fim da lista e ensinar quando quiser (v2.9.68)
+
+- **No fim da lista de Lançamentos** tem o botão de confirmar de uma vez:
+  - com o verde da Íris aberto: **Confirmar os N da Íris**;
+  - com o amarelo aberto: **Preencher as N sugestões**;
+  - nos outros casos: **Já conferi: marcar os N amarelos desta lista** (só os que estão aparecendo, classificados e sem conferir). O que a Íris marcou como "sempre com gente" fica de fora, para marcar um por um.
+- O quadro da Íris (verde, amarelo, vermelho) desceu para perto da lista, logo abaixo do quadro dos Cartões.
+- Na linha, a sugestão agora diz o que é ("→ categoria Funcionários · contato JESSICA"), e o botão chama **usar sugestão**. Também tem o botão **ensinar** para explicar à Íris a qualquer hora, sem precisar corrigir nada.
+
+### Juros por loja: só juros, IOF e tarifas (v2.9.69)
+
+- A tela separa pelo que o **banco escreve na linha**, e não pela categoria: **Juros** (conta garantida, cheque especial, adiantamento a depositante), **IOF** e **Tarifas do banco** (pacote de serviços, renovação de limite). Parcela de empréstimo, consórcio (DÉB.CONV), seguro e taxa da prefeitura **não entram**. Clicando na loja, aparece a divisão entre os três.
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -818,6 +831,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.69 | Juros por loja: só juros, IOF e tarifas pelo texto do banco (empréstimo, consórcio e seguro fora) | — |
+| 27/10/2026 | 2.9.68 | Botão de confirmar no fim da lista (Íris verde, sugestões, ou todos os amarelos da lista, menos os "sempre com gente"); quadro da Íris perto da lista; sugestão diz categoria/contato; botões usar sugestão e ensinar | — |
 | 27/10/2026 | 2.9.67 | Busca todos os lançamentos (o banco só devolve 1000 por vez: loja grande perdia os últimos meses na tela); Juros por loja em ordem Rocha 1–11 + outras contas, mês a mês, com o detalhe por tipo | — |
 | 27/10/2026 | 2.9.66 | Banco Caixinha: liga só com a caixa da loja do extrato, empréstimo ainda não ligado, até 15 dias e o mais perto; Casa usa a caixinha Casa; mensagem clara quando já ligado | Conserto de 29 ligações erradas + parcelas no mês errado (rodado com autorização, backup antes) |
 | 27/10/2026 | 2.9.65 | Fechamento: confere o movimento do mês com o banco (separa erro do mês de erro de saldo inicial) e mostra dia a dia o que falta no Fluxo e o que sobra (possível repetido), com abrir o dia | — |

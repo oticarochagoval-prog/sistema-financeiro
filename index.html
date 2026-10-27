@@ -285,7 +285,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.67', APP_DATA='27/10/2026';
+  const APP_VERSAO='2.9.69', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1565,9 +1565,10 @@
     return `<div id="irisFiltroBar" class="note" style="border-color:var(--blue);display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">Mostrando só: <b>${tit}</b> · <b>${n}</b> lançamento(s)${IRIS_FILTRO==='certeza'?'<span class="mut" style="font-size:12px">dê uma olhada e confirme: ela preenche o que falta e marca conferido no seu nome</span>':''}<span style="margin-left:auto;display:flex;gap:8px">${acao}<button class="btn ghost" style="padding:4px 12px;font-size:12px" onclick="IRIS_FILTRO='';render()">Ver todos ✕</button></span></div>`;}
   function irisChipHTML(l){if(l.conferido_por||contaEhCaixinha(l.conta_id))return '';const r=irisAvaliar().get(l.id);if(!r)return '';
     const rgb={certeza:'61,214,140',confira:'245,183,64',gente:'214,69,69',nunca:'143,161,151'}[r.nivel];
-    const sug=r.preencher?` → ${_remEsc([!l.categoria_id&&r.cat?_irisCatNome(r.cat):'',!l.contato_id&&r.cont?_irisContNome(r.cont):''].filter(Boolean).join(' · '))}`:'';
-    const usar=r.preencher&&podeEditar()?`<button tabindex="-1" class="catchip" onclick="irisUsar(${l.id})" style="cursor:pointer;font-size:10.5px;border-color:rgba(${rgb},.7);color:rgb(${rgb});font-weight:800">usar</button>`:'';
-    return `<span class="catchip" title="Íris: ${_remEsc(r.motivo)}" style="font-size:10.5px;border-color:rgba(${rgb},.45);color:rgb(${rgb});background:rgba(${rgb},.08)">Íris: ${_remEsc(r.motivo)}${sug}</span>${usar}`;}
+    const sug=r.preencher?` → ${_remEsc([!l.categoria_id&&r.cat?'categoria '+_irisCatNome(r.cat):'',!l.contato_id&&r.cont?'contato '+_irisContNome(r.cont):''].filter(Boolean).join(' · '))}`:'';
+    const usar=r.preencher&&podeEditar()?`<button tabindex="-1" class="catchip" onclick="irisUsar(${l.id})" title="Coloca o que a Íris sugeriu. Não marca conferido." style="cursor:pointer;font-size:10.5px;border-color:rgba(${rgb},.7);color:rgb(${rgb});font-weight:800">usar sugestão</button>`:'';
+    const ens=l.categoria_id&&podeEditar()?`<button tabindex="-1" class="catchip" onclick="irisAbrirEnsinar(${l.id})" title="Explicar para a Íris como é este lançamento" style="cursor:pointer;font-size:10.5px">ensinar</button>`:'';
+    return `<span class="catchip" title="Íris: ${_remEsc(r.motivo)}" style="font-size:10.5px;border-color:rgba(${rgb},.45);color:rgb(${rgb});background:rgba(${rgb},.08)">Íris: ${_remEsc(r.motivo)}${sug}</span>${usar}${ens}`;}
   function _irisAplicarLocal(l,patch){Object.assign(l,patch);if('categoria_id' in patch){const c=CATS.find(x=>Number(x.id)===Number(patch.categoria_id));l.categorias=c?{nome:c.nome,grupo:c.grupo}:null;}
     if('contato_id' in patch){const c=CONTATOS.find(x=>Number(x.id)===Number(patch.contato_id));l.contatos=c?{nome:c.nome,tipo:c.tipo}:null;}}
   function _irisPatch(l,r){const p={};if(!l.categoria_id&&r.cat)p.categoria_id=Number(r.cat);if(!l.contato_id&&r.cont)p.contato_id=Number(r.cont);return p;}
@@ -1600,10 +1601,11 @@
     _irisMemo.t=0;if(![...irisAvaliar().values()].some(r=>r.nivel==='certeza'))IRIS_FILTRO='';lancSoAtualizar();}
   // ---- ensinar a Íris: quando corrige categoria/contato, aparece o cartãozinho (opcional) ----
   function irisAntes(id){const l=LANC.find(x=>x.id===id);const r=irisAvaliar().get(id);return l?{cat:l.categoria_id,cont:l.contato_id,sug:r?{cat:r.cat,cont:r.cont}:null}:null;}
-  function irisTalvezEnsinar(id,antes){const l=LANC.find(x=>x.id===id);if(!l||!antes||!l.categoria_id||!podeEditar())return;
+  function irisAbrirEnsinar(id){const l=LANC.find(x=>x.id===id);if(!l)return;irisTalvezEnsinar(id,{cat:l.categoria_id,cont:l.contato_id,sug:null},true);}
+  function irisTalvezEnsinar(id,antes,forcar){const l=LANC.find(x=>x.id===id);if(!l||!antes||!l.categoria_id||!podeEditar())return;
     const mudouCat=antes.cat&&Number(antes.cat)!==Number(l.categoria_id),mudouCont=antes.cont&&l.contato_id&&Number(antes.cont)!==Number(l.contato_id);
     const contraIris=antes.sug&&((antes.sug.cat&&Number(antes.sug.cat)!==Number(l.categoria_id))||(antes.sug.cont&&l.contato_id&&Number(antes.sug.cont)!==Number(l.contato_id)));
-    if(!mudouCat&&!mudouCont&&!contraIris)return;
+    if(!forcar&&!mudouCat&&!mudouCont&&!contraIris)return;
     const _kf=_irisKFull(l.descricao);const k=/^#DOC:/.test(_kf)?_kf:_kf.split(' ').filter(t=>t.length>=2).slice(0,6).join(' ');if(!k)return; // bem específico: a descrição inteira (sem números); dá para encurtar
     const ehDoc=/^#DOC:/.test(k);const alvo=[_irisCatNome(l.categoria_id),l.contato_id?_irisContNome(l.contato_id):''].filter(Boolean).join(' · ');
     let el=document.getElementById('irisEnsinar');if(!el){el=document.createElement('div');el.id='irisEnsinar';document.body.appendChild(el);}
@@ -1852,7 +1854,7 @@
       <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho · <b>hoje ou antes = pago</b> (fica aqui) · <b>depois de hoje = a pagar</b> (vai para a Agenda)</span><span>👥 Categoria obrigatória · sem contato cadastrado? escreva quem foi na observação</span></div>
     </div>`:'<div class="note">👁️ Seu acesso é somente leitura (contador). Você pode ver e exportar, mas não lançar.</div>';
     const diaLabel=filtroDia?isoParaBR(filtroDia):'Todos os dias';
-    document.getElementById('content').innerHTML='<div id="lancConfTopo">'+conferePainelHTML()+'</div>'+'<div id="irisPainel">'+irisPainelHTML()+'</div>'+avisoPixNovembro()+(MODULO_ATUAL==='diversas'?'<div id="divLentesAviso"></div>':'')+'<div id="ultimaImportLanc"></div>'+saldoBanco+formHTML+`
+    document.getElementById('content').innerHTML='<div id="lancConfTopo">'+conferePainelHTML()+'</div>'+avisoPixNovembro()+(MODULO_ATUAL==='diversas'?'<div id="divLentesAviso"></div>':'')+'<div id="ultimaImportLanc"></div>'+saldoBanco+formHTML+`
       <div style="font-size:13px;font-weight:700;color:var(--txt);margin:22px 0 12px;display:flex;align-items:center;gap:7px;border-top:1px solid var(--line);padding-top:18px">🔍 LANÇAMENTOS CADASTRADOS <span class="mut" style="font-weight:400;font-size:12px">— consultar e editar</span></div>
       <div style="display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 14px;width:fit-content;margin-bottom:12px">
         <button class="burger" style="width:32px;height:32px" title="Mês anterior" onclick="navMes(-1)">‹</button>
@@ -1862,6 +1864,7 @@
       <div id="saldoDia1" style="margin-bottom:12px"></div>
       <div id="cartoesDash"></div>
       <div id="autoDash"></div>
+      <div id="irisPainel">${irisPainelHTML()}</div>
       <div id="lancFaixa">${faixaDiasHTML()}</div>
       <div class="toolbar" style="position:sticky;top:64px;z-index:15;background:var(--bg);padding:8px 0">
         <div class="search">🔍<input id="buscaLanc" placeholder="Buscar por texto, contato ou valor..." value="${q}" oninput="filtrarLanc(this.value)"></div>
@@ -1895,6 +1898,23 @@
     if(nome===CAT_ESTORNO_REC){if(ref.startsWith('cxp:'))return '<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)" title="Devolução já marcada no Banco Caixinha">↩ devolução marcada no Caixinha ✓</span>';
       return cxPodeCriar()?`<button class="catchip" onclick="abrirMarcarDevolucao(${l.id})" style="font-size:10px;padding:1px 8px;border-color:var(--amber);color:var(--amber);cursor:pointer;background:rgba(245,183,64,.10)" title="Marcar no Banco Caixinha que a loja devolveu">↩ Marcar devolução no Caixinha</button>`:'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--amber);color:var(--amber)">↩ a Heloísa marca a devolução</span>';}
     return '';}
+  // v2.9.68: botão no FIM da lista — depois de olhar tudo, confirma de uma vez
+  let _lancVis=[];
+  function loteBarraHTML(rows){_lancVis=rows||[];if(!podeEditar()||!rows||!rows.length)return '';
+    const _R=irisAvaliar(),_gente=l=>{const r=_R.get(l.id);return !!r&&r.nivel==='gente';};
+    const am=rows.filter(l=>!l.conferido_por&&!contaEhCaixinha(l.conta_id)&&lancPronto(l)&&!_gente(l)),nG=rows.filter(l=>!l.conferido_por&&lancPronto(l)&&_gente(l)).length;
+    let btn='',txt='';
+    if(IRIS_FILTRO==='certeza'){const n=[...irisAvaliar().values()].filter(r=>r.nivel==='certeza').length;if(n){btn=`<button class="btn" style="font-weight:800;background:var(--green);border-color:var(--green);color:#04130c;padding:10px 18px" onclick="irisConfirmarCerteza()">Confirmar os ${n} da Íris</button>`;txt='Olhou a lista? Ela preenche o que falta e marca conferido no seu nome.';}}
+    else if(IRIS_FILTRO==='confira'){const n=[...irisAvaliar().values()].filter(r=>_irisGrupo(r.nivel)==='confira'&&r.preencher).length;if(n){btn=`<button class="btn" style="font-weight:800;padding:10px 18px" onclick="irisPreencherSugestoes()">Preencher as ${n} sugestões (sem conferir)</button>`;txt='Depois confira e marque.';}}
+    if(!btn&&am.length){btn=`<button class="btn" style="font-weight:800;background:var(--green);border-color:var(--green);color:#04130c;padding:10px 18px" onclick="lancConferirLista()">Já conferi: marcar ${am.length===1?'o amarelo':'os '+am.length+' amarelos'} desta lista</button>`;txt=`Só os que estão aparecendo, classificados e ainda sem conferir.${nG?` Os ${nG} que a Íris marcou como "sempre com gente" (transferência, estorno, valor fora do normal) ficam para marcar um por um.`:''}`;}
+    return btn?`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 4px">${btn}<span class="mut" style="font-size:12px">${txt}</span></div>`:'';}
+  async function lancConferirLista(){const _R=irisAvaliar();const ls=_lancVis.filter(l=>{const r=_R.get(l.id);return !l.conferido_por&&!contaEhCaixinha(l.conta_id)&&lancPronto(l)&&!(r&&r.nivel==='gente')&&!bloqueadoPorFechamento(l.data,l.conta_id);});if(!ls.length)return;
+    if(!confirm(`Marcar como conferidos os ${ls.length} lançamentos amarelos que estão aparecendo na lista?\n\nFica no nome de ${PERFIL.nome}.`))return;
+    const up={conferido_por:PERFIL.nome,conferido_em:new Date().toISOString()};let ok=0,falha=0;_salvandoN++;
+    try{for(let i=0;i<ls.length;i+=200){const parte=ls.slice(i,i+200);const {data,error}=await sb.from('lancamentos').update(up).in('id',parte.map(l=>l.id)).select('id');
+        const sim=new Set((data||[]).map(x=>x.id));parte.forEach(l=>{if(!error&&sim.has(l.id)){Object.assign(l,up);ok++;}else falha++;});}}
+    finally{_salvandoN--;}
+    toast(falha?`${ok} conferidos. ${falha} NÃO salvaram: marque de novo.`:`${ok} conferidos.`,falha?'erro':'ok');_irisMemo.t=0;lancSoAtualizar();}
   function htmlResultadoLanc(rows,somaE,somaS){
     const editavel=podeEditar();
     const _pm=`${ANO_FIXO}-${_mm(mesSel)}`,_mes=LANC.filter(l=>(l.data||'').slice(0,7)===_pm),_ehN=l=>!!(l.categorias&&l.categorias.grupo==='neutra');
@@ -1959,7 +1979,7 @@
           return banco.length?`<span style="font-size:12.5px"><b style="color:var(--green)">Conferidos ${cf} de ${banco.length}</b>${am?` · <span style="color:var(--amber)">${am} amarelos</span>`:''}${vm?` · <span style="color:var(--red)">${vm} vermelhos</span>`:''}</span>${filtroDia&&am&&podeEditar()?` <button class="btn ghost" style="padding:3px 9px;font-size:11.5px" onclick="lancConferirDia()">Conferir os ${am} amarelos do dia</button>`:''}`:'';})()}
       </div>
       ${(()=>{_lancVisiveis=rows.map(l=>l.id);const n=[...LANC_SEL].filter(id=>_lancVisiveis.includes(id)).length;return n?`<div class="note" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-color:rgba(214,69,69,.45)"><b>${n} marcado(s)</b><button class="btn" style="padding:5px 12px;font-size:12.5px;background:var(--red);border-color:var(--red)" onclick="lancParaLixeira([...LANC_SEL].filter(id=>_lancVisiveis.includes(id)))">Mandar para a Lixeira</button><button class="btn ghost" style="padding:5px 12px;font-size:12.5px" onclick="LANC_SEL.clear();_keepY=window.scrollY;render()">Desmarcar</button><span class="mut" style="font-size:12px">Vai com o seu nome e dá para restaurar. Pix de cliente não precisa sair: até outubro é neutro (use "esconder as neutras"); de novembro em diante conta como venda.</span></div>`:'';})()}
-      <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th style="white-space:nowrap">${podeLixeira()&&rows.length?`<input type="checkbox" style="margin-right:6px;vertical-align:middle" title="Marcar todos que estão aparecendo" ${rows.length&&rows.every(l=>LANC_SEL.has(l.id))?'checked':''} onclick="lancSelTodos(this.checked)">`:''}Data</th><th>Descrição</th><th>Categoria</th><th>Contato</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${tr}</tbody></table>${rows.length===0?'<div class="empty"><div class="big">📭</div>Nenhum lançamento'+(filtroDia?' nesse dia.':' ainda. Lance o primeiro acima!')+'</div>':''}</div>`;
+      <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th style="white-space:nowrap">${podeLixeira()&&rows.length?`<input type="checkbox" style="margin-right:6px;vertical-align:middle" title="Marcar todos que estão aparecendo" ${rows.length&&rows.every(l=>LANC_SEL.has(l.id))?'checked':''} onclick="lancSelTodos(this.checked)">`:''}Data</th><th>Descrição</th><th>Categoria</th><th>Contato</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${tr}</tbody></table>${rows.length===0?'<div class="empty"><div class="big">📭</div>Nenhum lançamento'+(filtroDia?' nesse dia.':' ainda. Lance o primeiro acima!')+'</div>':''}</div>${loteBarraHTML(rows)}`;
   }
   // muda a descrição direto na linha
   async function mudarDescLanc(id,valor){
@@ -4218,9 +4238,12 @@
   let JUROS_ABERTO={};
   async function viewJuros(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Somando o custo financeiro de cada loja...</div>';
-    const catsFin=CATS.filter(c=>/juros|cheque especial|empr[ée]stimo|tarifa|iof|encargo/i.test(c.nome)).map(c=>c.id);
-    const {data}=await sbTudo(()=>sb.from('lancamentos').select('loja_id,valor,data,categoria_id,categorias(nome)').gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').in('categoria_id',catsFin.length?catsFin:[-1]).order('id'));
-    const lancs=(data||[]).filter(l=>Number(l.valor)<0);
+    // v2.9.69: pelo que o BANCO escreve na linha (não pela categoria): juros, IOF e tarifas. Empréstimo (parcela), consórcio, seguro e taxa da prefeitura não entram.
+    const tipoFin=d=>{const t=String(d||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');if(/EMPRESTIMO|CONSORCIO|SEGURO|CONV/.test(t)&&!/JUROS|IOF|TARIFA/.test(t))return null;
+      if(/JUROS|ENCARGO/.test(t))return 'Juros (conta garantida / cheque especial)';if(/\bIOF\b|DEB\.?\s?IOF|DEBIOF/.test(t))return 'IOF';if(/TARIFA|PACOTE|CESTA|MANUT/.test(t))return 'Tarifas do banco';return null;};
+    let {data,error}=await sbTudo(()=>sb.from('lancamentos').select('loja_id,valor,data,descricao').gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').lt('valor',0).or('descricao.ilike.%JUROS%,descricao.ilike.%IOF%,descricao.ilike.%TARIFA%,descricao.ilike.%PACOTE%,descricao.ilike.%ENCARGO%,descricao.ilike.%CESTA%').order('id'));
+    if(error||!(data&&data.length)){const catsFin=CATS.filter(c=>/juros|tarifa|iof|encargo/i.test(c.nome)).map(c=>c.id);({data}=await sbTudo(()=>sb.from('lancamentos').select('loja_id,valor,data,descricao').gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').in('categoria_id',catsFin.length?catsFin:[-1]).order('id')));}
+    const lancs=(data||[]).filter(l=>Number(l.valor)<0&&tipoFin(l.descricao)).map(l=>Object.assign(l,{categorias:{nome:tipoFin(l.descricao)}}));
     const hoje=new Date(),mAtual=hoje.getFullYear()===ANO_FIXO?hoje.getMonth():11;
     const por={},cats=new Set();
     lancs.forEach(l=>{const d=por[l.loja_id]||(por[l.loja_id]={mes:Array(12).fill(0),cat:{}});const v=Math.abs(Number(l.valor)),m=parseInt(l.data.slice(5,7),10)-1,c=(l.categorias&&l.categorias.nome)||'—';
@@ -4242,7 +4265,7 @@
     const gm=Array(12).fill(0);[tR.tot,tO.tot].forEach(a=>a.forEach((v,m)=>gm[m]+=v));
     const porCatG={};Object.values(por).forEach(d=>Object.entries(d.cat).forEach(([c,a])=>porCatG[c]=(porCatG[c]||0)+soma(a)));
     const card=(t,v,cor,sub)=>`<div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">${t}</div><div style="font-size:24px;font-weight:800;color:${cor};margin-top:6px">${BRL(v)}</div>${sub?`<div class="mut" style="font-size:11px;margin-top:4px">${sub}</div>`:''}</div>`;
-    document.getElementById('content').innerHTML=`<div class="note">🏦 <b>Juros e custo financeiro — ${ANO_FIXO}, por loja e por mês.</b> Empréstimos (parcelas), tarifas do banco e juros de cheque especial. Clique na loja para ver o que é cada valor.</div>
+    document.getElementById('content').innerHTML=`<div class="note">🏦 <b>Juros e tarifas do banco — ${ANO_FIXO}, por loja e por mês.</b> Pelo que o banco escreve na linha: juros (conta garantida / cheque especial), IOF e tarifas. Parcela de empréstimo, consórcio e seguro não entram. Clique na loja para ver a divisão.</div>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:16px">
         ${card(MESES_NOME[mAtual].toUpperCase()+' (ATÉ AGORA)',gm[mAtual],'var(--amber)','todas as contas')}
         ${mAtual>0?card(MESES_NOME[mAtual-1].toUpperCase(),gm[mAtual-1],'var(--red)','mês passado'):''}
