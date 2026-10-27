@@ -285,7 +285,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.65', APP_DATA='27/10/2026';
+  const APP_VERSAO='2.9.66', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1134,7 +1134,8 @@
   function cxCaixaPorNome(nome){const ch=cxChaveLoja(nome);return CX.caixas.find(k=>cxChaveLoja(k.nome)===ch)||null;}
   function cxOpcoesLojas(sel){const selCh=sel?cxChaveLoja(sel):'';return '<option value="">qual loja deve?</option>'+(CX.caixasBanco||CX.caixas).map(k=>`<option value="${k.id}" ${k.tipo!=='conta'&&cxChaveLoja(k.nome)===selCh?'selected':''}>${k.nome}${k.tipo==='conta'?' (conta)':''}</option>`).join('');}
   // mesmo valor (centavo) na mesma loja, até 45 dias de diferença na data: pega o mais perto
-  function cxMesmoEmprestimo(caixaId,valor,iso,ignorar){return (CX.contas||[]).filter(x=>String(x.caixinha_id)===String(caixaId)&&x.status==='estornar'&&!(ignorar&&x._ligadoAgora)&&Math.abs(Number(x.valor)-valor)<0.005&&x.data&&Math.abs(_dias(x.data,iso))<=45).sort((a,b)=>Math.abs(_dias(a.data,iso))-Math.abs(_dias(b.data,iso)))[0]||null;}
+  // v2.9.66: só empréstimo DA MESMA CAIXA (a loja que pagou), que ainda não está ligado a outro lançamento, até 15 dias, o mais perto da data
+  function cxMesmoEmprestimo(caixaId,valor,iso,ignorar){const lig=CX._lig||new Set();return (CX.contas||[]).filter(x=>String(x.caixinha_id)===String(caixaId)&&x.status==='estornar'&&!(ignorar&&x._ligadoAgora)&&!lig.has(String(x.id))&&Math.abs(Number(x.valor)-valor)<0.005&&x.data&&Math.abs(_dias(x.data,iso))<=15).sort((a,b)=>Math.abs(_dias(a.data,iso))-Math.abs(_dias(b.data,iso)))[0]||null;}
   function cxAberto(c){return Math.max(0,Number(c.valor||0)-Number(c.valor_pago||0));}
   // v2.9.28: "vai estornar" direto na linha — abre o Mandar pro Banco Caixinha; a categoria só muda quando confirmar
   let _mbMudaCat=null,_dvMudaCat=null;
@@ -1167,15 +1168,15 @@
   // Mesmo valor até o centavo, até 45 dias de diferença, ainda não ligado a nenhum lançamento do Fluxo, e só UM candidato.
   async function cxLigadosFluxo(){const set=new Set(),setP=new Set();try{for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('ref_externa').like('ref_externa','cx%').order('id').range(o,o+999);if(error)break;(data||[]).forEach(x=>{const r=String(x.ref_externa||'');if(r.startsWith('cxb:'))set.add(r.slice(4));else if(r.startsWith('cxp:'))setP.add(r.slice(4));});if(!data||data.length<1000)break;}}catch(e){}CX._lig=set;CX._ligP=setP;return set;}
   // devolução que a Heloísa JÁ marcou no Caixinha (pagamento com o mesmo valor, até 5 dias de diferença) e ainda não ligada
-  function cxAchaDevolucao(valor,iso,ligP){const v=Math.round(Math.abs(Number(valor))*100),out=[];
-    (CX.contas||[]).forEach(x=>{if(x.status!=='estornar')return;(Array.isArray(x.pagamentos)?x.pagamentos:[]).forEach((p,i)=>{if(Math.round(Number(p.v)*100)===v&&p.d&&_dias(String(p.d).slice(0,10),iso)<=5&&!(ligP&&ligP.has(x.id+':'+i)))out.push({c:x,i,d:String(p.d).slice(0,10)});});});
-    return out.length===1?out[0]:null;}
+  function cxAchaDevolucao(valor,iso,ligP,caixaId){if(!caixaId)return null;const v=Math.round(Math.abs(Number(valor))*100),out=[];
+    (CX.contas||[]).forEach(x=>{if(x.status!=='estornar'||String(x.caixinha_id)!==String(caixaId))return;(Array.isArray(x.pagamentos)?x.pagamentos:[]).forEach((p,i)=>{if(Math.round(Number(p.v)*100)===v&&p.d&&Math.abs(_dias(String(p.d).slice(0,10),iso))<=5&&!(ligP&&ligP.has(x.id+':'+i)))out.push({c:x,i,d:String(p.d).slice(0,10)});});});
+    out.sort((a,b)=>Math.abs(_dias(a.d,iso))-Math.abs(_dias(b.d,iso)));if(out.length>1&&Math.abs(_dias(out[0].d,iso))===Math.abs(_dias(out[1].d,iso)))return null;return out[0]||null;}
   async function lancLigarDevolucao(id,contaId,idx){const l=LANC.find(x=>x.id===id);if(!l||!catEstornoRecId())return;if(bloqueadoPorFechamento(l.data,l.conta_id))return;
     const up={categoria_id:catEstornoRecId(),ref_externa:'cxp:'+contaId+':'+idx};const {error}=await sb.from('lancamentos').update(up).eq('id',id);
     if(error){toast('Não salvou: '+error.message,'erro');return;}if(CX._ligP)CX._ligP.add(contaId+':'+idx);toast('Ligado à devolução que já estava marcada no Caixinha ✓','ok');_lancAplicaLocal(l,up);}
-  function cxAchaEmprestimo(valor,iso,lig){const v=Math.round(Math.abs(Number(valor))*100);
-    const cs=(CX.contas||[]).filter(x=>x.status==='estornar'&&Math.round(Number(x.valor)*100)===v&&x.data&&_dias(x.data,iso)<=45&&!(lig&&lig.has(String(x.id))));
-    return cs.length===1?cs[0]:null;}
+  function cxAchaEmprestimo(valor,iso,lig,caixaId){if(!caixaId)return null;const v=Math.round(Math.abs(Number(valor))*100);
+    const cs=(CX.contas||[]).filter(x=>x.status==='estornar'&&String(x.caixinha_id)===String(caixaId)&&Math.round(Number(x.valor)*100)===v&&x.data&&Math.abs(_dias(x.data,iso))<=15&&!(lig&&lig.has(String(x.id)))).sort((a,b)=>Math.abs(_dias(a.data,iso))-Math.abs(_dias(b.data,iso)));
+    if(cs.length>1&&Math.abs(_dias(cs[0].data,iso))===Math.abs(_dias(cs[1].data,iso)))return null;return cs[0]||null;}
   const _cxNomeCaixa=id=>((CX.caixasBanco||CX.caixas||[]).find(k=>String(k.id)===String(id))||{}).nome||'';
   async function lancLigarEmprestimo(id,contaId){const l=LANC.find(x=>x.id===id);if(!l||!catEstornarId())return;if(bloqueadoPorFechamento(l.data,l.conta_id))return;
     const up={categoria_id:catEstornarId(),ref_externa:'cxb:'+contaId};const {error}=await sb.from('lancamentos').update(up).eq('id',id);
@@ -1184,12 +1185,12 @@
   // v2.9.50: liga SOZINHO ao Banco Caixinha o que é certeza (só liga; não cria nada lá):
   //  · saída já A ESTORNAR sem ligação + um único empréstimo igual (centavo, até 45 dias) → liga
   //  · entrada neutra / ESTORNO RECEBIDO sem ligação + uma única devolução já marcada igual (até 5 dias) → vira ESTORNO RECEBIDO e liga
-  async function cxAutoLigar(){if(!podeEditar()||!CX.carregado||!CX._lig)return 0;const ce=catEstornarId(),cr=catEstornoRecId();let n=0;
+  async function cxAutoLigar(){if(!podeEditar()||!CX.carregado||!CX._lig)return 0;const ce=catEstornarId(),cr=catEstornoRecId();let n=0;const _kx=cxCaixaDoExtrato();if(!_kx)return 0;
     for(const l of LANC){const r=l.ref_externa||'';if(/^cx[bp]:/.test(r)||String(r).startsWith('cxs:')||contaEhCaixinha(l.conta_id)||mesFechadoISO(l.data))continue;
       const nome=String((l.categorias&&l.categorias.nome)||'').toUpperCase();
-      if(Number(l.valor)<0&&ce&&nome===CAT_ESTORNAR&&!r){const m=cxAchaEmprestimo(l.valor,l.data,CX._lig);if(!m)continue;
+      if(Number(l.valor)<0&&ce&&nome===CAT_ESTORNAR&&!r){const m=cxAchaEmprestimo(l.valor,l.data,CX._lig,_kx&&_kx.id);if(!m)continue;
         const {error}=await sb.from('lancamentos').update({ref_externa:'cxb:'+m.id}).eq('id',l.id);if(!error){l.ref_externa='cxb:'+m.id;CX._lig.add(String(m.id));n++;}continue;}
-      if(Number(l.valor)>0&&cr&&!r&&(nome===CAT_ESTORNO_REC||(l.categorias&&l.categorias.grupo==='neutra'&&!lancEhDeposito(l)))){const d=cxAchaDevolucao(l.valor,l.data,CX._ligP);if(!d)continue;
+      if(Number(l.valor)>0&&cr&&!r&&(nome===CAT_ESTORNO_REC||(l.categorias&&l.categorias.grupo==='neutra'&&!lancEhDeposito(l)))){const d=cxAchaDevolucao(l.valor,l.data,CX._ligP,_kx&&_kx.id);if(!d)continue;
         const up={categoria_id:cr,ref_externa:'cxp:'+d.c.id+':'+d.i};const {error}=await sb.from('lancamentos').update(up).eq('id',l.id);if(!error){Object.assign(l,up);const c=CATS.find(x=>x.id==cr);l.categorias=c?{nome:c.nome,grupo:c.grupo}:l.categorias;CX._ligP.add(d.c.id+':'+d.i);n++;}}}
     if(n)toast(`🔁 ${n} lançamento(s) ligado(s) sozinho(s) ao que a Heloísa já tinha no Banco Caixinha`,'ok');return n;}
   // v2.9.34: menu "o que é?" — escolher o que é o lançamento sem excluir
@@ -1221,7 +1222,7 @@
   function cxDevedorDaDescricao(txt){const lj=lojaDaDescricao(txt||'');if(!lj)return '';const k=cxCaixaPorNome(lj);return k?String(k.nome).toUpperCase():String(lj).toUpperCase();}
   // v2.9.49: o Banco Caixinha é SEMPRE o da loja deste extrato (de onde saiu o dinheiro) — não dá para trocar
   function cxCaixaDoExtrato(){const k=cxCaixaDaLojaAtual();if(k)return k;const L=LOJAS.find(x=>x.id===lojaAtual);if(!L)return null;
-    if(_modDe(L)==='diversas')return (CX.caixasConta||[]).find(c=>/DIVERS/i.test(c.nome))||null;return null;}
+    if(_modDe(L)==='diversas')return (CX.caixasConta||[]).find(c=>/DIVERS/i.test(c.nome))||null;if(_modDe(L)==='casa')return (CX.caixasConta||[]).find(c=>/^CASA$/i.test(String(c.nome).trim()))||null;return null;}
   function cxCaixaTravadaHTML(id,k){return k?`<input type="hidden" id="${id}" value="${k.id}"><div class="qin" style="margin-bottom:8px;background:var(--bg);display:flex;align-items:center;gap:8px"><b>${_remEsc(k.nome)}</b><span class="mut" style="font-size:11.5px">a loja deste extrato · não muda</span></div>`
       :`<select id="${id}" class="qin" style="margin-bottom:4px">${cxOpcoesLojas('').replace('qual loja deve?','escolha')}</select><p class="mut" style="font-size:11.5px;margin:0 0 8px">Esta loja não tem caixinha no Caixinha: escolha.</p>`;}
   const cxPodeCriar=()=>PERFIL.papel==='dono'; // v2.9.49: criar empréstimo novo / marcar devolução no Banco Caixinha só o gestor (Lucas e Heloísa)
@@ -1263,7 +1264,7 @@
     }
     const upL={ref_externa:'cxb:'+contaId};if(_mbMudaCat===l.id&&catEstornarId())upL.categoria_id=catEstornarId();_mbMudaCat=null;
     const {error:e2}=await sb.from('lancamentos').update(upL).eq('id',l.id);
-    if(e2){err.innerHTML='<div class="err">Criou no Caixinha mas não consegui ligar aqui: '+e2.message+'</div>';btn.disabled=false;return;}
+    if(e2){err.innerHTML='<div class="err">'+(/ref_externa/i.test(e2.message||'')?'Esse empréstimo do Banco Caixinha já está ligado a outro lançamento. Cancele e escolha "criar um novo", ou fale com o Lucas.':(igual&&contaId===igual.id?'Não consegui ligar: ':'Criou no Caixinha mas não consegui ligar aqui: ')+e2.message)+'</div>';btn.disabled=false;return;}
     CX.carregado=false;fecharModal();toast(igual&&contaId===igual.id?'Ligado ao empréstimo que já existia no Banco Caixinha ✓':'Empréstimo criado no Banco Caixinha ✓','ok');_lancAplicaLocal(l,upL);
   }
   async function abrirMarcarDevolucao(lancId){
@@ -1908,8 +1909,8 @@
       // v2.9.34: sugestões só quando batem com o Banco Caixinha; o resto fica no menu "o que é?"
       const _ligadoCx=/^cx[bp]:/.test(l.ref_externa||''); // v2.9.48: A ESTORNAR / ESTORNO RECEBIDO ainda não ligados também procuram no Banco Caixinha
       const _podeSug=editavel&&!_ligadoCx&&!_ehLentes&&!contaEhCaixinha(l.conta_id)&&CX.carregado&&CX._lig;
-      const _achou=_podeSug&&Number(l.valor)<0?cxAchaEmprestimo(l.valor,l.data,CX._lig):null;
-      const _devol=_podeSug&&Number(l.valor)>0&&!lancEhDeposito(l)?cxAchaDevolucao(l.valor,l.data,CX._ligP):null;
+      const _kxL=_podeSug?cxCaixaDoExtrato():null;const _achou=_podeSug&&Number(l.valor)<0?cxAchaEmprestimo(l.valor,l.data,CX._lig,_kxL&&_kxL.id):null;
+      const _devol=_podeSug&&Number(l.valor)>0&&!lancEhDeposito(l)?cxAchaDevolucao(l.valor,l.data,CX._ligP,_kxL&&_kxL.id):null;
       const _volta=!_devol&&_podeSug&&Number(l.valor)>0&&(!l.categorias||l.categorias.grupo==='neutra')&&!lancEhDeposito(l)?((CX.contas||[]).find(x=>x.status==='estornar'&&cxAberto(x)>0.004&&(Math.round(cxAberto(x)*100)===Math.round(Number(l.valor)*100)||Math.round(Number(x.valor)*100)===Math.round(Number(l.valor)*100))&&x.data&&x.data<=l.data&&_dias(x.data,l.data)<=90)||null):null;
       const _sug=Number(l.valor)<0&&/\bEXTA?\b|ESTORN|\bESTO\b/.test(String(l.descricao||'').toUpperCase());
       const _roxo=(on,txt,tit)=>`<button tabindex="-1" class="catchip" onclick="${on}" title="${tit}" style="cursor:pointer;font-size:10.5px;padding:2px 9px;font-weight:800;border-color:#8b5cf6;color:#fff;background:#8b5cf6">${txt}</button>`;
@@ -3522,15 +3523,15 @@
       try{if(await cxSessao()){IMPORT_CX_LOGIN=true;await cxCarregar(true);}}catch(e){}
       if(IMPORT.some(r=>r.estornar)){const kq=cxCaixaDoExtrato();IMPORT.forEach(r=>{if(r.estornar&&!r.cxLoja){if(kq)r.cxLoja=kq.id;if(!r.cxDevedor&&r.lojaEstorno)r.cxDevedor=cxDevedorDaDescricao(r.lojaEstorno)||String(r.lojaEstorno).toUpperCase();}});} // v2.9.37: caixa = esta loja (quem pagou); contato = quem devolve
       if(CX.carregado)IMPORT_DEP=cxCasarDepositos(IMPORT);
-      if(CX.carregado&&catEstornarId()){try{const lig=await cxLigadosFluxo();const usados=new Set(lig);const cents=v=>Math.round(Math.abs(Number(v))*100);
+      if(CX.carregado&&catEstornarId()){try{const lig=await cxLigadosFluxo();const usados=new Set(lig);const _kI=cxCaixaDoExtrato();const cents=v=>Math.round(Math.abs(Number(v))*100);
         IMPORT.forEach(r=>{if(!(r.amt<0)||r.grupo==='ja'||r.grupo==='lentes'||r.cxLoja)return;
           if(IMPORT.filter(x=>x.amt<0&&x.grupo!=='ja'&&cents(x.amt)===cents(r.amt)).length>1)return; // dois pagamentos iguais no extrato: não adivinha
-          const m=cxAchaEmprestimo(r.amt,r.iso,usados);if(!m)return;usados.add(String(m.id));
+          const m=cxAchaEmprestimo(r.amt,r.iso,usados,_kI&&_kI.id);if(!m)return;usados.add(String(m.id));
           r.estornar=true;r.cxLoja=m.caixinha_id;r.cxDevedor=String(m.contato||'').toUpperCase();r.catId=catEstornarId();r.cxMatch={id:m.id,nome:_cxNomeCaixa(m.caixinha_id),data:m.data};r.grupo='regra';r.regra='já está no Banco Caixinha ('+r.cxMatch.nome+')';r.corrigir=false;});}catch(e){}}
-      if(CX.carregado&&catEstornoRecId()){try{const ligP=new Set(CX._ligP||[]);const cents=v=>Math.round(Math.abs(Number(v))*100);
+      if(CX.carregado&&catEstornoRecId()){try{const ligP=new Set(CX._ligP||[]);const _kI2=cxCaixaDoExtrato();const cents=v=>Math.round(Math.abs(Number(v))*100);
         IMPORT.forEach(r=>{if(!(r.amt>0)||r.grupo==='ja'||r.grupo==='lentes'||r.grupo==='cartao'||r.grupo==='pix'||r.grupo==='dep')return;
           if(IMPORT.filter(x=>x.amt>0&&x.grupo!=='ja'&&cents(x.amt)===cents(r.amt)).length>1)return;
-          const d=cxAchaDevolucao(r.amt,r.iso,ligP);if(!d)return;ligP.add(d.c.id+':'+d.i);
+          const d=cxAchaDevolucao(r.amt,r.iso,ligP,_kI2&&_kI2.id);if(!d)return;ligP.add(d.c.id+':'+d.i);
           r.catId=catEstornoRecId();r.cxDevolvido={id:d.c.id,i:d.i};r.grupo='regra';r.regra='devolução já marcada no Caixinha';r.corrigir=false;});}catch(e){}}
       if(silencioso)return true;
       toast(trans.length+' transações lidas!','ok');

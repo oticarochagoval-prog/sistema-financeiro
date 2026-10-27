@@ -155,6 +155,13 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 - Cada linha tem **abrir o dia**, que vai para Lançamentos naquele dia, naquela loja.
 - Pix de cliente antes de outubro continua neutro (decisão de 27/10: nos meses antigos, em algumas lojas o À Vista da Linx já incluía o Pix).
 
+### Banco Caixinha: ligação só com a caixa da loja (v2.9.66)
+
+- O Fluxo só liga um lançamento a um empréstimo do Banco Caixinha que esteja na **mesma caixa da loja do extrato** (a loja que pagou). Também só liga a empréstimo que ainda não está ligado a outro lançamento, e com até 15 dias de diferença, sempre o mais perto da data. A devolução (ESTORNO RECEBIDO) também só liga na loja da caixa.
+- Antes, a importação dos meses antigos ligou como empréstimo 29 lançamentos do lado de quem devolve (ex.: a Diversas pagando a Rocha 1), e algumas parcelas mensais ficaram no mês errado. Isso foi consertado em 27/10: os 29 ficaram sem ligação e sem categoria, para a Íris classificar de novo, e as parcelas foram religadas no mês certo.
+- A **Casa** agora usa a caixinha "Casa" do Caixinha, igual a Diversas usa a "DIVERSAS". FZ Grifes e Grupo VR não têm caixinha: na hora de mandar, escolha a caixa.
+- Se o empréstimo já estiver ligado a outro lançamento, aparece uma mensagem clara, e não mais "criou no Caixinha".
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -806,6 +813,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.66 | Banco Caixinha: liga só com a caixa da loja do extrato, empréstimo ainda não ligado, até 15 dias e o mais perto; Casa usa a caixinha Casa; mensagem clara quando já ligado | Conserto de 29 ligações erradas + parcelas no mês errado (rodado com autorização, backup antes) |
 | 27/10/2026 | 2.9.65 | Fechamento: confere o movimento do mês com o banco (separa erro do mês de erro de saldo inicial) e mostra dia a dia o que falta no Fluxo e o que sobra (possível repetido), com abrir o dia | — |
 | 27/10/2026 | 2.9.64 | Robô das 6h no GitHub (Íris lança, classifica, IA e Diversas sem ninguém abrir); sugestões da IA guardadas no banco; fechamento assistido (banco × Fluxo e pendências de todas as empresas) | Usuário ÍRIS no Supabase + segredos no GitHub; tabela iris_sugestoes (Claude roda, com autorização) |
 | 27/10/2026 | 2.9.63 | Íris com rosto e quadro novo no Dashboard (lancei hoje, conferi sozinha, confirmados, acerto, esperando); guia Como trabalhar com a Íris; botão Puxar os meses antigos de todas as lojas (gestor) | — |
