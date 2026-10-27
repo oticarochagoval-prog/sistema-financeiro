@@ -284,7 +284,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.60', APP_DATA='27/10/2026';
+  const APP_VERSAO='2.9.61', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1422,8 +1422,8 @@
     list.innerHTML=html;const selEl=list.querySelector('.comboitem.sel');if(selEl&&selEl.scrollIntoView)selEl.scrollIntoView({block:'nearest'});
   }
   function _comboPick(id){const fn=_comboApply,ix=_comboOrigIdx;fecharCombo();if(fn)fn(id||null);if(ix>=0)setTimeout(()=>_focarCombo(ix+1,0),120);}
-  function abrirComboCatLanc(el,id){_abrirCombo(el,_comboItemsCat(),async v=>{const _a=irisAntes(id);await mudarCampoLanc(id,'categoria_id',v);_irisMemo.t=0;lancSoAtualizar();irisTalvezEnsinar(id,_a);});}
-  function abrirComboContLanc(el,id){_abrirCombo(el,_comboItemsCont(),async v=>{const _a=irisAntes(id);await mudarCampoLanc(id,'contato_id',v);_irisMemo.t=0;lancSoAtualizar();irisTalvezEnsinar(id,_a);});}
+  function abrirComboCatLanc(el,id){_abrirCombo(el,_comboItemsCat(),async v=>{const _a=irisAntes(id);await mudarCampoLanc(id,'categoria_id',v);await irisMarcarCorrecao(id,_a);_irisMemo.t=0;lancSoAtualizar();irisTalvezEnsinar(id,_a);});}
+  function abrirComboContLanc(el,id){_abrirCombo(el,_comboItemsCont(),async v=>{const _a=irisAntes(id);await mudarCampoLanc(id,'contato_id',v);await irisMarcarCorrecao(id,_a);_irisMemo.t=0;lancSoAtualizar();irisTalvezEnsinar(id,_a);});}
   // chave pra "aprender": as 2 primeiras palavras que importam da descrição do banco
   // CNPJ (14 dígitos) ou CPF mascarado (***.502.576-**) que vem na descrição do Pix/TED
   function docDaDesc(desc){const t=String(desc||'');
@@ -1484,7 +1484,7 @@
   // ===================== v2.9.60: Íris confere os lançamentos =====================
   // Ela olha o mês e separa: CERTEZA (igual 3+ vezes no histórico ou ensinado), CONFIRA (parecido, nunca visto ou sugestão da IA)
   // e COM GENTE (neutras/transferência, estorno/Banco Caixinha, valor fora do normal). Nada vira conferido sem uma pessoa confirmar.
-  let IRIS_FILTRO='',IRIS_IA={},IRIS_IA_ESTADO='',_irisMemo={k:'',t:0,n:-1,res:null},_irisIAEmCurso=false;
+  let IRIS_FILTRO='',IRIS_IA={},IRIS_IA_ESTADO='',_irisMemo={k:'',t:0,n:-1,res:null},_irisIAEmCurso=false,IRIS_GRUPO={loja:null,map:{},n:0},_irisAutoEmCurso=false;
   try{IRIS_IA=JSON.parse(localStorage.getItem('fluxo_iris_ia')||'{}')||{};}catch(e){IRIS_IA={};}
   function _irisKFull(d){const doc=docDaDesc(d);if(doc&&/PIX|TED|TRANSF|DOC\b|PAGAMENTO/i.test(String(d)))return '#DOC:'+doc;return normDesc(String(d||'').replace(/\d+/g,' ')).replace(/\s+/g,' ').trim();}
   const _irisCatNome=id=>((CATS.find(c=>Number(c.id)===Number(id))||{}).nome)||'';
@@ -1497,20 +1497,23 @@
   function irisAvaliar(){const pref=`${ANO_FIXO}-${_mm(mesSel)}`;
     if(_irisMemo.res&&Date.now()-_irisMemo.t<250&&_irisMemo.n===LANC.length)return _irisMemo.res;
     let h=0;LANC.forEach(l=>{h=(h*31+(Number(l.id)||0)+(Number(l.categoria_id)||0)*7+(Number(l.contato_id)||0)*13+(l.conferido_por?1:0)+(l.documento?3:0))%1000000007;});
-    const key=`${lojaAtual}|${pref}|${LANC.length}|${h}|${REGRAS_P.length}|${Object.keys(IRIS_IA).length}`;
+    const key=`${lojaAtual}|${pref}|${LANC.length}|${h}|${REGRAS_P.length}|${Object.keys(IRIS_IA).length}|${IRIS_GRUPO.loja===lojaAtual?IRIS_GRUPO.n:0}`;
     if(_irisMemo.k===key){_irisMemo.t=Date.now();return _irisMemo.res;}
     // histórico: os outros meses (o que a equipe já fez) + o que já foi conferido neste mês
     const hist={},histC={};
     LANC.forEach(l=>{if(!l.categoria_id||contaEhCaixinha(l.conta_id))return;if((l.data||'').slice(0,7)===pref&&!l.conferido_por)return;
       const s=Math.sign(Number(l.valor));(hist[s+'|'+_irisKFull(l.descricao)]=hist[s+'|'+_irisKFull(l.descricao)]||[]).push(l);
       const kc=chaveAprender(l.descricao);if(kc)(histC[s+'|'+kc]=histC[s+'|'+kc]||[]).push(l);});
-    const ensinos=REGRAS_P.filter(r=>r.origem==='iris'&&r.ativa!==false&&(!r.loja_id||Number(r.loja_id)===Number(lojaAtual)));
+    const _catOk=new Set(catsAtivas().map(c=>Number(c.id)));const _ensOk=r=>r.origem==='iris'&&r.ativa!==false&&(!r.categoria_id||_catOk.has(Number(r.categoria_id)));
+    const ensinos=REGRAS_P.filter(r=>_ensOk(r)&&(!r.loja_id||Number(r.loja_id)===Number(lojaAtual))),ensOutras=REGRAS_P.filter(r=>_ensOk(r)&&r.loja_id&&Number(r.loja_id)!==Number(lojaAtual));
+    const _ensAcha=(lista,nd)=>lista.filter(r=>{const p=' '+normDesc(r.palavra)+' ';return p.trim()&&nd.includes(p);}).sort((a,b)=>String(b.palavra).length-String(a.palavra).length)[0];
+    const G=IRIS_GRUPO.loja===lojaAtual?IRIS_GRUPO.map:{};
     const res=new Map();
     LANC.forEach(l=>{if((l.data||'').slice(0,7)!==pref||l.conferido_por||contaEhCaixinha(l.conta_id))return;
       const s=Math.sign(Number(l.valor)),v=Math.abs(Number(l.valor)),H=hist[s+'|'+_irisKFull(l.descricao)]||[];
       const o={id:l.id,nivel:'nunca',motivo:'nunca visto',cat:null,cont:null,fonte:''};
       const nd=' '+normDesc(l.descricao)+' ';
-      const ens=ensinos.filter(r=>{const p=' '+normDesc(r.palavra)+' ';return p.trim()&&nd.includes(p);}).sort((a,b)=>String(b.palavra).length-String(a.palavra).length)[0];
+      const ens=_ensAcha(ensinos,nd);
       if(ens&&(ens.categoria_id||ens.contato_id)){o.cat=ens.categoria_id||null;o.cont=ens.contato_id||null;o.nivel='certeza';o.fonte='ensino';o.motivo=`ensinado${ens.motivo?': '+ens.motivo:' ('+palavraLegivel(ens.palavra)+')'}`;}
       else if(H.length>=3&&new Set(H.map(x=>Number(x.categoria_id))).size===1&&new Set(H.filter(x=>x.contato_id).map(x=>Number(x.contato_id))).size<=1){
         o.cat=Number(H[0].categoria_id);const hc=H.find(x=>x.contato_id);o.cont=hc?Number(hc.contato_id):null;o.nivel='certeza';o.fonte='historico';o.motivo=`igual ${H.length} vezes antes`;}
@@ -1518,13 +1521,15 @@
         else{o.nivel='confira';o.motivo='antes variou entre categorias';}}
       else{const kc=chaveAprender(l.descricao),C=kc?histC[s+'|'+kc]||[]:[];const d=C.length?_irisDominante(C,'categoria_id'):null;
         if(d&&d.n/C.length>=0.7){o.cat=d.v;const dc=_irisDominante(C.filter(x=>Number(x.categoria_id)===d.v),'contato_id');o.cont=dc?dc.v:null;o.nivel='confira';o.fonte='parecido';o.motivo=`parecido com ${d.n} de antes (${palavraLegivel(kc)})`;}
+        else if(_ensAcha(ensOutras,nd)){const e2=_ensAcha(ensOutras,nd);o.cat=e2.categoria_id||null;o.cont=e2.contato_id||null;o.nivel='confira';o.fonte='ensino-outra';o.motivo=`ensinado em ${lojaNomeCurto(e2.loja_id)}${e2.motivo?': '+e2.motivo:''}`;}
+        else if((G[s+'|'+_irisKFull(l.descricao)]||{}).cat){const g=G[s+'|'+_irisKFull(l.descricao)];o.cat=g.cat;o.cont=g.cont||null;o.nivel='confira';o.fonte='grupo';o.motivo=`igual em outras lojas (${g.n}x)`;}
         else if(IRIS_IA[l.id]&&(IRIS_IA[l.id].c||IRIS_IA[l.id].k)){const a=IRIS_IA[l.id];o.cat=a.c||null;o.cont=a.k||null;o.nivel='confira';o.fonte='ia';o.motivo='sugestão da IA'+(a.m?': '+a.m:'');}}
       // valor fora do normal (só quando o histórico é estável)
       if(H.length>=3){const vs=H.map(x=>Math.abs(Number(x.valor))).sort((a,b)=>a-b),med=vs[Math.floor(vs.length/2)];
         if(med>0&&(vs[vs.length-1]-vs[0])/med<=0.5&&(v/med>1.5||v/med<0.6)){o.nivel='gente';o.motivo=`valor fora do normal: costuma ser ${BRL(med)}`;}}
       // compara com o que já está na linha
       if(o.nivel!=='gente'){
-        if(l.categoria_id&&o.cat&&Number(o.cat)!==Number(l.categoria_id)){o.nivel='confira';o.motivo=`antes foi ${_irisCatNome(o.cat)} (${o.motivo})`;}
+        if(l.categoria_id&&o.cat&&Number(o.cat)!==Number(l.categoria_id)){o.nivel='confira';o.discorda=true;o.motivo=`antes foi ${_irisCatNome(o.cat)} (${o.motivo})`;}
         else if(l.categoria_id&&!o.cat&&o.nivel==='nunca'){o.nivel='confira';o.motivo='nunca visto antes: confira';}
         else if(l.contato_id&&o.cont&&Number(o.cont)!==Number(l.contato_id)&&o.nivel==='certeza'){o.nivel='confira';o.motivo=`contato diferente do costume (${_irisContNome(o.cont)})`;}}
       const catFinal=l.categoria_id||o.cat,contFinal=l.contato_id||o.cont;
@@ -1541,7 +1546,7 @@
     const ia=IRIS_IA_ESTADO==='olhando'?' · a IA está olhando os nunca vistos…':IRIS_IA_ESTADO==='sem-api'?' · a IA ainda não foi ligada na Vercel':IRIS_IA_ESTADO==='erro'?' · a IA não respondeu agora':'';
     return `<div class="card" style="margin-bottom:14px;border-color:rgba(59,99,217,.5);padding:13px 16px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="width:26px;height:26px;border-radius:50%;background:radial-gradient(var(--panel) 34%,#4fd1c5 36%);flex:none"></span>
-        <div><b style="font-size:14.5px">Íris olhou ${R.size} lançamento(s) de ${MESES_NOME[mesSel]} sem conferir</b><div class="mut" style="font-size:11.5px">ela preenche pelo que vocês já fizeram · só vira conferido quando uma pessoa confirma${ia}</div></div></div>
+        <div><b style="font-size:14.5px">Íris olhou ${R.size} lançamento(s) de ${MESES_NOME[mesSel]} sem conferir</b><div class="mut" style="font-size:11.5px">${MODULO_ATUAL==='diversas'?'na Diversas ela preenche tudo e confere sozinha o verde e o amarelo (fica no nome ÍRIS) · o vermelho fica para vocês':'ela preenche pelo que vocês já fizeram · só vira conferido quando uma pessoa confirma'}${ia}</div></div></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px">
         ${box('certeza','var(--green)','61,214,140','Íris tem certeza','igual 3 vezes ou mais, ou ensinado')}
         ${box('confira','var(--amber)','245,183,64','Íris sugeriu, confira',nunca?`parecido ou novo · ${nunca} nunca visto(s)`:'parecido com algo de antes, ou novo')}
@@ -1563,10 +1568,10 @@
   function _irisPatch(l,r){const p={};if(!l.categoria_id&&r.cat)p.categoria_id=Number(r.cat);if(!l.contato_id&&r.cont)p.contato_id=Number(r.cont);return p;}
   // grava o preenchimento em grupos (mesma categoria/contato = um update só) e só aplica o que o banco confirmou
   async function _irisPreencher(lista){let ok=0,falha=0;const grupos={};
-    lista.forEach(({l,r})=>{const p=_irisPatch(l,r);if(!Object.keys(p).length)return;const k=JSON.stringify(p);(grupos[k]=grupos[k]||{p,ls:[]}).ls.push(l);});
+    lista.forEach(({l,r})=>{const p=_irisPatch(l,r);if(!Object.keys(p).length)return;p.iris=_irisTag(r);const k=JSON.stringify(p);(grupos[k]=grupos[k]||{p,ls:[]}).ls.push(l);});
     for(const g of Object.values(grupos)){for(let i=0;i<g.ls.length;i+=200){const parte=g.ls.slice(i,i+200);
-      const {data,error}=await sb.from('lancamentos').update(g.p).in('id',parte.map(l=>l.id)).select('id');
-      const sim=new Set((data||[]).map(x=>x.id));parte.forEach(l=>{if(!error&&sim.has(l.id)){_irisAplicarLocal(l,g.p);ok++;}else falha++;});}}
+      const {data,error}=await _irisUpd(g.p,parte.map(l=>l.id));
+      const sim=new Set((data||[]).map(x=>x.id));parte.forEach(l=>{if(!error&&sim.has(l.id)){const p=Object.assign({},g.p);if(!_irisTemCol)delete p.iris;_irisAplicarLocal(l,p);ok++;}else falha++;});}}
     return {ok,falha};}
   async function irisUsar(id){const l=LANC.find(x=>x.id===id),r=irisAvaliar().get(id);if(!l||!r||!r.preencher)return;if(bloqueadoPorFechamento(l.data,l.conta_id))return;
     _salvandoN++;let out;try{out=await _irisPreencher([{l,r}]);}finally{_salvandoN--;}
@@ -1582,8 +1587,9 @@
     _salvandoN++;let pre={ok:0,falha:0},cf=0,cfFalha=0;
     try{pre=await _irisPreencher(lista);
       const prontos=lista.map(x=>x.l).filter(l=>lancPronto(l)&&!l.conferido_por);const up={conferido_por:PERFIL.nome,conferido_em:new Date().toISOString()};
-      for(let i=0;i<prontos.length;i+=200){const parte=prontos.slice(i,i+200);const {data,error}=await sb.from('lancamentos').update(up).in('id',parte.map(l=>l.id)).select('id');
-        const sim=new Set((data||[]).map(x=>x.id));parte.forEach(l=>{if(!error&&sim.has(l.id)){Object.assign(l,up);cf++;}else cfFalha++;});}}
+      const semTag=prontos.filter(l=>!l.iris),comTag=prontos.filter(l=>l.iris);
+      for(const [ls,p] of [[semTag,Object.assign({iris:'certeza'},up)],[comTag,up]]){for(let i=0;i<ls.length;i+=200){const parte=ls.slice(i,i+200);const {data,error}=await _irisUpd(p,parte.map(l=>l.id));
+        const sim=new Set((data||[]).map(x=>x.id));parte.forEach(l=>{if(!error&&sim.has(l.id)){const q=Object.assign({},p);if(!_irisTemCol)delete q.iris;Object.assign(l,q);cf++;}else cfFalha++;});}}}
     finally{_salvandoN--;}
     const nao=lista.length-cf;toast(nao?`${cf} conferidos. ${nao} NÃO foram (continuam na lista): confira um por um.`:`${cf} conferidos com a Íris.`,nao?'erro':'ok');
     _irisMemo.t=0;if(![...irisAvaliar().values()].some(r=>r.nivel==='certeza'))IRIS_FILTRO='';lancSoAtualizar();}
@@ -1614,10 +1620,48 @@
     if(error){toast('Não consegui ensinar: '+error.message,'erro');return;}
     await carregarRegrasP();irisFecharEnsinar();_irisMemo.t=0;
     toast(`Íris aprendeu: quando aparecer "${palavraLegivel(palavra)}" é ${[_irisCatNome(l.categoria_id),l.contato_id?_irisContNome(l.contato_id):''].filter(Boolean).join(' · ')}.${semMot?' (O porquê não foi junto: falta a coluna no banco.)':''}`,'ok');lancSoAtualizar();}
+  // v2.9.61: o que as outras lojas já conferiram também ensina (ex.: o que a Íris aprende nas Óticas vale como sugestão na Diversas)
+  async function irisCarregarGrupo(){if(IRIS_GRUPO.loja===lojaAtual)return;const loja=lojaAtual,de=mesShift(`${ANO_FIXO}-${_mm(mesSel)}`,-4)+'-01';let rows=[];
+    try{for(let o=0;o<6000;o+=1000){const {data,error}=await sb.from('lancamentos').select('descricao,valor,categoria_id,contato_id,loja_id,conferido_por').gte('data',de).neq('loja_id',loja).order('id',{ascending:false}).range(o,o+999);if(error)break;rows=rows.concat(data||[]);if(!data||data.length<1000)break;}}catch(e){}
+    const ok=new Set(catsAtivas().map(c=>Number(c.id))),tmp={};
+    rows.forEach(l=>{if(!l.conferido_por||!l.categoria_id||!ok.has(Number(l.categoria_id)))return;const k=Math.sign(Number(l.valor))+'|'+_irisKFull(l.descricao);(tmp[k]=tmp[k]||[]).push(l);});
+    const map={};let n=0;Object.entries(tmp).forEach(([k,a])=>{if(a.length<2||new Set(a.map(x=>Number(x.categoria_id))).size!==1)return;const cs=new Set(a.filter(x=>x.contato_id).map(x=>Number(x.contato_id)));map[k]={cat:Number(a[0].categoria_id),cont:cs.size===1?[...cs][0]:null,n:a.length};n++;});
+    if(loja!==lojaAtual)return;IRIS_GRUPO={loja,map,n};_irisMemo.t=0;}
+  // marca no lançamento o que a Íris fez (para a produtividade dela no Dashboard)
+  const _irisTag=r=>r.fonte==='ia'?'ia':r.nivel==='certeza'?'certeza':'sugestao';
+  let _irisTemCol=true;
+  async function _irisUpd(patch,ids){let {data,error}=await sb.from('lancamentos').update(patch).in('id',ids).select('id');
+    if(error&&'iris' in patch&&/iris/i.test(error.message||'')){_irisTemCol=false;const p2=Object.assign({},patch);delete p2.iris;if(!Object.keys(p2).length)return {data:ids.map(id=>({id})),error:null};({data,error}=await sb.from('lancamentos').update(p2).in('id',ids).select('id'));}
+    return {data,error};}
+  // quando uma pessoa corrige o que a Íris fez: fica registrado, e o conferido passa para o nome de quem corrigiu
+  async function irisMarcarCorrecao(id,antes){const l=LANC.find(x=>x.id===id);if(!l||!antes)return;
+    const mudou=(antes.cat&&Number(antes.cat)!==Number(l.categoria_id))||(antes.cont&&Number(antes.cont)!==Number(l.contato_id));
+    if(!mudou||!l.iris||l.iris==='corrigida')return;const p={iris:'corrigida'};if(l.conferido_por==='ÍRIS'){p.conferido_por=PERFIL.nome;p.conferido_em=new Date().toISOString();}
+    const {data,error}=await _irisUpd(p,[id]);if(!error&&data&&data.length){if(!_irisTemCol)delete p.iris;Object.assign(l,p);}}
+  // ---- Diversas: a Íris preenche tudo e confere sozinha o verde e o amarelo (o vermelho fica para as pessoas) ----
+  async function irisAutoDiversas(){if(MODULO_ATUAL!=='diversas'||!podeEditar()||page!=='lanc'||_irisAutoEmCurso)return;_irisAutoEmCurso=true;
+    try{_irisMemo.t=0;const R=irisAvaliar();const loja=lojaAtual;
+      const lista=[...R.values()].map(r=>({r,l:LANC.find(x=>x.id===r.id)})).filter(x=>x.l&&!x.l.conferido_por&&!bloqueadoPorFechamento(x.l.data,x.l.conta_id));
+      if(!lista.length)return;
+      // 1) preenche (inclusive o vermelho, para não ficar nada em branco)
+      const grupos={};lista.forEach(({l,r})=>{const p=_irisPatch(l,r);if(!Object.keys(p).length)return;p.iris=_irisTag(r);const k=JSON.stringify(p);(grupos[k]=grupos[k]||{p,ls:[]}).ls.push(l);});
+      let pre=0;for(const g of Object.values(grupos)){for(let i=0;i<g.ls.length;i+=200){const parte=g.ls.slice(i,i+200);const {data,error}=await _irisUpd(g.p,parte.map(l=>l.id));
+        const sim=new Set((data||[]).map(x=>x.id));parte.forEach(l=>{if(!error&&sim.has(l.id)){const p=Object.assign({},g.p);if(!_irisTemCol)delete p.iris;_irisAplicarLocal(l,p);pre++;}});}}
+      if(loja!==lojaAtual)return;
+      // 2) confere sozinha: verde e amarelo (não confere o vermelho nem quando ela discorda do que já estava)
+      const conf=lista.filter(({l,r})=>['certeza','confira','nunca'].includes(r.nivel)&&!r.discorda&&lancPronto(l)&&!l.conferido_por&&(r.nivel!=='nunca'||l.categoria_id));
+      const porTag={};conf.forEach(({l,r})=>{const t=l.iris||_irisTag(r);(porTag[t]=porTag[t]||[]).push(l);});
+      let cf=0;const em=new Date().toISOString();
+      for(const [t,ls] of Object.entries(porTag)){for(let i=0;i<ls.length;i+=200){const parte=ls.slice(i,i+200);const p={conferido_por:'ÍRIS',conferido_em:em,iris:t};const {data,error}=await _irisUpd(p,parte.map(l=>l.id));
+        const sim=new Set((data||[]).map(x=>x.id));parte.forEach(l=>{if(!error&&sim.has(l.id)){const q=Object.assign({},p);if(!_irisTemCol)delete q.iris;Object.assign(l,q);cf++;}});}}
+      const resto=lista.filter(({l})=>!l.conferido_por).length;
+      if(pre||cf)toast(`Íris na Diversas: preencheu ${pre} e conferiu ${cf}.${resto?` ${resto} ficaram para vocês (vermelhos ou sem como decidir).`:''}`,'ok');
+      _irisMemo.t=0;if(page==='lanc')lancSoAtualizar();}
+    finally{_irisAutoEmCurso=false;}}
   // ---- IA para o que nunca apareceu (só sugere; vai para o amarelo) ----
   async function irisPedirIA(){if(_irisIAEmCurso||page!=='lanc'||!podeEditar())return;const R=irisAvaliar();
     const alvo=[...R.values()].filter(r=>r.nivel==='nunca').map(r=>LANC.find(x=>x.id===r.id)).filter(l=>l&&!l.categoria_id&&!IRIS_IA[l.id]).slice(0,180);
-    if(!alvo.length)return;_irisIAEmCurso=true;IRIS_IA_ESTADO='olhando';const p=document.getElementById('irisPainel');if(p)p.innerHTML=irisPainelHTML();
+    if(!alvo.length){if(MODULO_ATUAL==='diversas')await irisAutoDiversas();return;}_irisIAEmCurso=true;IRIS_IA_ESTADO='olhando';const p=document.getElementById('irisPainel');if(p)p.innerHTML=irisPainelHTML();
     let token='';try{const {data}=await sb.auth.getSession();token=data&&data.session?data.session.access_token:'';}catch(e){}
     const cats=catsAtivas().map(c=>({id:c.id,nome:c.nome,grupo:c.grupo}));const conts=contatosAtivos().slice(0,700).map(c=>({id:c.id,nome:c.nome,tipo:c.tipo}));
     const ex=[];const vis=new Set();LANC.filter(l=>l.categoria_id&&l.conferido_por).forEach(l=>{const k=_irisKFull(l.descricao);if(vis.has(k)||ex.length>=60)return;vis.add(k);ex.push({d:l.descricao,v:Number(l.valor),c:_irisCatNome(l.categoria_id),k:l.contato_id?_irisContNome(l.contato_id):''});});
@@ -1625,14 +1669,14 @@
     let erro='';
     try{for(let i=0;i<alvo.length;i+=60){const parte=alvo.slice(i,i+60);
       const resp=await fetch('/api/iris-sugerir',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+token,apikey:window.SUPABASE_ANON_KEY||''},
-        body:JSON.stringify({loja:lojaNomeCurto(lojaAtual),itens:parte.map(l=>({i:l.id,d:l.descricao,v:Number(l.valor),dt:l.data})),categorias:cats,contatos:conts,exemplos:ex,ensinos:ens})});
+        body:JSON.stringify({forcar:MODULO_ATUAL==='diversas',loja:lojaNomeCurto(lojaAtual),itens:parte.map(l=>({i:l.id,d:l.descricao,v:Number(l.valor),dt:l.data})),categorias:cats,contatos:conts,exemplos:ex,ensinos:ens})});
       if(resp.status===404){erro='sem-api';break;}let j={};try{j=await resp.json();}catch(e){}if(!resp.ok){erro='erro';break;}
       (j.sugestoes||[]).forEach(s=>{const id=Number(s.i);if(!parte.some(l=>l.id===id))return;const c=CATS.some(x=>Number(x.id)===Number(s.c))?Number(s.c):null,k=CONTATOS.some(x=>Number(x.id)===Number(s.k))?Number(s.k):null;
         IRIS_IA[id]={c,k,m:String(s.m||'').slice(0,80),em:Date.now()};});
       parte.forEach(l=>{if(!IRIS_IA[l.id])IRIS_IA[l.id]={c:null,k:null,m:'',em:Date.now()};});}}
     catch(e){erro='erro';}
     try{const ent=Object.entries(IRIS_IA).sort((a,b)=>(b[1].em||0)-(a[1].em||0)).slice(0,4000);IRIS_IA=Object.fromEntries(ent);localStorage.setItem('fluxo_iris_ia',JSON.stringify(IRIS_IA));}catch(e){}
-    IRIS_IA_ESTADO=erro;_irisIAEmCurso=false;_irisMemo.t=0;if(page==='lanc')lancSoAtualizar();}
+    IRIS_IA_ESTADO=erro;_irisIAEmCurso=false;_irisMemo.t=0;if(page==='lanc'){lancSoAtualizar();if(MODULO_ATUAL==='diversas')await irisAutoDiversas();}}
   function lancPronto(l){const cat=l.categorias;if(!l.categoria_id||!cat||cat.grupo==='adef')return false;
     if(categoriaExigeContato(l.categoria_id)&&!l.contato_id&&!String(l.documento||'').trim())return false; // v2.9.36: nome escrito em "contato sem cadastro" vale
     const n=String(cat.nome||'').toUpperCase(),r=l.ref_externa||'';
@@ -1713,7 +1757,7 @@
   }
 
   // Lançamentos: depois de desenhar (inclusive após salvar/editar/excluir), atualiza o saldo do dia 1º e os cartões da loja
-  async function viewLanc(){divGerarRecorrentes().catch(()=>{});await viewLancBase();setTimeout(()=>irisPedirIA().catch(()=>{}),1500);navConfAtualizar().catch(()=>{});lancCarregarCxBg();if(MODULO_ATUAL==='diversas'){preencherAvisoLentes().catch(()=>{});if(document.getElementById('agDivPainel'))agCarregarRegras().then(()=>agDivRender()).catch(()=>{});}if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
+  async function viewLanc(){divGerarRecorrentes().catch(()=>{});await viewLancBase();setTimeout(async()=>{try{await irisCarregarGrupo();if(page==='lanc')lancSoAtualizar();await irisPedirIA();}catch(e){console.error(e);}},1200);navConfAtualizar().catch(()=>{});lancCarregarCxBg();if(MODULO_ATUAL==='diversas'){preencherAvisoLentes().catch(()=>{});if(document.getElementById('agDivPainel'))agCarregarRegras().then(()=>agDivRender()).catch(()=>{});}if(await autoContatoCaixinha())await viewLancBase();preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));}
   async function viewLancBase(){
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando lançamentos...</div>';
     await carregarLancamentos();
@@ -4217,7 +4261,17 @@
       for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('conta_id,conferido_por,loja_id').in('loja_id',lojasM).gte('data',ym0+'-01').lte('data',_fimMes(ym0)).order('id').range(o,o+999);if(error)break;(data||[]).forEach(l=>{if(cx.has(l.conta_id)||!setM.has(Number(l.loja_id)))return;tot++;if(l.conferido_por)cfm++;});if(!data||data.length<1000)break;}}catch(e){}
     const falta=tot-cfm,hojeR=_hojeLocal();let uteis=0;if(hojeR.slice(0,7)===ym0){let x=hojeR;const fim=_fimMes(ym0);while(x<=fim){if(ehDiaUtil(x))uteis++;x=addDias(x,1);}}
     const resumo=tot?`<div class="note" style="margin-top:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap"><b style="font-size:20px">${cfm}/${tot}</b><span>conferidos em ${MESES_NOME[mesSel]} · ${modNome}${falta?` · <b style="color:var(--amber)">faltam ${falta}</b>${uteis?` · dá ~${Math.ceil(falta/uteis)} por dia útil até o fim do mês (${uteis} dia${uteis>1?'s':''} úteis)`:''}`:' · <b style="color:var(--green)">tudo conferido</b>'}</span><span class="mut" style="font-size:11.5px;margin-left:auto">o total cresce quando o extrato entra</span></div>`:'';
-    let html=resumo+`<div class="grid two" style="margin-top:14px">${doMes(conf,'Ranking de '+MESES_NOME[mesSel]+' · quem conferiu','lançamentos marcados como conferidos · '+modNome)}${doMes(imp,'Ranking de '+MESES_NOME[mesSel]+' · quem importou extrato','linhas lançadas pela importação · '+modNome)}</div>`;
+    // v2.9.61: produtividade da Íris no mês
+    let irisHTML='';try{let ir=[];for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('iris,conferido_por,loja_id').in('loja_id',lojasM).gte('data',ym0+'-01').lte('data',_fimMes(ym0)).not('iris','is',null).order('id').range(o,o+999);if(error)break;ir=ir.concat(data||[]);if(!data||data.length<1000)break;}
+      ir=ir.filter(l=>setM.has(Number(l.loja_id))&&l.iris);
+      if(ir.length){const sozinha=ir.filter(l=>l.conferido_por==='ÍRIS'&&l.iris!=='corrigida').length,corr=ir.filter(l=>l.iris==='corrigida').length,
+          confirm=ir.filter(l=>l.iris!=='corrigida'&&l.conferido_por&&l.conferido_por!=='ÍRIS').length,espera=ir.filter(l=>l.iris!=='corrigida'&&!l.conferido_por).length,
+          cert=ir.filter(l=>l.iris==='certeza').length,sug=ir.filter(l=>l.iris==='sugestao').length,ia=ir.filter(l=>l.iris==='ia').length,base=sozinha+confirm+corr,acerto=base?Math.round((sozinha+confirm)/base*100):0;
+        const it=(n,t,cor)=>`<div><div style="font-size:22px;font-weight:800;${cor?'color:'+cor:''}">${n}</div><div class="mut" style="font-size:11.5px">${t}</div></div>`;
+        irisHTML=`<div class="card" style="margin-top:14px;border-color:rgba(59,99,217,.5)"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="width:22px;height:22px;border-radius:50%;background:radial-gradient(var(--panel) 34%,#4fd1c5 36%);flex:none"></span><h3 style="font-size:14.5px;margin:0">Íris em ${MESES_NOME[mesSel]} · ${modNome}</h3><span class="mut" style="font-size:12px;margin-left:auto">acerto <b style="color:${acerto>=90?'var(--green)':acerto>=70?'var(--amber)':'var(--red)'}">${acerto}%</b> · o que ninguém precisou corrigir</span></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:10px">${it(sozinha,'conferiu sozinha','var(--green)')}${it(confirm,'preencheu e vocês confirmaram','var(--blue)')}${it(corr,'vocês corrigiram',corr?'var(--red)':'')}${it(espera,'preencheu, falta conferir','var(--amber)')}</div>
+          <div class="mut" style="font-size:11.5px;margin-top:8px">tinha certeza em ${cert} · sugeriu ${sug} · pela IA ${ia}</div></div>`;}}catch(e){}
+    let html=resumo+irisHTML+`<div class="grid two" style="margin-top:14px">${doMes(conf,'Ranking de '+MESES_NOME[mesSel]+' · quem conferiu','lançamentos marcados como conferidos · '+modNome)}${doMes(imp,'Ranking de '+MESES_NOME[mesSel]+' · quem importou extrato','linhas lançadas pela importação · '+modNome)}</div>`;
     // 2) produtividade, só gestor
     if(gestor){const pes=[...new Set([...Object.keys(conf),...Object.keys(imp)])];
       const hoje=_hojeLocal(),mesHoje=hoje.slice(0,7)===ym0,diaH=Number(hoje.slice(8,10)),diasM=new Date(ANO_FIXO,mesSel+1,0).getDate();

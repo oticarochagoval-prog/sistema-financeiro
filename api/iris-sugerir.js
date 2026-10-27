@@ -1,4 +1,4 @@
-// Fluxo · Íris sugere categoria e contato para lançamentos que nunca apareceram · v2.9.60
+// Fluxo · Íris sugere categoria e contato para lançamentos que nunca apareceram · v2.9.61
 // Roda na Vercel (pasta /api). Usa a mesma chave da leitura de boleto: ANTHROPIC_API_KEY
 // (Vercel → projeto sistema-financeiro → Settings → Environment Variables). Nunca no index.html.
 // Só responde para quem está logado no Fluxo. Só SUGERE: nada é gravado aqui.
@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
     // 2) o pedido
     let body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
-    const { loja, itens, categorias, contatos, exemplos, ensinos } = body || {};
+    const { loja, itens, categorias, contatos, exemplos, ensinos, forcar } = body || {};
     if (!Array.isArray(itens) || !itens.length || !Array.isArray(categorias)) { res.status(400).json({ erro: 'pedido vazio' }); return; }
     const corta = (a, n) => (Array.isArray(a) ? a.slice(0, n) : []);
     const dados = {
@@ -39,7 +39,7 @@ Para cada item, escolha a CATEGORIA (pelo id da lista) e, se fizer sentido, o CO
 Grupos de categoria: rec = receita (valor positivo), cmv = custo de mercadoria/lentes, imp = imposto, fixo = custo fixo (salário, aluguel, energia), nop = não operacional, neutra = transferência/dinheiro que só passa.
 Use os EXEMPLOS (como a equipe já classificou) e os ENSINOS (regras que a equipe explicou) como guia principal.
 Valor negativo = saída (despesa); positivo = entrada. Não use categoria de receita para saída, nem de despesa para entrada.
-Se não tiver segurança, devolva c=null (não chute). Contato só se o nome aparecer claramente na descrição ou num exemplo igual; senão k=null.
+${forcar ? 'SEMPRE escolha a categoria mais provável (c nunca null); se estiver em dúvida, diga isso no motivo.' : 'Se não tiver segurança, devolva c=null (não chute).'} Contato só se o nome aparecer claramente na descrição ou num exemplo igual; senão k=null.
 "m" = motivo curto em português (até 8 palavras).
 Responda APENAS com JSON, sem texto antes ou depois: {"sugestoes":[{"i":<id do item>,"c":<id categoria ou null>,"k":<id contato ou null>,"m":"motivo"}]}
 

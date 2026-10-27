@@ -108,6 +108,13 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 
 **IA:** usa a mesma chave da leitura de boleto, guardada na Vercel. Ela só sugere e não grava nada. Cada lançamento é perguntado uma vez só.
 
+### Íris na Diversas e produtividade (v2.9.61)
+
+- **Na Diversas a Íris trabalha sozinha:** quando alguém abre Lançamentos da Diversas, ela **preenche tudo** (inclusive o vermelho, para não ficar nada em branco) e **confere sozinha o verde e o amarelo**. O conferido fica no nome **ÍRIS**. O vermelho (transferência entre lojas, estorno, valor fora do normal) e os casos em que ela discorda do que já estava ficam para as pessoas. Na Diversas, a IA sempre escolhe a categoria mais provável.
+- **Ela aprende com as outras lojas:** o que já foi conferido nas outras lojas nos últimos meses (ex.: Óticas Rocha) e o que foi **ensinado** em outra loja viram sugestão (amarelo).
+- **Corrigir:** se alguém mudar a categoria ou o contato de algo que a Íris fez, fica registrado como "corrigida". Se estava conferido pela ÍRIS, o conferido passa para o nome de quem corrigiu.
+- **Dashboard:** quadro **Íris em [mês]** com quanto ela conferiu sozinha, quanto preencheu e vocês confirmaram, quanto vocês corrigiram, o que falta conferir e o **acerto %** (o que ninguém precisou corrigir). A ÍRIS também aparece no ranking de quem conferiu.
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -759,6 +766,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.61 | Íris na Diversas: preenche tudo e confere sozinha o verde e o amarelo (nome ÍRIS); aprende com o que as outras lojas conferiram e ensinaram; correção registrada; quadro de produtividade da Íris no Dashboard | Coluna iris em lancamentos (rodada com autorização) |
 | 27/10/2026 | 2.9.60 | Íris confere: separa o mês em certeza / confira / sempre com gente; confirmar em lote (conferido no nome de quem confirma); sugestão da IA para o que nunca apareceu; ensinar a Íris ao corrigir | Coluna motivo em regras_palavras (Claude roda, com autorização); arquivo novo api/iris-sugerir.js |
 | 27/10/2026 | 2.9.59 | Dashboard: quantos lançamentos em cada categoria; novo quadro Despesas pagas por contato; clicar abre a lista com o botão Abrir em Lançamentos (filtra só aqueles) | — |
 | 27/10/2026 | 2.9.58 | Conferido: corrigido o erro que não gravava a marcação um por um (desde a 2.9.44); agora só fica marcado com a confirmação do banco, desmarca e avisa NÃO SALVOU se falhar; aviso vermelho para qualquer erro escondido; não fecha a aba no meio de um salvamento | — |
