@@ -193,6 +193,31 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 - **Contato automático:** a Íris preenche sozinha o **contato** das saídas que ela sabe (pelo histórico, pelo que foi ensinado, pelas outras lojas e pela IA). A **categoria** continua com vocês, menos na Diversas, onde ela já faz tudo. Não marca conferido. Isso roda ao abrir Lançamentos e no robô das 6h.
 - Gestor: no quadro da Íris em Lançamentos tem **Preencher contatos de todos os meses**. Ela passa por todas as lojas, de junho até agora.
 
+### Dinheiro das empresas do grupo em Diversas, Grupo de compras e Casa (v2.9.77)
+- Nesses três módulos, o que entra vindo de uma empresa do grupo **não é mais neutro**: vai para a categoria da empresa que mandou. Exemplos: DIVERSAS · ROCHA 1, COMPRAS · ROCHA 9, CASA · GV LENTES.
+- Categorias criadas:
+  - Diversas: Rocha 1 a 11, GV Lentes, FZ Comércio, FZ Grifes e Grupo VR.
+  - Grupo de compras: Rocha 1 a 11.
+  - Casa: Rocha 1 a 11 e GV Lentes.
+- A empresa é descoberta pela razão social do extrato ou pela sigla no fim da descrição (· de DVL = Rocha 2, PRIME = 3, DTR = 4, MM = 5, ROCHA = Rocha 6, IPT = 7, PREMIUM = 8, CP = 9, CM = 10, VILA = 11, GV = GV Lentes, FZ = FZ Comércio).
+- **Continua neutro só o empréstimo que volta:** VAI ESTORNAR, ESTORNO, EXT ou EMP. "EMPRÉSTIMOS MÁQUINAS FREEFORM E JADIR · de R1" é a loja pagando a parte dela, então é receita.
+- Se não der para saber de qual empresa veio, fica como antes, para vocês marcarem.
+- Saída para empresa do grupo nesses módulos fica **sem categoria**, para alguém escolher. Empréstimo continua neutro.
+- No Dashboard desses módulos, o quadro de receitas mostra quanto veio de cada empresa, Rocha 1 a 11 em ordem.
+- **GV Lentes não mudou.**
+- Conta **412619** (CPF do Lucas, cheques do Grupo VR) entrou no Grupo de compras como "Conta 412619 (cheques)". O extrato dela é importado pelo arquivo OFX.
+
+### Conferir mais rápido (v2.9.76)
+
+- **Completou, conferiu.** Ao completar o que faltava na linha (categoria, contato ou usar sugestão), o lançamento já fica conferido no nome de quem completou. O que a Íris marca como "sempre com gente" continua manual.
+- **Categorias que a Íris confere sozinha:** em Categorias, o gestor marca **Íris confere**. Começou com VENDA PIX, Cartão, PIX DE CLIENTE (antes de outubro) e Tarifas Banco. Em Tarifas Banco ela só confere o que é mesmo tarifa, IOF ou juros: DÉB.CONV (consórcio), seguro e empréstimo ficam para vocês. Transferência entre lojas e estorno nunca entram.
+- **Atalhos de teclado em Lançamentos:** clique numa linha; **↑ ↓** escolhe a linha; **Espaço** (ou Enter) confere e já desce para a próxima; **U** usa a sugestão da Íris.
+
+### CPF do sócio não vira funcionário (v2.9.75)
+
+- O Fluxo aprende o funcionário pelo pedaço do CPF que o banco mostra no Pix. Em 27/10 ele aprendeu errado que o CPF do Lucas era do RYAN, e 107 lançamentos (retirada, empréstimo, cartão, salário Lucas…) ganharam o contato RYAN. A regra foi desligada, os 107 ficaram sem contato (nenhum estava conferido) e a Íris preenche o certo.
+- Daqui pra frente, um CPF que aparece junto de "LUCAS GOMES ROCHA", retirada de sócio ou empréstimo Lucas **nunca** é aprendido como funcionário.
+
 ### Robô das 6h confere o mês inteiro (v2.9.74)
 
 - Às 6h a Íris confere o **mês inteiro** de cada conta do Sicoob (e o mês passado, até o dia 10). O que sumiu do Fluxo (excluído por engano) ou não tinha entrado **volta sozinho**. O que já está lá não repete. O que pode ser repetido continua esperando em Importar.
@@ -859,6 +884,9 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.77 | Diversas, Grupo de compras e Casa: entrada de empresa do grupo vai para a categoria da empresa (ROCHA 1…11, GV Lentes, FZ); neutro só empréstimo que volta; Dashboard mostra receita por empresa; conta 412619 no Grupo de compras. GV Lentes sem mudança | Categorias novas; junho para cá reclassificado (só não conferidos) |
+| 27/10/2026 | 2.9.76 | Completou categoria/contato/sugestão = conferido no nome de quem fez; categorias que a Íris confere sozinha (VENDA PIX, Cartão, PIX DE CLIENTE, Tarifas de verdade); atalhos ↑↓, Espaço, U | Coluna auto_conferir em categorias (rodada com autorização) |
+| 27/10/2026 | 2.9.75 | CPF do sócio nunca é aprendido como funcionário (conserto do contato RYAN em 107 lançamentos, regra desligada) | Rodado com autorização, backup antes |
 | 27/10/2026 | 2.9.74 | Robô das 6h confere o mês inteiro de cada conta (e o mês passado até o dia 10): o que foi excluído por engano ou não entrou volta sozinho | — |
 | 27/10/2026 | 2.9.73 | Ensinar a Íris com um clique (Enter também); o porquê ficou opcional e escondido | — |
 | 27/10/2026 | 2.9.72 | Linha em edição fica marcada e no mesmo lugar da tela (não pula nem some do filtro) até clicar em outra | — |

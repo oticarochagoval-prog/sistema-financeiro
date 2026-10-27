@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.74', APP_DATA='27/10/2026';
+  const APP_VERSAO='2.9.77', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1442,8 +1442,8 @@
     list.innerHTML=html;const selEl=list.querySelector('.comboitem.sel');if(selEl&&selEl.scrollIntoView)selEl.scrollIntoView({block:'nearest'});
   }
   function _comboPick(id){const fn=_comboApply,ix=_comboOrigIdx;fecharCombo();if(fn)fn(id||null);if(ix>=0)setTimeout(()=>_focarCombo(ix+1,0),120);}
-  function abrirComboCatLanc(el,id){LANC_FOCO=id;_abrirCombo(el,_comboItemsCat(),async v=>{const _a=irisAntes(id);await mudarCampoLanc(id,'categoria_id',v);await irisMarcarCorrecao(id,_a);_irisMemo.t=0;lancSoAtualizar();irisTalvezEnsinar(id,_a);});}
-  function abrirComboContLanc(el,id){LANC_FOCO=id;_abrirCombo(el,_comboItemsCont(),async v=>{const _a=irisAntes(id);await mudarCampoLanc(id,'contato_id',v);await irisMarcarCorrecao(id,_a);_irisMemo.t=0;lancSoAtualizar();irisTalvezEnsinar(id,_a);});}
+  function abrirComboCatLanc(el,id){LANC_FOCO=id;_abrirCombo(el,_comboItemsCat(),async v=>{const _a=irisAntes(id);await mudarCampoLanc(id,'categoria_id',v);await irisMarcarCorrecao(id,_a);_irisMemo.t=0;await lancTalvezConferir(id);lancSoAtualizar();irisTalvezEnsinar(id,_a);});}
+  function abrirComboContLanc(el,id){LANC_FOCO=id;_abrirCombo(el,_comboItemsCont(),async v=>{const _a=irisAntes(id);await mudarCampoLanc(id,'contato_id',v);await irisMarcarCorrecao(id,_a);_irisMemo.t=0;await lancTalvezConferir(id);lancSoAtualizar();irisTalvezEnsinar(id,_a);});}
   // chave pra "aprender": as 2 primeiras palavras que importam da descrição do banco
   // CNPJ (14 dígitos) ou CPF mascarado (***.502.576-**) que vem na descrição do Pix/TED
   function docDaDesc(desc){const t=String(desc||'');
@@ -1505,12 +1505,12 @@
   // Ela olha o mês e separa: CERTEZA (igual 3+ vezes no histórico ou ensinado), CONFIRA (parecido, nunca visto ou sugestão da IA)
   // e COM GENTE (neutras/transferência, estorno/Banco Caixinha, valor fora do normal). Nada vira conferido sem uma pessoa confirmar.
   let IRIS_FILTRO='',IRIS_IA={},IRIS_IA_ESTADO='',_irisMemo={k:'',t:0,n:-1,res:null},_irisIAEmCurso=false,IRIS_GRUPO={loja:null,map:{},n:0},_irisAutoEmCurso=false;
-  try{IRIS_IA=JSON.parse(localStorage.getItem('fluxo_iris_ia')||'{}')||{};}catch(e){IRIS_IA={};}
+  try{IRIS_IA=JSON.parse(localStorage.getItem('fluxo_iris_ia2')||'{}')||{};}catch(e){IRIS_IA={};}
   function _irisKFull(d){const doc=docDaDesc(d);if(doc&&/PIX|TED|TRANSF|DOC\b|PAGAMENTO/i.test(String(d)))return '#DOC:'+doc;return normDesc(String(d||'').replace(/\d+/g,' ')).replace(/\s+/g,' ').trim();}
   const _irisCatNome=id=>((CATS.find(c=>Number(c.id)===Number(id))||{}).nome)||'';
   const _irisContNome=id=>((CONTATOS.find(c=>Number(c.id)===Number(id))||{}).nome)||'';
   function _irisVermelho(catId,l){const c=CATS.find(x=>Number(x.id)===Number(catId))||{};const n=String(c.nome||'').toUpperCase(),r=String(l.ref_externa||'');
-    if(c.grupo==='neutra')return /TRANSF/i.test(n)?'transferência entre lojas: uma pessoa sempre confere':'neutra: uma pessoa sempre confere';
+    if(c.grupo==='neutra'&&!(c.auto_conferir&&!/TRANSF/i.test(n)))return /TRANSF/i.test(n)?'transferência entre lojas: uma pessoa sempre confere':'neutra: uma pessoa sempre confere';
     if(n===CAT_ESTORNAR||n===CAT_ESTORNO_REC||r.startsWith('cxb:')||r.startsWith('cxp:'))return 'estorno / Banco Caixinha: uma pessoa sempre confere';
     return '';}
   function _irisDominante(arr,campo){const cnt={};arr.forEach(x=>{const v=x[campo];if(v)cnt[v]=(cnt[v]||0)+1;});const e=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];return e?{v:Number(e[0]),n:e[1]}:null;}
@@ -1597,7 +1597,7 @@
     return {ok,falha};}
   async function irisUsar(id){LANC_FOCO=id;const l=LANC.find(x=>x.id===id),r=irisAvaliar().get(id);if(!l||!r||!r.preencher)return;if(bloqueadoPorFechamento(l.data,l.conta_id))return;
     _salvandoN++;let out;try{out=await _irisPreencher([{l,r}]);}finally{_salvandoN--;}
-    if(out.falha)toast('NÃO SALVOU a sugestão da Íris. Tente de novo.','erro');_irisMemo.t=0;lancSoAtualizar();}
+    if(out.falha)toast('NÃO SALVOU a sugestão da Íris. Tente de novo.','erro');else await lancTalvezConferir(id);_irisMemo.t=0;lancSoAtualizar();}
   async function irisPreencherSugestoes(){const R=irisAvaliar();const lista=[...R.values()].filter(r=>_irisGrupo(r.nivel)==='confira'&&r.preencher).map(r=>({l:LANC.find(x=>x.id===r.id),r})).filter(x=>x.l&&!bloqueadoPorFechamento(x.l.data,x.l.conta_id));
     if(!lista.length)return;if(!confirm(`Preencher as ${lista.length} sugestões da Íris?\n\nEla coloca a categoria e o contato que estão faltando. NÃO marca conferido: confira e marque depois.`))return;
     _salvandoN++;let out;try{out=await _irisPreencher(lista);}finally{_salvandoN--;}
@@ -1702,7 +1702,7 @@
       const lojas=LOJAS.filter(l=>!l.arquivada&&_modDe(l)!=='casa');
       for(const L of lojas){try{if(_modDe(L)!==MODULO_ATUAL)await trocarModulo(_modDe(L));lojaAtual=L.id;await carregarContas();await carregarFechamentos();
           for(const m of meses){mesSel=m;page='lanc';IRIS_GRUPO={loja:null,map:{},n:0};await viewLanc();await irisCarregarGrupo();await irisCarregarSugestoes();_irisIAEmCurso=false;await irisPedirIA();
-            if(MODULO_ATUAL==='diversas')await irisAutoDiversas();else await irisAutoContatos();}
+            if(MODULO_ATUAL==='diversas')await irisAutoDiversas();else{await irisAutoContatos();await irisAutoConferirCategorias();}}
           log.push(lojaNomeCurto(L.id)+' ok');}catch(e){log.push(lojaNomeCurto(L.id)+' erro: '+(e.message||e));}}
       window.__roboFim={ok:true,log};}
     catch(e){window.__roboFim={ok:false,erro:String((e&&e.message)||e),log};}}
@@ -1725,10 +1725,23 @@
     catch(e){console.error(e);toast('Parou no meio: '+(e.message||e),'erro');}
     finally{_salvandoN--;veu.remove();_autoRodando=false;MODULO_ATUAL=antes.mod;lojaAtual=antes.l;mesSel=antes.m;await carregarContas();await carregarFechamentos();if(antes.p==='lanc')await carregarLancamentos();page=antes.p;}
     toast(`Íris preencheu ${tot} contato(s) de junho até agora.`,'ok');render();}
+  // v2.9.76: a Íris confere sozinha as categorias marcadas "Íris confere" (Pix de cliente, cartão, tarifas…)
+  const _tarifaOk=d=>/JUROS|IOF|TARIFA|PACOTE|CESTA|ENCARGO/i.test(String(d||''))&&!/EMPR[EÉ]STIMO|CONS[OÓ]RCIO|SEGURO|CONV/i.test(String(d||''));
+  async function irisAutoConferirCategorias(){if(!podeEditar())return 0;_irisMemo.t=0;const R=irisAvaliar();const pref=`${ANO_FIXO}-${_mm(mesSel)}`;
+    const ls=LANC.filter(l=>{if((l.data||'').slice(0,7)!==pref||l.conferido_por||contaEhCaixinha(l.conta_id)||!lancPronto(l)||bloqueadoPorFechamento(l.data,l.conta_id))return false;
+      const c=CATS.find(x=>Number(x.id)===Number(l.categoria_id));if(!c||!c.auto_conferir)return false;if(/tarifa/i.test(c.nome)&&!_tarifaOk(l.descricao))return false;
+      const r=R.get(l.id);return !(r&&(r.nivel==='gente'||r.discorda));});
+    if(!ls.length)return 0;const em=new Date().toISOString();let n=0;
+    for(let i=0;i<ls.length;i+=200){const parte=ls.slice(i,i+200);const p={conferido_por:'ÍRIS',conferido_em:em,iris:'auto'};const {data,error}=await _irisUpd(p,parte.map(l=>l.id));
+      const sim=new Set((data||[]).map(x=>x.id));parte.forEach(l=>{if(!error&&sim.has(l.id)){const q=Object.assign({},p);if(!_irisTemCol)delete q.iris;Object.assign(l,q);n++;}});}
+    _irisMemo.t=0;return n;}
+  // v2.9.76: completou o que faltava (categoria, contato ou usar sugestão)? já marca conferido no nome de quem fez
+  async function lancTalvezConferir(id){const l=LANC.find(x=>x.id===id);if(!l||l.conferido_por||contaEhCaixinha(l.conta_id)||!lancPronto(l))return;_irisMemo.t=0;const r=irisAvaliar().get(id);if(r&&r.nivel==='gente')return;
+    await lancConferir(id,true);}
   // ---- IA para o que nunca apareceu (só sugere; vai para o amarelo) ----
   async function irisPedirIA(semAuto){if(_irisIAEmCurso||page!=='lanc'||!podeEditar())return;const R=irisAvaliar();
     const alvo=[...R.values()].filter(r=>r.nivel==='nunca'||(!r.cont)).map(r=>LANC.find(x=>x.id===r.id)).filter(l=>l&&!IRIS_IA[l.id]&&(!l.categoria_id||(!l.contato_id&&Number(l.valor)<0&&!(l.categorias&&l.categorias.grupo==='neutra')))).slice(0,180);
-    if(!alvo.length){if(!semAuto){if(MODULO_ATUAL==='diversas')await irisAutoDiversas();else if(await irisAutoContatos())lancSoAtualizar();}return;}_irisIAEmCurso=true;IRIS_IA_ESTADO='olhando';const p=document.getElementById('irisPainel');if(p)p.innerHTML=irisPainelHTML();
+    if(!alvo.length){if(!semAuto){if(MODULO_ATUAL==='diversas')await irisAutoDiversas();else{const a=await irisAutoContatos(),b=await irisAutoConferirCategorias();if(a||b)lancSoAtualizar();}}return;}_irisIAEmCurso=true;IRIS_IA_ESTADO='olhando';const p=document.getElementById('irisPainel');if(p)p.innerHTML=irisPainelHTML();
     let token='';try{const {data}=await sb.auth.getSession();token=data&&data.session?data.session.access_token:'';}catch(e){}
     const cats=catsAtivas().map(c=>({id:c.id,nome:c.nome,grupo:c.grupo}));const conts=contatosAtivos().slice(0,700).map(c=>({id:c.id,nome:c.nome,tipo:c.tipo}));
     const ex=[];const vis=new Set();LANC.filter(l=>l.categoria_id&&l.conferido_por).forEach(l=>{const k=_irisKFull(l.descricao);if(vis.has(k)||ex.length>=60)return;vis.add(k);ex.push({d:l.descricao,v:Number(l.valor),c:_irisCatNome(l.categoria_id),k:l.contato_id?_irisContNome(l.contato_id):''});});
@@ -1743,8 +1756,8 @@
       if(_grava.length&&_irisSugTab){try{const {error:eg}=await sb.from('iris_sugestoes').upsert(_grava,{onConflict:'lancamento_id'});if(eg&&/iris_sugestoes|relation|exist/i.test(eg.message||''))_irisSugTab=false;}catch(e){}}
       parte.forEach(l=>{if(!IRIS_IA[l.id])IRIS_IA[l.id]={c:null,k:null,m:'',em:Date.now()};});}}
     catch(e){erro='erro';}
-    try{const ent=Object.entries(IRIS_IA).sort((a,b)=>(b[1].em||0)-(a[1].em||0)).slice(0,4000);IRIS_IA=Object.fromEntries(ent);localStorage.setItem('fluxo_iris_ia',JSON.stringify(IRIS_IA));}catch(e){}
-    IRIS_IA_ESTADO=erro;_irisIAEmCurso=false;_irisMemo.t=0;if(page==='lanc'&&!semAuto){if(MODULO_ATUAL==='diversas')await irisAutoDiversas();else await irisAutoContatos();lancSoAtualizar();}}
+    try{const ent=Object.entries(IRIS_IA).sort((a,b)=>(b[1].em||0)-(a[1].em||0)).slice(0,4000);IRIS_IA=Object.fromEntries(ent);localStorage.setItem('fluxo_iris_ia2',JSON.stringify(IRIS_IA));}catch(e){}
+    IRIS_IA_ESTADO=erro;_irisIAEmCurso=false;_irisMemo.t=0;if(page==='lanc'&&!semAuto){if(MODULO_ATUAL==='diversas')await irisAutoDiversas();else{await irisAutoContatos();await irisAutoConferirCategorias();}lancSoAtualizar();}}
   function lancPronto(l){const cat=l.categorias;if(!l.categoria_id||!cat||cat.grupo==='adef')return false;
     if(categoriaExigeContato(l.categoria_id)&&!l.contato_id&&!String(l.documento||'').trim())return false; // v2.9.36: nome escrito em "contato sem cadastro" vale
     const n=String(cat.nome||'').toUpperCase(),r=l.ref_externa||'';
@@ -1764,6 +1777,12 @@
     try{for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('conta_id,conferido_por').eq('loja_id',loja).gte('data',pref+'-01').lte('data',_fimMes(pref)).order('id').range(o,o+999);if(error)return;
       (data||[]).forEach(l=>{if(contaEhCaixinha(l.conta_id))return;t++;if(l.conferido_por)cf++;});if(!data||data.length<1000)break;}}catch(e){return;}
     if(seq!==_navConfSeq||loja!==lojaAtual)return;NAV_CONF[k]={t,cf,em:Date.now()};_navConfPinta();}
+  // v2.9.76: atalhos na lista — ↑ ↓ escolhe a linha · Espaço confere e desce · U usa a sugestão
+  document.addEventListener('keydown',async e=>{if(page!=='lanc'||!LANC_FOCO||!podeEditar())return;const a=document.activeElement;if(a&&(/INPUT|SELECT|TEXTAREA/.test(a.tagName)||a.isContentEditable||(a.classList&&a.classList.contains('combo'))))return;if(document.getElementById('comboPanel')||document.querySelector('#modalRoot .modal'))return;
+    const ids=_lancVis.map(l=>l.id),i=ids.indexOf(LANC_FOCO);if(i<0)return;const vai=d=>{const j=Math.min(ids.length-1,Math.max(0,i+d));lancFoco(ids[j]);const el=document.getElementById('lr'+ids[j]);if(el)el.scrollIntoView({block:'nearest'});};
+    if(e.key==='ArrowDown'){e.preventDefault();vai(1);}else if(e.key==='ArrowUp'){e.preventDefault();vai(-1);}
+    else if(e.key===' '||e.key==='Enter'){e.preventDefault();const l=LANC.find(x=>x.id===LANC_FOCO);if(l&&!l.conferido_por&&lancPronto(l)){await lancConferir(LANC_FOCO,true);}const ids2=_lancVis.map(x=>x.id),k=ids2.indexOf(ids[i]);const nx=ids2[Math.min(ids2.length-1,(k<0?i:k)+1)];if(nx){lancFoco(nx);const el=document.getElementById('lr'+nx);if(el)el.scrollIntoView({block:'nearest'});}}
+    else if(e.key==='u'||e.key==='U'){e.preventDefault();const r=irisAvaliar().get(LANC_FOCO);if(r&&r.preencher)await irisUsar(LANC_FOCO);}});
   function lancFoco(id){if(LANC_FOCO===id)return;const a=document.getElementById('lr'+LANC_FOCO);if(a)a.classList.remove('lancFoco');LANC_FOCO=id;const b=document.getElementById('lr'+id);if(b)b.classList.add('lancFoco');}
   // atualiza a lista sem a linha marcada "pular": ela continua no mesmo lugar da tela
   function lancSoAtualizar(){const _el=LANC_FOCO?document.getElementById('lr'+LANC_FOCO):null,_y=_el?_el.getBoundingClientRect().top:null;
@@ -1954,7 +1973,8 @@
     if(IRIS_FILTRO==='certeza'){const n=[...irisAvaliar().values()].filter(r=>r.nivel==='certeza').length;if(n){btn=`<button class="btn" style="font-weight:800;background:var(--green);border-color:var(--green);color:#04130c;padding:10px 18px" onclick="irisConfirmarCerteza()">Confirmar os ${n} da Íris</button>`;txt='Olhou a lista? Ela preenche o que falta e marca conferido no seu nome.';}}
     else if(IRIS_FILTRO==='confira'){const n=[...irisAvaliar().values()].filter(r=>_irisGrupo(r.nivel)==='confira'&&r.preencher).length;if(n){btn=`<button class="btn" style="font-weight:800;padding:10px 18px" onclick="irisPreencherSugestoes()">Preencher as ${n} sugestões (sem conferir)</button>`;txt='Depois confira e marque.';}}
     if(!btn&&am.length){btn=`<button class="btn" style="font-weight:800;background:var(--green);border-color:var(--green);color:#04130c;padding:10px 18px" onclick="lancConferirLista()">Já conferi: marcar ${am.length===1?'o amarelo':'os '+am.length+' amarelos'} desta lista</button>`;txt=`Só os que estão aparecendo, classificados e ainda sem conferir.${nG?` Os ${nG} que a Íris marcou como "sempre com gente" (transferência, estorno, valor fora do normal) ficam para marcar um por um.`:''}`;}
-    return btn?`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 4px">${btn}<span class="mut" style="font-size:12px">${txt}</span></div>`:'';}
+    const dica=`<div class="mut" style="font-size:11.5px;margin-top:6px">Atalhos: clique numa linha · <b>↑ ↓</b> escolhe · <b>Espaço</b> confere e desce · <b>U</b> usa a sugestão. Completou categoria e contato? Já fica conferido no seu nome.</div>`;
+    return (btn?`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 4px">${btn}<span class="mut" style="font-size:12px">${txt}</span></div>`:'')+dica;}
   async function lancConferirLista(){const _R=irisAvaliar();const ls=_lancVis.filter(l=>{const r=_R.get(l.id);return !l.conferido_por&&!contaEhCaixinha(l.conta_id)&&lancPronto(l)&&!(r&&r.nivel==='gente')&&!bloqueadoPorFechamento(l.data,l.conta_id);});if(!ls.length)return;
     if(!confirm(`Marcar como conferidos os ${ls.length} lançamentos amarelos que estão aparecendo na lista?\n\nFica no nome de ${PERFIL.nome}.`))return;
     const up={conferido_por:PERFIL.nome,conferido_em:new Date().toISOString()};let ok=0,falha=0;_salvandoN++;
@@ -2391,6 +2411,9 @@
     if(erro){toast('Não juntou tudo: '+erro,'erro');return;}
     sai.forEach(i=>{const x=L.find(y=>y.id===i);if(x){if(tipo==='cat')x.arquivada=true;else x.arquivado=true;}});LANC.forEach(l=>{if(sai.includes(Number(l[col]))){l[col]=fica;}});_dupUsos={};
     toast(`Juntado em "${nf}".`,'ok');await carregarRegrasP();render();}
+  // v2.9.76: categoria que a Íris confere sozinha (gestor liga/desliga)
+  async function catAutoConferir(id,on){if(!ehDono())return;const {data,error}=await sb.from('categorias').update({auto_conferir:!!on}).eq('id',id).select('id');
+    if(error||!data||!data.length){toast('NÃO SALVOU: '+((error&&error.message)||'sem permissão'),'erro');render();return;}const c=CATS.find(x=>x.id===id);if(c)c.auto_conferir=!!on;_irisMemo.t=0;toast(on?'A Íris vai conferir sozinha esta categoria.':'Esta categoria volta a ser conferida por vocês.','ok');}
   function viewCategorias(){
     const aDef=catsAtivas().filter(c=>c.grupo==='adef');
     const aviso=aDef.length?`<div class="note soon">⚠️ <b>${aDef.length} categoria(s) ainda sem classificar (A definir).</b> Clique no grupo "A definir" abaixo e organize cada uma no lugar certo.</div>`:'';
@@ -2412,7 +2435,7 @@
       const selGrupo=(c)=>`<select class="qin inlinesel" style="height:30px;font-size:12px;min-width:130px;margin-left:auto" onchange="mudarGrupoCat(${c.id},this.value)">${ordem.map(k=>`<option value="${k}" ${k===c.grupo?'selected':''}>${GRUPOS[k].nome}</option>`).join('')}</select>`;
       const palavrasDe=(c)=>REGRAS_P.filter(r=>r.categoria_id===c.id&&!r.loja_id).map(r=>r.palavra).join(', ');
       const campoPal=(c)=>podeEditar()?`<div style="display:flex;gap:8px;align-items:center;padding:0 6px 10px 6px"><span class="mut" style="font-size:11px;white-space:nowrap">🔑 palavras que puxam sozinho</span><input class="qin maiusc" style="height:32px;font-size:12px;flex:1" value="${palavrasDe(c).replace(/"/g,'&quot;')}" placeholder="ex: CEMIG, SAAE, VIVO (separadas por vírgula)" onchange="salvarPalavrasCat(${c.id},this.value)"></div>`:(palavrasDe(c)?`<div class="mut" style="font-size:11.5px;padding:0 6px 10px 6px">🔑 ${palavrasDe(c)}</div>`:'');
-      const rows=aberto?(it.length?it.map(c=>`<div class="cfgrow" style="padding-left:6px;border-bottom:none">${c.nome}${podeEditar()?selGrupo(c):`<span class="grp ${g}" style="margin-left:auto">${GRUPOS[g].nome}</span>`}${podeEditar()?`<span class="arqbtn" onclick="editarCat(${c.id})">✏️ editar</span><span class="arqbtn" onclick="arquivarCat(${c.id})">📥 arquivar</span>`:''}</div>${campoPal(c)}<div style="border-bottom:1px solid var(--line)"></div>`).join(''):'<div class="mut" style="font-size:12.5px;padding:10px 6px">Nenhuma categoria neste grupo.</div>'):'';
+      const rows=aberto?(it.length?it.map(c=>`<div class="cfgrow" style="padding-left:6px;border-bottom:none">${c.nome}${podeEditar()?selGrupo(c):`<span class="grp ${g}" style="margin-left:auto">${GRUPOS[g].nome}</span>`}${ehDono()?`<label class="arqbtn" title="A Íris marca conferido sozinha os lançamentos desta categoria (menos transferência entre lojas, estorno e valor fora do normal)" style="cursor:pointer;${c.auto_conferir?'color:var(--green);font-weight:700':''}"><input type="checkbox" ${c.auto_conferir?'checked':''} onchange="catAutoConferir(${c.id},this.checked)" style="vertical-align:middle;margin-right:4px">Íris confere</label>`:''}${podeEditar()?`<span class="arqbtn" onclick="editarCat(${c.id})">✏️ editar</span><span class="arqbtn" onclick="arquivarCat(${c.id})">📥 arquivar</span>`:''}</div>${campoPal(c)}<div style="border-bottom:1px solid var(--line)"></div>`).join(''):'<div class="mut" style="font-size:12.5px;padding:10px 6px">Nenhuma categoria neste grupo.</div>'):'';
       return `<div class="card" style="margin-bottom:10px;padding:0;overflow:hidden">
         <div onclick="_grpAberto=_grpAberto==='${g}'?null:'${g}';render()" style="cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:10px">
           <span class="grp ${g}">${GRUPOS[g].nome}</span>
@@ -2945,6 +2968,28 @@
   function empresaDoGrupo(txt){const d=String(txt||''),dig=d.replace(/\D/g,''),n=' '+normDesc(d)+' ';
     for(const [k,[cnpj,...nomes]] of Object.entries(LOJA_CNPJ)){if(dig.includes(cnpj)||nomes.some(x=>n.includes(' '+x+' ')))return 'Rocha '+k.slice(1);}return null;}
   function ehTransferenciaRocha(txt){return /TRANSF\.CONTAS|OTICA ROCHA|REM\.:|FAV\.:/i.test(txt);}
+  // ---- v2.9.77: Diversas, Grupo de compras e Casa — dinheiro que vem das empresas do grupo é receita, numa categoria de cada empresa (DIVERSAS · ROCHA 1, CASA · GV LENTES…) ----
+  // neutro só se for empréstimo que volta (VAI ESTORNAR, ESTORNO, EXT, EMP) ou se alguém marcar. "EMPRÉSTIMOS MÁQUINAS… · DE R1" é a loja pagando a parte dela = receita. GV Lentes fica como estava.
+  const MOD_GRUPO_CAT={diversas:'DIVERSAS',compras:'COMPRAS',casa:'CASA'};
+  const SIGLA_EMPRESA={DVL:'ROCHA 2',PRIME:'ROCHA 3',DTR:'ROCHA 4',MM:'ROCHA 5',MERCADO:'ROCHA 5',ROCHA:'ROCHA 6',AV:'ROCHA 6',IPT:'ROCHA 7',PREMIUM:'ROCHA 8',CP:'ROCHA 9',CM:'ROCHA 10',VILA:'ROCHA 11',COMERCIO:'ROCHA 1',GV:'GV OPTICAL',FZ:'FZ COMERCIO'};
+  function _modGrupo(){const L=LOJAS.find(l=>l.id===lojaAtual);const m=_modDe(L);return MOD_GRUPO_CAT[m]?m:null;}
+  function ehEmprestimoTexto(t){const n=normDesc(t);return /\bEMP\b|ESTORN|\bEXT\b/.test(n)&&!/\bRETIRADA\b|\bRET SOCIOS?\b/.test(n);}
+  // empresa do grupo que mandou (ou recebeu) o dinheiro: razão social / CNPJ do extrato, ou a sigla "· de DVL" da descrição
+  function empresaOrigem(full,desc){const f=String(full||''),dig=f.replace(/\D/g,'');
+    const raz=(f.match(/(?:FAV|REM)\.:\s?(.{1,34})/i)||[])[1]||'';
+    const daRazao=t=>{const n=normDesc(t);if(!n)return null;if(/GV OPTICAL/.test(n))return 'GV OPTICAL';if(/^FZ COMERCIO/.test(n))return 'FZ COMERCIO';
+      const r=empresaDoGrupo(t);if(r)return r.toUpperCase();
+      const m=n.match(/^OTICAS? ROCHA (\S+)/);if(m&&SIGLA_EMPRESA[m[1]])return SIGLA_EMPRESA[m[1]];if(/^ROCHA PRODUTOS OPTICOS/.test(n))return 'ROCHA 6';return null;};
+    let o=raz?daRazao(raz):null;if(o)return o;
+    if(dig.includes('25292235000125'))return 'GV OPTICAL';if(dig.includes('17367271000182'))return 'FZ COMERCIO';
+    const d=String(desc||'');const s=(d.match(/·\s*(?:de|para)\s+([A-Za-z0-9]+)\s*$/i)||[])[1];
+    if(s){const S=s.toUpperCase();const r=S.match(/^R(\d{1,2})$/);if(r&&+r[1]>=1&&+r[1]<=11)return 'ROCHA '+(+r[1]);if(SIGLA_EMPRESA[S])return SIGLA_EMPRESA[S];}
+    o=daRazao(d);if(o)return o;
+    if(!raz){const r=empresaDoGrupo(f);if(r)return r.toUpperCase();}
+    return null;}
+  const _nomeEmpresa=org=>org==='GV OPTICAL'?'GV LENTES':org==='FZ COMERCIO'?'FZ COMÉRCIO':org;
+  // categoria da empresa no módulo: "DIVERSAS · ROCHA 2", "CASA · GV LENTES"… (null se a categoria não existe — aí fica como antes)
+  function catGrupoModulo(m,org){const p=MOD_GRUPO_CAT[m];if(!p||!org)return null;const alvo=normDesc(p+' · '+_nomeEmpresa(org));return catsAtivas().find(c=>normDesc(c.nome)===alvo)||null;}
   // classifica recebimento pro fluxo misto do Lucas
   function tipoRecebimento(memo,name){
     const t=(memo+' '+name);
@@ -2980,8 +3025,10 @@
   // ---- v2.9.8: aprende o funcionário pelo pedaço do CPF que o banco manda no Pix (***.891.666-**) ----
   function cpfMascarado(txt){const m=String(txt||'').match(/\*{3}\.?(\d{3})\.?(\d{3})-?\*{2}/);return m?m[1]+m[2]:'';}
   async function aprenderCpfFuncionarios(linhas){let n=0;const novos={};
+    // v2.9.75: nunca aprende o CPF do sócio (Pix para o Lucas não é de funcionário) — e CPF que aparece com nome de sócio ou retirada fica de fora
+    const _socio=new Set();[...linhas.map(r=>r.full||r.desc),...LANC.map(l=>l.descricao)].forEach(t=>{if(/LUCAS GOMES ROCH|RETIRADA S[OÓ]CIO|EMPRESTIMO LUCAS/i.test(String(t||''))){const c=cpfMascarado(t);if(c)_socio.add(c);}});
     for(const r of linhas){if(!(r.amt<0)||!r.contatoId||!catEhFuncionario(r.catId))continue;
-      const cpf=cpfMascarado(r.full||r.desc);if(!cpf)continue;
+      const cpf=cpfMascarado(r.full||r.desc);if(!cpf||_socio.has(cpf))continue;
       const ct=CONTATOS.find(c=>String(c.id)===String(r.contatoId));if(!ct||ct.tipo!=='funcionario'||/IONARI/.test(normDesc(ct.nome)))continue;
       // só quando o Pix é pago À pessoa (salário, vale, bônus…). "EXAME DEMISSIONAL VICTOR" vai para a clínica, não para o Victor
       if(!/\b(SALARIO|SALRIO|VALE|BONIF\w*|BONUS|FERIAS|RESCISAO|ADIANTAMENTO|ADIANT|COMISSAO|DECIMO|PREMIO|ACERTO)\b/.test(normDesc(r.full||r.desc)))continue;
@@ -3567,6 +3614,10 @@
           {const Lg=LOJAS.find(l=>l.id===lojaAtual),cv=catPorNome(CAT_PIX_VENDA); // v2.9.35: VENDA OTICA ROCHA foi arquivada; fica tudo em VENDA PIX
             if(cv&&Lg&&(_modDe(Lg)==='laboratorio'||cxChaveLoja(Lg.nome)==='gv')&&/OTICA ROCHA|ROCHA PRODUTOS|ROCHA COMERCIO/i.test(full)){const comp=normDesc(complementoFavorecido(full)||full);
               if(/GV OPTICAL|FREEFORM|LENTE|\bREF\b/.test(comp)&&!/SALARIO|FERIAS|ESTORN|EMPREST/.test(comp)){item.grupo='regra';item.catId=cv.id;item.regra='loja pagando o laboratório';return item;}}}
+          // v2.9.77: Diversas, Grupo de compras e Casa — dinheiro das empresas do grupo entra na categoria da empresa (DIVERSAS · ROCHA 1…); neutro só se for empréstimo
+          {const mg=_modGrupo();if(mg){const org=empresaOrigem(full,item.desc);
+            if(org&&!ehEmprestimoTexto(item.desc+' '+full)){const cg=catGrupoModulo(mg,org)||(mg==='casa'?catPorNome('CASA · RETIRADA DAS EMPRESAS'):null);
+              if(cg){item.grupo='regra';item.catId=cg.id;item.regra='veio da '+_nomeEmpresa(org).replace(/^ROCHA/,'Rocha');return item;}}}}
           if(/OTICA ROCHA|ROCHA COMERCIO|GV OPTICAL/i.test(full)||empresaDoGrupo(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';return item;}
           if(/LUCAS GOMES ROCH/i.test(full)){item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;item.socio=true;return item;}
           if(/PIX/i.test(full)){item.grupo='pix';const cv=t.iso>=PIX_VENDA_DESDE?(catPorNome(CAT_PIX_VENDA)||cPix):cPix;item.catId=cv?cv.id:'';return item;}
@@ -3592,6 +3643,9 @@
             if(p&&cf){item.catId=cf.id;item.complemento=comp;if(p.contato){item.contatoId=p.contato.id;item.pessoa=p.contato.nome;item.regra='funcionário: '+p.contato.nome;item.grupo='regra';}else{item.regra='funcionário: '+p.nome+' (mais de um com esse nome)';item.corrigir=true;item.grupo='falta';}return item;}
             // para a DVL com motivo (conta dividida: CEMIG ESCRITÓRIO, ESTOJOS, PANFLETOS…): é despesa, não neutra
             if(/OTICA ROCHA DVL/.test(favN)){item.rateio=true;item.complemento=comp;const cn=adivinhaCat(comp);const c=cn&&cn!=='__IGNORAR__'&&cn!=='Cartão'?catsAtivas().find(x=>x.nome===cn):null;item.catId=c?c.id:'';item.grupo=c?'adivinhado':'falta';if(c)item.corrigir=true;return item;}}
+          // v2.9.77: em Diversas, Grupo de compras e Casa, mandar para empresa do grupo não é neutro (só se for empréstimo): alguém escolhe a categoria
+          {const mg=_modGrupo(),org=grupoEmp?grupoEmp.toUpperCase():empresaOrigem(full,item.desc);
+            if(mg&&org&&!ehEmprestimoTexto((comp||'')+' '+item.desc)){item.grupo='falta';item.catId='';item.paraLoja=grupoEmp;item.complemento=comp;item.regra='para '+_nomeEmpresa(org)+': escolha a categoria';return item;}}
           item.grupo='transf';item.catId=cTr?cTr.id:'';item.corrigir=true;item.paraLoja=grupoEmp;item.complemento=comp;return item;}
         // (v2.9.7) favorecido que não é do grupo (fornecedor, pessoa): segue as palavras-chave como qualquer pagamento
         // "ESTORNAD" = "VAI ESTORNAR" cortado (o Pix só guarda poucas letras da mensagem)
@@ -4247,7 +4301,7 @@
       <div id="rankDash"></div>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:16px">
         ${card('Saídas do mês',saidaMes,'var(--red)','pago em '+mesNome)}
-        ${(()=>{const R=_recPartes(receitasCat,entradaMes,mesSel);return `<div class="card" style="grid-column:span 2"><div class="mut" style="font-size:12px;font-weight:600">Entradas do mês</div><div style="font-size:22px;font-weight:800;color:var(--green);margin-top:6px;font-variant-numeric:tabular-nums">${BRL(entradaMes)}</div>
+        ${MODULO_ATUAL!=='oticas'?card('Entradas do mês',entradaMes,'var(--green)','recebido em '+mesNome+' · por empresa no quadro de receitas'):(()=>{const R=_recPartes(receitasCat,entradaMes,mesSel);return `<div class="card" style="grid-column:span 2"><div class="mut" style="font-size:12px;font-weight:600">Entradas do mês</div><div style="font-size:22px;font-weight:800;color:var(--green);margin-top:6px;font-variant-numeric:tabular-nums">${BRL(entradaMes)}</div>
           <div style="background:rgba(61,214,140,.07);border:1px solid rgba(61,214,140,.25);border-radius:10px;padding:8px 11px;margin:8px 0 6px"><div style="display:flex;justify-content:space-between;gap:8px"><span><b>À vista + Pix</b></span><b style="color:var(--green);font-variant-numeric:tabular-nums">${BRL(R.av+R.px)}</b></div>
           <div class="mut" style="font-size:11.5px;margin-top:2px">${R.av?'à vista '+BRL(R.av):(R.mesCorrendo?'à vista: lança no fim do mês':'à vista R$ 0,00')} + Pix ${BRL(R.px)}</div></div>
           <div style="display:flex;justify-content:space-between;font-size:13px"><span>Cartão</span><b style="font-variant-numeric:tabular-nums">${BRL(R.ct)}</b></div>
@@ -4257,7 +4311,7 @@
       </div>
       <div class="grid two">
         ${graficoCard('💸 Despesas pagas',despesas,saidaMes,'var(--red)',mesNome,'des')}
-        ${graficoCard('💰 Receitas / Entradas',_recLista(receitas,receitasCat,entradaMes,mesSel),entradaMes,'var(--green)',mesNome,'rec')}
+        ${graficoCard(MODULO_ATUAL!=='oticas'?'💰 Receitas / Entradas · de qual empresa veio':'💰 Receitas / Entradas',MODULO_ATUAL!=='oticas'?dashOrigemLista(receitas.map(x=>({...x,key:x.nome}))):_recLista(receitas,receitasCat,entradaMes,mesSel),entradaMes,'var(--green)',mesNome,'rec')}
         ${graficoCard('👤 Despesas pagas por contato',contatosDes,saidaMes,'var(--red)',mesNome,'cont')}
         ${graficoCard('🧾 A pagar em '+mesNome,apagarLista,totalApagar,'var(--amber)','')}
         ${dreCard}
@@ -5294,7 +5348,10 @@
   // ====== GRÁFICO DE ROSCA (SVG puro) ======
   const CORES_GRAF=['#3ddc91','#7da2ff','#e8c468','#ff6b6b','#c084fc','#4dd4d4','#f5905a','#a0d468','#ec87c0','#5d9cec','#aab2bd','#ffce54','#48cfad','#ed5565','#967adc'];
   // v2.9.59: clique no gráfico do Dashboard (categoria ou contato) e filtro que leva para Lançamentos
-  function _dashOnClick(it,tipo){return tipo==='cont'?`abrirDetalheContato('${it.key}')`:`abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')`;}
+  function _dashOnClick(it,tipo){return tipo==='cont'?`abrirDetalheContato('${it.key}')`:tipo==='rcont'?`abrirDetalheContato('${it.key}','rec')`:`abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')`;}
+  // v2.9.77: receitas de Diversas / Grupo de compras / Casa — Rocha 1 a 11 em ordem, depois as outras (maior primeiro)
+  function dashOrigemLista(arr){const num=x=>{const m=normDesc(x.nome).match(/\bROCHA (\d{1,2})\b/);return m?+m[1]:99;};
+    const sem=arr.find(x=>x.key==='sem');const com=arr.filter(x=>x.key!=='sem').sort((a,b)=>num(a)-num(b)||b.valor-a.valor);return sem?[...com,sem]:com;}
   // contatos: os 8 maiores, depois "Outros" juntos; "Sem contato" sempre aparece separado no fim
   function dashContatosLista(arr){const sem=arr.find(x=>x.key==='sem'),com=arr.filter(x=>x.key!=='sem').sort((a,b)=>b.valor-a.valor);
     const top=com.slice(0,8),resto=com.slice(8),out=[...top];
@@ -5309,18 +5366,18 @@
   function dashFiltroBarra(n){const f=DASH_FILTRO;if(!f)return '';
     return `<div id="dashFiltroBar" class="note" style="border-color:var(--blue);display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">Mostrando só: <b>${_remEsc(f.rot)}</b> · ${f.sinal==='rec'?'entradas':'despesas'} de ${MESES_NOME[mesSel]} · <b>${n}</b> lançamento(s)<button class="btn ghost" style="margin-left:auto;padding:4px 12px;font-size:12px" onclick="DASH_FILTRO=null;render()">Ver todos ✕</button></div>`;}
   function _dashBotaoLanc(k,v,sinal,rot,top){return `<button class="btn" style="font-weight:800" onclick='dashIrLanc(${JSON.stringify(k)},${JSON.stringify(v)},${JSON.stringify(sinal)},${JSON.stringify(rot).replace(/'/g,"&#39;")},${JSON.stringify(top||null)})'>Abrir em Lançamentos →</button>`;}
-  function abrirDetalheContato(key){const neu=l=>l.categorias&&l.categorias.grupo==='neutra';
-    const desMes=_lancMesDash.filter(l=>!neu(l)&&Number(l.valor)<0);
+  function abrirDetalheContato(key,sinal){const neu=l=>l.categorias&&l.categorias.grupo==='neutra';const rec=sinal==='rec';
+    const desMes=_lancMesDash.filter(l=>!neu(l)&&(rec?Number(l.valor)>0:Number(l.valor)<0));
     const tot={};desMes.forEach(l=>{if(l.contato_id){const k=String(l.contato_id);tot[k]=(tot[k]||0)+Math.abs(Number(l.valor));}});
     const top=Object.entries(tot).sort((a,b)=>b[1]-a[1]).slice(0,8).map(x=>x[0]);
     const lista=desMes.filter(l=>key==='sem'?!l.contato_id:key==='outros'?(!!l.contato_id&&!top.includes(String(l.contato_id))):String(l.contato_id)===key).sort((a,b)=>a.data.localeCompare(b.data));
     const nome=key==='sem'?'Sem contato':key==='outros'?'Outros contatos':((lista[0]&&lista[0].contatos&&lista[0].contatos.nome)||'Contato');
-    let total=0;const rows=lista.map(l=>{total+=Math.abs(Number(l.valor));return `<tr><td class="mut" style="white-space:nowrap">${isoParaBR(l.data).slice(0,5)}</td><td>${l.descricao||'—'}</td><td class="mut">${key==='outros'?((l.contatos&&l.contatos.nome)||'')+' · ':''}${(l.categorias&&l.categorias.nome)||'Sem categoria'}</td><td class="amt red" style="white-space:nowrap;text-align:right">-${BRL(Math.abs(l.valor))}</td></tr>`;}).join('');
+    let total=0;const rows=lista.map(l=>{total+=Math.abs(Number(l.valor));return `<tr><td class="mut" style="white-space:nowrap">${isoParaBR(l.data).slice(0,5)}</td><td>${l.descricao||'—'}</td><td class="mut">${key==='outros'?((l.contatos&&l.contatos.nome)||'')+' · ':''}${(l.categorias&&l.categorias.nome)||'Sem categoria'}</td><td class="amt ${rec?'green':'red'}" style="white-space:nowrap;text-align:right">${rec?'':'-'}${BRL(Math.abs(l.valor))}</td></tr>`;}).join('');
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="max-width:640px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0">${_remEsc(nome)}</h3><button class="delx" style="font-size:18px" onclick="fecharModal()">✕</button></div>
-      <p style="margin-top:0">${lista.length} lançamento(s) de despesa em ${MESES_NOME[mesSel]} ${ANO_FIXO}</p>
+      <p style="margin-top:0">${lista.length} lançamento(s) de ${rec?'receita':'despesa'} em ${MESES_NOME[mesSel]} ${ANO_FIXO}</p>
       <div style="max-height:60vh;overflow:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="mut" style="text-align:center;padding:20px">Nenhum lançamento</td></tr>'}</tbody></table></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;border-top:2px solid var(--line);margin-top:10px;padding-top:10px;gap:10px"><b>Total <span style="color:var(--red);font-size:16px">${BRL(total)}</span></b>${lista.length?_dashBotaoLanc('cont',key,'des',nome,top):''}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;border-top:2px solid var(--line);margin-top:10px;padding-top:10px;gap:10px"><b>Total <span style="color:var(--${rec?'green':'red'});font-size:16px">${BRL(total)}</span></b>${lista.length?_dashBotaoLanc('cont',key,rec?'rec':'des',nome,rec?null:top):''}</div>
     </div></div>`;}
   function donut(itens,total,tipo){
     // itens: [{nome,valor,pct}] já ordenados. total: soma. tipo: 'rec' ou 'des' pra abrir detalhes
