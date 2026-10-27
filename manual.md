@@ -193,6 +193,16 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 - **Contato automático:** a Íris preenche sozinha o **contato** das saídas que ela sabe (pelo histórico, pelo que foi ensinado, pelas outras lojas e pela IA). A **categoria** continua com vocês, menos na Diversas, onde ela já faz tudo. Não marca conferido. Isso roda ao abrir Lançamentos e no robô das 6h.
 - Gestor: no quadro da Íris em Lançamentos tem **Preencher contatos de todos os meses**. Ela passa por todas as lojas, de junho até agora.
 
+### Ensinar com um clique (v2.9.73)
+
+- O cartão "Ensinar a Íris?" já vem com tudo pronto: **quando aparecer [descrição] é [categoria · contato]**. É só clicar em **Ensinar** ou apertar Enter. O porquê virou opcional, escondido em "+ explicar o porquê".
+
+### A linha em que você está fica marcada (v2.9.72)
+
+- Ao clicar numa linha de Lançamentos (usar sugestão, trocar categoria ou contato, conferir, ou só clicar nela), ela fica **marcada em azul claro, com uma faixa azul na esquerda**, até você clicar em outra.
+- A lista não "pula": quando a linha atualiza, ela continua no mesmo lugar da tela.
+- Com um filtro ligado (Íris verde/amarelo/vermelho ou vindo do Dashboard), a linha marcada **não some** enquanto você termina de mexer nela.
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -844,6 +854,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.73 | Ensinar a Íris com um clique (Enter também); o porquê ficou opcional e escondido | — |
+| 27/10/2026 | 2.9.72 | Linha em edição fica marcada e no mesmo lugar da tela (não pula nem some do filtro) até clicar em outra | — |
 | 27/10/2026 | 2.9.71 | Modo claro como principal; Sem categoria/Sem contato em vermelho no Dashboard; Íris preenche sozinha o contato das saídas (categoria fica com a equipe) + botão para todos os meses | — |
 | 27/10/2026 | 2.9.70 | Etiquetas da Íris legíveis no modo claro; Íris junta categorias/contatos repetidos (gestor escolhe qual fica, os outros vão para arquivados); contato vermelho só onde é obrigatório | — |
 | 27/10/2026 | 2.9.69 | Juros por loja: só juros, IOF e tarifas pelo texto do banco (empréstimo, consórcio e seguro fora) | — |
