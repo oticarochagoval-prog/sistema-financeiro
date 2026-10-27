@@ -283,7 +283,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.56', APP_DATA='26/10/2026';
+  const APP_VERSAO='2.9.58', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1454,13 +1454,32 @@
   // e (se for do Banco Caixinha) já foi mandado/marcado lá
   // v2.9.24: verde = conferido · amarela = classificado, falta conferir · vermelha = falta resolver
   function lancStatus(l){if(!lancPronto(l))return 'r';return l.conferido_por?'ok':'y';}
-  async function lancConferir(id,on){const l=LANC.find(x=>x.id===id);if(!l)return;
-    if(!on&&l.conferido_por&&!confirm(`Tirar o conferido deste lançamento?\n\n${l.descricao||''} · ${BRL(Math.abs(Number(l.valor)||0))}\nConferido por ${l.conferido_por}${l.conferido_em?' em '+new Date(l.conferido_em).toLocaleDateString('pt-BR'):''}.`)){lancSoAtualizar();return;} // v2.9.44: não desmarca sem quererconst up=on?{conferido_por:PERFIL.nome,conferido_em:new Date().toISOString()}:{conferido_por:null,conferido_em:null};
-    const {error}=await sb.from('lancamentos').update(up).eq('id',id);if(error){toast(/conferido/i.test(error.message||'')?'Falta a coluna de conferido no banco (SQL da v2.9.24).':'Não salvou: '+error.message,'erro');filtrarLanc(q);return;}
-    Object.assign(l,up);lancSoAtualizar();}
+  // v2.9.58: conferido só fica marcado depois que o banco CONFIRMA que gravou; se não gravar, desmarca e avisa em vermelho
+  let _salvandoN=0;
+  async function lancConferir(id,on,el){const l=LANC.find(x=>x.id===id);if(!l)return;
+    if(!on&&l.conferido_por&&!confirm(`Tirar o conferido deste lançamento?\n\n${l.descricao||''} · ${BRL(Math.abs(Number(l.valor)||0))}\nConferido por ${l.conferido_por}${l.conferido_em?' em '+new Date(l.conferido_em).toLocaleDateString('pt-BR'):''}.`)){lancSoAtualizar();return;} // v2.9.44: não desmarca sem querer
+    const up=on?{conferido_por:PERFIL.nome,conferido_em:new Date().toISOString()}:{conferido_por:null,conferido_em:null};
+    if(el){el.disabled=true;el.style.opacity='.4';}
+    _salvandoN++;
+    try{const {data,error}=await sb.from('lancamentos').update(up).eq('id',id).select('id,conferido_por');
+      if(error)throw new Error(/conferido/i.test(error.message||'')?'falta a coluna de conferido no banco':error.message);
+      if(!data||!data.length)throw new Error('o banco não confirmou a gravação');
+      Object.assign(l,up);}
+    catch(e){toast('NÃO SALVOU o conferido de '+(l.descricao||'')+': '+(e.message||e)+'. Marque de novo.','erro');}
+    finally{_salvandoN--;}
+    lancSoAtualizar();}
   async function lancConferirDia(){if(!filtroDia)return;const ls=LANC.filter(l=>l.data===filtroDia&&lancPronto(l)&&!l.conferido_por&&!contaEhCaixinha(l.conta_id));if(!ls.length){toast('Nada amarelo neste dia.','ok');return;}
     if(!confirm(`Marcar como conferidos os ${ls.length} lançamentos amarelos de ${isoParaBR(filtroDia)}?`))return;const up={conferido_por:PERFIL.nome,conferido_em:new Date().toISOString()};
-    const {error}=await sb.from('lancamentos').update(up).in('id',ls.map(l=>l.id));if(error){toast('Não salvou: '+error.message,'erro');return;}ls.forEach(l=>Object.assign(l,up));toast(`${ls.length} conferidos.`,'ok');lancSoAtualizar();}
+    _salvandoN++;let res;try{res=await sb.from('lancamentos').update(up).in('id',ls.map(l=>l.id)).select('id');}finally{_salvandoN--;}const {data,error}=res||{};if(error){toast('NÃO SALVOU: '+error.message,'erro');return;}
+    const ok=new Set((data||[]).map(r=>r.id));ls.forEach(l=>{if(ok.has(l.id))Object.assign(l,up);});
+    if(ok.size<ls.length)toast(`Só ${ok.size} de ${ls.length} foram gravados. Os que ficaram amarelos não salvaram: marque de novo.`,'erro');else toast(`${ls.length} conferidos.`,'ok');lancSoAtualizar();}
+  // v2.9.58: rede de segurança — qualquer erro escondido vira aviso vermelho (nada falha calado) e não deixa fechar a aba no meio de um salvamento
+  let _erroAvisoEm=0;
+  function _avisarErroGlobal(err){const m=String((err&&err.message)||err||'');if(/AbortError|ResizeObserver/i.test(m))return;console.error(err);
+    if(Date.now()-_erroAvisoEm<8000)return;_erroAvisoEm=Date.now();try{toast('Algo pode não ter salvado ('+m.slice(0,90)+'). Confira e, se precisar, faça de novo.','erro');}catch(e){}}
+  window.addEventListener('unhandledrejection',e=>_avisarErroGlobal(e.reason));
+  window.addEventListener('error',e=>_avisarErroGlobal(e.error||e.message));
+  window.addEventListener('beforeunload',e=>{if(_salvandoN>0){e.preventDefault();e.returnValue='Ainda salvando. Espere um segundo.';return e.returnValue;}});
   function lancPronto(l){const cat=l.categorias;if(!l.categoria_id||!cat||cat.grupo==='adef')return false;
     if(categoriaExigeContato(l.categoria_id)&&!l.contato_id&&!String(l.documento||'').trim())return false; // v2.9.36: nome escrito em "contato sem cadastro" vale
     const n=String(cat.nome||'').toUpperCase(),r=l.ref_externa||'';
@@ -1696,7 +1715,7 @@
         <td>${selCat}</td>
         <td>${selCont}</td>
         <td class="amt ${l.valor>0?'green':'red'}" style="white-space:nowrap">${l.valor>0?'+':'-'}${BRL(Math.abs(l.valor))}</td>
-        <td style="text-align:center;white-space:nowrap">${editavel?(()=>{const pr=lancPronto(l),cf=!!l.conferido_por;return `<label title="${pr?(cf?'Conferido: clique para desmarcar':'Marcar como conferido'):'Resolva antes de conferir'}" style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin-right:6px;cursor:${pr?'pointer':'not-allowed'};line-height:1.1"><input type="checkbox" ${cf?'checked':''} ${pr?'':'disabled'} onchange="lancConferir(${l.id},this.checked)" style="width:16px;height:16px;accent-color:var(--green)">${cf?`<span style="font-size:9.5px;color:var(--muted);margin-top:2px">${_remEsc(String(l.conferido_por).split(' ')[0])}${l.conferido_em?' · '+new Date(l.conferido_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):''}</span>`:''}</label>`;})():''}${editavel?`<button class="delx" onclick="abrirEditarLanc(${l.id})" title="Editar tudo">✏️</button> ${podeLixeira()?`<button class="delx" onclick="excluirLanc(${l.id})" title="Mandar para a Lixeira (dá para restaurar)">🗑</button>`:''}`:''}</td>
+        <td style="text-align:center;white-space:nowrap">${editavel?(()=>{const pr=lancPronto(l),cf=!!l.conferido_por;return `<label title="${pr?(cf?'Conferido: clique para desmarcar':'Marcar como conferido'):'Resolva antes de conferir'}" style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin-right:6px;cursor:${pr?'pointer':'not-allowed'};line-height:1.1"><input type="checkbox" ${cf?'checked':''} ${pr?'':'disabled'} onchange="lancConferir(${l.id},this.checked,this)" style="width:16px;height:16px;accent-color:var(--green)">${cf?`<span style="font-size:9.5px;color:var(--muted);margin-top:2px">${_remEsc(String(l.conferido_por).split(' ')[0])}${l.conferido_em?' · '+new Date(l.conferido_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):''}</span>`:''}</label>`;})():''}${editavel?`<button class="delx" onclick="abrirEditarLanc(${l.id})" title="Editar tudo">✏️</button> ${podeLixeira()?`<button class="delx" onclick="excluirLanc(${l.id})" title="Mandar para a Lixeira (dá para restaurar)">🗑</button>`:''}`:''}</td>
       </tr>`;
     }).join('');
     const nCx=LANC.filter(l=>contaEhCaixinha(l.conta_id)&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
@@ -3422,6 +3441,7 @@
           <b style="font-size:15px">Semana de ${fmtSem}</b>
           <button class="burger" style="width:32px;height:32px" onclick="AG_SEMANA=addDias(AG_SEMANA,7);render()">›</button>
           ${semIni!==semAtual?`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="AG_SEMANA=null;render()">esta semana</button>`:''}
+          ${podeEditar()?`<button class="btn" style="padding:5px 12px;font-size:12.5px;font-weight:800" onclick="agNovaConta()">+ Lançar na agenda</button>`:''}
           <div style="display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px">
             <button class="btn ${grupo?'ghost':''}" style="padding:4px 10px;font-size:12px" onclick="AG_ESCOPO='loja';render()">${lojaNomeCurto(lojaAtual)}</button>
             <button class="btn ${grupo?'':'ghost'}" style="padding:4px 10px;font-size:12px" onclick="AG_ESCOPO='grupo';render()">${nomeTodas()}</button></div>
@@ -3436,13 +3456,45 @@
           <span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:rgba(31,157,107,.3);vertical-align:middle;margin-right:4px"></i>pago</span>
           <span>clique numa conta para ver ou resolver</span></div></div>
       <div class="grid two" style="margin-bottom:14px">
-        <div class="card"><h3 style="font-size:14.5px;margin:0 0 8px">Lançar uma conta</h3><div class="mut" style="font-size:12.5px;line-height:1.5">Agora tudo se lança em <a style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="go('lanc')">Lançamentos</a>. Despesa com vencimento depois de hoje (ou boleto lido pela foto) vem para esta Agenda sozinha${MODULO_ATUAL==='diversas'?', e lá mesmo dá para dividir entre as empresas':''}. Quando o extrato trouxer o pagamento, ela dá baixa.</div></div>
+        <div class="card"><h3 style="font-size:14.5px;margin:0 0 8px">Lançar uma conta</h3>${podeEditar()?`<button class="btn" style="font-weight:800;margin-bottom:8px" onclick="agNovaConta()">+ Lançar na agenda</button>`:''}<div class="mut" style="font-size:12.5px;line-height:1.5">O que é lançado aqui fica <b>só na Agenda</b>, não vai para Lançamentos. Quando o banco pagar, vira lançamento sozinho.</div></div>
         <div class="card"><h3 style="font-size:14.5px;margin:0 0 8px">Vencidos de semanas anteriores <span class="mut" style="font-size:12px;font-weight:400">· não somam na semana</span></h3>
           ${vencHTML?`<table><thead><tr><th>Venceu</th><th>Conta</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${vencHTML}</tbody></table>
           <div class="mut" style="font-size:11.5px;margin-top:8px">"Já paguei": pergunta como e baixa. "Não vou pagar": sai da agenda e fica guardado com o motivo.</div>`:'<div class="mut" style="font-size:12.5px">Nada vencido. 👍</div>'}</div></div>
       ${MODULO_ATUAL==='diversas'?'<div id="agDivResumo" style="margin-top:14px"></div>':''}`;
     if(MODULO_ATUAL==='diversas'){agCarregarRegras().then(()=>agDivRender());agDivResumo().catch(e=>console.error('diversas',e));}
   }
+  // v2.9.57: lançar direto na Agenda (fica só na Agenda; quando o banco paga, vira lançamento sozinho)
+  function agNovaConta(){if(!podeEditar())return;const hoje=_hojeLocal();
+    const lbl='font-size:11.5px;font-weight:700;color:var(--muted);display:block;margin:8px 0 3px';
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(560px,94vw);max-height:92vh;overflow:auto">
+      <h3 style="margin:0 0 2px">Lançar na agenda · ${lojaNomeCurto(lojaAtual)}</h3>
+      <div class="mut" style="font-size:12px;margin-bottom:6px">Fica só na Agenda. Não vai para Lançamentos.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0">
+        <input type="file" id="agArq" accept="image/*,application/pdf" style="display:none" onchange="agLerArquivo(this)">
+        <button class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="document.getElementById('agArq').click()">Ler boleto (foto ou PDF)</button>
+        ${MODULO_ATUAL==='diversas'?divBtnHTML('padding:6px 12px;font-size:12px'):''}</div>
+      <label style="${lbl}">Código de barras (opcional)</label>
+      <input id="agCod" class="qin" style="width:100%" inputmode="numeric" placeholder="cole ou digite os números do boleto" oninput="agLerCodigo()">
+      <div id="agCodInfo" style="font-size:12px;margin-top:4px"></div>
+      <label style="${lbl}">Descrição *</label>
+      <input id="agDesc" class="qin maiusc" style="width:100%" placeholder="Ex: BOLETO ESSILOR" onblur="agSugerir()">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${lbl}">Valor *</label><input id="agValor" class="qin" style="width:100%" inputmode="decimal" placeholder="0,00" onkeyup="if(AG_DIV.on)agDivRender()"></div>
+        <div><label style="${lbl}">Vencimento *</label><input id="agVenc" type="date" class="qin" style="width:100%" value="${hoje}" onchange="if(AG_DIV.on)agDivRender()"></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${lbl}">Categoria</label><select id="agCat" class="qin" style="width:100%"><option value="">Selecione...</option>${catsOptions()}</select></div>
+        <div><label style="${lbl}">Contato</label><select id="agCont" class="qin" style="width:100%"><option value="">Selecione...</option>${contatosOptions()}</select></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${lbl}">Parcelas (quantas no total)</label><input id="agParc" class="qin" style="width:100%" inputmode="numeric" value="1"></div>
+        <div><label style="${lbl}">Começa na parcela</label><input id="agParcIni" class="qin" style="width:100%" inputmode="numeric" value="1"></div></div>
+      <label style="${lbl}">Nº documento / observação (opcional)</label>
+      <input id="agDoc" class="qin" style="width:100%" placeholder="Ex: NF 12345 · BOLETO 998">
+      <label style="display:flex;align-items:center;justify-content:flex-start;gap:7px;font-size:12.5px;margin-top:10px;cursor:pointer;width:max-content"><input type="checkbox" id="agCrit" style="width:16px;height:16px;margin:0;flex:none"><span>Não pode atrasar</span></label>
+      <div id="agDivPainel" style="margin-top:8px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn ghost" onclick="fecharModal()">Cancelar</button>
+        <button class="btn" id="agBtn" style="font-weight:800" onclick="agSalvar()">+ Lançar na agenda</button></div></div></div>`;
+    if(AG_DIV.on)agDivRender();setTimeout(()=>{const d=document.getElementById('agDesc');if(d)d.focus();},40);}
   function agLerCodigo(){const el=document.getElementById('agCod'),info=document.getElementById('agCodInfo');if(!el||!info)return;const r=lerCodigoBoleto(el.value);
     if(!el.value.replace(/\D/g,'')){info.textContent='';return;}
     if(!r){info.innerHTML='<span style="color:var(--amber)">Código incompleto — confira os números.</span>';return;}
@@ -3453,11 +3505,11 @@
   async function agSalvar(){
     const desc=(document.getElementById('agDesc').value||'').trim().toUpperCase();const valor=Number(String(document.getElementById('agValor').value||'').replace(/\./g,'').replace(',','.'));
     const venc=document.getElementById('agVenc').value;const cat=document.getElementById('agCat').value;const cont=document.getElementById('agCont').value;const n=parseInt(document.getElementById('agParc').value,10)||1;const ini=Math.min(parseInt((document.getElementById('agParcIni')||{}).value,10)||1,n);
-    const cod=(document.getElementById('agCod').value||'').replace(/\D/g,'')||null;
+    const cod=(document.getElementById('agCod').value||'').replace(/\D/g,'')||null;const docAg=((document.getElementById('agDoc')||{}).value||'').trim().toUpperCase().slice(0,200)||null;
     if(!desc){toast('Preencha a descrição.','erro');return;}if(!(valor>0)){toast('Preencha o valor.','erro');return;}if(!venc){toast('Preencha o vencimento.','erro');return;}
     const btn=document.getElementById('agBtn');if(btn){btn.disabled=true;btn.textContent='Lançando...';}
     const rows=[];for(let k=ini;k<=n;k++){const m=mesShift(venc.slice(0,7),k-ini);const ult=Number(_fimMes(m).slice(8,10));const v=`${m}-${String(Math.min(Number(venc.slice(8,10)),ult)).padStart(2,'0')}`;
-      rows.push({loja_id:lojaAtual,descricao:desc,valor,vencimento:v,categoria_id:cat?Number(cat):null,contato_id:cont?Number(cont):null,parcela:n>1?`${k}/${n}`:null,linha_digitavel:k===ini?cod:null,status:'aberto'});}
+      rows.push(Object.assign({loja_id:lojaAtual,descricao:desc,valor,vencimento:v,categoria_id:cat?Number(cat):null,contato_id:cont?Number(cont):null,parcela:n>1?`${k}/${n}`:null,linha_digitavel:k===ini?cod:null,status:'aberto'},docAg?{documento:docAg}:{}));}
     const crit=!!(document.getElementById('agCrit')||{}).checked;if(crit)rows.forEach(r=>r.critico=true);
     const dividir=MODULO_ATUAL==='diversas'&&AG_DIV.on;let partes=null;
     if(dividir){partes=divPartes(valor);const sp=Object.values(partes).reduce((a,b)=>a+b,0);
@@ -3466,12 +3518,12 @@
     const {data:ins,error}=await sb.from('contas_pagar').insert(rows).select('id,vencimento,parcela');
     if(error){toast(/critico|rateio_de|column/i.test(error.message)?'Rode o SQL da v2.9 no sistema-financeiro primeiro.':/contas_pagar|relation|exist/i.test(error.message)?'Rode o SQL da v2.6 no sistema-financeiro primeiro.':'Erro: '+error.message,'erro');if(btn){btn.disabled=false;btn.textContent='+ Lançar na agenda';}return;}
     if(dividir&&ins&&ins.length){const pr=[];ins.forEach(bo=>Object.entries(partes).forEach(([lid,v])=>{if(!(v>0))return;
-        pr.push(Object.assign({loja_id:Number(lid),descricao:'PARTE DIVERSAS · '+desc,valor:v,vencimento:bo.vencimento,categoria_id:cat?Number(cat):null,contato_id:cont?Number(cont):null,parcela:bo.parcela||null,status:'aberto',rateio_de:bo.id},crit?{critico:true}:{}));}));
+        pr.push(Object.assign({loja_id:Number(lid),descricao:'PARTE DIVERSAS · '+desc,valor:v,vencimento:bo.vencimento,categoria_id:cat?Number(cat):null,contato_id:cont?Number(cont):null,parcela:bo.parcela||null,status:'aberto',rateio_de:bo.id},crit?{critico:true}:{},docAg?{documento:docAg}:{}));}));
       const {error:e2}=await sb.from('contas_pagar').insert(pr);
       if(e2)toast('O boleto entrou, mas não consegui dividir: '+e2.message,'erro');else toast(`Dividido: ${Object.keys(partes).length} empresas receberam a parte na Agenda.`,'ok');
       AG_DIV.mao={};}
     await agAprenderBoleto(cat,cont);
-    toast(rows.length>1?`📅 ${rows.length} parcelas lançadas na agenda.`:'📅 Conta lançada na agenda.','ok');AG_SEMANA=agInicioSemana(agDiaUtil(venc)<=addDias(agInicioSemana(_hojeLocal()),6)?_hojeLocal():venc);render();
+    fecharModal();toast(rows.length>1?`${rows.length} parcelas lançadas na agenda.`:'Conta lançada na agenda.','ok');AG_SEMANA=agInicioSemana(agDiaUtil(venc)<=addDias(agInicioSemana(_hojeLocal()),6)?_hojeLocal():venc);render();
   }
   function agAbrirItem(k){const i=_agItens.find(x=>x.k===k);if(!i)return;
     const info={conta:'conta lançada na agenda',legado:'lançamento marcado como "não pago" (A pagar antigo)',fixo:'fixo dos Recorrentes — aparece sozinho todo mês e fica pago quando sai um lançamento parecido perto do dia',lente:'boleto de lentes previsto no Caixinha — quando for pago lá, vira lançamento sozinho (espelho de Lentes)'}[i.tipo];

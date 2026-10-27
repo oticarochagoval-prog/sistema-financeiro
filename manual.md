@@ -74,6 +74,11 @@ Logo no alto de **Lançamentos** aparece o quadro **Conferidos · loja · mês**
 - No fim da linha fica o **quadradinho**. Quem marca fica gravado, com o nome e o dia em letra pequena embaixo. Linha vermelha não deixa marcar: primeiro resolve.
 - Com um dia escolhido, aparece **Conferir os N amarelos do dia**, para marcar todos de uma vez.
 
+
+**Garantia de que salvou (v2.9.58):** o quadradinho só fica marcado depois que o banco **confirma** que gravou. Enquanto salva, ele fica clarinho por um instante. Se o banco não confirmar, ele **desmarca sozinho** e aparece o aviso vermelho **NÃO SALVOU**, com o nome do lançamento. Aí é só marcar de novo. O contador (ex.: 7/280) sobe na hora, a cada marcação. Se alguém tentar fechar a aba enquanto ainda está salvando, o navegador pede para esperar. E qualquer erro escondido do sistema agora aparece como aviso vermelho, em vez de falhar calado.
+
+**O que aconteceu antes da 2.9.58:** da 2.9.44 (24/10) até a 2.9.57, marcar **um por um** não gravava. O quadradinho parecia marcado, mas sumia ao voltar na tela. O "conferir o dia todo" e os conferidos automáticos (Caixinha) gravavam normal.
+
 ## Íris · resumo do dia (v2.9.53)
 
 No alto do **Dashboard** aparece a **Íris**, a assistente do escritório. Ela **só olha e avisa**: não lança, não apaga, não muda nada.
@@ -483,6 +488,10 @@ Clique em qualquer conta para ver os detalhes ou resolver. A Agenda também alim
 - Parcelado sem boleto na mão: escolha **quantas vezes** e **de qual parcela começa** (ex.: 6x, da 5ª).
 - Sempre confira antes de clicar em **Lançar na agenda**.
 
+### Lançar direto na Agenda (v2.9.57)
+
+Na Agenda tem o botão **+ Lançar na agenda** (em cima, ao lado da semana, e no quadro "Lançar uma conta"). O que é lançado ali fica **só na Agenda**: não aparece em Lançamentos, nem com vencimento hoje. Quando o extrato trouxer o pagamento, a conta dá baixa sozinha e vira lançamento. Os campos são descrição, valor, vencimento, categoria, contato, parcelas, código de barras ou foto do boleto, **Nº documento / observação** e "Não pode atrasar". Na Diversas aparece também o botão **Dividir entre as empresas**, e a observação vai junto para a parte de cada empresa.
+
 ## 🧩 Módulos: Óticas · Laboratório · Grupo de compras · Casa (v2.7.0)
 
 No alto da tela, ao lado da escolha da loja, ficam os **módulos**. Ao trocar de módulo, a lista de lojas/empresas e o menu mudam:
@@ -730,6 +739,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.58 | Conferido: corrigido o erro que não gravava a marcação um por um (desde a 2.9.44); agora só fica marcado com a confirmação do banco, desmarca e avisa NÃO SALVOU se falhar; aviso vermelho para qualquer erro escondido; não fecha a aba no meio de um salvamento | — |
+| 27/10/2026 | 2.9.57 | Botão + Lançar na agenda na própria Agenda de pagamentos: fica só na Agenda, não vai para Lançamentos (com observação, parcelas, foto do boleto e divisão na Diversas) | — |
 | 26/10/2026 | 2.9.56 | Nº documento / observação do lançamento vai para a Agenda (conta futura) e volta para o lançamento quando o extrato paga | Coluna documento em contas_pagar (Claude roda, com autorização) |
 | 26/10/2026 | 2.9.55 | Entrada automática não lança sozinha o que parece já digitado à mão com data até 3 dias diferente (espera conferir, não duplica) | Nenhum |
 | 26/10/2026 | 2.9.54 | Importar: puxar um mês antigo do robô (junho em diante), um mês e uma loja por vez; nunca em mês fechado; "já lançado" também com data até 3 dias diferente (etiqueta "confira"); quadro de saldo do fim do mês (banco × Fluxo). Lançamentos: dica "hoje ou antes = pago · depois de hoje = Agenda" | Nenhum |
