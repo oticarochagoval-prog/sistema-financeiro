@@ -285,7 +285,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.66', APP_DATA='27/10/2026';
+  const APP_VERSAO='2.9.67', APP_DATA='27/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1049,7 +1049,7 @@
     const r=await lentesLerCaixinha();
     if(r.erro){LENTES_ULT.erro=r.erro;if(!silencioso)toast(r.erro==='nao_logado'?'Entre no Caixinha (aba Caixinha) para espelhar as Lentes.':'Lentes: '+r.erro,'erro');return;}
     const itens=r.itens.filter(i=>i.lojaId);LENTES_ULT.diag=r.diag;
-    const {data:exist,error:e1}=await sb.from('lancamentos').select('id,loja_id,conta_id,data,valor,descricao,categoria_id,contato_id,ref_externa,anexo_url,origem,criado_por').like('ref_externa','fz%');
+    const {data:exist,error:e1}=await sbTudo(()=>sb.from('lancamentos').select('id,loja_id,conta_id,data,valor,descricao,categoria_id,contato_id,ref_externa,anexo_url,origem,criado_por').like('ref_externa','fz%').order('id'));
     if(e1){LENTES_ULT.erro=e1.message;if(!silencioso)toast('Lentes: rode o SQL da v1.8 (coluna ref_externa). '+e1.message,'erro');return;}
     const porRef={};(exist||[]).forEach(l=>porRef[String(l.ref_externa).replace(/^fzl:/,'fz:')]=l);
     // foi o espelho que criou (vai pra lixeira se sumir) ou só ligou a uma linha que já existia (só desliga)?
@@ -1308,13 +1308,15 @@
   async function carregarPerfis(){try{const {data}=await sb.from('perfis').select('id,nome,papel');PERFIS_LISTA=data||[];PERFIS_LISTA.forEach(p=>PERFIS[p.id]=p.nome);}catch(e){} if(USER&&PERFIL.nome)PERFIS[USER.id]=PERFIL.nome;}
   function nomeDe(uid){return PERFIS[uid]||'';}
   async function carregarContas(){const {data}=await sb.from('contas').select('*').eq('loja_id',lojaAtual).eq('arquivada',false).order('nome');CONTAS=data||[];}
+  // v2.9.67: o banco devolve no máximo 1000 linhas por vez; isto busca TODAS (de 1000 em 1000). Antes, loja com mais de 1000 lançamentos perdia os últimos meses na tela.
+  async function sbTudo(f){let out=[];for(let o=0;o<200000;o+=1000){const {data,error}=await f().range(o,o+999);if(error)return {data:out.length?out:null,error};out=out.concat(data||[]);if(!data||data.length<1000)break;}return {data:out,error:null};}
   async function carregarLancamentos(){
-    const {data}=await sb.from('lancamentos').select('*, categorias(nome,grupo), contatos(nome,tipo), contas(nome)').eq('loja_id',lojaAtual).order('data',{ascending:true}).order('id',{ascending:true}).limit(2000); // v2.9.22: dentro do dia, na mesma ordem do extrato
+    const {data}=await sbTudo(()=>sb.from('lancamentos').select('*, categorias(nome,grupo), contatos(nome,tipo), contas(nome)').eq('loja_id',lojaAtual).order('data',{ascending:true}).order('id',{ascending:true})); // v2.9.22: dentro do dia, na mesma ordem do extrato
     LANC=data||[];
   }
   let LANC_ANO=[];
   async function carregarLancAno(){
-    const {data}=await sb.from('lancamentos').select('data,valor,conta_id,contato_id,documento,categorias(nome,grupo),contatos(nome,tipo)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').limit(5000);
+    const {data}=await sbTudo(()=>sb.from('lancamentos').select('data,valor,conta_id,contato_id,documento,categorias(nome,grupo),contatos(nome,tipo)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').order('id'));
     LANC_ANO=data||[];
   }
   async function trocarLoja(){
@@ -2480,7 +2482,7 @@
     // busca lançamentos completos do mês/grupo (usa o 1º dia do mês seguinte pra pegar o mês inteiro)
     const ini=`${ANO_FIXO}-${String(mesIdx+1).padStart(2,'0')}-01`;
     const proxMes=mesIdx+1>=12?`${ANO_FIXO+1}-01-01`:`${ANO_FIXO}-${String(mesIdx+2).padStart(2,'0')}-01`;
-    const {data}=await sb.from('lancamentos').select('id,data,valor,descricao,categoria_id,categorias(nome,grupo),contatos(nome)').eq('loja_id',lojaAtual).gte('data',ini).lt('data',proxMes).limit(2000);
+    const {data}=await sbTudo(()=>sb.from('lancamentos').select('id,data,valor,descricao,categoria_id,categorias(nome,grupo),contatos(nome)').eq('loja_id',lojaAtual).gte('data',ini).lt('data',proxMes).order('id'));
     const lista=(data||[]).filter(l=>{const g=l.categorias&&l.categorias.grupo;return g===grupoKey;}).sort((a,b)=>a.data.localeCompare(b.data));
     let total=0;
     // opções dos 7 grupos do DRE pra troca rápida
@@ -2636,7 +2638,7 @@
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
     await carregarContas();await carregarLancAno();await carregarFechamentos();
     // o que aconteceu antes do ano (pra calcular o saldo inicial quando nenhum mês anterior foi fechado)
-    const {data:antesRows}=await sb.from('lancamentos').select('valor,conta_id,categorias(grupo)').eq('loja_id',lojaAtual).lt('data',ANO_FIXO+'-01-01');
+    const {data:antesRows}=await sbTudo(()=>sb.from('lancamentos').select('valor,conta_id,categorias(grupo)').eq('loja_id',lojaAtual).lt('data',ANO_FIXO+'-01-01').order('id'));
     const antes={};(antesRows||[]).forEach(l=>{if(!l.conta_id)return;antes[l.conta_id]=(antes[l.conta_id]||0)+Number(l.valor);});
     const row=FECH_ANO[mesSel+1]||null;const fechado=!!(row&&row.fechado);
     const mesNome=MESES_NOME[mesSel],ult=_ultimoDiaBR(mesSel);
@@ -3021,7 +3023,7 @@
     const br=iso=>iso?String(iso).slice(0,10).split('-').reverse().join('/'):'—';
     // calcula direto pelos lançamentos vindos do extrato (origem ofx) — sempre disponível
     let datas=[];
-    try{const r=await sb.from('lancamentos').select('data').eq('loja_id',lojaAtual).eq('origem','ofx');datas=(r.data||[]).map(x=>x.data).filter(Boolean).sort();}catch(e){}
+    try{const r=await sbTudo(()=>sb.from('lancamentos').select('data').eq('loja_id',lojaAtual).eq('origem','ofx').order('id'));datas=(r.data||[]).map(x=>x.data).filter(Boolean).sort();}catch(e){}
     if(datas.length===0){box.innerHTML=compact?'':`<div class="note" style="margin-top:12px">Nenhum extrato importado para esta loja ainda.</div>`;return;}
     const de=datas[0],ate=datas[datas.length-1],n=datas.length;
     if(compact){box.innerHTML=`<div style="margin-bottom:14px;background:rgba(245,183,64,.1);border:1px solid var(--amber);border-left:4px solid var(--amber);border-radius:10px;padding:9px 14px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="color:var(--amber);font-weight:700">📆 Extrato importado · ${nomeLoja}:</span> <b>${br(de)} até ${br(ate)}</b> <span class="mut">· ${n} lançamento(s)</span></div>`;return;}
@@ -3352,7 +3354,7 @@
     if(IMPORT.length)return; // alguém está no meio de uma importação: deixa pra próxima
     const contas=SICOOB_CONTAS.filter(c=>c.loja_id&&LOJAS.some(l=>l.id===Number(c.loja_id)));if(!contas.length)return;
     _autoRodando=true;const antes=lojaAtual,res=[];
-    const veu=document.createElement('div');veu.id='autoVeu';veu.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center';
+    const veu=document.createElement('div');veu.id='autoVeu';veu.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center'; // tranca a tela de propósito: enquanto lança, o sistema troca de loja por baixo
     try{for(const c of contas){
         const r=await _autoEntrarConta(c,null,veu,'Lançando o extrato automático do Sicoob…');
         if(r&&r.ok)res.push(`${_nomeLoja(Number(c.loja_id))}: ${r.ok} lançamento(s) entraram sozinhos${r.esperando?` · ${r.esperando} esperando no Importar`:''}`);}
@@ -3433,7 +3435,7 @@
       let LENT=[],EXIST=[];
       try{if(datas.length){
         const {data}=await sb.from('lancamentos').select('id,data,valor,descricao,fitid').eq('loja_id',lojaAtual).like('ref_externa','fz%').gte('data',addDias(datas[0],-3)).lte('data',addDias(datas[datas.length-1],3));LENT=data||[];
-        const {data:ex}=await sb.from('lancamentos').select('id,data,valor,descricao,fitid,origem,conta_id,categoria_id,ref_externa').eq('loja_id',lojaAtual).gte('data',addDias(datas[0],-3)).lte('data',addDias(datas[datas.length-1],3)).limit(5000);
+        const {data:ex}=await sbTudo(()=>sb.from('lancamentos').select('id,data,valor,descricao,fitid,origem,conta_id,categoria_id,ref_externa').eq('loja_id',lojaAtual).gte('data',addDias(datas[0],-3)).lte('data',addDias(datas[datas.length-1],3)).order('id'));
         EXIST=(ex||[]).filter(l=>!contaEhCaixinha(l.conta_id));
         // v2.9.11: contas abertas da Agenda (boleto pago que já estava lá entra com a categoria dela e dá baixa)
         try{let {data:ag,error:eag}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,categoria_id,contato_id,documento').eq('loja_id',lojaAtual).eq('status','aberto').gte('vencimento',addDias(datas[0],-30)).lte('vencimento',addDias(datas[datas.length-1],7)).limit(2000);if(eag&&/documento/i.test(eag.message||'')){({data:ag}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,categoria_id,contato_id').eq('loja_id',lojaAtual).eq('status','aberto').gte('vencimento',addDias(datas[0],-30)).lte('vencimento',addDias(datas[datas.length-1],7)).limit(2000));}AGENDA_AB=ag||[];}catch(e){AGENDA_AB=[];}
@@ -4058,7 +4060,7 @@
       if(!ext)ext=await ultimo(L.id,'ofx');
       const man=await ultimo(L.id,'manual');
       // 2) quantos dias do mês atual têm algum lançamento feito por gente
-      const {data:mes}=await sb.from('lancamentos').select('data').eq('loja_id',L.id).in('origem',['ofx','manual']).gte('data',ini).lte('data',hojeISO);
+      const {data:mes}=await sbTudo(()=>sb.from('lancamentos').select('data').eq('loja_id',L.id).in('origem',['ofx','manual']).gte('data',ini).lte('data',hojeISO).order('id'));
       const diasCom=new Set((mes||[]).map(x=>x.data)).size;
       const faltam=ext?Math.floor((hoje-new Date(ext+'T12:00:00'))/86400000):null; // dias sem extrato
       out.push({L,ext,man,faltam,diasCom,n:(mes||[]).length});}catch(e){out.push({L,ext:null,man:null,faltam:null,diasCom:0,n:0});}}
@@ -4072,7 +4074,7 @@
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando dashboard...</div>';
     await carregarLancAno();
     // carrega lançamentos completos do mês (com descrição e contato) pra janela de detalhes
-    const {data:lancCompletos}=await sb.from('lancamentos').select('id,data,valor,descricao,documento,categoria_id,contato_id,conta_id,categorias(nome,grupo),contatos(nome)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').limit(5000);
+    const {data:lancCompletos}=await sbTudo(()=>sb.from('lancamentos').select('id,data,valor,descricao,documento,categoria_id,contato_id,conta_id,categorias(nome,grupo),contatos(nome)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').order('id'));
     _lancMesDash=(lancCompletos||[]).filter(l=>{const m=parseInt(l.data.split('-')[1],10)-1;return m===mesSel;});
     const lojaNome=LOJAS.find(l=>l.id===lojaAtual)?.nome||'';
     // separa receitas e despesas do MÊS selecionado, por categoria (mesmo sem grupo definido)
@@ -4175,7 +4177,7 @@
     const box=document.getElementById('saldoDia1');if(!box)return;const mi=mesSel,lojaAntes=lojaAtual;
     box.innerHTML='<div class="mut" style="font-size:12px;padding:6px 0">calculando saldo do dia 1º…</div>';
     await carregarLancAno();await carregarFechamentos();
-    const {data:antesRows}=await sb.from('lancamentos').select('valor,conta_id').eq('loja_id',lojaAtual).lt('data',ANO_FIXO+'-01-01');
+    const {data:antesRows}=await sbTudo(()=>sb.from('lancamentos').select('valor,conta_id').eq('loja_id',lojaAtual).lt('data',ANO_FIXO+'-01-01').order('id'));
     const antes={};(antesRows||[]).forEach(l=>{if(!l.conta_id)return;antes[l.conta_id]=(antes[l.conta_id]||0)+Number(l.valor);});
     let sicoob=0,estimado=false;CONTAS.filter(c=>!/caixinha/i.test(c.nome)).forEach(c=>{const si=_saldoInicialMes(c,mi,antes);sicoob+=si.valor;if(si.origem==='calculado')estimado=true;});
     let gav=null,emp=null,deve=null;
@@ -4212,43 +4214,44 @@
   }
 
   // ---- JUROS POR LOJA (custo financeiro do cheque especial/empréstimo) ----
+  // v2.9.67: juros e custo financeiro POR LOJA e por mês — Rocha 1 a 11 em ordem, depois as outras contas do grupo; clique na loja para ver o que é (empréstimo, tarifas, juros)
+  let JUROS_ABERTO={};
   async function viewJuros(){
-    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Somando juros de todas as lojas...</div>';
-    // categorias que são custo financeiro
-    const catsFin=CATS.filter(c=>/juros|cheque especial|empr[ée]stimo|tarifa/i.test(c.nome)).map(c=>c.id);
-    // busca lançamentos financeiros de TODAS as lojas no ano
-    const {data}=await sb.from('lancamentos').select('loja_id,valor,data,descricao,categoria_id,categorias(nome)').gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').in('categoria_id',catsFin.length?catsFin:[-1]).limit(5000);
-    const lancs=data||[];
-    // soma por loja e por mês (valor exato de cada mês; o mês atual vai somando dia a dia)
+    document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Somando o custo financeiro de cada loja...</div>';
+    const catsFin=CATS.filter(c=>/juros|cheque especial|empr[ée]stimo|tarifa|iof|encargo/i.test(c.nome)).map(c=>c.id);
+    const {data}=await sbTudo(()=>sb.from('lancamentos').select('loja_id,valor,data,categoria_id,categorias(nome)').gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').in('categoria_id',catsFin.length?catsFin:[-1]).order('id'));
+    const lancs=(data||[]).filter(l=>Number(l.valor)<0);
     const hoje=new Date(),mAtual=hoje.getFullYear()===ANO_FIXO?hoje.getMonth():11;
-    const porLoja={},porMesG=Array(12).fill(0);
-    lancs.forEach(l=>{
-      if(!porLoja[l.loja_id])porLoja[l.loja_id]={total:0,qtd:0,porCat:{},mes:Array(12).fill(0),mesCat:Array.from({length:12},()=>({}))};
-      const v=Math.abs(Number(l.valor)),m=parseInt(l.data.slice(5,7),10)-1,d=porLoja[l.loja_id];
-      const cat=(l.categorias&&l.categorias.nome)||'—';
-      d.total+=v;d.qtd++;d.porCat[cat]=(d.porCat[cat]||0)+v;d.mes[m]+=v;d.mesCat[m][cat]=(d.mesCat[m][cat]||0)+v;
-    });
-    const linhas=lojasDoModulo().map(loja=>{const d=porLoja[loja.id];if(!d)return null;porLoja[loja.id].mes.forEach((v,m)=>porMesG[m]+=v);return {nome:loja.nome,id:loja.id,...d};}).filter(Boolean).sort((a,b)=>b.total-a.total);
-    const totalGeral=linhas.reduce((s,l)=>s+l.total,0);
-    if(linhas.length===0){
-      document.getElementById('content').innerHTML=`<div class="note">🏦 <b>Juros por loja</b> — quanto cada loja pagou de custo financeiro (juros de cheque especial, empréstimo, tarifas), mês a mês.</div><div class="card empty"><div class="big">🏦</div><b>Nenhum custo financeiro lançado ainda</b><div style="margin-top:6px">Lance os juros e tarifas do extrato com uma categoria que tenha "juros", "cheque especial", "empréstimo" ou "tarifa" no nome.</div></div>`;
-      return;
-    }
-    const meses=Array.from({length:mAtual+1},(_,m)=>m);
-    const cel=(v,cats,m)=>`<td class="amt" style="text-align:right;white-space:nowrap${v?';color:var(--red)':''}${m===mAtual?';background:rgba(245,183,64,.06)':''}" title="${cats?Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,x])=>c+': '+BRL(x)).join(' · '):''}">${v?BRL(v):'—'}</td>`;
-    const rows=linhas.map(l=>`<tr><td style="white-space:nowrap"><b>${l.nome}</b></td>${meses.map(m=>cel(l.mes[m],l.mesCat[m],m)).join('')}<td class="amt" style="text-align:right;white-space:nowrap"><b>${BRL(l.total)}</b></td></tr>`).join('')
-      +`<tr style="border-top:2px solid var(--line)"><td><b>Grupo</b></td>${meses.map(m=>`<td class="amt" style="text-align:right;white-space:nowrap${m===mAtual?';background:rgba(245,183,64,.06)':''}"><b>${porMesG[m]?BRL(porMesG[m]):'—'}</b></td>`).join('')}<td class="amt" style="text-align:right;white-space:nowrap"><b style="color:var(--red)">${BRL(totalGeral)}</b></td></tr>`;
-    const mPass=mAtual-1;
-    document.getElementById('content').innerHTML=`<div class="note">🏦 <b>Juros por loja — ${ANO_FIXO}, mês a mês.</b> Quanto cada loja pagou de custo financeiro (cheque especial, empréstimo, tarifas) em cada mês. O mês atual vai somando conforme os extratos são importados; quando o mês acaba, o valor fica guardado. Passe o mouse no valor para ver o detalhe.</div>
-      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:16px">
-        <div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">${MESES_NOME[mAtual].toUpperCase()} (ATÉ AGORA)</div><div style="font-size:28px;font-weight:800;color:var(--amber);margin-top:8px">${BRL(porMesG[mAtual])}</div><div class="mut" style="font-size:11px;margin-top:4px">vai somando até o fim do mês</div></div>
-        ${mPass>=0?`<div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">${MESES_NOME[mPass].toUpperCase()}</div><div style="font-size:28px;font-weight:800;color:var(--red);margin-top:8px">${BRL(porMesG[mPass])}</div><div class="mut" style="font-size:11px;margin-top:4px">mês fechado</div></div>`:''}
-        <div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">TOTAL NO ANO</div><div style="font-size:28px;font-weight:800;color:var(--red);margin-top:8px">${BRL(totalGeral)}</div><div class="mut" style="font-size:11px;margin-top:4px">${nomeTodas()} · ${ANO_FIXO}</div></div>
+    const por={},cats=new Set();
+    lancs.forEach(l=>{const d=por[l.loja_id]||(por[l.loja_id]={mes:Array(12).fill(0),cat:{}});const v=Math.abs(Number(l.valor)),m=parseInt(l.data.slice(5,7),10)-1,c=(l.categorias&&l.categorias.nome)||'—';
+      cats.add(c);d.mes[m]+=v;(d.cat[c]=d.cat[c]||Array(12).fill(0))[m]+=v;});
+    const ordem=L=>{const n=String(L.nome||'').match(/rocha\s*0*(\d+)/i);if(n)return Number(n[1]);if(/gv|optical|lentes|laborat/i.test(L.nome))return 100;return 200;};
+    const lojas=LOJAS.filter(l=>!l.arquivada).sort((a,b)=>ordem(a)-ordem(b)||(a.nome||'').localeCompare(b.nome||''));
+    const rocha=lojas.filter(l=>ordem(l)<100),outras=lojas.filter(l=>ordem(l)>=100);
+    const _comDado=Array(12).fill(false);Object.values(por).forEach(d=>d.mes.forEach((v,m)=>{if(v)_comDado[m]=true;}));const mIni=Math.max(0,Math.min(mAtual,_comDado.indexOf(true)<0?0:_comDado.indexOf(true)));
+    const meses=Array.from({length:mAtual-mIni+1},(_,k)=>mIni+k);const soma=a=>a.reduce((t,v)=>t+v,0); // começa no primeiro mês que tem dado
+    const nomeL=L=>_remEsc(lojaNomeCurto(L.id).replace(/^Laboratório \/ /,''));
+    const td=(v,m,b)=>`<td class="amt" style="text-align:right;white-space:nowrap${v?';color:var(--red)':''}${m===mAtual?';background:rgba(245,183,64,.06)':''}">${v?(b?'<b>'+BRL(v)+'</b>':BRL(v)):'<span class="mut">—</span>'}</td>`;
+    const tabela=(tit,ls)=>{const tot=Array(12).fill(0);let corpo='';
+      ls.forEach(L=>{const d=por[L.id];const mes=d?d.mes:Array(12).fill(0);mes.forEach((v,m)=>tot[m]+=v);const ab=!!JUROS_ABERTO[L.id];
+        corpo+=`<tr style="cursor:pointer" onclick="JUROS_ABERTO[${L.id}]=!JUROS_ABERTO[${L.id}];viewJuros()"><td style="white-space:nowrap"><b>${nomeL(L)}</b> <span class="mut" style="font-size:11px">${d?(ab?'▾':'▸'):''}</span></td>${meses.map(m=>td(mes[m],m)).join('')}${td(soma(meses.map(m=>mes[m])),-1,true)}</tr>`;
+        if(ab&&d)Object.entries(d.cat).sort((a,b)=>soma(b[1])-soma(a[1])).forEach(([c,arr])=>{corpo+=`<tr style="font-size:12px"><td class="mut" style="padding-left:22px;white-space:nowrap">${_remEsc(c)}</td>${meses.map(m=>td(arr[m],m)).join('')}${td(soma(meses.map(m=>arr[m])),-1)}</tr>`;});});
+      corpo+=`<tr style="border-top:2px solid var(--line)"><td><b>Total</b></td>${meses.map(m=>td(tot[m],m,true)).join('')}${td(soma(meses.map(m=>tot[m])),-1,true)}</tr>`;
+      return {html:`<div class="card" style="padding:0;overflow-x:auto;margin-bottom:14px"><div style="padding:12px 16px 4px"><b style="font-size:14.5px">${tit}</b></div><table><thead><tr><th>Loja</th>${meses.map(m=>`<th style="text-align:right">${MESES_NOME[m].slice(0,3)}${m===mAtual?' *':''}</th>`).join('')}<th style="text-align:right">Total</th></tr></thead><tbody>${corpo}</tbody></table></div>`,tot};};
+    const tR=tabela('Óticas Rocha · Rocha 1 a Rocha 11',rocha),tO=tabela('Outras contas do grupo',outras);
+    const gm=Array(12).fill(0);[tR.tot,tO.tot].forEach(a=>a.forEach((v,m)=>gm[m]+=v));
+    const porCatG={};Object.values(por).forEach(d=>Object.entries(d.cat).forEach(([c,a])=>porCatG[c]=(porCatG[c]||0)+soma(a)));
+    const card=(t,v,cor,sub)=>`<div class="card" style="text-align:center"><div class="mut" style="font-size:12px;font-weight:600">${t}</div><div style="font-size:24px;font-weight:800;color:${cor};margin-top:6px">${BRL(v)}</div>${sub?`<div class="mut" style="font-size:11px;margin-top:4px">${sub}</div>`:''}</div>`;
+    document.getElementById('content').innerHTML=`<div class="note">🏦 <b>Juros e custo financeiro — ${ANO_FIXO}, por loja e por mês.</b> Empréstimos (parcelas), tarifas do banco e juros de cheque especial. Clique na loja para ver o que é cada valor.</div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:16px">
+        ${card(MESES_NOME[mAtual].toUpperCase()+' (ATÉ AGORA)',gm[mAtual],'var(--amber)','todas as contas')}
+        ${mAtual>0?card(MESES_NOME[mAtual-1].toUpperCase(),gm[mAtual-1],'var(--red)','mês passado'):''}
+        ${Object.entries(porCatG).sort((a,b)=>b[1]-a[1]).map(([c,v])=>card(String(c).toUpperCase(),v,'var(--red)','no ano')).join('')}
       </div>
-      <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>Loja</th>${meses.map(m=>`<th style="text-align:right">${MESES_NOME[m].slice(0,3)}${m===mAtual?' *':''}</th>`).join('')}<th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <div class="mut" style="font-size:11.5px;margin-top:6px">* ${MESES_NOME[mAtual]} ainda está correndo.</div>
-      <div class="note" style="margin-top:16px;background:rgba(61,220,145,.06);border-color:rgba(61,220,145,.2)">💡 <b>Dica:</b> as lojas no topo são as que mais pagam custo financeiro. Compare o valor de um mês com a parcela de um empréstimo — se o empréstimo sair mais barato, vale trocar o cheque especial (como você fez no laboratório).</div>`
+      ${tR.html}${tO.html}
+      <div class="mut" style="font-size:11.5px;margin-top:-6px">* ${MESES_NOME[mAtual]} ainda está correndo. Conta que ainda não tem extrato no Fluxo (ex.: a conta de cheque) não aparece aqui até entrar.</div>`;
   }
+
 
 
 
@@ -4578,7 +4581,7 @@
     try{await remSincronizar(ids,meses);}catch(e){console.error('rem sync',e);}
     const {data:todos,error}=await sb.from('remanejos').select('*').in('loja_id',ids).limit(20000);REM_ERRO_TAB=!!error;
     const cf=_remCatsFin();let juros=[];
-    if(cf.length){const {data}=await sb.from('lancamentos').select('loja_id,valor,categoria_id').in('loja_id',ids).in('categoria_id',cf).gte('data',ym+'-01').lte('data',_fimMes(ym)).limit(5000);juros=data||[];}
+    if(cf.length){const {data}=await sbTudo(()=>sb.from('lancamentos').select('loja_id,valor,categoria_id').in('loja_id',ids).in('categoria_id',cf).gte('data',ym+'-01').lte('data',_fimMes(ym)).order('id'));juros=data||[];}
     if(seq!==_remSeq||page!=='remanejos')return;
     const ativos=(todos||[]).filter(r=>r.status==='registrado');
     const doMes=ativos.filter(r=>String(r.data||'').slice(0,7)===ym).sort((a,b)=>(a.motivo?1:0)-(b.motivo?1:0)||String(b.data).localeCompare(String(a.data)));
@@ -4906,7 +4909,7 @@
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
     await carregarContas();
     // calcula o saldo atual de cada conta (saldo inicial + entradas - saídas dos lançamentos dessa conta)
-    const {data:lancs}=await sb.from('lancamentos').select('valor,conta_id,categorias(grupo)').eq('loja_id',lojaAtual);
+    const {data:lancs}=await sbTudo(()=>sb.from('lancamentos').select('valor,conta_id,categorias(grupo)').eq('loja_id',lojaAtual).order('id'));
     const movPorConta={};
     (lancs||[]).forEach(l=>{if(!l.conta_id)return;movPorConta[l.conta_id]=(movPorConta[l.conta_id]||0)+Number(l.valor);});
     const contas=CONTAS.map(c=>{

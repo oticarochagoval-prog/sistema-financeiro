@@ -162,6 +162,11 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 - A **Casa** agora usa a caixinha "Casa" do Caixinha, igual a Diversas usa a "DIVERSAS". FZ Grifes e Grupo VR não têm caixinha: na hora de mandar, escolha a caixa.
 - Se o empréstimo já estiver ligado a outro lançamento, aparece uma mensagem clara, e não mais "criou no Caixinha".
 
+### Loja com mais de 1000 lançamentos e juros por loja (v2.9.67)
+
+- **Conserto importante:** o banco devolve no máximo 1000 linhas por vez. Loja com mais de 1000 lançamentos no ano (Rocha 1, Diversas, GV…) **não mostrava os últimos meses** na tela, no Dashboard, no saldo e nos conferidos. Agora o Fluxo busca tudo, de 1000 em 1000. Os lançamentos sempre estiveram no banco: só não apareciam.
+- **Juros por loja:** Rocha 1 a Rocha 11 em ordem, depois as outras contas do grupo (GV, FZ, Grupo VR, Diversas, Casa), mês a mês, a partir do primeiro mês com dado. Clique na loja para ver o que é cada valor: Empréstimo (parcelas), Tarifas Banco e Juros Cheque Especial. Em cima ficam o mês atual, o mês passado e o total do ano por tipo.
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -813,6 +818,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 27/10/2026 | 2.9.67 | Busca todos os lançamentos (o banco só devolve 1000 por vez: loja grande perdia os últimos meses na tela); Juros por loja em ordem Rocha 1–11 + outras contas, mês a mês, com o detalhe por tipo | — |
 | 27/10/2026 | 2.9.66 | Banco Caixinha: liga só com a caixa da loja do extrato, empréstimo ainda não ligado, até 15 dias e o mais perto; Casa usa a caixinha Casa; mensagem clara quando já ligado | Conserto de 29 ligações erradas + parcelas no mês errado (rodado com autorização, backup antes) |
 | 27/10/2026 | 2.9.65 | Fechamento: confere o movimento do mês com o banco (separa erro do mês de erro de saldo inicial) e mostra dia a dia o que falta no Fluxo e o que sobra (possível repetido), com abrir o dia | — |
 | 27/10/2026 | 2.9.64 | Robô das 6h no GitHub (Íris lança, classifica, IA e Diversas sem ninguém abrir); sugestões da IA guardadas no banco; fechamento assistido (banco × Fluxo e pendências de todas as empresas) | Usuário ÍRIS no Supabase + segredos no GitHub; tabela iris_sugestoes (Claude roda, com autorização) |
