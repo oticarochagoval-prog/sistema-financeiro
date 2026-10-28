@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.86', APP_DATA='28/10/2026';
+  const APP_VERSAO='2.9.87', APP_DATA='28/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -958,14 +958,17 @@
     return {entradas:Math.max(0,usa?(R.recMedia-ct.antMedia+ct.known):R.recMedia),cat,nMeses:R.mesesComDado.length};}
   // a Íris aprende: categoria que errou para o mesmo lado nos 3 últimos meses fechados → corrige pela média do erro (no máximo 30%)
   async function prevAjustar(lojaId,M,cat){const aj={};
-    try{const {data}=await sb.from('radar_previsoes').select('mes,por_cat,real_cat').eq('loja_id',lojaId).lt('mes',M).not('fechado_em','is',null).order('mes',{ascending:false}).limit(3);
-      if(!data||data.length<3)return aj;
-      Object.keys(cat).forEach(k=>{const rs=data.map(p=>{const pv=Number((p.por_cat||{})[k])||0,rv=Number((p.real_cat||{})[k])||0;return pv>200?rv/pv:null;});
+    try{const {data}=await sb.from('radar_previsoes').select('mes,por_cat,real_cat,meses_base').eq('loja_id',lojaId).lt('mes',M).not('fechado_em','is',null).order('mes',{ascending:false}).limit(3);
+      if(!data||data.length<3||data.some(p=>(Number(p.meses_base)||0)<3))return aj; // v2.9.87: só aprende com 3 meses de base boa (cada foto feita com 3 meses de histórico)
+      Object.keys(cat).forEach(k=>{if(k==='sem')return;const rs=data.map(p=>{const pv=Number((p.por_cat||{})[k])||0,rv=Number((p.real_cat||{})[k])||0;return pv>200?rv/pv:null;});
         if(rs.some(r=>r==null))return;if(!(rs.every(r=>r>1.05)||rs.every(r=>r<0.95)))return;
         const f=Math.min(1.3,Math.max(0.7,rs.reduce((a,b)=>a+b,0)/rs.length));cat[k]=Math.round(cat[k]*f*100)/100;aj[k]=Math.round((f-1)*100);});}catch(e){}
     return aj;}
-  async function prevFotografar(M,lojaId,origem){
-    const {data:ja}=await sb.from('radar_previsoes').select('id').eq('loja_id',lojaId).eq('mes',M).limit(1);if(ja&&ja.length)return false;
+  async function prevFotografar(M,lojaId,origem,refazer){
+    const {data:ja}=await sb.from('radar_previsoes').select('id,origem,fechado_em').eq('loja_id',lojaId).eq('mes',M).limit(1);
+    if(ja&&ja.length){if(!refazer||ja[0].origem==='robo'||ja[0].fechado_em)return false; // a foto do dia 1º nunca muda; só a montada depois pode ser refeita
+      const p=await prevCalcular(M,lojaId);const ajustes=await prevAjustar(lojaId,M,p.cat);const saidas=Object.values(p.cat).reduce((t,v)=>t+Number(v),0);
+      const {error}=await sb.from('radar_previsoes').update({entradas:Math.round(p.entradas*100)/100,saidas:Math.round(saidas*100)/100,por_cat:p.cat,ajustes,meses_base:p.nMeses}).eq('id',ja[0].id);return !error;}
     const p=await prevCalcular(M,lojaId);const ajustes=await prevAjustar(lojaId,M,p.cat);
     const saidas=Object.values(p.cat).reduce((t,v)=>t+Number(v),0);
     const {error}=await sb.from('radar_previsoes').insert({loja_id:lojaId,mes:M,entradas:Math.round(p.entradas*100)/100,saidas:Math.round(saidas*100)/100,por_cat:p.cat,ajustes,origem,meses_base:p.nMeses,criado_por:USER?USER.id:null});
@@ -1002,6 +1005,9 @@
     const estilo='display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:12.5px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 12px';
     if(fechado){box.innerHTML=`<div style="${estilo}"><b>Previsão ${quando} · mês fechado</b><span>Entradas: previu ${_n0(pe)}, entrou ${_n0(ent)} · ${_prevErroTxt(_prevErro(ent,pe),'e')}</span><span>Saídas: previu ${_n0(ps)}, saiu ${_n0(sai)} · ${_prevErroTxt(_prevErro(sai,ps),'s')}</span></div>`;return;}
     box.innerHTML=`<div style="${estilo}"><b>Previsão ${quando}</b><span>entrar <b>${_n0(pe)}</b> <span class="mut">(já ${pct(ent,pe)})</span></span><span>sair <b>${_n0(ps)}</b> <span class="mut">(já ${pct(sai,ps)})</span></span><span>sobra prevista <b style="color:${pe-ps>=0?'var(--green)':'var(--red)'}">${pe-ps>=0?'+':'−'}${_n0(Math.abs(pe-ps))}</b></span><a href="#" style="margin-left:auto" onclick="go('radar');return false">ver no Radar</a></div>`;}
+  async function prevRefazerMes(){if(!ehDono())return;const M=`${ANO_FIXO}-${_mm(mesSel)}`;
+    if(!confirm(`Refazer a previsão de ${MESES_NOME[mesSel]} de todas as contas com a regra nova?\n\n(Só a previsão montada depois; a foto tirada no dia 1º não muda.)`))return;
+    toast('A Íris está refazendo a previsão…','ok');let n=0;for(const L of _prevLojas()){try{if(await prevFotografar(M,L.id,'retro',true))n++;}catch(e){}}toast(`Previsão refeita em ${n} conta(s).`,'ok');render();}
   async function prevAgora(){if(!ehDono())return;toast('A Íris está montando a previsão de todas as contas…','ok');const r=await prevRotina([]);toast(`Previsão pronta: ${r.nf} foto(s), ${r.nc} mês(es) fechado(s).`,'ok');render();}
   // gestor: todas as contas, Rocha 1 a 11, GV Lentes, Grupo de compras, Diversas
   async function prevPreencherGrupo(){const box=document.getElementById('prevGrupo');if(!box||!ehDono())return;const M=`${ANO_FIXO}-${_mm(mesSel)}`;
@@ -1015,19 +1021,21 @@
     const pega=(id,m)=>pvs.find(p=>Number(p.loja_id)===Number(id)&&p.mes===m);const tdN='style="text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap"';
     const errMes=p=>{if(!p||!p.fechado_em)return null;const a=_prevErro(Number(p.entradas_real),Number(p.entradas)),b=_prevErro(Number(p.saidas_real),Number(p.saidas));return [a,b];};
     const curto=(e,t)=>{if(e==null)return '<span class="mut">—</span>';const p=Math.round(Math.abs(e)*100),ruim=t==='s'?e>0:e<0;if(p===0)return '<span style="color:var(--green);font-weight:700">0%</span>';return `<span style="color:${p<=3?'var(--green)':(ruim?'var(--red)':'var(--amber)')};font-weight:700">${e>0?'+':'−'}${p}%</span>`;};
-    const ajTxt=[];
+    const ajTxt=[];const aberto0=M===_hojeLocal().slice(0,7);
+    const _diaH=Number(_hojeLocal().slice(8,10)),_pctMes=_diaH/Number(_fimMes(M).slice(8,10));
+    const andam=(real,prev,t)=>{if(!(prev>0.5))return '—';const p=real/prev,pc=Math.round(p*100);const ruim=t==='s'?p>_pctMes+0.15:p<_pctMes-0.15;return `<span style="color:${ruim?'var(--amber)':'var(--txt)'};font-weight:700">${pc}%</span>`;};
     const rows=lojas.map(L=>{const p=pega(L.id,M);if(!p&&!meses.some(m=>pega(L.id,m)))return '';
       const r=p&&p.fechado_em?{entradas:Number(p.entradas_real),saidas:Number(p.saidas_real)}:(realAtual[L.id]||{entradas:0,saidas:0});
       Object.entries((p&&p.ajustes)||{}).forEach(([k,v])=>{const c=CATS.find(x=>String(x.id)===k);ajTxt.push(`${lojaNomeCurto(L.id)}: ${c?c.nome:'categoria'} ${v>0?'+':''}${v}%`);});
       const hist=meses.slice(0,3).map(m=>errMes(pega(L.id,m)));
       const histTxt=t=>hist.map(h=>h?curto(h[t==='e'?0:1],t):'<span class="mut">—</span>').join(' · ');
-      return `<tr><td><b>${lojaNomeCurto(L.id)}</b></td><td ${tdN}>${p?_n0(p.entradas):'—'}</td><td ${tdN}>${_n0(r.entradas)}</td><td ${tdN}>${p?curto(_prevErro(r.entradas,Number(p.entradas)),'e'):'—'}</td>
-        <td ${tdN}>${p?_n0(p.saidas):'—'}</td><td ${tdN}>${_n0(r.saidas)}</td><td ${tdN}>${p?curto(_prevErro(r.saidas,Number(p.saidas)),'s'):'—'}</td>
+      return `<tr><td><b>${lojaNomeCurto(L.id)}</b></td><td ${tdN}>${p?_n0(p.entradas):'—'}</td><td ${tdN}>${_n0(r.entradas)}</td><td ${tdN}>${p?(aberto0?andam(r.entradas,Number(p.entradas),'e'):curto(_prevErro(r.entradas,Number(p.entradas)),'e')):'—'}</td>
+        <td ${tdN}>${p?_n0(p.saidas):'—'}</td><td ${tdN}>${_n0(r.saidas)}</td><td ${tdN}>${p?(aberto0?andam(r.saidas,Number(p.saidas),'s'):curto(_prevErro(r.saidas,Number(p.saidas)),'s')):'—'}</td>
         <td ${tdN} style="font-size:12px">${histTxt('e')}</td><td ${tdN} style="font-size:12px">${histTxt('s')}</td></tr>`;}).join('');
     const aberto=M===_hojeLocal().slice(0,7),mn=m=>_mesNomeM(m).slice(0,3).toLowerCase();
     box.innerHTML=`<div class="card" style="margin-bottom:14px;padding:0;overflow:auto"><div style="padding:14px 16px 6px;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline"><h3 style="font-size:15px;margin:0">Previsão do dia 1º × o que aconteceu</h3><span class="mut" style="font-size:12px">${MESES_NOME[mesSel]}${aberto?' · até hoje':''} · só gestor</span></div>
-      <table style="min-width:900px"><thead><tr><th>Conta</th><th ${tdN}>Entrada prevista</th><th ${tdN}>Entrou</th><th ${tdN}>Erro</th><th ${tdN}>Saída prevista</th><th ${tdN}>Saiu</th><th ${tdN}>Erro</th><th ${tdN}>Erro entradas<br><span class="mut" style="font-weight:400">${meses.slice(0,3).map(mn).join(' · ')}</span></th><th ${tdN}>Erro saídas<br><span class="mut" style="font-weight:400">${meses.slice(0,3).map(mn).join(' · ')}</span></th></tr></thead><tbody>${rows}</tbody></table>
-      <div class="mut" style="font-size:11.5px;padding:8px 16px 14px">Erro = quanto o que aconteceu ficou longe do que a Íris previu no dia 1º. <b style="color:var(--red)">Vermelho</b> é o lado ruim (saiu mais ou entrou menos), <b style="color:var(--amber)">amarelo</b> é o lado bom e <b style="color:var(--green)">verde</b> é até 3%. O objetivo é o erro ir diminuindo mês a mês.${aberto?' No mês aberto, o erro é só o andamento até hoje.':''}${ajTxt.length?`<br>A Íris corrigiu a previsão deste mês (errou para o mesmo lado 3 meses seguidos): ${ajTxt.join(' · ')}`:''}</div></div>`;}
+      <table style="min-width:900px"><thead><tr><th>Conta</th><th ${tdN}>Entrada prevista</th><th ${tdN}>Entrou</th><th ${tdN}>${aberto?'Já entrou':'Erro'}</th><th ${tdN}>Saída prevista</th><th ${tdN}>Saiu</th><th ${tdN}>${aberto?'Já saiu':'Erro'}</th><th ${tdN}>Erro entradas<br><span class="mut" style="font-weight:400">${meses.slice(0,3).map(mn).join(' · ')}</span></th><th ${tdN}>Erro saídas<br><span class="mut" style="font-weight:400">${meses.slice(0,3).map(mn).join(' · ')}</span></th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="mut" style="font-size:11.5px;padding:8px 16px 14px">Erro = quanto o que aconteceu ficou longe do que a Íris previu no dia 1º. <b style="color:var(--red)">Vermelho</b> é o lado ruim (saiu mais ou entrou menos), <b style="color:var(--amber)">amarelo</b> é o lado bom e <b style="color:var(--green)">verde</b> é até 3%. O objetivo é o erro ir diminuindo mês a mês.${aberto?` <b>Mês aberto:</b> a previsão do dia 1º não muda; "já entrou" e "já saiu" é quanto do previsto já aconteceu até hoje (o mês está ${Math.round(_pctMes*100)}% passado). O erro de verdade só aparece quando o mês fecha. <a href="#" onclick="prevRefazerMes();return false">Refazer a previsão deste mês com a regra nova</a>`:''}${ajTxt.length?`<br>A Íris corrigiu a previsão deste mês (errou para o mesmo lado 3 meses seguidos): ${ajTxt.join(' · ')}`:''}</div></div>`;}
 
 
   // ---- 🤖 MEDIDOR DE AUTOMAÇÃO: quanto o sistema já faz sozinho (por loja, mês atual × anterior) ----

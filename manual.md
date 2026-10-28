@@ -233,6 +233,8 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 - **Gestor (Dashboard):** tabela de todas as contas (Rocha 1 a 11, GV Lentes, Grupo de compras, Diversas) com previsto, realizado, erro do mês e o erro dos 3 meses anteriores. Vermelho é o lado ruim (saiu mais ou entrou menos), amarelo é o lado bom e verde é até 3%. O objetivo é o erro ir diminuindo.
 - **A Íris aprende:** se uma categoria errou para o mesmo lado 3 meses seguidos (mais de 5%), ela corrige a previsão do mês seguinte pela média do erro (no máximo 30%) e avisa na tabela do gestor.
 - Agosto, setembro e outubro foram montados "como se fosse dia 1º", para o erro já aparecer.
+- **Mês aberto (v2.9.87):** a previsão do dia 1º não muda durante o mês. O que anda é o "já entrou" e o "já saiu", em % do previsto. O erro de verdade só aparece quando o mês fecha.
+- A Íris só corrige uma categoria sozinha quando as 3 previsões anteriores foram feitas com 3 meses de histórico. Antes disso ela não mexe, para não aprender com mês incompleto. O botão **Refazer a previsão deste mês** refaz a previsão montada depois; a foto do dia 1º nunca muda.
 
 ### Trava: lançamento digitado que é de outra loja (v2.9.81)
 - Ao digitar um lançamento à mão, o Fluxo procura no extrato das outras lojas uma linha igual: mesmo dia, mesmo valor e mesmo nome. Se achar, avisa antes de salvar: "o extrato da Rocha 1 tem um lançamento igual a este". OK salva assim mesmo; Cancelar não salva.
@@ -922,6 +924,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 28/10/2026 | 2.9.87 | Previsão: mês aberto mostra andamento (% do previsto) em vez de erro; Íris só corrige categoria com base de 3 meses; botão Refazer a previsão do mês | — |
 | 28/10/2026 | 2.9.86 | Ranking e Produtividade: o extrato que entra sozinho do Sicoob conta como 'importou' da Íris | — |
 | 28/10/2026 | 2.9.85 | 'Digitado · equipe' vale até 26/10; a partir de 27/10 mostra o nome de quem fez | — |
 | 28/10/2026 | 2.9.84 | Digitado com o login do Lucas até 28/10 aparece como 'Digitado · equipe' | — |
