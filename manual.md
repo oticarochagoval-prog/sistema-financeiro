@@ -225,7 +225,7 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 - **Não está no extrato** (vermelho): digitado à mão, na conta do banco, e não apareceu no extrato depois que o extrato daquele dia chegou. O banco liga sozinho o que bate, até 3 dias de diferença. Pode ser de outra loja, de outra conta ou com valor errado.
   - Não vale para venda à vista, saldo inicial e prestação, que não passam pelo extrato.
   - Em cima da lista aparece quantos são, com o botão **Mostrar só esses**.
-- Para a etiqueta dizer quem fez, cada pessoa precisa entrar com o próprio login.
+- Até 26/10/2026 a equipe digitava com o login do Lucas: essas linhas aparecem como **Digitado · equipe**. A partir de 27/10, cada uma entra com o próprio nome e senha, e a etiqueta mostra o nome de quem fez (v2.9.85).
 
 ### Previsão do dia 1º e o erro do Radar (v2.9.82)
 - Todo dia 1º, às 6h, a Íris tira a "foto" da previsão do Radar de cada conta: quanto deve entrar, quanto deve sair e quanto por categoria. A foto fica guardada e não muda.
@@ -922,6 +922,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 28/10/2026 | 2.9.85 | 'Digitado · equipe' vale até 26/10; a partir de 27/10 mostra o nome de quem fez | — |
+| 28/10/2026 | 2.9.84 | Digitado com o login do Lucas até 28/10 aparece como 'Digitado · equipe' | — |
 | 28/10/2026 | 2.9.83 | Etiqueta Banco · Íris / Extrato · nome / Digitado · nome / Caixinha; aviso vermelho 'não está no extrato' com filtro | — |
 | 27/10/2026 | 2.9.82 | Previsão do dia 1º guardada pela Íris; linha em Lançamentos e no Dashboard; tabela do gestor com o erro por conta (para mais ou para menos) e a correção automática por categoria | Tabela radar_previsoes (SQL rodado pelo Lucas) |
 | 27/10/2026 | 2.9.81 | Aviso antes de salvar lançamento digitado igual ao extrato de outra loja | 6 lançamentos da Rocha 1 que estavam na Rocha 3 (junho) → Lixeira |
