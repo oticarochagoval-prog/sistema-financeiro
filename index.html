@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.89', APP_DATA='28/10/2026';
+  const APP_VERSAO='2.9.90', APP_DATA='28/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1832,7 +1832,10 @@
   async function irisAutoConferirCategorias(){if(!podeEditar())return 0;_irisMemo.t=0;const R=irisAvaliar();const pref=`${ANO_FIXO}-${_mm(mesSel)}`;
     const ls=LANC.filter(l=>{if((l.data||'').slice(0,7)!==pref||l.conferido_por||contaEhCaixinha(l.conta_id)||!lancPronto(l)||bloqueadoPorFechamento(l.data,l.conta_id))return false;
       const c=CATS.find(x=>Number(x.id)===Number(l.categoria_id));if(!c||!c.auto_conferir)return false;if(/tarifa/i.test(c.nome)&&!_tarifaOk(l.descricao))return false;
-      const r=R.get(l.id);return !(r&&(r.nivel==='gente'||r.discorda));});
+      const r=R.get(l.id);if(!r)return true;
+      // v2.9.90: venda de cliente (VENDA PIX, PIX DE CLIENTE, Cartão…): a Íris confere mesmo com valor diferente do costume ou quando antes era a categoria antiga de Pix
+      if(c.grupo==='rec'||/PIX DE CLIENTE|VENDA/i.test(c.nome)){if(r.nivel==='gente'&&!/^valor fora/.test(r.motivo||''))return false;if(r.discorda){const cs=CATS.find(x=>Number(x.id)===Number(r.cat));if(cs&&!cs.auto_conferir)return false;}return true;}
+      return !(r.nivel==='gente'||r.discorda);});
     if(!ls.length)return 0;const em=new Date().toISOString();let n=0;
     for(let i=0;i<ls.length;i+=200){const parte=ls.slice(i,i+200);const p={conferido_por:'ÍRIS',conferido_em:em,iris:'auto'};const {data,error}=await _irisUpd(p,parte.map(l=>l.id));
       const sim=new Set((data||[]).map(x=>x.id));parte.forEach(l=>{if(!error&&sim.has(l.id)){const q=Object.assign({},p);if(!_irisTemCol)delete q.iris;Object.assign(l,q);n++;}});}
@@ -3762,7 +3765,7 @@
         ex=EXIST.find(l=>!usadosEx.has(l.id)&&(!l.fitid||_IMP_API)&&l.data===t.iso&&cents(l.valor)===cents(t.amt)&&Math.sign(Number(l.valor))===Math.sign(t.amt));
         if(ex){usadosEx.add(ex.id);item.grupo='ja';item.jaExiste=ex;return item;}
         // v2.9.54: digitado à mão com data um pouco diferente (até 3 dias, mesmo valor) → já lançado, mas "confira"
-        {ex=EXIST.filter(l=>!usadosEx.has(l.id)&&(!l.fitid||_IMP_API)&&_dias(l.data,t.iso)<=3&&cents(l.valor)===cents(t.amt)&&Math.sign(Number(l.valor))===Math.sign(t.amt)).sort((a,b)=>_dias(a.data,t.iso)-_dias(b.data,t.iso))[0];
+        {ex=EXIST.filter(l=>!usadosEx.has(l.id)&&!l.fitid&&_dias(l.data,t.iso)<=3&&cents(l.valor)===cents(t.amt)&&Math.sign(Number(l.valor))===Math.sign(t.amt)).sort((a,b)=>_dias(a.data,t.iso)-_dias(b.data,t.iso))[0];
           if(ex){if(silencioso){item.jaTalvez=true;}else{usadosEx.add(ex.id);item.grupo='ja';item.jaExiste=ex;item.jaConfira=true;return item;}}} // v2.9.55: na entrada automática, se parece já digitado (data até 3 dias), não entra sozinho: espera alguém conferir
         // 2) boleto de lentes já espelhado do Caixinha
         if(t.amt<0){const L=LENT.find(l=>!usados.has(l.id)&&Math.abs(Math.abs(Number(l.valor))-Math.abs(t.amt))<0.005&&_dias(l.data,t.iso)<=3);

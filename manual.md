@@ -216,6 +216,10 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
   - **O robô das 6h** acerta o que entrou antes da outra ponta (últimos 60 dias, só o que não foi conferido).
   - O extrato entra pelo arquivo OFX (não tem importação automática), uma vez por semana. O quadro "Extrato em dia?" do Dashboard fica vermelho quando passa de 7 dias.
 
+### Íris confere a venda de cliente (v2.9.90)
+- VENDA PIX, PIX DE CLIENTE e Cartão: a Íris marca conferido sozinha mesmo quando o valor foge do costume, e mesmo quando antes a mesma pessoa caía na categoria antiga de Pix.
+- Na entrada automática do extrato, só o que foi **digitado à mão** com data parecida segura a linha para alguém conferir. Pix de cliente com valor igual em outro dia entra normal. Eram os 3 Pix pequenos da GV.
+
 ### Sempre mostra em qual loja você está (v2.9.89)
 - Em **Lançamentos**, **Importar extrato** e **Agenda**, aparece uma faixa colorida grudada no topo com o nome da loja, o módulo e o número da conta. Ela desce junto com a lista.
 - Cada conta tem uma cor fixa: Rocha 1 verde, Rocha 2 azul, Rocha 3 laranja, e assim por diante.
@@ -930,6 +934,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
 | 28/10/2026 | 2.9.87 | Previsão: Íris só corrige categoria com base de 3 meses; botão Refazer a previsão do mês (a tabela continua mostrando o erro também no mês aberto) | — |
