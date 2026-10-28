@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.88', APP_DATA='28/10/2026';
+  const APP_VERSAO='2.9.89', APP_DATA='28/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1940,7 +1940,25 @@
   function dataParaISO(str){const m=str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);if(!m)return null;const d=+m[1],mes=+m[2],a=+m[3];if(mes<1||mes>12||d<1||d>31||a<2020||a>2035)return null;return `${a}-${m[2]}-${m[1]}`;}
   function isoParaBR(iso){if(!iso)return '';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;}
 
-  function render(){
+  // v2.9.89: faixa colorida grudada no topo — sempre mostra em qual loja/conta você está (Lançamentos, Importar extrato, Agenda)
+  const LOJA_COR={r1:'#1f9d6b',r2:'#3b63d9',r3:'#c7861a',r4:'#8e44ad',r5:'#d64545',r6:'#16a2b8',r7:'#5d6d7e',r8:'#b5651d',r9:'#2e7d32',r10:'#c2185b',r11:'#00838f',gv:'#455a64'};
+  function lojaCor(L){if(!L)return '#455a64';const n=normDesc(L.nome);if(/412619/.test(String(L.conta_banco||'')+' '+L.nome))return '#4e342e';if(/OCULOS/.test(n))return '#1565c0';
+    const ch=cxChaveLoja(L.nome);if(LOJA_COR[ch])return LOJA_COR[ch];if(/FZ GRIFES/.test(n))return '#6a1b9a';if(/GRUPO VR/.test(n))return '#ad1457';if(/DIVERSAS/.test(n))return '#37474f';if(/^CASA/.test(n))return '#795548';if(/FZ COMERCIO/.test(n))return '#6d4c41';return '#455a64';}
+  const _FAIXA_PAGS={lanc:1,import:1,apagar:1};
+  function lojaFaixaHTML(){const L=LOJAS.find(l=>l.id===lojaAtual);if(!L)return '';const mod=(MODULOS.find(m=>m[0]===_modDe(L))||['',''])[1];
+    const conta=CONTAS.find(c=>/sicoob/i.test(c.nome))||CONTAS.find(c=>!/caixinha/i.test(c.nome));const nb=L.conta_banco?`conta ${_fmtConta(_digConta(L.conta_banco))}`:'';
+    return `<div id="lojaFaixa" style="position:sticky;top:74px;z-index:20;margin:-4px 0 12px;background:${lojaCor(L)};color:#fff;border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.12)">
+      <b style="font-size:15px;letter-spacing:.02em">${_remEsc(lojaNomeCurto(L.id).toUpperCase())}</b><span style="font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px;background:rgba(255,255,255,.22)">${_remEsc(mod)}</span>${nb?`<span style="font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px;background:rgba(255,255,255,.22)">${nb}</span>`:''}
+      <span style="margin-left:auto;font-size:12.5px;font-weight:600">${TITLES[page]||''} · ${MESES_NOME[mesSel]} ${ANO_FIXO}</span></div>`;}
+  function lojaFaixaAplicar(){const c=document.getElementById('content');if(!c)return;const f=document.getElementById('lojaFaixa');
+    if(!_FAIXA_PAGS[page]||ROBO){if(f)f.remove();return;}
+    if(c.querySelector('.loading')&&!f)return;const h=lojaFaixaHTML();if(!h)return;
+    if(f){if(f.parentElement!==c||c.firstElementChild!==f){f.remove();c.insertAdjacentHTML('afterbegin',h);}else{const t=document.createElement('div');t.innerHTML=h;if(t.firstElementChild.outerHTML!==f.outerHTML)f.outerHTML=h;}}
+    else c.insertAdjacentHTML('afterbegin',h);}
+  let _faixaObs=null;function lojaFaixaLigar(){if(_faixaObs)return;const c=document.getElementById('content');if(!c||typeof MutationObserver==='undefined')return;
+    _faixaObs=new MutationObserver(()=>{const f=document.getElementById('lojaFaixa');if(_FAIXA_PAGS[page]&&!ROBO&&(!f||c.firstElementChild!==f))lojaFaixaAplicar();else if(f&&!_FAIXA_PAGS[page])f.remove();});
+    _faixaObs.observe(c,{childList:true});}
+  function render(){lojaFaixaLigar();
     const V={confpix:viewConfPix,visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,remanejos:viewRemanejos,emprestimos:viewEmprestimos,recorrentes:viewRecorrentes,lixeira:viewLixeira,backup:viewBackup,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
     const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));preencherRemDash().catch(e=>console.error('rem dash',e));preencherPixDash().catch(e=>console.error('pix dash',e));preencherRankDash().catch(e=>console.error('rank dash',e));preencherIrisDash().catch(e=>console.error('iris',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
@@ -2017,7 +2035,7 @@
       </div>
       <div class="quickrow" style="grid-template-columns:1fr 150px;margin-top:10px">
         <div><span class="qlabel">Nº documento / Observação (opcional)</span><input id="qDoc" class="qin maiusc" placeholder="Ex: boleto 169097165 · ou LUÍSA — PANFLETAGEM (vale no lugar do contato)"></div>
-        <button class="addbtn" id="btnLancar" onclick="salvarLanc()">+ Lançar</button>
+        <button class="addbtn" id="btnLancar" onclick="salvarLanc()">+ Lançar na ${_remEsc(lojaNomeCurto(lojaAtual).toUpperCase())}</button>
       </div>
       ${MODULO_ATUAL==='diversas'&&tipo==='des'?`<div style="margin-top:10px">${divBtnHTML('padding:6px 14px;font-size:12.5px')} <span class="mut" style="font-size:11.5px">cada loja ganha a parte dela na Agenda</span></div><div id="agDivPainel"></div>`:''}
       <div class="hint"><span>💡 Valor: <span class="kbd">1 5 0 0 0 0</span> → <b>1.500,00</b></span><span>📅 Digite dia e mês, o ano ${ANO_FIXO} entra sozinho · <b>hoje ou antes = pago</b> (fica aqui) · <b>depois de hoje = a pagar</b> (vai para a Agenda)</span><span>👥 Categoria obrigatória · sem contato cadastrado? escreva quem foi na observação</span></div>
@@ -2037,7 +2055,7 @@
       <div id="irisPainel">${irisPainelHTML()}</div>
       <div id="foraBanco">${foraBancoHTML()}</div>
       <div id="lancFaixa">${faixaDiasHTML()}</div>
-      <div class="toolbar" style="position:sticky;top:64px;z-index:15;background:var(--bg);padding:8px 0">
+      <div class="toolbar" style="position:sticky;top:116px;z-index:15;background:var(--bg);padding:8px 0">
         <div class="search">🔍<input id="buscaLanc" placeholder="Buscar por texto, contato ou valor..." value="${q}" oninput="filtrarLanc(this.value)"></div>
         <div style="display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:6px 10px">
           <button class="burger" style="width:30px;height:30px" title="Dia anterior" onclick="navDia(-1)">‹</button>
@@ -2283,7 +2301,7 @@
       documento:doc||null,pago:true,origem:'manual',criado_por:USER.id
     }).select('id').single();
     busy=false;
-    if(error){toast('Erro ao salvar: '+error.message,'erro');if(btn){btn.disabled=false;btn.textContent='+ Lançar';}return;}
+    if(error){toast('Erro ao salvar: '+error.message,'erro');if(btn){btn.disabled=false;btn.textContent='+ Lançar na '+lojaNomeCurto(lojaAtual).toUpperCase();}return;}
     let nAg=0;if(parc&&valor<0){try{const [a,b]=String(parc).split('/').map(n=>parseInt(n,10));if(a>=1&&b>a&&b<=60){
       const {data:ex}=await sb.from('contas_pagar').select('parcela').eq('loja_id',lojaAtual).eq('descricao',desc.toUpperCase()).eq('valor',v);const tem=new Set((ex||[]).map(r=>r.parcela));const rows=[];
       for(let k=a+1;k<=b;k++){if(tem.has(`${k}/${b}`))continue;const m=mesShift(iso.slice(0,7),k-a);const ult=Number(_fimMes(m).slice(8,10));
@@ -2292,7 +2310,7 @@
     let msgDiv='';if(dividir&&insL&&insL.id){try{const {data:bo,error:eb}=await sb.from('contas_pagar').insert({loja_id:lojaAtual,descricao:desc.toUpperCase(),valor:v,vencimento:iso,categoria_id:catId?Number(catId):null,contato_id:contatoId?Number(contatoId):null,parcela:parc,status:'pago',pago_em:iso,pago_lancamento_id:insL.id,pago_como:'lançado em Lançamentos'}).select('id,vencimento,parcela');
         const e3=eb?eb.message:await divCriarPartes(bo||[],partes,desc.toUpperCase(),catId,contatoId,false);msgDiv=e3?` · não consegui dividir: ${e3}`:` · dividido entre ${Object.values(partes).filter(x=>x>0).length} empresas (cada uma tem a parte na Agenda)`;AG_DIV.mao={};}catch(e){msgDiv=' · não consegui dividir';}}
     await agAprenderBoleto(catId,contatoId);
-    toast((nAg?`Lançamento salvo! 📅 As próximas ${nAg} parcelas foram para a Agenda de pagamentos.`:'Lançamento salvo!')+msgDiv,msgDiv.includes('não consegui')?'erro':'ok');await viewLanc();
+    toast((nAg?`Salvo na ${lojaNomeCurto(lojaAtual).toUpperCase()}! 📅 As próximas ${nAg} parcelas foram para a Agenda de pagamentos.`:`Salvo na ${lojaNomeCurto(lojaAtual).toUpperCase()}!`)+msgDiv,msgDiv.includes('não consegui')?'erro':'ok');await viewLanc();
   }
   // v2.9.12: despesa com vencimento futuro lançada em Lançamentos → conta(s) na Agenda (parcelas a partir da atual) e, na Diversas, as partes de cada empresa
   async function salvarLancNaAgenda(o){const btn=document.getElementById('btnLancar');busy=true;if(btn){btn.disabled=true;btn.textContent='Salvando...';}
@@ -2302,7 +2320,7 @@
     let {data:ins,error}=await sb.from('contas_pagar').insert(rows).select('id,vencimento,parcela');
     if(error&&/linha_digitavel/i.test(error.message||'')){rows.forEach(r=>delete r.linha_digitavel);({data:ins,error}=await sb.from('contas_pagar').insert(rows).select('id,vencimento,parcela'));}
     if(error&&/documento/i.test(error.message||'')){rows.forEach(r=>delete r.documento);({data:ins,error}=await sb.from('contas_pagar').insert(rows).select('id,vencimento,parcela'));if(!error&&o.doc)toast('A observação não foi junto: falta a coluna no banco (v2.9.56).','erro');} // v2.9.56
-    busy=false;if(btn){btn.disabled=false;btn.textContent='+ Lançar';}
+    busy=false;if(btn){btn.disabled=false;btn.textContent='+ Lançar na '+lojaNomeCurto(lojaAtual).toUpperCase();}
     if(error){toast('Não consegui mandar para a Agenda: '+error.message,'erro');return;}
     let msg=rows.length>1?`📅 Vence ${isoParaBR(o.iso)}: ${rows.length} parcelas foram para a Agenda de pagamentos.`:`📅 Vence ${isoParaBR(o.iso)}: foi para a Agenda de pagamentos.`;
     if(o.partes&&ins&&ins.length){const e2=await divCriarPartes(ins,o.partes,o.desc,o.catId,o.contatoId,false);msg+=e2?` Não consegui dividir: ${e2}`:` Dividido: cada empresa tem a parte dela na Agenda.`;AG_DIV.mao={};}
@@ -3408,7 +3426,7 @@
         <div class="mut" style="font-size:12.5px;margin-bottom:12px">${(()=>{const pm=atencao.filter(i=>{const r=IMPORT[i];return impSel(r)&&!r.catId;}).length,am=atencao.filter(i=>{const r=IMPORT[i];return impSel(r)&&r.catId&&r.corrigir;}).length;
           return pm?`👆 ${pm} das marcadas ainda sem categoria. Pode confirmar assim mesmo (entram sem categoria e aparecem no Dia a dia), ou resolver antes:`:(am?`👆 ${am} das marcadas em "confira" — já têm categoria e entram com ela. Pode confirmar:`:'🎉 As marcadas estão resolvidas. É só confirmar:');})()}</div>
         ${(()=>{const nv=IMPORT.filter(r=>r.grupo!=='ja'&&r.grupo!=='lentes'),sel=nv.filter(r=>impSel(r));
-          if(sel.length===nv.length)return `<button class="btn" id="btnConfImport" onclick="confirmarImport()" style="font-size:15px;padding:13px 32px">✓ Confirmar: lançar ${novos} novas${jaN?` e ligar ${jaN} já lançadas`:''}</button>`;
+          if(sel.length===nv.length)return `<button class="btn" id="btnConfImport" onclick="confirmarImport()" style="font-size:15px;padding:13px 32px">✓ Confirmar: lançar ${novos} novas${jaN?` e ligar ${jaN} já lançadas`:''} na ${_remEsc(lojaNomeCurto(lojaAtual).toUpperCase())}</button>`;
           const e=sel.filter(r=>r.amt>0).length,s2=sel.length-e;
           return `<button class="btn" id="btnConfImport" onclick="confirmarImport()" ${sel.length?'':'disabled'} style="font-size:15px;padding:13px 32px">✓ Lançar as ${sel.length} marcadas (${e} entrada${e===1?'':'s'} · ${s2} saída${s2===1?'':'s'})${jaN?` e ligar ${jaN} já lançadas`:''}</button><div class="mut" style="font-size:11.5px;margin-top:8px">As ${nv.length-sel.length} desmarcadas não entram agora: aparecem de novo na próxima importação deste extrato — nada se perde nem duplica.</div>`;})()}
 

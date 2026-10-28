@@ -216,6 +216,11 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
   - **O robô das 6h** acerta o que entrou antes da outra ponta (últimos 60 dias, só o que não foi conferido).
   - O extrato entra pelo arquivo OFX (não tem importação automática), uma vez por semana. O quadro "Extrato em dia?" do Dashboard fica vermelho quando passa de 7 dias.
 
+### Sempre mostra em qual loja você está (v2.9.89)
+- Em **Lançamentos**, **Importar extrato** e **Agenda**, aparece uma faixa colorida grudada no topo com o nome da loja, o módulo e o número da conta. Ela desce junto com a lista.
+- Cada conta tem uma cor fixa: Rocha 1 verde, Rocha 2 azul, Rocha 3 laranja, e assim por diante.
+- O botão diz para onde vai: **Lançar na ROCHA 3**. A importação diz **Confirmar: lançar 20 novas na ROCHA 3**. Ao salvar, a mensagem também diz: "Salvo na ROCHA 3!".
+
 ### Etiqueta de quem lançou e "não está no extrato" (v2.9.83)
 - A etiqueta de cada lançamento diz como a linha entrou e quem fez. Passando o mouse, mostra o dia e a hora.
   - **Banco · Íris**: veio sozinho do Sicoob.
@@ -925,6 +930,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
 | 28/10/2026 | 2.9.87 | Previsão: Íris só corrige categoria com base de 3 meses; botão Refazer a previsão do mês (a tabela continua mostrando o erro também no mês aberto) | — |
 | 28/10/2026 | 2.9.86 | Ranking e Produtividade: o extrato que entra sozinho do Sicoob conta como 'importou' da Íris | — |
