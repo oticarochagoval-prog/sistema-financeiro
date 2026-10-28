@@ -216,6 +216,24 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
   - **O robô das 6h** acerta o que entrou antes da outra ponta (últimos 60 dias, só o que não foi conferido).
   - O extrato entra pelo arquivo OFX (não tem importação automática), uma vez por semana. O quadro "Extrato em dia?" do Dashboard fica vermelho quando passa de 7 dias.
 
+### Etiqueta de quem lançou e "não está no extrato" (v2.9.83)
+- A etiqueta de cada lançamento diz como a linha entrou e quem fez. Passando o mouse, mostra o dia e a hora.
+  - **Banco · Íris**: veio sozinho do Sicoob.
+  - **Extrato · Lucas**: alguém subiu o arquivo do extrato.
+  - **Digitado · Rhaiane**: escrito à mão.
+  - **Caixinha**: veio do Caixinha.
+- **Não está no extrato** (vermelho): digitado à mão, na conta do banco, e não apareceu no extrato depois que o extrato daquele dia chegou. O banco liga sozinho o que bate, até 3 dias de diferença. Pode ser de outra loja, de outra conta ou com valor errado.
+  - Não vale para venda à vista, saldo inicial e prestação, que não passam pelo extrato.
+  - Em cima da lista aparece quantos são, com o botão **Mostrar só esses**.
+- Para a etiqueta dizer quem fez, cada pessoa precisa entrar com o próprio login.
+
+### Previsão do dia 1º e o erro do Radar (v2.9.82)
+- Todo dia 1º, às 6h, a Íris tira a "foto" da previsão do Radar de cada conta: quanto deve entrar, quanto deve sair e quanto por categoria. A foto fica guardada e não muda.
+- **Em Lançamentos e no Dashboard**, uma linha pequena: previsão do mês, quanto já entrou e já saiu (em %), e a sobra prevista. Em mês fechado, a linha mostra quanto a previsão errou, para mais ou para menos.
+- **Gestor (Dashboard):** tabela de todas as contas (Rocha 1 a 11, GV Lentes, Grupo de compras, Diversas) com previsto, realizado, erro do mês e o erro dos 3 meses anteriores. Vermelho é o lado ruim (saiu mais ou entrou menos), amarelo é o lado bom e verde é até 3%. O objetivo é o erro ir diminuindo.
+- **A Íris aprende:** se uma categoria errou para o mesmo lado 3 meses seguidos (mais de 5%), ela corrige a previsão do mês seguinte pela média do erro (no máximo 30%) e avisa na tabela do gestor.
+- Agosto, setembro e outubro foram montados "como se fosse dia 1º", para o erro já aparecer.
+
 ### Trava: lançamento digitado que é de outra loja (v2.9.81)
 - Ao digitar um lançamento à mão, o Fluxo procura no extrato das outras lojas uma linha igual: mesmo dia, mesmo valor e mesmo nome. Se achar, avisa antes de salvar: "o extrato da Rocha 1 tem um lançamento igual a este". OK salva assim mesmo; Cancelar não salva.
 - Gasto dividido entre 3 ou mais lojas (rateio) não avisa.
@@ -904,6 +922,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 28/10/2026 | 2.9.83 | Etiqueta Banco · Íris / Extrato · nome / Digitado · nome / Caixinha; aviso vermelho 'não está no extrato' com filtro | — |
+| 27/10/2026 | 2.9.82 | Previsão do dia 1º guardada pela Íris; linha em Lançamentos e no Dashboard; tabela do gestor com o erro por conta (para mais ou para menos) e a correção automática por categoria | Tabela radar_previsoes (SQL rodado pelo Lucas) |
 | 27/10/2026 | 2.9.81 | Aviso antes de salvar lançamento digitado igual ao extrato de outra loja | 6 lançamentos da Rocha 1 que estavam na Rocha 3 (junho) → Lixeira |
 | 27/10/2026 | 2.9.80 | Débito grande não vira Tarifas Banco; tarifa em cheque ou débito alto fica vermelha; Íris não confere sozinha palpite da IA; estorno abate a despesa no Dashboard e no DRE | Cheques da 412619 → GRUPO VR (22) e regra criada, com autorização |
 | 27/10/2026 | 2.9.79 | Contas com o mesmo CNPJ (Casa/Rocha 1, Diversas/Rocha 2, Grupo VR/Rocha 3) separadas pela outra ponta da transferência; robô das 6h acerta depois; categorias DIVERSAS · CASA, COMPRAS · CONTA DIVERSAS, CASA · CONTA DIVERSAS | Rodado: 45 categorias, conta 412619 na Diversas, 5.471 entradas de junho para cá reclassificadas (só não conferidas) |
