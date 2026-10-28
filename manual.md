@@ -922,6 +922,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
+| 28/10/2026 | 2.9.86 | Ranking e Produtividade: o extrato que entra sozinho do Sicoob conta como 'importou' da Íris | — |
 | 28/10/2026 | 2.9.85 | 'Digitado · equipe' vale até 26/10; a partir de 27/10 mostra o nome de quem fez | — |
 | 28/10/2026 | 2.9.84 | Digitado com o login do Lucas até 28/10 aparece como 'Digitado · equipe' | — |
 | 28/10/2026 | 2.9.83 | Etiqueta Banco · Íris / Extrato · nome / Digitado · nome / Caixinha; aviso vermelho 'não está no extrato' com filtro | — |
