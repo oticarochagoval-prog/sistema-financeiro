@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.87', APP_DATA='28/10/2026';
+  const APP_VERSAO='2.9.88', APP_DATA='28/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -993,6 +993,9 @@
     const txt=tipo==='s'?(e>0?'saiu mais':'saiu menos'):(e>0?'entrou mais':'entrou menos');
     return `<b style="color:${cor}">${e>0?'+':'−'}${p}%</b> <span class="mut">${txt}</span>`;}
   const _n0=v=>BRL(v).replace('R$ ','').replace(/,\d\d$/,'');
+  // v2.9.87: não operacional (empréstimo, retirada de sócios, compra de máquina…) fica fora da saída prevista e do erro; aparece à parte
+  function _opNop(cat){let op=0,nop=0;Object.entries(cat||{}).forEach(([k,v])=>{const c=CATS.find(x=>String(x.id)===String(k));if(c&&c.grupo==='nop')nop+=Number(v)||0;else op+=Number(v)||0;});return {op,nop};}
+  const _nopTxt=v=>v>0.5?`<div class="mut" style="font-size:10.5px;font-weight:400">+ ${_n0(v)} não operacional</div>`:'';
   // linha pequena (Lançamentos e Dashboard)
   async function prevPreencherLinha(alvoId){const box=document.getElementById(alvoId);if(!box)return;const loja=lojaAtual,M=`${ANO_FIXO}-${_mm(mesSel)}`;
     if(_modDe(LOJAS.find(l=>l.id===loja))==='casa'){box.innerHTML='';return;}
@@ -1000,11 +1003,11 @@
     if(loja!==lojaAtual||!document.getElementById(alvoId))return;
     if(!pv){box.innerHTML=M===_hojeLocal().slice(0,7)?`<div class="mut" style="font-size:12px;padding:6px 2px">Previsão do mês: a Íris tira no dia 1º às 6h.${ehDono()?' <a href="#" onclick="prevAgora();return false">Tirar agora</a>':''}</div>`:'';return;}
     const quando=pv.origem==='robo'?`de 01/${M.slice(5,7)}`:`de ${MESES_NOME[mesSel].slice(0,3).toLowerCase()}`;const fechado=!!pv.fechado_em;
-    let ent,sai;if(fechado){ent=Number(pv.entradas_real);sai=Number(pv.saidas_real);}else{const lista=alvoId==='prevDash'?_lancMesDash:LANC;const r=prevReal(lista||[]);ent=r.entradas;sai=r.saidas;}
-    const pe=Number(pv.entradas),ps=Number(pv.saidas),pct=(a,b)=>b>0?Math.round(a/b*100)+'%':'—';
+    let ent,sai,saiNop;if(fechado){ent=Number(pv.entradas_real);const x=_opNop(pv.real_cat);sai=x.op;saiNop=x.nop;}else{const lista=alvoId==='prevDash'?_lancMesDash:LANC;const r=prevReal(lista||[]);ent=r.entradas;const x=_opNop(r.cat);sai=x.op;saiNop=x.nop;}
+    const pe=Number(pv.entradas),ps=_opNop(pv.por_cat).op,pct=(a,b)=>b>0?Math.round(a/b*100)+'%':'—';const nopT=saiNop>0.5?` <span class="mut">(+ ${_n0(saiNop)} não operacional)</span>`:'';
     const estilo='display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:12.5px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 12px';
-    if(fechado){box.innerHTML=`<div style="${estilo}"><b>Previsão ${quando} · mês fechado</b><span>Entradas: previu ${_n0(pe)}, entrou ${_n0(ent)} · ${_prevErroTxt(_prevErro(ent,pe),'e')}</span><span>Saídas: previu ${_n0(ps)}, saiu ${_n0(sai)} · ${_prevErroTxt(_prevErro(sai,ps),'s')}</span></div>`;return;}
-    box.innerHTML=`<div style="${estilo}"><b>Previsão ${quando}</b><span>entrar <b>${_n0(pe)}</b> <span class="mut">(já ${pct(ent,pe)})</span></span><span>sair <b>${_n0(ps)}</b> <span class="mut">(já ${pct(sai,ps)})</span></span><span>sobra prevista <b style="color:${pe-ps>=0?'var(--green)':'var(--red)'}">${pe-ps>=0?'+':'−'}${_n0(Math.abs(pe-ps))}</b></span><a href="#" style="margin-left:auto" onclick="go('radar');return false">ver no Radar</a></div>`;}
+    if(fechado){box.innerHTML=`<div style="${estilo}"><b>Previsão ${quando} · mês fechado</b><span>Entradas: previu ${_n0(pe)}, entrou ${_n0(ent)} · ${_prevErroTxt(_prevErro(ent,pe),'e')}</span><span>Saídas: previu ${_n0(ps)}, saiu ${_n0(sai)} · ${_prevErroTxt(_prevErro(sai,ps),'s')}${nopT}</span></div>`;return;}
+    box.innerHTML=`<div style="${estilo}"><b>Previsão ${quando}</b><span>entrar <b>${_n0(pe)}</b> <span class="mut">(já ${pct(ent,pe)})</span></span><span>sair <b>${_n0(ps)}</b> <span class="mut">(já ${pct(sai,ps)})</span>${nopT}</span><span>sobra prevista <b style="color:${pe-ps>=0?'var(--green)':'var(--red)'}">${pe-ps>=0?'+':'−'}${_n0(Math.abs(pe-ps))}</b></span><a href="#" style="margin-left:auto" onclick="go('radar');return false">ver no Radar</a></div>`;}
   async function prevRefazerMes(){if(!ehDono())return;const M=`${ANO_FIXO}-${_mm(mesSel)}`;
     if(!confirm(`Refazer a previsão de ${MESES_NOME[mesSel]} de todas as contas com a regra nova?\n\n(Só a previsão montada depois; a foto tirada no dia 1º não muda.)`))return;
     toast('A Íris está refazendo a previsão…','ok');let n=0;for(const L of _prevLojas()){try{if(await prevFotografar(M,L.id,'retro',true))n++;}catch(e){}}toast(`Previsão refeita em ${n} conta(s).`,'ok');render();}
@@ -1019,23 +1022,23 @@
       const g={};(ls||[]).forEach(l=>{(g[l.loja_id]=g[l.loja_id]||[]).push(l);});Object.entries(g).forEach(([k,v])=>realAtual[k]=prevReal(v));}catch(e){}}
     if(!document.getElementById('prevGrupo'))return;
     const pega=(id,m)=>pvs.find(p=>Number(p.loja_id)===Number(id)&&p.mes===m);const tdN='style="text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap"';
-    const errMes=p=>{if(!p||!p.fechado_em)return null;const a=_prevErro(Number(p.entradas_real),Number(p.entradas)),b=_prevErro(Number(p.saidas_real),Number(p.saidas));return [a,b];};
+    const errMes=p=>{if(!p||!p.fechado_em)return null;const a=_prevErro(Number(p.entradas_real),Number(p.entradas)),b=_prevErro(_opNop(p.real_cat).op,_opNop(p.por_cat).op);return [a,b];};
     const curto=(e,t)=>{if(e==null)return '<span class="mut">—</span>';const p=Math.round(Math.abs(e)*100),ruim=t==='s'?e>0:e<0;if(p===0)return '<span style="color:var(--green);font-weight:700">0%</span>';return `<span style="color:${p<=3?'var(--green)':(ruim?'var(--red)':'var(--amber)')};font-weight:700">${e>0?'+':'−'}${p}%</span>`;};
     const ajTxt=[];const aberto0=M===_hojeLocal().slice(0,7);
     const _diaH=Number(_hojeLocal().slice(8,10)),_pctMes=_diaH/Number(_fimMes(M).slice(8,10));
     const andam=(real,prev,t)=>{if(!(prev>0.5))return '—';const p=real/prev,pc=Math.round(p*100);const ruim=t==='s'?p>_pctMes+0.15:p<_pctMes-0.15;return `<span style="color:${ruim?'var(--amber)':'var(--txt)'};font-weight:700">${pc}%</span>`;};
     const rows=lojas.map(L=>{const p=pega(L.id,M);if(!p&&!meses.some(m=>pega(L.id,m)))return '';
-      const r=p&&p.fechado_em?{entradas:Number(p.entradas_real),saidas:Number(p.saidas_real)}:(realAtual[L.id]||{entradas:0,saidas:0});
+      const r0=p&&p.fechado_em?{entradas:Number(p.entradas_real),cat:p.real_cat}:(realAtual[L.id]||{entradas:0,cat:{}});const rx=_opNop(r0.cat),r={entradas:r0.entradas,saidas:rx.op,nop:rx.nop},psOp=p?_opNop(p.por_cat).op:0;
       Object.entries((p&&p.ajustes)||{}).forEach(([k,v])=>{const c=CATS.find(x=>String(x.id)===k);ajTxt.push(`${lojaNomeCurto(L.id)}: ${c?c.nome:'categoria'} ${v>0?'+':''}${v}%`);});
       const hist=meses.slice(0,3).map(m=>errMes(pega(L.id,m)));
       const histTxt=t=>hist.map(h=>h?curto(h[t==='e'?0:1],t):'<span class="mut">—</span>').join(' · ');
-      return `<tr><td><b>${lojaNomeCurto(L.id)}</b></td><td ${tdN}>${p?_n0(p.entradas):'—'}</td><td ${tdN}>${_n0(r.entradas)}</td><td ${tdN}>${p?(aberto0?andam(r.entradas,Number(p.entradas),'e'):curto(_prevErro(r.entradas,Number(p.entradas)),'e')):'—'}</td>
-        <td ${tdN}>${p?_n0(p.saidas):'—'}</td><td ${tdN}>${_n0(r.saidas)}</td><td ${tdN}>${p?(aberto0?andam(r.saidas,Number(p.saidas),'s'):curto(_prevErro(r.saidas,Number(p.saidas)),'s')):'—'}</td>
+      return `<tr><td><b>${lojaNomeCurto(L.id)}</b></td><td ${tdN}>${p?_n0(p.entradas):'—'}</td><td ${tdN}>${_n0(r.entradas)}</td><td ${tdN}>${p?curto(_prevErro(r.entradas,Number(p.entradas)),'e'):'—'}</td>
+        <td ${tdN}>${p?_n0(psOp):'—'}</td><td ${tdN}>${_n0(r.saidas)}${_nopTxt(r.nop)}</td><td ${tdN}>${p?curto(_prevErro(r.saidas,psOp),'s'):'—'}</td>
         <td ${tdN} style="font-size:12px">${histTxt('e')}</td><td ${tdN} style="font-size:12px">${histTxt('s')}</td></tr>`;}).join('');
     const aberto=M===_hojeLocal().slice(0,7),mn=m=>_mesNomeM(m).slice(0,3).toLowerCase();
     box.innerHTML=`<div class="card" style="margin-bottom:14px;padding:0;overflow:auto"><div style="padding:14px 16px 6px;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline"><h3 style="font-size:15px;margin:0">Previsão do dia 1º × o que aconteceu</h3><span class="mut" style="font-size:12px">${MESES_NOME[mesSel]}${aberto?' · até hoje':''} · só gestor</span></div>
-      <table style="min-width:900px"><thead><tr><th>Conta</th><th ${tdN}>Entrada prevista</th><th ${tdN}>Entrou</th><th ${tdN}>${aberto?'Já entrou':'Erro'}</th><th ${tdN}>Saída prevista</th><th ${tdN}>Saiu</th><th ${tdN}>${aberto?'Já saiu':'Erro'}</th><th ${tdN}>Erro entradas<br><span class="mut" style="font-weight:400">${meses.slice(0,3).map(mn).join(' · ')}</span></th><th ${tdN}>Erro saídas<br><span class="mut" style="font-weight:400">${meses.slice(0,3).map(mn).join(' · ')}</span></th></tr></thead><tbody>${rows}</tbody></table>
-      <div class="mut" style="font-size:11.5px;padding:8px 16px 14px">Erro = quanto o que aconteceu ficou longe do que a Íris previu no dia 1º. <b style="color:var(--red)">Vermelho</b> é o lado ruim (saiu mais ou entrou menos), <b style="color:var(--amber)">amarelo</b> é o lado bom e <b style="color:var(--green)">verde</b> é até 3%. O objetivo é o erro ir diminuindo mês a mês.${aberto?` <b>Mês aberto:</b> a previsão do dia 1º não muda; "já entrou" e "já saiu" é quanto do previsto já aconteceu até hoje (o mês está ${Math.round(_pctMes*100)}% passado). O erro de verdade só aparece quando o mês fecha. <a href="#" onclick="prevRefazerMes();return false">Refazer a previsão deste mês com a regra nova</a>`:''}${ajTxt.length?`<br>A Íris corrigiu a previsão deste mês (errou para o mesmo lado 3 meses seguidos): ${ajTxt.join(' · ')}`:''}</div></div>`;}
+      <table style="min-width:900px"><thead><tr><th>Conta</th><th ${tdN}>Entrada prevista</th><th ${tdN}>Entrou</th><th ${tdN}>Erro</th><th ${tdN}>Saída prevista</th><th ${tdN}>Saiu</th><th ${tdN}>Erro</th><th ${tdN}>Erro entradas<br><span class="mut" style="font-weight:400">${meses.slice(0,3).map(mn).join(' · ')}</span></th><th ${tdN}>Erro saídas<br><span class="mut" style="font-weight:400">${meses.slice(0,3).map(mn).join(' · ')}</span></th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="mut" style="font-size:11.5px;padding:8px 16px 14px">Erro = quanto o que aconteceu ficou longe do que a Íris previu no dia 1º. <b style="color:var(--red)">Vermelho</b> é o lado ruim (saiu mais ou entrou menos), <b style="color:var(--amber)">amarelo</b> é o lado bom e <b style="color:var(--green)">verde</b> é até 3%. O objetivo é o erro ir diminuindo mês a mês. Saída = contas da loja; o não operacional (empréstimo, retirada de sócios, compra de máquina) fica fora e aparece embaixo, em cinza.${aberto?` <b>Mês aberto:</b> a previsão do dia 1º não muda; o erro vai mudando conforme o dinheiro entra e sai (o mês está ${Math.round(_pctMes*100)}% passado) e fica definitivo quando o mês fecha. <a href="#" onclick="prevRefazerMes();return false">Refazer a previsão deste mês com a regra nova</a>`:''}${ajTxt.length?`<br>A Íris corrigiu a previsão deste mês (errou para o mesmo lado 3 meses seguidos): ${ajTxt.join(' · ')}`:''}</div></div>`;}
 
 
   // ---- 🤖 MEDIDOR DE AUTOMAÇÃO: quanto o sistema já faz sozinho (por loja, mês atual × anterior) ----
