@@ -81,11 +81,16 @@ module.exports = async function handler(req, res) {
     const { mensagens, pagina, ensinos } = body || {};
     if (!Array.isArray(mensagens) || !mensagens.length) { res.status(400).json({ erro: 'sem pergunta' }); return; }
 
-    const msgs = mensagens.slice(-20).map(m => ({
+    let msgs = mensagens.slice(-20).map(m => ({
       role: m.quem === 'iris' ? 'assistant' : 'user',
       content: String(m.texto || '').slice(0, 4000)
     })).filter(m => m.content.trim());
-    if (!msgs.length || msgs[0].role !== 'user') { res.status(400).json({ erro: 'sem pergunta' }); return; }
+    // a conversa começa com o "oi" da Íris: tira o que vier antes da primeira fala da pessoa
+    while (msgs.length && msgs[0].role !== 'user') msgs.shift();
+    // duas falas seguidas do mesmo lado viram uma só (a IA exige alternar)
+    msgs = msgs.reduce((a, m) => { const u = a[a.length - 1]; if (u && u.role === m.role) u.content += '\n' + m.content; else a.push(m); return a; }, []);
+    if (msgs[msgs.length - 1] && msgs[msgs.length - 1].role !== 'user') msgs.pop();
+    if (!msgs.length) { res.status(400).json({ erro: 'sem pergunta' }); return; }
 
     const ens = Array.isArray(ensinos) ? ensinos.slice(0, 40).map(e => `- Perguntaram: "${String(e.p || '').slice(0, 300)}" → Lucas respondeu: "${String(e.r || '').slice(0, 800)}"`).join('\n') : '';
     const sistema = instrucoes(nome, escopo, String(pagina || '').slice(0, 60), ens)
