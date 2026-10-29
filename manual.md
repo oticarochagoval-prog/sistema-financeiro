@@ -283,6 +283,21 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 - A lista não "pula": quando a linha atualiza, ela continua no mesmo lugar da tela.
 - Com um filtro ligado (Íris verde/amarelo/vermelho ou vindo do Dashboard), a linha marcada **não some** enquanto você termina de mexer nela.
 
+## Pergunte à Íris (v2.9.97)
+
+Em toda tela do Fluxo tem o botão **Pergunte à Íris**, no canto de baixo à direita. Clicou, abre uma conversa: é só escrever a dúvida com as suas palavras, como você falaria com uma colega.
+
+- A Íris conhece o manual inteiro e o histórico de todas as atualizações, e sabe em que tela você está.
+- Ela **só explica**. Não lança, não apaga e não muda nada no sistema. Quem faz é você, na tela.
+- **Nenhuma pergunta é boba.** Pode perguntar à vontade, inclusive "isso mudou alguma coisa no meu trabalho?".
+- **Nenhuma conversa se perde:** fica guardada no seu login. Clique em "conversas anteriores" para voltar numa conversa antiga e continuar de onde parou, em qualquer computador.
+- Se a Íris **não souber**, ela não inventa: avisa que anotou e mandou para o Lucas. A pergunta aparece para ele em **Gestão → Dúvidas da equipe**, e quando ele responde, a Íris passa a saber daquilo para sempre.
+- Cada pessoa conversa sobre o que usa: Heloísa e Lucas, o sistema todo; a equipe de lançamento, tudo do **Dia a dia** (Dashboard, Radar, Lançamentos, Importar extrato, Agenda, Fechamento de caixa, Caixinha e Empréstimos espelho) — menos Remanejos e as telas de Análise e Gestão, que são com a Heloísa.
+
+### Dúvidas da equipe (só o gestor)
+
+Em **Gestão → Dúvidas da equipe** fica o que a Íris não soube responder, com quem perguntou, quando e em qual tela. O botão **responder** manda a resposta para a pessoa e ensina a Íris: na próxima vez ela já responde sozinha.
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -939,6 +954,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 | 29/10/2026 | 2.9.93 | Dashboard: o quadro "A pagar no mês" passa a somar as partes dos cartões do FaturaFácil que vencem no mês e ainda não saíram do extrato (linha "Cartões (FaturaFácil)"; o pago em parte já sai da conta) | — |
 | 29/10/2026 | 2.9.94 | Dashboard: o "A pagar no mês" ganhou a setinha › — cada categoria abre as contas (e cada conta abre como na Agenda); em Cartões (FaturaFácil) cada cartão abre as compras. Agenda: botão Semana \| Mês — no Mês, total do mês (a pagar, já pago, falta, de cartão), calendário com o total de cada dia (clica e vai até o dia) e a lista dia a dia, tudo clicável. Vencido de mês anterior não entra no Mês | — |
 | 29/10/2026 | 2.9.95 | Agenda no Mês: faixa "Por semana" (sábado a sexta: total, pago, falta, "tudo pago ✓"; clique vai até a semana na lista) e, embaixo do calendário, "Lançar uma conta" e "Vencidos de meses anteriores" (já paguei / não vou pagar; não somam no mês). A Agenda abre no último modo que a pessoa usou naquele computador. Parcelas esquecidas: lançamento com "3/6" (ou "3 6", "03/06", "3 DE 6") na descrição manda as próximas para a Agenda sozinho — ao salvar, ao importar e todo dia às 6h pela Íris; só o que vence nos próximos 2 meses (vai completando); vale para o que entrar de 29/10/2026 em diante | — |
+| 29/10/2026 | 2.9.96 | Ao abrir o sistema (e de hora em hora), a entrada automática do Sicoob só tranca a tela ("Lançando o extrato automático…") quando o banco trouxe linha nova; sem novidade, não aparece nada e não demora | — |
+| 29/10/2026 | 2.9.97 | **Pergunte à Íris**: botão em toda tela para a equipe tirar dúvida do sistema conversando com a Íris (ela só explica; conhece o manual e o histórico; conversas guardadas no login de cada um). Quando não sabe, não inventa: a dúvida vai para Gestão → Dúvidas da equipe e a resposta do gestor vira ensino. Primeira mensagem de boas-vindas aparece uma vez para cada pessoa | Rodar o SQL da v2.9.97 (sistema-financeiro) |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
