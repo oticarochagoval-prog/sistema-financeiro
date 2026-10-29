@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.91', APP_DATA='28/10/2026';
+  const APP_VERSAO='2.9.92', APP_DATA='29/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -418,6 +418,117 @@
   function ctCli(){if(!_ct&&window.supabase)_ct=window.supabase.createClient(CT_URL,CT_ANON,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'sb-cartoes-espelho'}});return _ct;}
   async function ctMes(chave){if(_ctCache[chave]!==undefined)return _ctCache[chave];const c=ctCli();if(!c)throw new Error('sem conexão com o Cartões');
     const {data,error}=await c.from('meses').select('observacoes').eq('mes',chave).maybeSingle();if(error)throw error;_ctCache[chave]=data?(data.observacoes||{}):null;return _ctCache[chave];}
+  // ---- v2.9.92: ESPELHO DO FATURAFÁCIL → Agenda de pagamentos (só leitura lá; nada é gravado no FaturaFácil) ----
+  // Conta igual ao Fechamento do FaturaFácil: loja direto · Diversas e Mídia pela % · Surfaçagem pelas lentes · "Dividir: R1+R2" em partes iguais.
+  // Tudo que é dividido aparece inteiro também na Conta Diversas. Parcelas "3/10" continuam nos meses seguintes.
+  const FF_DESDE=2026*12+5; // junho/2026 (no FaturaFácil o mês começa em 0)
+  const FF_LOJA={R1:1,R2:2,R3:3,R4:4,R5:5,R6:6,R7:7,R8:8,R9:9,R10:10,R11:11};
+  const FF_GV=12,FF_GVR=14,FF_CASA=15,FF_DIV=16;
+  const _ffN=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+  // destino do FaturaFácil → conta do Fluxo (null = dividido; undefined = não sei)
+  function ffContaDoDestino(d){const u=_ffN(d);
+    if(FF_LOJA[u])return FF_LOJA[u];
+    if(u==='CASA'||u==='VIAGEM'||u==='LUCAS')return FF_CASA;
+    if(/GVR\b/.test(u))return FF_GVR;
+    if(/^GV/.test(u))return FF_GV;
+    return undefined;}
+  function ffTipoDestino(d){const u=_ffN(d);
+    if(u==='CANCELADO')return 'fora';
+    if(u==='DIVERSAS'||u==='MIDIA')return 'pct';
+    if(u==='DIVIDIR SURFACAGEM'||u==='LABORATORIO')return 'lente';
+    if(u.startsWith('DIVIDIR:'))return 'div';
+    return ffContaDoDestino(d)!==undefined?'direto':'sei';}
+  // "Dividir: R1+R2+GV OPTICAL" → {1:x,2:y,12:z} — centavo a centavo, o que sobra vai para as primeiras (igual ao FaturaFácil)
+  function ffPartesDiv(d,val){const ls=String(d).slice(String(d).indexOf(':')+1).split('+').map(x=>x.trim()).filter(x=>{const c=ffContaDoDestino(x);return c!==undefined&&c!==FF_CASA&&c!==FF_GVR;});
+    if(!ls.length)return null;const tot=Math.round(val*100),base=Math.floor(tot/ls.length),o={};
+    ls.forEach((l,i)=>{const c=ffContaDoDestino(l);o[c]=(o[c]||0)+(base+(i<tot-base*ls.length?1:0))/100;});return o;}
+  const _ffAuto=s=>typeof s==='string'&&s.startsWith('🤖 Rateio ')&&s.endsWith('(automático)');
+  // compras de um cartão num mês = as do mês + parcelas de meses anteriores que ainda estão correndo (igual ao projetarParcelas do FaturaFácil)
+  function ffComprasDoMes(D,cartao,ref){
+    const L=D.lanc.filter(l=>l.cartao_id===cartao&&l.ano*12+l.mes===ref).map(l=>({id:l.id,desc:l.descricao||'',parc:l.parcela||'',dest:l.destino,val:Number(l.valor)||0}));
+    D.lanc.forEach(l=>{if(l.cartao_id!==cartao)return;const rl=l.ano*12+l.mes;if(!(rl<ref))return;
+      const p=String(l.parcela||'').split('/');if(p.length!==2)return;const ini=parseInt(p[0]),tot=parseInt(p[1]);if(!ini||!tot)return;
+      const pa=ini+(ref-rl);if(pa>tot)return;const parc=pa+'/'+tot;
+      if(L.some(x=>x.desc===l.descricao&&x.parc===parc))return;
+      L.push({id:'proj_'+l.id,desc:l.descricao||'',parc,dest:l.destino,val:Number(l.valor)||0,proj:true});});
+    return L.filter(x=>!_ffAuto(x.desc));}
+  // lentes do mês; se o mês ainda não tem lentes lançadas, usa o último mês que tem (fica marcado "provisório")
+  function ffLentes(D,ref){const por=r=>{const o={};D.lentes.filter(x=>x.ano*12+x.mes===r).forEach(x=>{const c=FF_LOJA[_ffN(x.loja)];if(c)o[c]=(o[c]||0)+(Number(x.quantidade)||0);});return o;};
+    let o=por(ref),tot=Object.values(o).reduce((a,b)=>a+b,0);if(tot>0)return {por:o,tot,de:ref};
+    for(let r=ref-1;r>=ref-12;r--){o=por(r);tot=Object.values(o).reduce((a,b)=>a+b,0);if(tot>0)return {por:o,tot,de:r};}
+    return {por:{},tot:0,de:null};}
+  // parte de cada conta do Fluxo, por cartão, no mês (ref = ano*12 + mês começando em 0)
+  // volta: [{cartao, nomeCartao, ref, venc, conta, valor, itens:[{desc,parc,dest,total,parte,proj}], aviso}]
+  function ffCalcularMes(D,ref){
+    const pct={};D.lojas.forEach(l=>{const c=FF_LOJA[_ffN(l.nome)];if(c)pct[c]=Number(l.pct_diversas)||0;});
+    const LE=ffLentes(D,ref);const out=[],avisos=[];
+    D.cartoes.forEach(cd=>{
+      const compras=ffComprasDoMes(D,cd.id,ref);if(!compras.length)return;
+      const ano=Math.floor(ref/12),mes=ref%12;const ult=new Date(ano,mes+1,0).getDate();
+      const dia=Math.min(Number(cd.dia_vencimento)||10,ult);
+      const venc=`${ano}-${String(mes+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+      const por={};const add=(conta,it,parte)=>{if(!(Math.abs(parte)>0.0001))return;(por[conta]=por[conta]||{valor:0,itens:[]});por[conta].valor+=parte;por[conta].itens.push(Object.assign({},it,{parte:Math.round(parte*100)/100}));};
+      compras.forEach(c=>{const t=ffTipoDestino(c.dest);const it={desc:c.desc,parc:c.parc,dest:String(c.dest||'').trim(),total:c.val,proj:!!c.proj};
+        if(t==='fora')return;
+        if(t==='direto'){add(ffContaDoDestino(c.dest),it,c.val);return;}
+        if(t==='sei'){avisos.push({cartao:cd.nome,ref,desc:c.desc,dest:c.dest,val:c.val});return;}
+        add(FF_DIV,Object.assign({},it,{inteiro:true}),c.val); // dividido: inteiro também na Diversas
+        if(t==='pct'){Object.keys(pct).forEach(k=>add(Number(k),it,c.val*pct[k]/100));return;}
+        if(t==='lente'){if(!LE.tot){avisos.push({cartao:cd.nome,ref,desc:c.desc,dest:c.dest,val:c.val,semLentes:true});return;}
+          Object.keys(LE.por).forEach(k=>add(Number(k),Object.assign({},it,{lentes:LE.por[k],lentesProv:LE.de!==ref?LE.de:null}),c.val*LE.por[k]/LE.tot));return;}
+        if(t==='div'){const p=ffPartesDiv(c.dest,c.val);if(!p){avisos.push({cartao:cd.nome,ref,desc:c.desc,dest:c.dest,val:c.val});return;}
+          Object.keys(p).forEach(k=>add(Number(k),it,p[k]));}
+      });
+      Object.keys(por).forEach(k=>out.push({cartao:cd.id,nomeCartao:String(cd.nome||cd.id).replace(/^[^\wÀ-ú]+/,'').trim(),ref,venc,conta:Number(k),valor:Math.round(por[k].valor*100)/100,itens:por[k].itens,
+        lentesProv:por[k].itens.some(i=>i.lentesProv!=null)?LE.de:null}));
+    });
+    return {linhas:out,avisos};}
+  // lê o FaturaFácil (projeto cartoes-rocha, gaveta faturafacil) — só leitura, guarda por 3 minutos
+  let _ffCache=null,_ffCacheEm=0;
+  async function ffLerDados(){if(_ffCache&&Date.now()-_ffCacheEm<180000)return _ffCache;const c=ctCli();if(!c)throw new Error('sem conexão com o FaturaFácil');const s=c.schema('faturafacil');
+    const tudo=async(t,cols,f)=>{let out=[];for(let o=0;;o+=1000){let q=s.from(t).select(cols);if(f)q=f(q);const {data,error}=await q.order('id').range(o,o+999);if(error)throw error;out=out.concat(data||[]);if(!data||data.length<1000)break;}return out;};
+    const [cartoes,lojas,lentes,lanc,pags]=await Promise.all([
+      s.from('cartoes').select('id,nome,dia_vencimento').then(r=>{if(r.error)throw r.error;return r.data||[];}),
+      s.from('lojas').select('nome,pct_diversas').then(r=>{if(r.error)throw r.error;return r.data||[];}),
+      s.from('lentes_mes').select('loja,mes,ano,quantidade').gte('ano',2026).then(r=>{if(r.error)throw r.error;return r.data||[];}),
+      tudo('lancamentos','id,cartao_id,mes,ano,valor,parcela,destino,descricao',q=>q.gte('ano',2026)),
+      s.from('pagamentos_fatura').select('cartao_id,mes,ano,valor_fatura,valor_pago').gte('ano',2026).then(r=>r.error?[]:(r.data||[]))]);
+    _ffCache={cartoes,lojas,lentes,lanc:lanc.filter(l=>l.mes!=null&&l.ano!=null),pags};_ffCacheEm=Date.now();return _ffCache;}
+  // itens da Agenda (só aparecem na semana do vencimento: não acumulam). Pago = o extrato trouxe o pagamento (até 45 dias depois).
+  async function ffItensAgenda(lojaIds,de,ate){
+    const r0=Math.max(FF_DESDE,Number(de.slice(0,4))*12+Number(de.slice(5,7))-1),r1=Number(ate.slice(0,4))*12+Number(ate.slice(5,7))-1;if(r1<r0)return [];
+    const D=await ffLerDados();const linhas=[];const totCartao={};
+    for(let r=r0;r<=r1;r++){const R=ffCalcularMes(D,r);R.linhas.forEach(l=>{if(l.conta!==FF_DIV)totCartao[l.cartao+'|'+r]=(totCartao[l.cartao+'|'+r]||0)+l.valor;
+      if(lojaIds&&!lojaIds.includes(l.conta))return;linhas.push(l);});}
+    if(!linhas.some(l=>l.venc>=de&&l.venc<=ate))return [];
+    // fatura do banco (o que foi anotado no FaturaFácil) × soma das compras
+    const bancoDe=(cid,r)=>{const p=(D.pags||[]).find(x=>x.cartao_id===cid&&x.ano*12+x.mes===r);if(!p)return null;const v=Number(p.valor_fatura)||Number(p.valor_pago)||0;return v>1?v:null;};
+    // pagamentos no extrato: do 10º dia antes do vencimento até 45 dias depois (pago atrasado no mês seguinte também casa)
+    const hoje=_hojeLocal();const vmin=linhas.reduce((m,l)=>l.venc<m?l.venc:m,'9999'),vmax=linhas.reduce((m,l)=>l.venc>m?l.venc:m,'0000');
+    const ate2=addDias(vmax,45)<hoje?addDias(vmax,45):hoje;let ext=[];
+    if(addDias(vmin,-40)<=hoje){const ids=[...new Set(linhas.map(l=>l.conta))];
+      for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('id,loja_id,data,valor').in('loja_id',ids).lt('valor',0).gte('data',addDias(vmin,-40)).lte('data',ate2).order('id').range(o,o+999);if(error)break;ext=ext.concat(data||[]);if(!data||data.length<1000)break;}
+      try{const {data:us}=await sb.from('contas_pagar').select('pago_lancamento_id').not('pago_lancamento_id','is',null).gte('vencimento',addDias(vmin,-60));const u=new Set((us||[]).map(x=>x.pago_lancamento_id));ext=ext.filter(e=>!u.has(e.id));}catch(e){}}
+    const usados=new Set();const pg={};
+    const acha=(conta,valor,venc,tol)=>ext.filter(e=>e.loja_id==conta&&!usados.has(e.id)&&Math.abs(Math.abs(Number(e.valor))-valor)<=tol&&e.data>=addDias(venc,-10)&&e.data<=addDias(venc,45)).sort((a,b)=>Math.abs(_dias(a.data,venc))-Math.abs(_dias(b.data,venc)))[0];
+    const chave=l=>l.cartao+'|'+l.ref+'|'+l.conta;
+    linhas.forEach(l=>{const e=acha(l.conta,l.valor,l.venc,0.02);if(e){usados.add(e.id);pg[chave(l)]={em:e.data,como:'baixa pelo extrato'};}});
+    linhas.forEach(l=>{if(pg[chave(l)])return;const tots=[totCartao[l.cartao+'|'+l.ref],bancoDe(l.cartao,l.ref)].filter(Boolean);
+      for(const t of tots){const e=acha(l.conta,Math.round(t*100)/100,l.venc,0.05);if(e){usados.add(e.id);pg[chave(l)]={em:e.data,como:'esta conta pagou a fatura inteira'};break;}}});
+    const juntos=porGrupo=>{const grupos={};linhas.forEach(l=>{if(pg[chave(l)])return;const g=porGrupo(l);(grupos[g]=grupos[g]||[]).push(l);});
+    Object.values(grupos).forEach(G=>{if(G.length<2)return;const s=Math.round(G.reduce((a,l)=>a+l.valor,0)*100)/100;const e=acha(G[0].conta,s,G[0].venc,0.05);if(e){usados.add(e.id);G.forEach(l=>pg[chave(l)]={em:e.data,como:'pago junto com os outros cartões do mês, numa transferência só'});}});};
+    juntos(l=>l.conta+'|'+l.venc);juntos(l=>l.conta+'|'+l.ref);
+    // v2.9.92: pago compra por compra — cada saída do extrato que bate com a parte de uma compra vai abatendo até zerar (da compra até 45 dias depois do vencimento)
+    const parc={};linhas.forEach(l=>{if(pg[chave(l)])return;let pago=0,ult=null;const marc=[];
+      l.itens.slice().sort((a,b)=>b.parte-a.parte).forEach((it,ix)=>{if(!(it.parte>=5)||Math.abs(Math.round(it.parte*100)%5000)===0)return; /* valor redondo (500, 1.000) não casa sozinho: pode ser outra coisa */
+        const e=ext.filter(e=>e.loja_id==l.conta&&!usados.has(e.id)&&Math.abs(Math.abs(Number(e.valor))-it.parte)<=0.01&&e.data>=addDias(l.venc,-40)&&e.data<=addDias(l.venc,45)).sort((a,b)=>a.data.localeCompare(b.data))[0];
+        if(!e)return;usados.add(e.id);pago+=it.parte;it.pagoEm=e.data;if(!ult||e.data>ult)ult=e.data;});
+      pago=Math.round(pago*100)/100;if(!pago)return;
+      if(pago>=l.valor-0.05)pg[chave(l)]={em:ult,como:'pago compra por compra (cada compra saiu separada no extrato)'};else parc[chave(l)]=pago;});
+    return linhas.filter(l=>l.venc>=de&&l.venc<=ate).map(l=>{const p=pg[chave(l)];const nomeConta=l.conta===FF_DIV?'DIVIDIDOS (INTEIRO)':'PARTE DA '+lojaNomeCurto(l.conta).toUpperCase();
+      const soma=totCartao[l.cartao+'|'+l.ref]||0,banco=bancoDe(l.cartao,l.ref);
+      return {k:'f'+chave(l),tipo:'ff',loja_id:l.conta,desc:`CARTÃO ${String(l.nomeCartao).toUpperCase()} · ${MESES_NOME[l.ref%12].toUpperCase()} · ${nomeConta}`,valor:l.valor,venc:l.venc,status:p?'pago':'aberto',pagoEm:p?p.em:null,pagoComo:p?p.como:null,
+        cat:`FaturaFácil · ${l.itens.length} compra${l.itens.length>1?'s':''}`,ffItens:l.itens,ffLentesProv:l.lentesProv,ffSoma:soma,ffBanco:banco,ffCartao:l.nomeCartao,ffPagoParte:p?null:(parc[chave(l)]||null)};});}
   function mesShift(m,n){const [y,mm]=m.split('-').map(Number);const d=new Date(y,mm-1+n,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
   function diaUtilSipag(iso){const [y,m,d]=iso.split('-').map(Number);const x=new Date(y,m-1,d);const w=x.getDay();if(w===6)x.setDate(x.getDate()+2);else if(w===0)x.setDate(x.getDate()+1);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;}
   const CARTAO_RE=/SIPAG|ANTECIPA|CR ANT|CR CPS|CR CMP|CR COMPRAS|STONE|PAGSEGURO|PAGBANK|GETNET|CIELO|REDE /i;
@@ -3937,7 +4048,7 @@
   // =================== AGENDA DE PAGAMENTOS (contas a pagar) ===================
   // Tabela própria (contas_pagar): não entra em saldo, DRE nem fechamento. Semana de sábado a sexta (fim de semana cai na segunda).
   // Baixa sozinha quando o extrato traz o pagamento (mesmo valor, perto do vencimento). Fixos (Recorrentes) e lentes previstas no Caixinha aparecem sozinhos.
-  let AG_SEMANA=null,AG_ESCOPO='loja',_agSeq=0,_agItens=[],AG_ERRO_TAB=false;
+  let AG_SEMANA=null,AG_ESCOPO='loja',_agSeq=0,_agItens=[],AG_ERRO_TAB=false,AG_FF_ERRO='';
   const _isoLocal=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const _hojeLocal=()=>_isoLocal(new Date());
   function agInicioSemana(iso){const d=new Date(iso+'T00:00:00').getDay();return addDias(iso,-((d+1)%7));}
@@ -4023,7 +4134,7 @@
     return n;
   }
   async function agCarregar(lojaIds,de,ate){
-    const hoje=_hojeLocal();const itens=[];AG_ERRO_TAB=false;
+    const hoje=_hojeLocal();const itens=[];AG_ERRO_TAB=false;AG_FF_ERRO='';
     const nomeCat=id=>{const c=CATS.find(x=>x.id===id);return c?c.nome:'';};
     // contas lançadas
     let qa=sb.from('contas_pagar').select('*').eq('status','aberto').lte('vencimento',ate);if(lojaIds)qa=qa.in('loja_id',lojaIds);
@@ -4053,6 +4164,8 @@
     // boletos de lentes já cadastrados no Caixinha como previstos
     try{if(await cxSessao()){const r=await lentesLerCaixinha();((r&&r.diag&&r.diag.listaPrevistos)||[]).forEach((b,i)=>{if(!b.lojaId||(lojaIds&&!lojaIds.includes(b.lojaId)))return;if(b.data>ate||(b.data<de&&b.data<hoje))return;
       itens.push({k:'z'+i+b.data,tipo:'lente',loja_id:b.lojaId,desc:b.nome||'LENTES',valor:b.valor,venc:b.data,status:'aberto',cat:'Lentes (previsto no Caixinha)'});});}}catch(e){}
+    // v2.9.92: espelho do FaturaFácil — a parte de cada loja por cartão (só na semana do vencimento; não acumula)
+    try{(await ffItensAgenda(lojaIds,de,ate)).forEach(x=>itens.push(x));}catch(e){console.warn('FaturaFácil:',e&&e.message);AG_FF_ERRO=(e&&e.message)||String(e);}
     itens.forEach(it=>{it.dia=agDiaUtil(it.venc);});
     return itens;
   }
@@ -4069,14 +4182,14 @@
     const daSemana=itens.filter(i=>i.dia>=semIni&&i.dia<=semFim),daProx=itens.filter(i=>i.dia>semFim&&i.dia<=proxFim);
     const vencidos=itens.filter(i=>(i.tipo==='conta'||i.tipo==='legado')&&i.status==='aberto'&&i.dia<semAtual).sort((a,b)=>a.venc.localeCompare(b.venc));
     const soma=a=>a.reduce((t,i)=>t+i.valor,0);
-    const tot=soma(daSemana),pago=soma(daSemana.filter(i=>i.status==='pago')),falta=tot-pago,prox=soma(daProx);
+    const tot=soma(daSemana),pago=soma(daSemana.filter(i=>i.status==='pago'))+daSemana.reduce((t,i)=>t+(i.status!=='pago'&&i.ffPagoParte||0),0),falta=tot-pago,prox=soma(daProx);
     const lojaTag=i=>grupo?`<span class="mut" style="font-size:10.5px">${lojaNomeCurto(i.loja_id)} · </span>`:'';
     const nomeDia=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
     const colunas=[2,3,4,5,6].map(n=>{const dia=addDias(semIni,n);const its=daSemana.filter(i=>i.dia===dia).sort((a,b)=>(a.status==='pago')-(b.status==='pago')||b.valor-a.valor);
-      const tdia=soma(its.filter(i=>i.status!=='pago'));const ehHoje=dia===hoje;
+      const tdia=its.filter(i=>i.status!=='pago').reduce((t,i)=>t+i.valor-(i.ffPagoParte||0),0);const ehHoje=dia===hoje;
       const cards=its.map(i=>{const venceu=i.status==='aberto'&&dia<hoje;
-        const bg=i.status==='pago'?'rgba(31,157,107,.10)':i.tipo==='fixo'?'rgba(59,99,217,.08)':i.tipo==='lente'?'rgba(199,134,26,.10)':'var(--panel-2)';
-        return `<div onclick="agAbrirItem('${i.k}')" title="${(i.cat||'').replace(/"/g,'')}${i.status==='pago'&&i.pagoComo?' · '+i.pagoComo:''}" style="cursor:pointer;font-size:12px;padding:6px 7px;border-radius:8px;margin-top:5px;background:${bg};display:flex;justify-content:space-between;gap:6px;${venceu?'border:1px solid rgba(214,69,69,.5);':''}${i.critico&&i.status!=='pago'?'border-left:3px solid var(--red);':''}${i.status==='pago'?'text-decoration:line-through;opacity:.7;':''}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${lojaTag(i)}${i.desc}${i.parcela?' '+i.parcela:''}</span><b style="white-space:nowrap">${BRL(i.valor).replace('R$ ','').replace(/,\d\d$/,'')}</b></div>`;}).join('');
+        const bg=i.status==='pago'?'rgba(31,157,107,.10)':i.tipo==='fixo'?'rgba(59,99,217,.08)':i.tipo==='lente'?'rgba(199,134,26,.10)':i.tipo==='ff'?'rgba(124,92,255,.10)':'var(--panel-2)';
+        return `<div onclick="agAbrirItem('${i.k}')" title="${(i.cat||'').replace(/"/g,'')}${i.status==='pago'&&i.pagoComo?' · '+i.pagoComo:''}" style="cursor:pointer;font-size:12px;padding:6px 7px;border-radius:8px;margin-top:5px;background:${bg};display:flex;justify-content:space-between;gap:6px;${venceu?'border:1px solid rgba(214,69,69,.5);':''}${i.critico&&i.status!=='pago'?'border-left:3px solid var(--red);':''}${i.status==='pago'?'text-decoration:line-through;opacity:.7;':''}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${lojaTag(i)}${i.desc}${i.parcela?' '+i.parcela:''}</span><b style="white-space:nowrap">${i.ffPagoParte?`<span class="mut" style="font-weight:600">falta </span>`+BRL(i.valor-i.ffPagoParte).replace('R$ ','').replace(/,\d\d$/,''):BRL(i.valor).replace('R$ ','').replace(/,\d\d$/,'')}</b></div>`;}).join('');
       return `<div style="border:1px solid ${ehHoje?'var(--blue)':'var(--line)'};${ehHoje?'box-shadow:0 0 0 2px rgba(59,99,217,.15);':''}border-radius:12px;padding:10px;min-height:170px;background:var(--panel)">
         <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700"><span>${nomeDia[new Date(dia+'T00:00:00').getDay()]} ${dia.slice(8,10)}</span><span style="color:var(--red)">${tdia?BRL(tdia).replace('R$ ','').replace(/,\d\d$/,''):''}</span></div>
         <div class="mut" style="font-size:11px">${n===2?`+ sáb ${addDias(semIni,0).slice(8,10)} e dom ${addDias(semIni,1).slice(8,10)}`:(ehHoje?'hoje':'&nbsp;')}</div>${cards||'<div class="mut" style="font-size:11.5px;margin-top:8px">—</div>'}</div>`;}).join('');
@@ -4084,6 +4197,7 @@
     const fmtSem=`${isoParaBR(semIni).slice(0,5)} (sáb) a ${isoParaBR(semFim).slice(0,5)} (sex)`;
     box.innerHTML=`
       ${AG_ERRO_TAB?`<div class="note" style="border-color:rgba(255,92,92,.4)">Para lançar contas na agenda, rode o <b>SQL da v2.6</b> no projeto <b>sistema-financeiro</b>. Os fixos e as lentes do Caixinha já aparecem.</div>`:''}
+      ${AG_FF_ERRO?`<div class="note" style="border-color:rgba(245,183,64,.5)">Não consegui ler o FaturaFácil agora (${_remEsc(AG_FF_ERRO)}). As partes dos cartões aparecem quando a conexão voltar.</div>`:''}
       ${baixas?`<div class="note" style="border-color:rgba(31,157,107,.4)">✅ <b>${baixas} conta(s) baixada(s) sozinha(s)</b>: o pagamento apareceu no extrato.</div>`:''}
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:14px">
         <div style="background:rgba(31,157,107,.07);border:1px solid rgba(31,157,107,.3);border-radius:12px;padding:9px 12px;font-size:12.5px">✅ <b>Baixa sozinha.</b> Quando o pagamento aparece no extrato (mesmo valor, perto do vencimento), a conta vira paga. Ninguém dá baixa.</div>
@@ -4107,6 +4221,7 @@
           <span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--panel-2);vertical-align:middle;margin-right:4px"></i>conta lançada</span>
           <span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:rgba(59,99,217,.25);vertical-align:middle;margin-right:4px"></i>fixo (Recorrentes) — aparece sozinho</span>
           <span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:rgba(199,134,26,.3);vertical-align:middle;margin-right:4px"></i>lentes previstas no Caixinha — vem sozinho</span>
+          <span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:rgba(124,92,255,.3);vertical-align:middle;margin-right:4px"></i>cartão (espelho do FaturaFácil) — vem sozinho</span>
           <span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:rgba(31,157,107,.3);vertical-align:middle;margin-right:4px"></i>pago</span>
           <span>clique numa conta para ver ou resolver</span></div></div>
       <div class="grid two" style="margin-bottom:14px">
@@ -4179,22 +4294,33 @@
     await agAprenderBoleto(cat,cont);
     fecharModal();toast(rows.length>1?`${rows.length} parcelas lançadas na agenda.`:'Conta lançada na agenda.','ok');AG_SEMANA=agInicioSemana(agDiaUtil(venc)<=addDias(agInicioSemana(_hojeLocal()),6)?_hojeLocal():venc);render();
   }
+  // v2.9.92: lista das compras de um cartão (parte desta conta)
+  function ffItensHTML(i){const L=(i.ffItens||[]).slice().sort((a,b)=>b.parte-a.parte);const fmt=v=>BRL(v).replace('R$ ','');
+    const regra=x=>{if(x.inteiro)return 'dividido · inteiro aqui';const u=_ffN(x.dest);if(u==='DIVERSAS'||u==='MIDIA')return `${x.dest} · % da loja de ${fmt(x.total)}`;
+      if(u==='DIVIDIR SURFACAGEM'||u==='LABORATORIO')return `Surfaçagem · ${x.lentes} lente(s) de ${fmt(x.total)}`;if(u.startsWith('DIVIDIR:'))return `${x.dest.replace(/^Dividir:\s*/i,'➗ ')} · de ${fmt(x.total)}`;return x.dest;};
+    const dif=i.ffBanco&&Math.abs(i.ffBanco-i.ffSoma)>1;
+    return `<div style="max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin:0 0 10px"><table style="width:100%;font-size:12px;border-collapse:collapse">
+      <thead><tr style="background:var(--panel-2)"><th style="text-align:left;padding:5px 8px">Compra</th><th style="text-align:left;padding:5px 8px">Destino no FaturaFácil</th><th style="text-align:right;padding:5px 8px">Parte</th></tr></thead><tbody>
+      ${L.map(x=>`<tr style="border-top:1px solid var(--line)"><td style="padding:4px 8px">${_remEsc(x.desc)}${x.parc?` <span class="mut">${_remEsc(x.parc)}</span>`:''}${x.proj?' <span class="mut" style="font-size:10.5px">↻ parcela que continua</span>':''}${x.pagoEm?` <span style="color:var(--green);font-size:10.5px">✔ saiu no extrato ${isoParaBR(x.pagoEm).slice(0,5)}</span>`:''}</td><td class="mut" style="padding:4px 8px">${_remEsc(regra(x))}</td><td style="padding:4px 8px;text-align:right;font-variant-numeric:tabular-nums">${fmt(x.parte)}</td></tr>`).join('')}
+      </tbody></table></div>
+      ${i.ffLentesProv!=null?`<div class="mut" style="font-size:12px;margin-bottom:6px">Surfaçagem pelas lentes de ${MESES_NOME[i.ffLentesProv%12]} (as lentes deste mês ainda não foram lançadas no FaturaFácil). Muda sozinho quando lançarem.</div>`:''}
+      ${dif?`<div style="font-size:12px;margin-bottom:8px;color:var(--amber)">⚠ No FaturaFácil o cartão ${_remEsc(i.ffCartao)} soma ${BRL(i.ffSoma)}, e a fatura do banco anotada lá é ${BRL(i.ffBanco)}. Vale conferir no FaturaFácil (aqui só espelha).</div>`:''}`;}
   function agAbrirItem(k){const i=_agItens.find(x=>x.k===k);if(!i)return;
-    const info={conta:'conta lançada na agenda',legado:'lançamento marcado como "não pago" (A pagar antigo)',fixo:'fixo dos Recorrentes — aparece sozinho todo mês e fica pago quando sai um lançamento parecido perto do dia',lente:'boleto de lentes previsto no Caixinha — quando for pago lá, vira lançamento sozinho (espelho de Lentes)'}[i.tipo];
+    const info={conta:'conta lançada na agenda',legado:'lançamento marcado como "não pago" (A pagar antigo)',fixo:'fixo dos Recorrentes — aparece sozinho todo mês e fica pago quando sai um lançamento parecido perto do dia',lente:'boleto de lentes previsto no Caixinha — quando for pago lá, vira lançamento sozinho (espelho de Lentes)',ff:'espelho do FaturaFácil — vem sozinho das compras lançadas lá (nada é mudado no FaturaFácil). Nunca entra como pago: só o extrato dá baixa, mesmo se pagar atrasado.'}[i.tipo];
     const acoes=[];
     if((i.tipo==='conta'||i.tipo==='legado')&&podeEditar()){
       if(i.status==='aberto'){acoes.push(`<button class="btn" onclick="agJaPaguei('${k}')">Já paguei</button>`);if(i.tipo==='conta')acoes.push(`<button class="btn ghost" onclick="agNaoVouPagar('${k}')">Não vou pagar</button>`);}
       else if(i.tipo==='conta')acoes.push(`<button class="btn ghost" onclick="agReabrir('${k}')">Voltar para aberto</button>`);
       if(i.tipo==='conta'&&ehDono())acoes.push(`<button class="btn ghost" style="color:var(--red)" onclick="agExcluir('${k}')">Excluir</button>`);
       if(i.tipo==='conta')acoes.unshift(`<button class="btn ghost" onclick="agCritico('${k}',${!i.critico})">${i.critico?'Pode atrasar':'Não pode atrasar'}</button>`);}
-    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(460px,94vw)">
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(${i.tipo==='ff'?620:460}px,94vw)">
       <h3>${i.desc}${i.parcela?' · '+i.parcela:''}</h3>
       <p style="margin:4px 0 10px"><b style="font-size:18px">${BRL(i.valor)}</b> · vence ${isoParaBR(i.venc)}${i.dia!==i.venc?` (paga na segunda, ${isoParaBR(i.dia).slice(0,5)})`:''}<br>
         <span class="mut">${lojaNomeCurto(i.loja_id)}${i.cat?' · '+i.cat:''}</span><br>
         ${i.doc?`<span style="font-size:12.5px">📝 ${_remEsc(i.doc)}</span><br>`:''}
         <span class="mut" style="font-size:12px">${info}</span>
-        ${i.status==='pago'?`<br><span style="color:var(--green);font-size:12.5px">✔ pago${i.pagoEm?' em '+isoParaBR(i.pagoEm):''}${i.pagoComo?' · '+i.pagoComo:''}</span>`:''}
-        ${i.critico?'<br><span style="color:var(--red);font-size:12.5px">Não pode atrasar</span>':''}</p><div id="agPartes"></div>
+        ${i.ffPagoParte?`<br><span style="color:var(--amber);font-size:12.5px">pago em parte: ${BRL(i.ffPagoParte)} de ${BRL(i.valor)} · falta <b>${BRL(i.valor-i.ffPagoParte)}</b></span>`:''}${i.status==='pago'?`<br><span style="color:var(--green);font-size:12.5px">✔ pago${i.pagoEm?' em '+isoParaBR(i.pagoEm):''}${i.pagoComo?' · '+i.pagoComo:''}</span>`:''}
+        ${i.critico?'<br><span style="color:var(--red);font-size:12.5px">Não pode atrasar</span>':''}</p><div id="agPartes"></div>${i.tipo==='ff'?ffItensHTML(i):''}
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${acoes.join('')}<button class="btn ghost" onclick="fecharModal()">Fechar</button></div></div></div>`;
     if(i.tipo==='conta')agPartesPreencher(i).catch(()=>{});}
   async function agJaPaguei(k){const i=_agItens.find(x=>x.k===k);if(!i)return;

@@ -935,6 +935,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 | Data | Versão | O que mudou | Efeito no fechamento |
 | --- | --- | --- | --- |
 | 28/10/2026 | 2.9.91 | Trocar de mês ou de loja desliga os filtros ("Mostrando só…", "Mostrar só esses", filtro da Íris, dia) | — |
+| 29/10/2026 | 2.9.92 | Espelho do FaturaFácil na Agenda: cada cartão, todo mês, vira a parte de cada loja (Diversas e Mídia pela %, Surfaçagem por lente, "Dividir" em partes iguais; Casa, LUCAS e VIAGEM na Casa; GV na GV Lentes; GVR no Grupo VR) e o dividido aparece inteiro na Conta Diversas. Parcelas continuam nos meses seguintes. Só leitura no FaturaFácil; nunca entra pago — o extrato dá baixa (a parte inteira, tudo junto numa transferência, a fatura inteira ou compra por compra — mostra "pago em parte · falta R$ X" até zerar; até 45 dias depois) | — |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
