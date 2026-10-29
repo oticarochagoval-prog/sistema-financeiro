@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.98', APP_DATA='29/10/2026';
+  const APP_VERSAO='2.9.99', APP_DATA='29/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1554,13 +1554,13 @@
     ['visao','Dashboard','◫',true],['radar','Radar do mês','🧭',true],['lanc','Lançamentos','≣',true],['import','Importar extrato','⤓',true],
     ['apagar','Agenda de pagamentos','🧾',true],['remanejos','Remanejos','↹',true],['caixa','Fechamento de caixa','🧮',true],['caixinha','Caixinha (espelho)','💵',true],['emprestimos','Empréstimos (espelho)','⇄',true],
     ['__a','Análise'],
-    ['dre','DRE','📊',true],['fechamento','Fechamento do mês','🔐',true],['concsipag','Cartão × Sipag','💳',true],
+    ['dre','DRE','📊',true],['fechamento','Fechamento do mês','🔐',true],['fechar','Fechar de junho para cá','✅',true],['concsipag','Cartão × Sipag','💳',true],
     ['comparativo','Comparativo','📈',true],['relcontato','Por contato','👥',true],['juros','Juros por loja','🏦',true],['confpix','Conferência de Pix','🔎',true],
     ['__g','Gestão'],
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
     ['recorrentes','Recorrentes','🔁',true],['duvidas','Dúvidas da equipe','💬',true],['lixeira','Lixeira','🗑',true],['backup','Backup e restaurar','🛟',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],['manualcx','Manual do Caixinha','🔗',true],
   ];
-  const TITLES={duvidas:'Dúvidas da equipe · o que a Íris não soube',confpix:'Conferência de Pix · banco × Linx',visao:'Dashboard',radar:'Radar do mês',lanc:'Lançamentos',import:'Importar extrato',apagar:'Agenda de pagamentos',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',remanejos:'Remanejos',emprestimos:'Empréstimos entre lojas — espelho do Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',backup:'Backup e restaurar',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
+  const TITLES={fechar:'Fechar de junho para cá · o que falta em cada empresa',duvidas:'Dúvidas da equipe · o que a Íris não soube',confpix:'Conferência de Pix · banco × Linx',visao:'Dashboard',radar:'Radar do mês',lanc:'Lançamentos',import:'Importar extrato',apagar:'Agenda de pagamentos',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',remanejos:'Remanejos',emprestimos:'Empréstimos entre lojas — espelho do Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',backup:'Backup e restaurar',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
   // ícones do menu: traço simples, da mesma cor do texto (claro e escuro), no estilo do Microvix
   const NAV_ICON={backup:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',confpix:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',remanejos:'<path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/>',emprestimos:'<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',visao:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',radar:'<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.8 5.41a2 2 0 0 1-1.27 1.27L7.76 16.24l1.8-5.41a2 2 0 0 1 1.27-1.27z"/>',lanc:'<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',import:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',apagar:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',caixa:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M16 14v4M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/>',caixinha:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',dre:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',fechamento:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',concsipag:'<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>',comparativo:'<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',relcontato:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',juros:'<path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"/>',categorias:'<path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',cadcontatos:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',recorrentes:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',lixeira:'<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',config:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',manual:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',manualcx:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'};
   // menu que abre e fecha por grupo (Dia a dia / Análise / Gestão); lembra no navegador; o grupo da tela aberta fica sempre aberto
@@ -1855,7 +1855,11 @@
     let semMot=false;if(error&&/motivo/i.test(error.message||'')){semMot=true;({error}=await sb.from('regras_palavras').insert(row));}
     if(error){toast('Não consegui ensinar: '+error.message,'erro');return;}
     await carregarRegrasP();irisFecharEnsinar();_irisMemo.t=0;
-    toast(`Íris aprendeu: quando aparecer "${palavraLegivel(palavra)}" é ${[_irisCatNome(l.categoria_id),l.contato_id?_irisContNome(l.contato_id):''].filter(Boolean).join(' · ')}.${semMot?' (O porquê não foi junto: falta a coluna no banco.)':''}`,'ok');lancSoAtualizar();}
+    toast(`Íris aprendeu: quando aparecer "${palavraLegivel(palavra)}" é ${[_irisCatNome(l.categoria_id),l.contato_id?_irisContNome(l.contato_id):''].filter(Boolean).join(' · ')}.${semMot?' (O porquê não foi junto: falta a coluna no banco.)':''}`,'ok');lancSoAtualizar();
+    // v2.9.99: já aplica o que acabou de aprender de junho para cá, em todas as lojas
+    setTimeout(async()=>{const r=await irisRetroativo(true);if(r.cat||r.ct){const n=Object.keys(r.lojas).length;
+      toast(`E já apliquei de junho para cá: ${r.cat} categoria(s) e ${r.ct} contato(s) em ${n} empresa(s). Ficaram amarelos.`,'ok');
+      if(page==='lanc'){await carregarLancamentos();lancSoAtualizar();}}},400);}
   // v2.9.64: sugestões da IA ficam guardadas no banco (o robô das 6h já deixa pronto; ninguém paga duas vezes)
   let _irisSugTab=true;
   async function irisCarregarSugestoes(){if(!_irisSugTab)return;const pref=`${ANO_FIXO}-${_mm(mesSel)}`;const ids=LANC.filter(l=>(l.data||'').slice(0,7)===pref&&!l.categoria_id&&!IRIS_IA[l.id]).map(l=>l.id);
@@ -1910,7 +1914,8 @@
         finally{_autoRodando=false;IMPORT=[];importObs='';IMPORT_DEP=[];_IMP_API=false;IMP_MARC={modo:'todas',crit:[]};}
         log.push(`extrato do Sicoob conferido (mês inteiro): ${nOk} lançamento(s) entraram`);}
       try{await prevRotina(log);}catch(e){log.push('previsão: '+(e.message||e));}
-      try{const np=await irisParcelasFaltando(null);log.push('parcelas que faltavam na Agenda: '+np);}catch(e){log.push('parcelas: '+(e.message||e));} // v2.9.95 // v2.9.82: foto da previsão do dia 1º + fecha os meses
+      try{const np=await irisParcelasFaltando(null);log.push('parcelas que faltavam na Agenda: '+np);}catch(e){log.push('parcelas: '+(e.message||e));} // v2.9.95
+      try{const rr=await irisRetroativo(true);log.push(`de junho para cá: ${rr.cat} categoria(s) e ${rr.ct} contato(s) preenchidos`);}catch(e){log.push('retroativo: '+(e.message||e));} // v2.9.99 // v2.9.82: foto da previsão do dia 1º + fecha os meses
       // v2.9.79: Casa (Rocha 1), Diversas (Rocha 2) e Grupo VR (Rocha 3) têm o CNPJ de uma loja: o banco separa pela outra ponta (mesmo valor saindo da outra conta)
       try{const {data:aj,error:eaj}=await sb.rpc('ajustar_origem_grupo');if(!eaj)log.push('origem das transferências do grupo ajustada: '+(aj||0));}catch(e){}
       const hoje=_hojeLocal(),mAtual=Number(hoje.slice(5,7))-1,meses=Number(hoje.slice(8,10))<=10&&mAtual>0?[mAtual-1,mAtual]:[mAtual];
@@ -2074,6 +2079,112 @@
   let _faixaObs=null;function lojaFaixaLigar(){if(_faixaObs)return;const c=document.getElementById('content');if(!c||typeof MutationObserver==='undefined')return;
     _faixaObs=new MutationObserver(()=>{const f=document.getElementById('lojaFaixa');if(_FAIXA_PAGS[page]&&!ROBO&&(!f||c.firstElementChild!==f))lojaFaixaAplicar();else if(f&&!_FAIXA_PAGS[page])f.remove();});
     _faixaObs.observe(c,{childList:true});}
+  // ---- v2.9.99: A ÍRIS VOLTA E APLICA DE JUNHO PARA CÁ ----
+  // Toda vez que ela aprende (ou às 6h), ela refaz de 06/2026 em diante o que ainda está sem categoria/contato:
+  // 1) o que ela já aprendeu (regras de palavra) · 2) linha gêmea: descrição igual que em outra loja/mês só teve UMA categoria.
+  // Ela preenche e deixa AMARELO (para conferir). Nunca mexe em linha já conferida, em mês fechado, nem troca o que foi posto à mão.
+  const RETRO_DESDE='2026-06-01';
+  let _retroEmCurso=false;
+  function _retroBase(d){const n=normDesc(d);return n.replace(/\b(DE|PARA|PIX|TED|DOC|BOLETO|PAGAMENTO|CREDITO|DEBITO|EMITIDO|RECEBIDO|OUTRA|IF|FAV|REM)\b/g,' ').replace(/\s+/g,' ').trim();}
+  // regras de palavra respeitando o módulo da loja (a Casa tem regras próprias)
+  function _retroRegra(desc,lojaId,modulo){const _m=MODULO_ATUAL;MODULO_ATUAL=modulo||'oticas';try{return aplicarRegrasP(desc,lojaId);}finally{MODULO_ATUAL=_m;}}
+  async function irisRetroativo(silencioso){
+    if(_retroEmCurso||!podeEditar())return {cat:0,ct:0,lojas:{}};
+    _retroEmCurso=true;
+    try{
+      const {data:ls,error}=await sbTudo(()=>sb.from('lancamentos').select('id,loja_id,data,descricao,valor,categoria_id,contato_id,conferido_por').gte('data',RETRO_DESDE).order('id'));
+      if(error||!ls||!ls.length)return {cat:0,ct:0,lojas:{}};
+      const {data:fe}=await sb.from('fechamentos').select('loja_id,ano,mes,fechado').eq('ano',ANO_FIXO);
+      const fechado=new Set((fe||[]).filter(f=>f.fechado).map(f=>f.loja_id+'|'+f.mes));
+      const modDa={};(LOJAS||[]).forEach(l=>modDa[l.id]=l.modulo);
+      const catAtiva=new Set(catsAtivas().map(c=>c.id));
+      // índice das gêmeas: descrição parecida → categorias e contatos que ela já teve
+      const idx={};
+      ls.forEach(l=>{const b=_retroBase(l.descricao);if(b.length<4)return;const g=idx[b]=idx[b]||{cats:new Set(),cts:{},n:0};g.n++;
+        if(l.categoria_id&&catAtiva.has(l.categoria_id)){g.cats.add(l.categoria_id);const k=l.categoria_id;if(l.contato_id)(g.cts[k]=g.cts[k]||new Set()).add(l.contato_id);}});
+      const upCat=[],upCt=[],porLoja={};
+      const marca=(lojaId,campo)=>{const p=porLoja[lojaId]=porLoja[lojaId]||{cat:0,ct:0};p[campo]++;};
+      ls.forEach(l=>{
+        if(l.conferido_por)return;                                  // já conferido: não mexe
+        const mes=parseInt(String(l.data).slice(5,7),10);
+        if(fechado.has(l.loja_id+'|'+mes))return;                   // mês fechado: não mexe
+        const b=_retroBase(l.descricao),g=idx[b];
+        const r=_retroRegra(l.descricao,l.loja_id,modDa[l.loja_id]);
+        if(!l.categoria_id){
+          let cat=(r&&r.categoria_id&&catAtiva.has(r.categoria_id))?r.categoria_id:null;
+          if(!cat&&g&&g.cats.size===1)cat=[...g.cats][0];           // gêmea com UMA categoria só
+          if(cat){const row={id:l.id,categoria_id:cat};
+            const ct=(r&&r.contato_id)||((g&&g.cts[cat]&&g.cts[cat].size===1)?[...g.cts[cat]][0]:null);
+            if(ct)row.contato_id=ct;
+            upCat.push(row);marca(l.loja_id,'cat');return;}
+          return;
+        }
+        if(!l.contato_id){                                          // tem categoria, falta o contato
+          let ct=(r&&r.contato_id)||null;
+          if(!ct&&g&&g.cts[l.categoria_id]&&g.cts[l.categoria_id].size===1)ct=[...g.cts[l.categoria_id]][0];
+          if(ct){upCt.push({id:l.id,contato_id:ct});marca(l.loja_id,'ct');}
+        }
+      });
+      // grava em lote: linhas com a mesma categoria/contato vão juntas (e só se continuarem vazias)
+      let nc=0,nk=0;
+      const porPar={};upCat.forEach(r=>{const k=r.categoria_id+'|'+(r.contato_id||'');(porPar[k]=porPar[k]||[]).push(r.id);});
+      for(const k of Object.keys(porPar)){const [c,ct]=k.split('|');const ids=porPar[k];
+        for(let i=0;i<ids.length;i+=200){const parte=ids.slice(i,i+200);
+          const {error:e2}=await sb.from('lancamentos').update(ct?{categoria_id:Number(c),contato_id:Number(ct)}:{categoria_id:Number(c)}).in('id',parte).is('categoria_id',null);
+          if(!e2)nc+=parte.length;}}
+      const porCt={};upCt.forEach(r=>{(porCt[r.contato_id]=porCt[r.contato_id]||[]).push(r.id);});
+      for(const c of Object.keys(porCt)){const ids=porCt[c];
+        for(let i=0;i<ids.length;i+=200){const parte=ids.slice(i,i+200);
+          const {error:e2}=await sb.from('lancamentos').update({contato_id:Number(c)}).in('id',parte).is('contato_id',null);
+          if(!e2)nk+=parte.length;}}
+      const res={cat:nc,ct:nk,lojas:porLoja};
+      if(!silencioso&&(nc||nk))toast(`Íris voltou de junho para cá: ${nc} categoria(s) e ${nk} contato(s) preenchidos. Ficaram amarelos, é só conferir.`,'ok');
+      else if(!silencioso)toast('Íris olhou de junho para cá e não achou nada novo para preencher.','ok');
+      return res;
+    }catch(e){if(!silencioso)toast('Não consegui rodar: '+(e.message||e),'erro');return {cat:0,ct:0,lojas:{}};}
+    finally{_retroEmCurso=false;}}
+  // botão: aparece depois de ensinar e no Dashboard do gestor
+  async function irisRetroAgora(btn){if(btn){btn.disabled=true;btn.textContent='A Íris está voltando…';}
+    const r=await irisRetroativo(false);if(btn){btn.disabled=false;btn.textContent='Aplicar de junho para cá';}
+    if(page==='lanc'){await carregarLancamentos();render();}else render();return r;}
+
+  // ---- v2.9.99: PAINEL "FECHAR DE JUNHO PARA CÁ" — o que falta em cada empresa, mês a mês ----
+  let _FECHAR=null;
+  async function viewFechar(){const box=document.getElementById('content');
+    box.innerHTML='<div class="loading"><span class="spin"></span> Juntando tudo de junho para cá…</div>';
+    const {data:ls,error}=await sbTudo(()=>sb.from('lancamentos').select('loja_id,data,categoria_id,conferido_por').gte('data',RETRO_DESDE).order('id'));
+    if(error){box.innerHTML=`<div class="note" style="border-color:rgba(255,92,92,.4)">Não consegui carregar: ${_remEsc(error.message)}</div>`;return;}
+    const {data:fe}=await sb.from('fechamentos').select('loja_id,mes,fechado').eq('ano',ANO_FIXO);
+    const fech={};(fe||[]).forEach(f=>{if(f.fechado)fech[f.loja_id+'|'+f.mes]=true;});
+    const meses=[];{const hoje=_hojeLocal();for(let m=6;m<=parseInt(hoje.slice(5,7),10);m++)meses.push(m);}
+    const D={};(ls||[]).forEach(l=>{const m=parseInt(String(l.data).slice(5,7),10);const k=l.loja_id+'|'+m;
+      const d=D[k]=D[k]||{n:0,sc:0,nc:0};d.n++;if(!l.categoria_id)d.sc++;if(!l.conferido_por)d.nc++;});
+    _FECHAR=D;
+    const todas=(LOJAS||[]).slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+    const cel=(L,m)=>{const d=D[L.id+'|'+m];if(!d)return '<td style="text-align:center" class="mut">—</td>';
+      const ok=d.sc===0&&d.nc===0,fe=fech[L.id+'|'+m];
+      const cor=fe?'var(--blue)':ok?'var(--green)':d.sc?'var(--red)':'var(--amber)';
+      const txt=fe?'fechado':ok?'pronto ✓':(d.sc?`${d.sc} sem categoria`:`${d.nc} p/ conferir`);
+      const sub=!fe&&!ok&&d.sc&&d.nc?`<div class="mut" style="font-size:10.5px">${d.nc} p/ conferir</div>`:'';
+      return `<td style="text-align:center;cursor:pointer" onclick="fecharIr(${L.id},${m})" title="${d.n} lançamento(s) — clique para abrir"><span style="color:${cor};font-weight:700;font-size:12px">${txt}</span>${sub}</td>`;};
+    const tot=m=>{let sc=0,nc=0;todas.forEach(L=>{const d=D[L.id+'|'+m];if(d&&!fech[L.id+'|'+m]){sc+=d.sc;nc+=d.nc;}});
+      return `<td style="text-align:center;font-weight:800;font-size:12px">${sc?`<span style="color:var(--red)">${sc}</span> · `:''}<span style="color:${nc?'var(--amber)':'var(--green)'}">${nc||'0'}</span></td>`;};
+    let gSc=0,gNc=0;todas.forEach(L=>meses.forEach(m=>{const d=D[L.id+'|'+m];if(d&&!fech[L.id+'|'+m]){gSc+=d.sc;gNc+=d.nc;}}));
+    box.innerHTML=`<div class="note">🔐 O que falta para fechar cada empresa, de junho para cá. <b style="color:var(--red)">Vermelho</b> = sem categoria · <b style="color:var(--amber)">amarelo</b> = falta conferir · <b style="color:var(--green)">verde</b> = pronto · <b style="color:var(--blue)">azul</b> = mês já fechado. Clique na caixinha para abrir a loja naquele mês.</div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px">
+        <div class="card"><div class="mut" style="font-size:12px;font-weight:600">Sem categoria</div><div style="font-size:22px;font-weight:800;color:${gSc?'var(--red)':'var(--green)'}">${gSc}</div></div>
+        <div class="card"><div class="mut" style="font-size:12px;font-weight:600">Falta conferir</div><div style="font-size:22px;font-weight:800;color:${gNc?'var(--amber)':'var(--green)'}">${gNc}</div></div>
+        <div class="card" style="display:flex;align-items:center">${podeEditar()?`<button class="btn" style="font-weight:800" onclick="fecharRetro(this)">A Íris aplica de junho para cá</button>`:'<span class="mut">só quem lança</span>'}</div></div>
+      <div class="card"><div style="overflow:auto"><table style="width:100%;font-size:12.5px;border-collapse:collapse">
+        <thead><tr style="background:var(--panel-2)"><th style="text-align:left;padding:7px">Empresa</th>${meses.map(m=>`<th style="padding:7px;text-align:center">${MESES_NOME[m-1]}</th>`).join('')}</tr></thead>
+        <tbody>${todas.map(L=>`<tr style="border-top:1px solid var(--line)"><td style="padding:7px"><b>${_remEsc(L.nome.split(' — ')[0])}</b></td>${meses.map(m=>cel(L,m)).join('')}</tr>`).join('')}</tbody>
+        <tfoot><tr style="border-top:2px solid var(--line)"><td style="padding:7px;font-weight:800">Total (sem cat · p/ conferir)</td>${meses.map(tot).join('')}</tr></tfoot></table></div></div>`;}
+  async function fecharIr(lojaId,mes){const L=LOJAS.find(l=>l.id===lojaId);if(!L)return;
+    if(_modDe(L)!==MODULO_ATUAL)await trocarModulo(_modDe(L));
+    lojaAtual=lojaId;mesSel=mes-1;const sel=document.getElementById('store');if(sel)sel.value=String(lojaId);
+    await carregarContas();await carregarFechamentos();renderNav();go('lanc');}
+  async function fecharRetro(btn){await irisRetroAgora(btn);if(page==='fechar')viewFechar();}
+
   // ---- v2.9.97: PERGUNTE À ÍRIS — a equipe tira dúvida do sistema conversando; a Íris só explica, não mexe em nada ----
   let IRISC={aberto:false,conv:null,msgs:[],enviando:false,lista:false,ensinos:null,erro:''};
   const IRISC_DICAS={lanc:['O que significa cada cor da linha?','Como eu corrijo a categoria?','O que a Íris já conferiu sozinha?'],
@@ -2175,7 +2286,7 @@
     IRISC.ensinos=null;toast('Respondida. A Íris já aprendeu.','ok');render();}
 
   function render(){lojaFaixaLigar();if(!ROBO&&document.getElementById('irisRoot'))irisChatRender();
-    const V={duvidas:viewDuvidas,confpix:viewConfPix,visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,remanejos:viewRemanejos,emprestimos:viewEmprestimos,recorrentes:viewRecorrentes,lixeira:viewLixeira,backup:viewBackup,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
+    const V={fechar:viewFechar,duvidas:viewDuvidas,confpix:viewConfPix,visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,remanejos:viewRemanejos,emprestimos:viewEmprestimos,recorrentes:viewRecorrentes,lixeira:viewLixeira,backup:viewBackup,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
     const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));preencherRemDash().catch(e=>console.error('rem dash',e));preencherPixDash().catch(e=>console.error('pix dash',e));preencherRankDash().catch(e=>console.error('rank dash',e));preencherIrisDash().catch(e=>console.error('iris',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -5106,6 +5217,7 @@
     box.innerHTML=`<div class="card" style="margin-bottom:14px;padding:16px 18px;border-color:rgba(59,99,217,.45);background:linear-gradient(135deg,rgba(79,209,197,.07),rgba(59,99,217,.05) 60%,transparent)">
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px">${irisAvatar(58)}
         <div style="flex:1;min-width:220px"><div style="font-weight:800;font-size:17px">${saud}! Aqui é a Íris.</div><div class="mut" style="font-size:12.5px">${dia} · ${MESES_NOME[mesSel]} · eu lanço, classifico e separo · vocês conferem</div></div>
+        ${podeEditar()?`<button class="btn" style="padding:6px 13px;font-size:12.5px;font-weight:800" onclick="irisRetroAgora(this)" title="A Íris volta em tudo que está sem categoria ou sem contato de junho para cá e aplica o que já aprendeu">Aplicar de junho para cá</button>`:''}
         <button class="btn ghost" style="padding:6px 13px;font-size:12.5px;font-weight:700" onclick="irisComoFunciona()">Como trabalhar com a Íris</button></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
         ${kpi(kHoje,'lancei do banco hoje','var(--blue)','sozinha, sem ninguém importar')}

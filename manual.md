@@ -298,6 +298,30 @@ Em toda tela do Fluxo tem o botão **Pergunte à Íris**, no canto de baixo à d
 
 Em **Gestão → Dúvidas da equipe** fica o que a Íris não soube responder, com quem perguntou, quando e em qual tela. O botão **responder** manda a resposta para a pessoa e ensina a Íris: na próxima vez ela já responde sozinha.
 
+## A Íris volta e aplica de junho para cá (v2.9.99)
+
+Antes, o que a Íris aprendia só valia dali para frente. Agora, toda vez que ela aprende alguma coisa — e também no robô das 6h — ela **volta em tudo de junho/2026 para cá** e preenche o que ainda está sem categoria ou sem contato.
+
+Ela usa duas coisas:
+
+- **o que vocês ensinaram** (as palavras que a Íris já aprendeu);
+- **a linha gêmea**: quando a mesma descrição já apareceu em outra loja ou em outro mês e sempre teve **uma categoria só**, ela usa essa.
+
+Regras de segurança: ela **nunca mexe** em linha já conferida, em mês fechado, nem troca o que alguém pôs à mão. Tudo que ela preenche fica **amarelo**, para alguém dar o ok — pelo botão de confirmar em lote, como já é hoje.
+
+O botão **Aplicar de junho para cá** fica no quadro da Íris, no Dashboard.
+
+## Fechar de junho para cá (v2.9.99)
+
+Em **Análise → Fechar de junho para cá** tem um quadro com cada empresa (Rocha 1 a 11 em ordem, depois as outras) e cada mês de junho em diante:
+
+- **vermelho** = tem lançamento sem categoria;
+- **amarelo** = falta conferir;
+- **verde** = aquele mês está pronto para fechar;
+- **azul** = mês já fechado.
+
+Clicando na caixinha, o sistema abre aquela loja naquele mês, em Lançamentos. Em cima aparece o total do grupo e o botão para a Íris aplicar de junho para cá.
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -957,6 +981,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 | 29/10/2026 | 2.9.96 | Ao abrir o sistema (e de hora em hora), a entrada automática do Sicoob só tranca a tela ("Lançando o extrato automático…") quando o banco trouxe linha nova; sem novidade, não aparece nada e não demora | — |
 | 29/10/2026 | 2.9.97 | **Pergunte à Íris**: botão em toda tela para a equipe tirar dúvida do sistema conversando com a Íris (ela só explica; conhece o manual e o histórico; conversas guardadas no login de cada um). Quando não sabe, não inventa: a dúvida vai para Gestão → Dúvidas da equipe e a resposta do gestor vira ensino. Primeira mensagem de boas-vindas aparece uma vez para cada pessoa | Rodar o SQL da v2.9.97 (sistema-financeiro) |
 | 29/10/2026 | 2.9.98 | Conserto no Pergunte à Íris: dava "sem pergunta" porque a conversa começa com o recado dela; agora responde normalmente, e quando dá erro aparece um "tentar de novo" | — |
+| 29/10/2026 | 2.9.99 | A Íris volta e aplica de junho/2026 para cá o que já aprendeu (ensinos + linha gêmea com uma categoria só), ao ensinar, no robô das 6h e num botão no Dashboard; nunca mexe em linha conferida, mês fechado nem no que foi posto à mão, e deixa tudo amarelo para conferir. Nova tela Análise → Fechar de junho para cá: cada empresa × mês com o que falta (sem categoria, falta conferir, pronto, fechado) | — |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
