@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.92', APP_DATA='29/10/2026';
+  const APP_VERSAO='2.9.94', APP_DATA='29/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -4169,10 +4169,85 @@
     itens.forEach(it=>{it.dia=agDiaUtil(it.venc);});
     return itens;
   }
+  // ---- v2.9.94: Agenda por MÊS — total do mês, calendário com o total de cada dia e a lista dia a dia (tudo clicável) ----
+  let AG_VISTA='semana',AG_MES=null;
+  const _agSegHTML=()=>`<div style="display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px">
+    <button class="btn ${AG_VISTA==='semana'?'':'ghost'}" style="padding:4px 12px;font-size:12px" onclick="AG_VISTA='semana';render()">Semana</button>
+    <button class="btn ${AG_VISTA==='mes'?'':'ghost'}" style="padding:4px 12px;font-size:12px" onclick="AG_VISTA='mes';AG_MES=AG_MES||(AG_SEMANA?addDias(AG_SEMANA,6):_hojeLocal()).slice(0,7);render()">Mês</button></div>`;
+  function agIrDia(dia){const el=document.getElementById('agd-'+dia);if(!el)return;el.scrollIntoView({behavior:'smooth',block:'start'});el.style.boxShadow='0 0 0 2px var(--blue)';setTimeout(()=>{el.style.boxShadow='';},1600);}
+  async function agViewMes(box,seq,grupo,lojaIds){
+    const hoje=_hojeLocal();if(!AG_MES)AG_MES=hoje.slice(0,7);const ym=AG_MES,de=ym+'-01',ate=_fimMes(ym);
+    box.innerHTML='<div class="loading"><span class="spin"></span> Montando o mês…</div>';
+    let baixas=0;try{baixas=await agBaixaAutomatica(lojaIds);}catch(e){}
+    let itens;try{itens=await agCarregar(lojaIds,de,ate);}catch(e){box.innerHTML=`<div class="note" style="border-color:rgba(255,92,92,.4)">Não consegui montar o mês: ${e.message||e}</div>`;return;}
+    if(seq!==_agSeq||page!=='apagar')return;
+    itens=itens.filter(i=>i.venc>=de&&i.venc<=ate); // não acumula: vencido de mês anterior fica no quadro da semana
+    _agItens=itens;
+    const falta=i=>i.status==='pago'?0:Math.max(0,i.valor-(i.ffPagoParte||0));
+    const tot=itens.reduce((t,i)=>t+i.valor,0),ft=itens.reduce((t,i)=>t+falta(i),0),pago=tot-ft,ffFalta=itens.filter(i=>i.tipo==='ff').reduce((t,i)=>t+falta(i),0);
+    const porDia={};itens.forEach(i=>{(porDia[i.dia]=porDia[i.dia]||[]).push(i);});
+    const n0=v=>BRL(v).replace('R$ ','').replace(/,\d\d$/,'');
+    const [Y,M]=ym.split('-').map(Number);const prim=new Date(Y,M-1,1).getDay(),ult=new Date(Y,M,0).getDate();
+    let cel='';['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(d=>cel+=`<div class="mut" style="text-align:center;font-size:11px;font-weight:700">${d}</div>`);
+    for(let k=0;k<prim;k++)cel+='<div></div>';
+    for(let d=1;d<=ult;d++){const dia=`${ym}-${String(d).padStart(2,'0')}`;const L=porDia[dia]||[];const f=L.reduce((t,i)=>t+falta(i),0),p=L.reduce((t,i)=>t+(i.valor-falta(i)),0);
+      cel+=`<div ${L.length?`onclick="agIrDia('${dia}')"`:''} style="border:${dia===hoje?'2px solid var(--blue)':'1px solid var(--line)'};border-radius:9px;padding:5px 7px;min-height:52px;background:var(--panel);${L.length?'cursor:pointer':''}" ${L.length?`title="${L.length} conta(s) — clique para ver"`:''}>
+        <div class="mut" style="font-size:11px">${d}</div>${f>0.004?`<div style="color:var(--red);font-weight:800;font-size:12.5px;margin-top:2px">${n0(f)}</div>`:''}${p>0.004?`<div style="color:var(--green);font-weight:700;font-size:11.5px">✓ ${n0(p)}</div>`:''}</div>`;}
+    const nomeDia=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];const lojaTag=i=>grupo?`<span class="mut" style="font-size:11px">${lojaNomeCurto(i.loja_id)} · </span>`:'';
+    const lista=Object.keys(porDia).sort().map(dia=>{const L=porDia[dia].sort((a,b)=>(a.status==='pago')-(b.status==='pago')||b.valor-a.valor);const f=L.reduce((t,i)=>t+falta(i),0);
+      const fim=L.filter(i=>i.venc!==dia).map(i=>i.venc).filter((v,ix,a)=>a.indexOf(v)===ix).sort();
+      return `<div id="agd-${dia}" style="border-radius:10px;margin-top:10px;scroll-margin-top:140px"><div style="display:flex;justify-content:space-between;background:var(--panel-2);border-radius:8px;padding:6px 10px;font-weight:700;font-size:13px">
+        <span>${nomeDia[new Date(dia+'T00:00:00').getDay()]} ${isoParaBR(dia).slice(0,5)}${fim.length?` <span class="mut" style="font-weight:400">(${fim.map(v=>({6:'sáb',0:'dom'})[new Date(v+'T00:00:00').getDay()]+' '+v.slice(8,10)).join(' e ')})</span>`:''}</span>
+        <span style="color:${f>0.004?'var(--red)':'var(--green)'}">${f>0.004?'falta '+BRL(f):'tudo pago ✓'}</span></div>
+        ${L.map(i=>`<div onclick="agAbrirItem('${i.k}')" style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border-bottom:1px solid var(--line);font-size:12.5px;${i.status==='pago'?'text-decoration:line-through;opacity:.6;':''}" onmouseover="this.style.background='var(--panel-2)'" onmouseout="this.style.background=''">
+          <span>${lojaTag(i)}${i.desc}${i.parcela?' '+i.parcela:''}${i.tipo==='ff'?' <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:rgba(124,92,255,.5);color:#7c5cff">FaturaFácil</span>':i.cat?` <span class="mut">· ${_remEsc(i.cat)}</span>`:''}</span>
+          <b style="white-space:nowrap;font-variant-numeric:tabular-nums">${i.ffPagoParte&&i.status!=='pago'?'<span class="mut" style="font-weight:600">falta </span>'+BRL(falta(i)).replace('R$ ',''):BRL(i.valor).replace('R$ ','')} <span class="mut" style="font-weight:400">›</span></b></div>`).join('')}</div>`;}).join('')||'<div class="mut" style="padding:20px;text-align:center">Nada para pagar neste mês.</div>';
+    const kpi=(l,v,c,s)=>`<div style="flex:1;min-width:170px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px"><div class="mut" style="font-size:11px;font-weight:700;text-transform:uppercase">${l}</div><div style="font-size:20px;font-weight:800;color:${c}">${BRL(v)}</div>${s?`<div class="mut" style="font-size:11px">${s}</div>`:''}</div>`;
+    box.innerHTML=`${AG_FF_ERRO?`<div class="note" style="border-color:rgba(245,183,64,.5)">Não consegui ler o FaturaFácil agora (${_remEsc(AG_FF_ERRO)}).</div>`:''}
+      ${baixas?`<div class="note" style="border-color:rgba(31,157,107,.4)">✅ <b>${baixas} conta(s) baixada(s) sozinha(s)</b>: o pagamento apareceu no extrato.</div>`:''}
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">${_agSegHTML()}
+          <button class="burger" style="width:32px;height:32px" onclick="AG_MES=mesShift(AG_MES,-1);render()">‹</button>
+          <b style="font-size:15px">${MESES_NOME[M-1]} ${Y}</b>
+          <button class="burger" style="width:32px;height:32px" onclick="AG_MES=mesShift(AG_MES,1);render()">›</button>
+          ${ym!==hoje.slice(0,7)?`<button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="AG_MES=null;render()">este mês</button>`:''}
+          <div style="display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px">
+            <button class="btn ${grupo?'ghost':''}" style="padding:4px 10px;font-size:12px" onclick="AG_ESCOPO='loja';render()">${lojaNomeCurto(lojaAtual)}</button>
+            <button class="btn ${grupo?'':'ghost'}" style="padding:4px 10px;font-size:12px" onclick="AG_ESCOPO='grupo';render()">${nomeTodas()}</button></div>
+          ${podeEditar()?`<button class="btn" style="margin-left:auto;padding:5px 12px;font-size:12.5px;font-weight:800" onclick="agNovaConta()">+ Lançar na agenda</button>`:''}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">${kpi('A pagar no mês',tot,'var(--text)')}${kpi('Já pago',pago,'var(--green)')}${kpi('Falta',ft,'var(--red)')}${kpi('De cartão (FaturaFácil)',ffFalta,'#7c5cff','falta, das partes da loja')}</div>
+        <div style="display:grid;grid-template-columns:minmax(300px,520px) 1fr;gap:18px;align-items:start">
+          <div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px">${cel}</div>
+            <div class="mut" style="font-size:11.5px;margin-top:8px">Vermelho = falta pagar · verde = já pago · sábado e domingo caem na segunda · clique no dia para ir até ele na lista</div></div>
+          <div style="max-height:640px;overflow:auto;padding-right:4px">${lista}</div></div>
+        <div class="mut" style="font-size:11.5px;margin-top:10px">Vencido de mês anterior não entra aqui (não acumula): continua no quadro "Vencidos" da Semana. Clique numa conta para ver ou resolver; no cartão aparecem as compras.</div></div>`;
+  }
+  // ---- v2.9.94: "A pagar no mês" do Dashboard — clicar na categoria abre as contas; nos cartões, cada cartão abre as compras ----
+  let _apagarDash=[];
+  function abrirDetalheApagar(nome){const L=_apagarDash.filter(x=>x.cat===nome).sort((a,b)=>a.venc.localeCompare(b.venc));
+    _agItens=L.map(x=>x.it).filter(Boolean);window._agVoltar=()=>abrirDetalheApagar(nome);
+    const tot=L.reduce((t,x)=>t+x.valor,0);const fmt=v=>BRL(v).replace('R$ ','');
+    let corpo;
+    if(nome==='Cartões (FaturaFácil)'){
+      corpo=`<div class="mut" style="font-size:12.5px;margin:2px 0 8px">Parte de ${lojaNomeCurto(lojaAtual)} em cada cartão. Clique no cartão para ver as compras.</div>
+      <table style="width:100%;font-size:12.5px;border-collapse:collapse"><thead><tr style="background:var(--panel-2)"><th style="text-align:left;padding:6px">Vence</th><th style="text-align:left;padding:6px">Cartão</th><th style="text-align:right;padding:6px">Parte</th><th style="text-align:right;padding:6px">Já saiu no extrato</th><th style="text-align:right;padding:6px">Falta</th></tr></thead><tbody>
+      ${L.map((x,ix)=>{const i=x.it;return `<tr style="cursor:pointer;border-top:1px solid var(--line)" onclick="const r=document.getElementById('apff${ix}');const ab=r.style.display==='none';r.style.display=ab?'':'none';this.querySelector('.st').textContent=ab?'▾':'▸'" onmouseover="this.style.background='var(--panel-2)'" onmouseout="this.style.background=''">
+        <td style="padding:6px">${isoParaBR(i.venc).slice(0,5)}</td><td style="padding:6px"><span class="st">▸</span> ${_remEsc(i.ffCartao)} <span class="mut" style="font-size:11px">· ${i.ffItens.length} compra(s)</span></td>
+        <td style="padding:6px;text-align:right">${fmt(i.valor)}</td><td style="padding:6px;text-align:right;color:var(--green)">${i.ffPagoParte?fmt(i.ffPagoParte):'—'}</td><td style="padding:6px;text-align:right;font-weight:800">${fmt(x.valor)}</td></tr>
+        <tr id="apff${ix}" style="display:none"><td colspan="5" style="padding:4px 6px 10px 22px">${ffItensHTML(i)}<button class="btn ghost" style="padding:3px 10px;font-size:11.5px" onclick="event.stopPropagation();agAbrirItem('${i.k}')">abrir este cartão</button></td></tr>`;}).join('')}
+      <tr style="border-top:2px solid var(--line)"><td colspan="4" style="padding:7px 6px;font-weight:800">Total que falta</td><td style="padding:7px 6px;text-align:right;font-weight:800;color:var(--amber)">${fmt(tot)}</td></tr></tbody></table>`;
+    }else{
+      corpo=`<table style="width:100%;font-size:12.5px;border-collapse:collapse"><thead><tr style="background:var(--panel-2)"><th style="text-align:left;padding:6px">Vence</th><th style="text-align:left;padding:6px">Descrição</th><th style="text-align:left;padding:6px">Contato</th><th style="text-align:right;padding:6px">Valor</th></tr></thead><tbody>
+      ${L.map(x=>`<tr ${x.it?`onclick="agAbrirItem('${x.it.k}')" style="cursor:pointer;border-top:1px solid var(--line)" onmouseover="this.style.background='var(--panel-2)'" onmouseout="this.style.background=''"`:'style="border-top:1px solid var(--line)"'}><td style="padding:6px">${isoParaBR(x.venc).slice(0,5)}</td><td style="padding:6px">${_remEsc(x.desc||'—')}${x.parcela?' <span class="mut">'+_remEsc(x.parcela)+'</span>':''}</td><td class="mut" style="padding:6px">${_remEsc(x.contato||'—')}</td><td style="padding:6px;text-align:right;font-variant-numeric:tabular-nums">${fmt(x.valor)} ${x.it?'<span class="mut">›</span>':''}</td></tr>`).join('')||'<tr><td colspan="4" class="mut" style="padding:12px">Nada.</td></tr>'}
+      <tr style="border-top:2px solid var(--line)"><td colspan="3" style="padding:7px 6px;font-weight:800">Total</td><td style="padding:7px 6px;text-align:right;font-weight:800;color:var(--amber)">${fmt(tot)}</td></tr></tbody></table>`;}
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this){window._agVoltar=null;fecharModal()}"><div class="modal" style="width:min(680px,95vw)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0">${_remEsc(nome)} · a pagar em ${MESES_NOME[mesSel]}</h3><button class="delx" style="font-size:18px" onclick="window._agVoltar=null;fecharModal()">✕</button></div>
+      <div style="max-height:70vh;overflow:auto">${corpo}</div></div></div>`;}
   async function viewApagar(){try{await divGerarRecorrentes();}catch(e){}
     const box=document.getElementById('content');const seq=++_agSeq;const hoje=_hojeLocal();
     if(!AG_SEMANA)AG_SEMANA=agInicioSemana(hoje);
-    const grupo=AG_ESCOPO==='grupo',lojaIds=grupo?idsDoModulo():[lojaAtual];
+    const grupo=AG_ESCOPO==='grupo',lojaIds=grupo?idsDoModulo():[lojaAtual];window._agVoltar=null;
+    if(AG_VISTA==='mes')return agViewMes(box,seq,grupo,lojaIds);
     const semIni=AG_SEMANA,semFim=addDias(semIni,6),proxFim=addDias(semIni,13),semAtual=agInicioSemana(hoje);
     box.innerHTML='<div class="loading"><span class="spin"></span> Montando a agenda…</div>';
     let baixas=0;try{baixas=await agBaixaAutomatica(lojaIds);}catch(e){}
@@ -4205,6 +4280,7 @@
         <div style="background:rgba(31,157,107,.07);border:1px solid rgba(31,157,107,.3);border-radius:12px;padding:9px 12px;font-size:12.5px">✅ <b>Não amontoa.</b> Vencido de semana passada fica separado, e resolve com um clique.</div></div>
       <div class="card" style="margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+          ${_agSegHTML()}
           <button class="burger" style="width:32px;height:32px" onclick="AG_SEMANA=addDias(AG_SEMANA,-7);render()">‹</button>
           <b style="font-size:15px">Semana de ${fmtSem}</b>
           <button class="burger" style="width:32px;height:32px" onclick="AG_SEMANA=addDias(AG_SEMANA,7);render()">›</button>
@@ -4321,7 +4397,7 @@
         <span class="mut" style="font-size:12px">${info}</span>
         ${i.ffPagoParte?`<br><span style="color:var(--amber);font-size:12.5px">pago em parte: ${BRL(i.ffPagoParte)} de ${BRL(i.valor)} · falta <b>${BRL(i.valor-i.ffPagoParte)}</b></span>`:''}${i.status==='pago'?`<br><span style="color:var(--green);font-size:12.5px">✔ pago${i.pagoEm?' em '+isoParaBR(i.pagoEm):''}${i.pagoComo?' · '+i.pagoComo:''}</span>`:''}
         ${i.critico?'<br><span style="color:var(--red);font-size:12.5px">Não pode atrasar</span>':''}</p><div id="agPartes"></div>${i.tipo==='ff'?ffItensHTML(i):''}
-      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${acoes.join('')}<button class="btn ghost" onclick="fecharModal()">Fechar</button></div></div></div>`;
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${window._agVoltar?'<button class="btn ghost" style="margin-right:auto" onclick="window._agVoltar()">‹ Voltar</button>':''}${acoes.join('')}<button class="btn ghost" onclick="window._agVoltar=null;fecharModal()">Fechar</button></div></div></div>`;
     if(i.tipo==='conta')agPartesPreencher(i).catch(()=>{});}
   async function agJaPaguei(k){const i=_agItens.find(x=>x.k===k);if(!i)return;
     if(i.tipo==='legado'){await sb.from('lancamentos').update({pago:true}).eq('id',i.id);fecharModal();toast('Baixa dada.','ok');render();return;}
@@ -4552,11 +4628,15 @@
     // a pagar NO MÊS escolhido (pelo vencimento) — não acumula: vencido de mês anterior fica à parte, na Agenda
     try{await agBaixaAutomatica([lojaAtual]);}catch(e){}
     const mIni=`${ANO_FIXO}-${_mm(mesSel)}-01`,mFim=_fimMes(`${ANO_FIXO}-${_mm(mesSel)}`);
-    const {data:apagar}=await sb.from('lancamentos').select('valor,vencimento,data, categorias(nome)').eq('loja_id',lojaAtual).eq('pago',false);
+    const {data:apagar}=await sb.from('lancamentos').select('id,descricao,valor,vencimento,data, categorias(nome), contatos(nome)').eq('loja_id',lojaAtual).eq('pago',false);
     const apagarCat={};let totalApagar=0,vencidoAntes=0;
-    const somaAp=(nome,v,venc)=>{if(venc<mIni){vencidoAntes+=v;return;}if(venc>mFim)return;apagarCat[nome]=(apagarCat[nome]||0)+v;totalApagar+=v;};
-    (apagar||[]).forEach(l=>somaAp((l.categorias&&l.categorias.nome)||'Sem categoria',Math.abs(Number(l.valor)),String(l.vencimento||l.data)));
-    try{const {data:cps}=await sb.from('contas_pagar').select('valor,categoria_id,vencimento').eq('loja_id',lojaAtual).eq('status','aberto').lte('vencimento',mFim);(cps||[]).forEach(c=>{const k=CATS.find(x=>x.id===c.categoria_id);somaAp(k?k.nome:'Sem categoria',Number(c.valor),c.vencimento);});}catch(e){}
+    _apagarDash=[];const somaAp=(nome,v,venc,rec)=>{if(venc<mIni){vencidoAntes+=v;return;}if(venc>mFim)return;apagarCat[nome]=(apagarCat[nome]||0)+v;totalApagar+=v;_apagarDash.push(Object.assign({cat:nome,valor:v,venc},rec||{}));};
+    const _ctNome=id=>{const c=(typeof CONTATOS!=='undefined'?CONTATOS:[]).find(x=>x.id===id);return c?c.nome:'';};
+    (apagar||[]).forEach(l=>{const v=String(l.vencimento||l.data),cat=(l.categorias&&l.categorias.nome)||'Sem categoria';somaAp(cat,Math.abs(Number(l.valor)),v,{desc:l.descricao,contato:l.contatos&&l.contatos.nome,it:{k:'l'+l.id,tipo:'legado',id:l.id,loja_id:lojaAtual,desc:l.descricao,valor:Math.abs(Number(l.valor)),venc:v,dia:agDiaUtil(v),status:'aberto',cat}});});
+    try{const {data:cps}=await sb.from('contas_pagar').select('*').eq('loja_id',lojaAtual).eq('status','aberto').lte('vencimento',mFim);(cps||[]).forEach(c=>{const k=CATS.find(x=>x.id===c.categoria_id);const cat=k?k.nome:'Sem categoria';
+      somaAp(cat,Number(c.valor),c.vencimento,{desc:c.descricao,parcela:c.parcela,contato:_ctNome(c.contato_id),it:{k:'c'+c.id,tipo:'conta',id:c.id,loja_id:c.loja_id,desc:c.descricao,valor:Number(c.valor),venc:c.vencimento,dia:agDiaUtil(c.vencimento),status:'aberto',cat,parcela:c.parcela,critico:!!c.critico,rateioDe:c.rateio_de||null,doc:c.documento||''}});});}catch(e){}
+    // v2.9.93: partes dos cartões do FaturaFácil que vencem no mês e ainda não saíram do extrato (o que já foi pago em parte sai da conta)
+    try{(await ffItensAgenda([lojaAtual],mIni,mFim)).forEach(i=>{if(i.status==='pago')return;const v=Math.round((i.valor-(i.ffPagoParte||0))*100)/100;if(v>0.004){i.dia=agDiaUtil(i.venc);somaAp('Cartões (FaturaFácil)',v,i.venc,{desc:i.desc,it:i});}});}catch(e){}
     const apagarLista=Object.entries(apagarCat).map(([nome,valor])=>({nome,valor})).sort((a,b)=>b.valor-a.valor);
     const mesNome=MESES_NOME[mesSel];
 
@@ -4615,7 +4695,7 @@
         ${graficoCard('💸 Despesas pagas',despesas,saidaMes,'var(--red)',mesNome,'des')}
         ${graficoCard(MODULO_ATUAL!=='oticas'?'💰 Receitas / Entradas · de qual empresa veio':'💰 Receitas / Entradas',MODULO_ATUAL!=='oticas'?dashOrigemLista(receitas.map(x=>({...x,key:x.nome}))):_recLista(receitas,receitasCat,entradaMes,mesSel),entradaMes,'var(--green)',mesNome,'rec')}
         ${graficoCard('👤 Despesas pagas por contato',contatosDes,saidaMes,'var(--red)',mesNome,'cont')}
-        ${graficoCard('🧾 A pagar em '+mesNome,apagarLista,totalApagar,'var(--amber)','')}
+        ${graficoCard('🧾 A pagar em '+mesNome,apagarLista,totalApagar,'var(--amber)','','apagar')}
         ${dreCard}
         ${fechCard}
       </div>
@@ -5651,7 +5731,7 @@
   // ====== GRÁFICO DE ROSCA (SVG puro) ======
   const CORES_GRAF=['#3ddc91','#7da2ff','#e8c468','#ff6b6b','#c084fc','#4dd4d4','#f5905a','#a0d468','#ec87c0','#5d9cec','#aab2bd','#ffce54','#48cfad','#ed5565','#967adc'];
   // v2.9.59: clique no gráfico do Dashboard (categoria ou contato) e filtro que leva para Lançamentos
-  function _dashOnClick(it,tipo){return tipo==='cont'?`abrirDetalheContato('${it.key}')`:tipo==='rcont'?`abrirDetalheContato('${it.key}','rec')`:`abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')`;}
+  function _dashOnClick(it,tipo){return tipo==='apagar'?`abrirDetalheApagar('${(it.nome||'').replace(/'/g,"\\'")}')`:tipo==='cont'?`abrirDetalheContato('${it.key}')`:tipo==='rcont'?`abrirDetalheContato('${it.key}','rec')`:`abrirDetalheCategoria('${(it.nome||'').replace(/'/g,"\\'")}','${tipo}')`;}
   // v2.9.77: receitas de Diversas / Grupo de compras / Casa — Rocha 1 a 11 em ordem, depois as outras (maior primeiro)
   function dashOrigemLista(arr){const num=x=>{const m=normDesc(x.nome).match(/\bROCHA (\d{1,2})\b/);return m?+m[1]:99;};
     const sem=arr.find(x=>x.key==='sem');const com=arr.filter(x=>x.key!=='sem').sort((a,b)=>num(a)-num(b)||b.valor-a.valor);return sem?[...com,sem]:com;}
