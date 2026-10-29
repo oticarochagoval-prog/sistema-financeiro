@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.94', APP_DATA='29/10/2026';
+  const APP_VERSAO='2.9.95', APP_DATA='29/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1908,7 +1908,8 @@
         try{for(const ym of yms)for(const c of contas){try{const r=await _autoEntrarConta(c,ym,null,'');if(r)nOk+=r.ok;}catch(e){log.push((_nomeLoja(Number(c.loja_id))||c.apelido)+' '+ym+' erro: '+(e.message||e));}}}
         finally{_autoRodando=false;IMPORT=[];importObs='';IMPORT_DEP=[];_IMP_API=false;IMP_MARC={modo:'todas',crit:[]};}
         log.push(`extrato do Sicoob conferido (mês inteiro): ${nOk} lançamento(s) entraram`);}
-      try{await prevRotina(log);}catch(e){log.push('previsão: '+(e.message||e));} // v2.9.82: foto da previsão do dia 1º + fecha os meses
+      try{await prevRotina(log);}catch(e){log.push('previsão: '+(e.message||e));}
+      try{const np=await irisParcelasFaltando(null);log.push('parcelas que faltavam na Agenda: '+np);}catch(e){log.push('parcelas: '+(e.message||e));} // v2.9.95 // v2.9.82: foto da previsão do dia 1º + fecha os meses
       // v2.9.79: Casa (Rocha 1), Diversas (Rocha 2) e Grupo VR (Rocha 3) têm o CNPJ de uma loja: o banco separa pela outra ponta (mesmo valor saindo da outra conta)
       try{const {data:aj,error:eaj}=await sb.rpc('ajustar_origem_grupo');if(!eaj)log.push('origem das transferências do grupo ajustada: '+(aj||0));}catch(e){}
       const hoje=_hojeLocal(),mAtual=Number(hoje.slice(5,7))-1,meses=Number(hoje.slice(8,10))<=10&&mAtual>0?[mAtual-1,mAtual]:[mAtual];
@@ -2424,6 +2425,7 @@
     let msgDiv='';if(dividir&&insL&&insL.id){try{const {data:bo,error:eb}=await sb.from('contas_pagar').insert({loja_id:lojaAtual,descricao:desc.toUpperCase(),valor:v,vencimento:iso,categoria_id:catId?Number(catId):null,contato_id:contatoId?Number(contatoId):null,parcela:parc,status:'pago',pago_em:iso,pago_lancamento_id:insL.id,pago_como:'lançado em Lançamentos'}).select('id,vencimento,parcela');
         const e3=eb?eb.message:await divCriarPartes(bo||[],partes,desc.toUpperCase(),catId,contatoId,false);msgDiv=e3?` · não consegui dividir: ${e3}`:` · dividido entre ${Object.values(partes).filter(x=>x>0).length} empresas (cada uma tem a parte na Agenda)`;AG_DIV.mao={};}catch(e){msgDiv=' · não consegui dividir';}}
     await agAprenderBoleto(catId,contatoId);
+    if(!nAg&&valor<0){try{nAg=await irisParcelasFaltando([lojaAtual]);}catch(e){}} // v2.9.95: "3/6" escrito na descrição também manda as próximas
     toast((nAg?`Salvo na ${lojaNomeCurto(lojaAtual).toUpperCase()}! 📅 As próximas ${nAg} parcelas foram para a Agenda de pagamentos.`:`Salvo na ${lojaNomeCurto(lojaAtual).toUpperCase()}!`)+msgDiv,msgDiv.includes('não consegui')?'erro':'ok');await viewLanc();
   }
   // v2.9.12: despesa com vencimento futuro lançada em Lançamentos → conta(s) na Agenda (parcelas a partir da atual) e, na Diversas, as partes de cada empresa
@@ -3330,6 +3332,31 @@
   function parcelaDoExtrato(r){const nome=String(r.complemento||String(r.desc||'').split(' · ')[0]||'').trim();
     const m=nome.match(/^(.*?)\s+(\d{1,2})\s*(?:\/|\s|DE\s)\s*(\d{1,2})\s*$/i);if(!m)return null;const a=+m[2],b=+m[3];if(!(a>=1&&b>a&&b<=60))return null;
     let base=m[1].replace(/^(PAGAMENTO PIX|PIX)\s+[\d.\-\/*\s]+/i,'').replace(/^(FAV|REM)\.:\s*/i,'').trim().toUpperCase();if(base.length<3)return null;return {a,b,base:base.slice(0,80)};}
+  // ---- v2.9.95: PARCELAS ESQUECIDAS — lançamento com "3/6" (ou "3 6", "03/06", "3 DE 6") na descrição: a Íris põe as próximas na Agenda ----
+  // Só o que entrou de 29/10/2026 em diante (pedido do Lucas: daqui pra frente). Lança só o que vence nos próximos 2 meses e vai completando todo dia.
+  const PARC_AUTO_DESDE='2026-10-29T00:00:00';
+  function parcelaDaDescricao(l){let a,b,base;const d=String(l.descricao||'').toUpperCase().replace(/\s*·.*$/,'').replace(/^(FAV|REM)\.:\s?.{34}\s+/,'').trim();
+    const pf=String(l.parcela||'').match(/^(\d{1,2})\s*\/\s*(\d{1,2})$/);
+    const m=d.match(/^(.*?)\s+(?:PARC(?:ELA)?\.?\s*)?0?(\d{1,2})\s*(?:\/|\s|DE\s)\s*0?(\d{1,2})$/);
+    if(pf){a=+pf[1];b=+pf[2];base=(m?m[1]:d);}else if(m){a=+m[2];b=+m[3];base=m[1];}else return null;
+    base=base.replace(/^(PAGAMENTO PIX|PIX)\s+[\d.\-\/*\s]+/,'').replace(/\s+(PARC(ELA)?\.?)$/,'').trim();
+    if(!(a>=1&&b>a&&b<=60)||base.length<3||/\d$/.test(base))return null; // "REF 28 10 25" é data, não parcela
+    return {a,b,base:base.slice(0,80)};}
+  async function irisParcelasFaltando(lojaIds){const hoje=_hojeLocal(),lim=addDias(hoje,62);let n=0;
+    const {data:ls,error}=await sbTudo(()=>{let q=sb.from('lancamentos').select('id,loja_id,data,vencimento,descricao,parcela,valor,categoria_id,contato_id').lt('valor',0).gte('criado_em',PARC_AUTO_DESDE);if(lojaIds)q=q.in('loja_id',lojaIds);return q.order('id');});if(error||!ls||!ls.length)return 0;
+    const cands=ls.map(l=>({l,p:parcelaDaDescricao(l)})).filter(x=>x.p);if(!cands.length)return 0;
+    const ids=[...new Set(cands.map(x=>x.l.loja_id))];
+    const {data:cps}=await sbTudo(()=>sb.from('contas_pagar').select('loja_id,descricao,valor,parcela').in('loja_id',ids).not('parcela','is',null).order('id'));
+    const so=t=>String(t||'').toUpperCase().normalize('NFD').replace(/[^A-Z]/g,'');
+    const jaTem=(loja,base,k,b,v)=>(cps||[]).some(c=>c.loja_id==loja&&c.parcela===`${k}/${b}`&&(so(c.descricao).startsWith(so(base).slice(0,8))||Math.abs(Number(c.valor)-v)<0.05))
+      ||ls.some(o=>o.loja_id==loja&&Math.abs(Math.abs(Number(o.valor))-v)<0.05&&(()=>{const p=parcelaDaDescricao(o);return p&&p.a===k&&p.b===b;})());
+    const rows=[],vistos=new Set();
+    for(const {l,p} of cands.sort((x,y)=>y.p.a-x.p.a)){const v=Math.abs(Number(l.valor));const ref=String(l.vencimento||l.data);const chave=l.loja_id+'|'+so(p.base)+'|'+p.b+'|'+Math.round(v);
+      for(let k=p.a+1;k<=p.b;k++){const m=mesShift(ref.slice(0,7),k-p.a),ult=Number(_fimMes(m).slice(8,10));const venc=`${m}-${String(Math.min(Number(ref.slice(8,10)),ult)).padStart(2,'0')}`;
+        if(venc<=hoje)continue;if(venc>lim)break;if(vistos.has(chave+'|'+k))continue;vistos.add(chave+'|'+k);if(jaTem(l.loja_id,p.base,k,p.b,v))continue;
+        rows.push({loja_id:l.loja_id,descricao:p.base,valor:v,vencimento:venc,categoria_id:l.categoria_id||null,contato_id:l.contato_id||null,parcela:`${k}/${p.b}`,status:'aberto',motivo:null,criado_por:USER&&USER.id||null});}}
+    for(let i=0;i<rows.length;i+=200){const {error:e2}=await sb.from('contas_pagar').insert(rows.slice(i,i+200));if(!e2)n+=Math.min(200,rows.length-i);}
+    return n;}
   async function agendaParcelasDoExtrato(linhas){let n=0;
     for(const r of linhas){if(!(r.amt<0)||r.agenda)continue;const pc=parcelaDoExtrato(r);if(!pc)continue;const v=Math.abs(r.amt);
       const {data:ex}=await sb.from('contas_pagar').select('parcela').eq('loja_id',lojaAtual).eq('descricao',pc.base).limit(200);const tem=new Set((ex||[]).map(x=>x.parcela));const rows=[];
@@ -4032,6 +4059,7 @@
     if(ok||ligados)await lembrarContaLoja();
     let cpfN=0;try{cpfN=await aprenderCpfFuncionarios(lancadasAgora);}catch(e){}
     let parcN=0;try{parcN=await agendaParcelasDoExtrato(lancadasAgora);}catch(e){}
+    try{parcN+=await irisParcelasFaltando([lojaAtual]);}catch(e){} // v2.9.95: parcela escrita na descrição
     let depN=0,depErr='';if(IMPORT_DEP.length){const rr=await cxMarcarDepositos(IMPORT_DEP);depN=rr.n;depErr=rr.err;
       const ag=new Date().toISOString();for(const {m,r} of IMPORT_DEP){const lid=r._lancId||(r.jaExiste&&r.jaExiste.id);if(lid&&m.conf){try{await sb.from('lancamentos').update({ref_externa:'cxd:'+m.id,conferido_por:'CAIXINHA',conferido_em:ag}).eq('id',lid);}catch(e){}}} // v2.9.29
       IMPORT_DEP=[];}
@@ -4170,10 +4198,14 @@
     return itens;
   }
   // ---- v2.9.94: Agenda por MÊS — total do mês, calendário com o total de cada dia e a lista dia a dia (tudo clicável) ----
-  let AG_VISTA='semana',AG_MES=null;
+  let AG_VISTA='semana',AG_MES=null,_agVistaLida=false;
+  // v2.9.95: a Agenda abre no último modo que a pessoa usou neste computador (Mês ou Semana)
+  const _agVistaChave=()=>'fluxo_ag_vista_'+((typeof USER!=='undefined'&&USER&&USER.id)||'x');
+  function agVistaLer(){if(_agVistaLida)return;_agVistaLida=true;try{const v=localStorage.getItem(_agVistaChave());if(v==='mes'||v==='semana')AG_VISTA=v;}catch(e){}}
+  function agVistaSalvar(v){AG_VISTA=v;try{localStorage.setItem(_agVistaChave(),v);}catch(e){}}
   const _agSegHTML=()=>`<div style="display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px">
-    <button class="btn ${AG_VISTA==='semana'?'':'ghost'}" style="padding:4px 12px;font-size:12px" onclick="AG_VISTA='semana';render()">Semana</button>
-    <button class="btn ${AG_VISTA==='mes'?'':'ghost'}" style="padding:4px 12px;font-size:12px" onclick="AG_VISTA='mes';AG_MES=AG_MES||(AG_SEMANA?addDias(AG_SEMANA,6):_hojeLocal()).slice(0,7);render()">Mês</button></div>`;
+    <button class="btn ${AG_VISTA==='semana'?'':'ghost'}" style="padding:4px 12px;font-size:12px" onclick="agVistaSalvar('semana');render()">Semana</button>
+    <button class="btn ${AG_VISTA==='mes'?'':'ghost'}" style="padding:4px 12px;font-size:12px" onclick="agVistaSalvar('mes');AG_MES=AG_MES||(AG_SEMANA?addDias(AG_SEMANA,6):_hojeLocal()).slice(0,7);render()">Mês</button></div>`;
   function agIrDia(dia){const el=document.getElementById('agd-'+dia);if(!el)return;el.scrollIntoView({behavior:'smooth',block:'start'});el.style.boxShadow='0 0 0 2px var(--blue)';setTimeout(()=>{el.style.boxShadow='';},1600);}
   async function agViewMes(box,seq,grupo,lojaIds){
     const hoje=_hojeLocal();if(!AG_MES)AG_MES=hoje.slice(0,7);const ym=AG_MES,de=ym+'-01',ate=_fimMes(ym);
@@ -4181,8 +4213,9 @@
     let baixas=0;try{baixas=await agBaixaAutomatica(lojaIds);}catch(e){}
     let itens;try{itens=await agCarregar(lojaIds,de,ate);}catch(e){box.innerHTML=`<div class="note" style="border-color:rgba(255,92,92,.4)">Não consegui montar o mês: ${e.message||e}</div>`;return;}
     if(seq!==_agSeq||page!=='apagar')return;
-    itens=itens.filter(i=>i.venc>=de&&i.venc<=ate); // não acumula: vencido de mês anterior fica no quadro da semana
-    _agItens=itens;
+    const vencidos=itens.filter(i=>(i.tipo==='conta'||i.tipo==='legado')&&i.status==='aberto'&&i.venc<de).sort((a,b)=>a.venc.localeCompare(b.venc));
+    itens=itens.filter(i=>i.venc>=de&&i.venc<=ate); // não acumula: vencido de mês anterior fica à parte (embaixo do calendário)
+    _agItens=itens.concat(vencidos);
     const falta=i=>i.status==='pago'?0:Math.max(0,i.valor-(i.ffPagoParte||0));
     const tot=itens.reduce((t,i)=>t+i.valor,0),ft=itens.reduce((t,i)=>t+falta(i),0),pago=tot-ft,ffFalta=itens.filter(i=>i.tipo==='ff').reduce((t,i)=>t+falta(i),0);
     const porDia={};itens.forEach(i=>{(porDia[i.dia]=porDia[i.dia]||[]).push(i);});
@@ -4202,6 +4235,19 @@
         ${L.map(i=>`<div onclick="agAbrirItem('${i.k}')" style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border-bottom:1px solid var(--line);font-size:12.5px;${i.status==='pago'?'text-decoration:line-through;opacity:.6;':''}" onmouseover="this.style.background='var(--panel-2)'" onmouseout="this.style.background=''">
           <span>${lojaTag(i)}${i.desc}${i.parcela?' '+i.parcela:''}${i.tipo==='ff'?' <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:rgba(124,92,255,.5);color:#7c5cff">FaturaFácil</span>':i.cat?` <span class="mut">· ${_remEsc(i.cat)}</span>`:''}</span>
           <b style="white-space:nowrap;font-variant-numeric:tabular-nums">${i.ffPagoParte&&i.status!=='pago'?'<span class="mut" style="font-weight:600">falta </span>'+BRL(falta(i)).replace('R$ ',''):BRL(i.valor).replace('R$ ','')} <span class="mut" style="font-weight:400">›</span></b></div>`).join('')}</div>`;}).join('')||'<div class="mut" style="padding:20px;text-align:center">Nada para pagar neste mês.</div>';
+    // v2.9.95: resumo por semana (sábado a sexta, igual à Agenda) — clique vai até a semana na lista
+    const semanas=[];for(let w=agInicioSemana(de);w<=ate;w=addDias(w,7)){const fimW=addDias(w,6);const L=itens.filter(i=>i.dia>=w&&i.dia<=fimW);
+      const a=w<de?de:w,b=fimW>ate?ate:fimW;let uteis=0;for(let d=a;d<=b;d=addDias(d,1)){const g=new Date(d+'T00:00:00').getDay();if(g>0&&g<6)uteis++;}if(!uteis&&!L.length)continue; /* semana só com sábado/domingo do mês e nada a pagar: não mostra */
+      semanas.push({w,fimW,a,b,uteis,L,tot:L.reduce((t,i)=>t+i.valor,0),f:L.reduce((t,i)=>t+falta(i),0)});}
+    const dsem=d=>['dom','seg','ter','qua','qui','sex','sáb'][new Date(d+'T00:00:00').getDay()]+' '+d.slice(8,10);
+    const semHTML=semanas.map((x,ix)=>{const pg=x.tot-x.f,ok=x.L.length&&x.f<0.005,agora=hoje>=x.w&&hoje<=x.fimW;const pct=x.tot>0?Math.round(pg/x.tot*100):0;
+      const prim=x.L.map(i=>i.dia).sort()[0];const fora=x.L.some(i=>i.dia>ate);
+      return `<div ${prim?`onclick="agIrDia('${prim}')"`:''} style="${prim?'cursor:pointer;':''}background:${ok?'rgba(31,157,107,.08)':'var(--panel)'};border:${agora?'2px solid var(--blue)':ok?'1px solid rgba(31,157,107,.35)':'1px solid var(--line)'};border-radius:12px;padding:9px 11px">
+        <div style="font-weight:800;font-size:12.5px">${ix+1}ª semana${agora?' <span class="mut" style="font-weight:500">· esta</span>':''}</div>
+        <div class="mut" style="font-size:11px;margin-bottom:5px">${x.a===x.b?dsem(x.a):x.b===addDias(x.a,1)?dsem(x.a)+' e '+dsem(x.b):dsem(x.a)+' a '+dsem(x.b)}${x.uteis<5?` · ${x.uteis} dia${x.uteis===1?'':'s'} út${x.uteis===1?'il':'eis'}`:''}${fora?' · o do fim de semana vai pra segunda':''}</div>
+        <div style="font-weight:800">${x.L.length?BRL(x.tot):'<span class="mut" style="font-weight:500">nada a pagar</span>'}</div>
+        ${x.L.length?`<div style="height:6px;border-radius:4px;background:rgba(214,69,69,.18);overflow:hidden;margin:6px 0 4px"><i style="display:block;height:100%;width:${pct}%;background:var(--green)"></i></div>
+        <div style="font-size:11.5px">${ok?'<b style="color:var(--green)">tudo pago ✓</b>':`${pg>0.004?`<span style="color:var(--green)">pago ${BRL(pg).replace('R$ ','')}</span> · `:''}<b style="color:var(--red)">falta ${BRL(x.f).replace('R$ ','')}</b>`}</div>`:''}</div>`;}).join('');
     const kpi=(l,v,c,s)=>`<div style="flex:1;min-width:170px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px"><div class="mut" style="font-size:11px;font-weight:700;text-transform:uppercase">${l}</div><div style="font-size:20px;font-weight:800;color:${c}">${BRL(v)}</div>${s?`<div class="mut" style="font-size:11px">${s}</div>`:''}</div>`;
     box.innerHTML=`${AG_FF_ERRO?`<div class="note" style="border-color:rgba(245,183,64,.5)">Não consegui ler o FaturaFácil agora (${_remEsc(AG_FF_ERRO)}).</div>`:''}
       ${baixas?`<div class="note" style="border-color:rgba(31,157,107,.4)">✅ <b>${baixas} conta(s) baixada(s) sozinha(s)</b>: o pagamento apareceu no extrato.</div>`:''}
@@ -4216,11 +4262,16 @@
             <button class="btn ${grupo?'':'ghost'}" style="padding:4px 10px;font-size:12px" onclick="AG_ESCOPO='grupo';render()">${nomeTodas()}</button></div>
           ${podeEditar()?`<button class="btn" style="margin-left:auto;padding:5px 12px;font-size:12.5px;font-weight:800" onclick="agNovaConta()">+ Lançar na agenda</button>`:''}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">${kpi('A pagar no mês',tot,'var(--text)')}${kpi('Já pago',pago,'var(--green)')}${kpi('Falta',ft,'var(--red)')}${kpi('De cartão (FaturaFácil)',ffFalta,'#7c5cff','falta, das partes da loja')}</div>
+        <div class="mut" style="font-size:11.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin:2px 0 6px">Por semana <span style="font-weight:500;text-transform:none;letter-spacing:0">· clique para ir até a semana na lista</span></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px">${semHTML}</div>
         <div style="display:grid;grid-template-columns:minmax(300px,520px) 1fr;gap:18px;align-items:start">
           <div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px">${cel}</div>
-            <div class="mut" style="font-size:11.5px;margin-top:8px">Vermelho = falta pagar · verde = já pago · sábado e domingo caem na segunda · clique no dia para ir até ele na lista</div></div>
+            <div class="mut" style="font-size:11.5px;margin-top:8px">Vermelho = falta pagar · verde = já pago · sábado e domingo caem na segunda · clique no dia para ir até ele na lista</div>
+            <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:14px;background:var(--panel)"><h3 style="font-size:14px;margin:0 0 8px">Lançar uma conta</h3>${podeEditar()?`<button class="btn" style="font-weight:800;margin-bottom:6px" onclick="agNovaConta()">+ Lançar na agenda</button>`:''}<div class="mut" style="font-size:12px">O que é lançado aqui fica <b>só na Agenda</b>, não vai para Lançamentos. Quando o banco pagar, vira lançamento sozinho.</div></div>
+            <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:12px;background:var(--panel)"><h3 style="font-size:14px;margin:0 0 4px">Vencidos de meses anteriores <span class="mut" style="font-weight:400;font-size:11.5px">· não somam no mês</span></h3>
+              ${vencidos.length?`<div style="max-height:320px;overflow:auto">${vencidos.map(i=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px"><span class="mut" style="width:38px">${isoParaBR(i.venc).slice(0,5)}</span><span onclick="agAbrirItem('${i.k}')" style="flex:1;cursor:pointer">${lojaTag(i)}${i.desc}${i.parcela?' '+i.parcela:''}</span><b style="font-variant-numeric:tabular-nums">${BRL(i.valor).replace('R$ ','')}</b>${podeEditar()?`<button class="btn" style="padding:2px 8px;font-size:11px" onclick="agJaPaguei('${i.k}')">já paguei</button>${i.tipo==='conta'?`<button class="btn ghost" style="padding:2px 8px;font-size:11px" onclick="agNaoVouPagar('${i.k}')">não vou pagar</button>`:''}`:''}</div>`).join('')}</div>`:'<div class="mut" style="font-size:12px;margin-top:6px">Nada vencido. 👍</div>'}</div></div>
           <div style="max-height:640px;overflow:auto;padding-right:4px">${lista}</div></div>
-        <div class="mut" style="font-size:11.5px;margin-top:10px">Vencido de mês anterior não entra aqui (não acumula): continua no quadro "Vencidos" da Semana. Clique numa conta para ver ou resolver; no cartão aparecem as compras.</div></div>`;
+        <div class="mut" style="font-size:11.5px;margin-top:10px">Vencido de mês anterior não soma no mês (não acumula): fica no quadro "Vencidos de meses anteriores". Clique numa conta para ver ou resolver; no cartão aparecem as compras.</div></div>`;
   }
   // ---- v2.9.94: "A pagar no mês" do Dashboard — clicar na categoria abre as contas; nos cartões, cada cartão abre as compras ----
   let _apagarDash=[];
@@ -4247,7 +4298,7 @@
     const box=document.getElementById('content');const seq=++_agSeq;const hoje=_hojeLocal();
     if(!AG_SEMANA)AG_SEMANA=agInicioSemana(hoje);
     const grupo=AG_ESCOPO==='grupo',lojaIds=grupo?idsDoModulo():[lojaAtual];window._agVoltar=null;
-    if(AG_VISTA==='mes')return agViewMes(box,seq,grupo,lojaIds);
+    agVistaLer();if(AG_VISTA==='mes')return agViewMes(box,seq,grupo,lojaIds);
     const semIni=AG_SEMANA,semFim=addDias(semIni,6),proxFim=addDias(semIni,13),semAtual=agInicioSemana(hoje);
     box.innerHTML='<div class="loading"><span class="spin"></span> Montando a agenda…</div>';
     let baixas=0;try{baixas=await agBaixaAutomatica(lojaIds);}catch(e){}
