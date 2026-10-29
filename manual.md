@@ -322,6 +322,30 @@ Em **Análise → Fechar de junho para cá** tem um quadro com cada empresa (Roc
 
 Clicando na caixinha, o sistema abre aquela loja naquele mês, em Lançamentos. Em cima aparece o total do grupo e o botão para a Íris aplicar de junho para cá.
 
+## Ensinar a Íris (v2.9.100)
+
+No menu **Dia a dia → Ensinar a Íris** fica tudo o que ela ainda não sabe, de junho/2026 para cá, **agrupado pela descrição** e começando pelo que mais repete. O número roxo ao lado do nome no menu mostra quantos lançamentos estão esperando — igual ao "conferidos" de Lançamentos.
+
+Em cada linha da lista você vê a descrição, quantos lançamentos são, o valor somado e em quais lojas. Aí:
+
+- **Ensinar** — ela preenche todas essas linhas e **guarda a regra**: na próxima vez que aparecer, em qualquer loja, já vem preenchido. Logo depois ela ainda passa de novo em tudo e aproveita o que aprendeu nos parecidos.
+- **só estas** — preenche só as linhas desse grupo, sem guardar regra (para coisa que não vai se repetir).
+- **ver** — mostra qual palavra a Íris vai guardar.
+
+Ela já vem com a categoria e o contato sugeridos quando aquela descrição já apareceu antes. Quando a mesma descrição já teve mais de uma categoria, aparece um aviso em amarelo para você conferir antes.
+
+Tudo o que é preenchido fica **amarelo**, para alguém dar o ok depois. Nada é conferido sozinho por aqui.
+
+## Termômetro da Íris (v2.9.100)
+
+No quadro da Íris, no Dashboard, os números agora mostram a evolução do mês:
+
+- **preenchi sozinha** — quantos por cento dos lançamentos do mês ela preencheu, com a comparação com o mês passado;
+- **conferi sozinha** — quantos por cento ela conferiu sem ninguém olhar, também comparando;
+- **acerto** — quantos por cento do que ela fez não precisou ser corrigido.
+
+É por aí que se acompanha se ela está chegando nos 90%.
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -982,6 +1006,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 | 29/10/2026 | 2.9.97 | **Pergunte à Íris**: botão em toda tela para a equipe tirar dúvida do sistema conversando com a Íris (ela só explica; conhece o manual e o histórico; conversas guardadas no login de cada um). Quando não sabe, não inventa: a dúvida vai para Gestão → Dúvidas da equipe e a resposta do gestor vira ensino. Primeira mensagem de boas-vindas aparece uma vez para cada pessoa | Rodar o SQL da v2.9.97 (sistema-financeiro) |
 | 29/10/2026 | 2.9.98 | Conserto no Pergunte à Íris: dava "sem pergunta" porque a conversa começa com o recado dela; agora responde normalmente, e quando dá erro aparece um "tentar de novo" | — |
 | 29/10/2026 | 2.9.99 | A Íris volta e aplica de junho/2026 para cá o que já aprendeu (ensinos + linha gêmea com uma categoria só), ao ensinar, no robô das 6h e num botão no Dashboard; nunca mexe em linha conferida, mês fechado nem no que foi posto à mão, e deixa tudo amarelo para conferir. Nova tela Análise → Fechar de junho para cá: cada empresa × mês com o que falta (sem categoria, falta conferir, pronto, fechado) | — |
+| 29/10/2026 | 2.9.100 | Nova tela Dia a dia → **Ensinar a Íris**: o que ela ainda não sabe, agrupado pela descrição, do que mais repete para o que menos repete, com o número esperando no menu; "Ensinar" preenche o grupo inteiro e guarda a regra, "só estas" preenche sem guardar. No Dashboard, o quadro da Íris virou termômetro: % preenchido sozinha e % conferido sozinha, comparando com o mês passado | — |
+| 29/10/2026 | 2.9.101 | Quando chega linha nova do banco (a entrada automática, de hora em hora), a Íris já aplica o que aprendeu — então o que alguém ensinou agora há pouco vale no mesmo dia, sem esperar as 6h | — |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
