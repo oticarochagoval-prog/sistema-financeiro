@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.109', APP_DATA='30/10/2026';
+  const APP_VERSAO='2.9.111', APP_DATA='30/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1546,7 +1546,7 @@
     const {data}=await sbTudo(()=>sb.from('lancamentos').select('data,valor,conta_id,contato_id,documento,categorias(nome,grupo),contatos(nome,tipo)').eq('loja_id',lojaAtual).gte('data',ANO_FIXO+'-01-01').lte('data',ANO_FIXO+'-12-31').order('id'));
     LANC_ANO=data||[];
   }
-  async function trocarLoja(){DASH_FILTRO=null;FORA_BANCO=false;IRIS_FILTRO='';filtroDia=''; // v2.9.91: trocou de loja ou de mês, os filtros ("mostrando só…") se desligam
+  async function trocarLoja(){DASH_FILTRO=null;FORA_BANCO=false;IRIS_FILTRO='';IRIS_FEZ='';filtroDia=''; // v2.9.91: trocou de loja ou de mês, os filtros ("mostrando só…") se desligam
     lojaAtual=parseInt(document.getElementById('store').value,10);
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
     await carregarContas();await carregarFechamentos();renderNav();render();
@@ -1591,7 +1591,7 @@
   }
   function abrirMenuCel(){const s=document.getElementById('side');if(s)s.classList.remove('collapsed');document.body.classList.add('menu-aberto');}
   function fecharMenuCel(){document.body.classList.remove('menu-aberto');}
-  function go(p){fecharMenuCel();if(p!=='lanc'){LANC_FOCO=null;DASH_FILTRO=null;IRIS_FILTRO='';irisFecharEnsinar();}page=p;q='';document.getElementById('ptitle').textContent=TITLES[p]||p;renderNav();render();}
+  function go(p){fecharMenuCel();if(p!=='lanc'){LANC_FOCO=null;DASH_FILTRO=null;IRIS_FILTRO='';IRIS_FEZ='';irisFecharEnsinar();}page=p;q='';document.getElementById('ptitle').textContent=TITLES[p]||p;renderNav();render();}
   function toggleMenu(){const s=document.getElementById('side');s.classList.toggle('collapsed');const c=s.classList.contains('collapsed');const b=document.getElementById('burgerBtn');b.title=c?'Abrir menu':'Fechar menu';b.innerHTML=c?'›':'‹';}
 
   function catsAtivas(){return CATS.filter(c=>!c.arquivada&&_visivelNoModulo(c));}
@@ -1718,7 +1718,7 @@
   // ===================== v2.9.60: Íris confere os lançamentos =====================
   // Ela olha o mês e separa: CERTEZA (igual 3+ vezes no histórico ou ensinado), CONFIRA (parecido, nunca visto ou sugestão da IA)
   // e COM GENTE (neutras/transferência, estorno/Banco Caixinha, valor fora do normal). Nada vira conferido sem uma pessoa confirmar.
-  let IRIS_FILTRO='',IRIS_IA={},IRIS_IA_ESTADO='',_irisMemo={k:'',t:0,n:-1,res:null},_irisIAEmCurso=false,IRIS_GRUPO={loja:null,map:{},n:0},_irisAutoEmCurso=false;
+  let IRIS_FEZ='',IRIS_FILTRO='',IRIS_IA={},IRIS_IA_ESTADO='',_irisMemo={k:'',t:0,n:-1,res:null},_irisIAEmCurso=false,IRIS_GRUPO={loja:null,map:{},n:0},_irisAutoEmCurso=false;
   try{IRIS_IA=JSON.parse(localStorage.getItem('fluxo_iris_ia2')||'{}')||{};}catch(e){IRIS_IA={};}
   function _irisKFull(d){const doc=docDaDesc(d);if(doc&&/PIX|TED|TRANSF|DOC\b|PAGAMENTO/i.test(String(d)))return '#DOC:'+doc;return normDesc(String(d||'').replace(/\d+/g,' ')).replace(/\s+/g,' ').trim();}
   const _irisCatNome=id=>((CATS.find(c=>Number(c.id)===Number(id))||{}).nome)||'';
@@ -1777,6 +1777,9 @@
     _irisMemo={k:key,t:Date.now(),n:LANC.length,res};return res;}
   const _irisGrupo=n=>n==='nunca'?'confira':n;
   function irisFiltroOk(l){if(!IRIS_FILTRO||l.id===LANC_FOCO)return true;const r=irisAvaliar().get(l.id);return !!r&&_irisGrupo(r.nivel)===IRIS_FILTRO;}
+  // v2.9.110: ver só o que a Íris preencheu e ninguém conferiu ainda (para revisar o que ela fez)
+  function irisFezOk(l){if(!IRIS_FEZ||l.id===LANC_FOCO)return true;return !!l.iris&&l.iris!=='corrigida'&&!l.conferido_por;}
+  function irisFezN(){const pref=`${ANO_FIXO}-${_mm(mesSel)}`;let n=0;LANC.forEach(l=>{if((l.data||'').slice(0,7)!==pref||l.conferido_por||contaEhCaixinha(l.conta_id))return;if(l.iris&&l.iris!=='corrigida')n++;});return n;}
   function irisPainelHTML(){const R=irisAvaliar();if(!R.size)return '';const c={certeza:0,confira:0,gente:0};let nunca=0,semCat=0;
     R.forEach(r=>{c[_irisGrupo(r.nivel)]++;if(r.nivel==='nunca')nunca++;});
     const box=(k,cor,rgb,tit,sub)=>`<div onclick="IRIS_FILTRO=IRIS_FILTRO==='${k}'?'':'${k}';irisIrLista()" style="cursor:pointer;border-radius:12px;padding:10px 13px;background:rgba(${rgb},.08);border:1px solid rgba(${rgb},${IRIS_FILTRO===k?'.9':'.35'})"><div style="font-size:24px;font-weight:800;color:${cor};line-height:1.1">${c[k]}</div><b style="font-size:13px">${tit}</b><div class="mut" style="font-size:11.5px">${sub}</div></div>`;
@@ -1787,9 +1790,11 @@
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px">
         ${box('certeza','var(--green)','61,214,140','Íris tem certeza','igual 3 vezes ou mais, ou ensinado')}
         ${box('confira','var(--amber)','245,183,64','Íris sugeriu, confira',nunca?`parecido ou novo · ${nunca} nunca visto(s)`:'parecido com algo de antes, ou novo')}
-        ${box('gente','var(--red)','214,69,69','Sempre com gente','neutras, transferência, estorno, valor fora do normal')}</div></div>`;}
+        ${box('gente','var(--red)','214,69,69','Sempre com gente','neutras, transferência, estorno, valor fora do normal')}</div>
+      ${(()=>{const nf=irisFezN();return nf?`<div style="margin-top:10px"><button class="btn ghost" style="padding:6px 13px;font-size:12.5px;${IRIS_FEZ?'border-color:var(--blue);font-weight:800':''}" onclick="IRIS_FEZ=IRIS_FEZ?'':'1';irisIrLista()">${IRIS_FEZ?'✓ ':''}Revisar o que a Íris preencheu · ${nf}</button><span class="mut" style="font-size:11.5px;margin-left:8px">ela preencheu e ninguém conferiu ainda · se estiver errado, corrija aqui e ela aprende</span></div>`:'';})()}</div></div>`;}
   function irisIrLista(){_keepY=window.scrollY;render();setTimeout(()=>{const b=document.getElementById('irisFiltroBar');if(b)b.scrollIntoView({block:'center'});},350);}
-  function irisFiltroBarra(n){if(!IRIS_FILTRO)return '';const R=irisAvaliar();const pend=[...R.values()].filter(r=>_irisGrupo(r.nivel)===IRIS_FILTRO);
+  function irisFiltroBarra(n){if(IRIS_FEZ&&!IRIS_FILTRO)return `<div id="irisFiltroBar" class="note" style="border-color:var(--blue);display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">Mostrando só: <b>o que a Íris preencheu e ninguém conferiu</b> · <b>${n}</b> lançamento(s)<span class="mut" style="font-size:12px">corrija o que estiver errado · ela marca que errou e não repete</span><span style="margin-left:auto"><button class="btn ghost" style="padding:4px 12px;font-size:12px" onclick="IRIS_FEZ='';render()">Ver todos ✕</button></span></div>`;
+    if(!IRIS_FILTRO)return '';const R=irisAvaliar();const pend=[...R.values()].filter(r=>_irisGrupo(r.nivel)===IRIS_FILTRO);
     const nPre=pend.filter(r=>r.preencher).length;const ed=podeEditar();
     const tit={certeza:'Íris tem certeza',confira:'Íris sugeriu, confira',gente:'Sempre com gente'}[IRIS_FILTRO];
     const acao=IRIS_FILTRO==='certeza'&&ed&&pend.length?`<button class="btn" style="font-weight:800;background:var(--green);border-color:var(--green);color:#04130c" onclick="irisConfirmarCerteza()">Confirmar os ${pend.length}</button>`
@@ -2137,7 +2142,9 @@
       const porPar={};upCat.forEach(r=>{const k=r.categoria_id+'|'+(r.contato_id||'');(porPar[k]=porPar[k]||[]).push(r.id);});
       for(const k of Object.keys(porPar)){const [c,ct]=k.split('|');const ids=porPar[k];
         for(let i=0;i<ids.length;i+=200){const parte=ids.slice(i,i+200);
-          const {error:e2}=await sb.from('lancamentos').update(ct?{categoria_id:Number(c),contato_id:Number(ct)}:{categoria_id:Number(c)}).in('id',parte).is('categoria_id',null);
+          const base=ct?{categoria_id:Number(c),contato_id:Number(ct)}:{categoria_id:Number(c)};
+          let {error:e2}=await sb.from('lancamentos').update(Object.assign({iris:'retro'},base)).in('id',parte).is('categoria_id',null);
+          if(e2&&/iris|column/i.test(e2.message||'')){({error:e2}=await sb.from('lancamentos').update(base).in('id',parte).is('categoria_id',null));}
           if(!e2)nc+=parte.length;}}
       const porCt={};upCt.forEach(r=>{(porCt[r.contato_id]=porCt[r.contato_id]||[]).push(r.id);});
       for(const c of Object.keys(porCt)){const ids=porCt[c];
@@ -2158,7 +2165,7 @@
   // ---- v2.9.100: ENSINAR A ÍRIS — fila do que falta, em grupos, do que mais repete para o que menos repete ----
   // Você resolve um grupo de uma vez: escolhe a categoria (e o contato, se quiser), ela aprende a palavra,
   // aplica em todas as linhas iguais de junho para cá (só nas vazias, nunca em conferida nem em mês fechado) e deixa amarelo.
-  let ENS={grupos:[],cont:0,contCat:0,contCt:0,em:0,mod:'',carregando:false,ver:'cat',_lojas:null};
+  let ENS={grupos:[],cont:0,contCat:0,contCt:0,em:0,mod:'',carregando:false,ver:'cat',_lojas:null,ultimo:null};
   const _ensChave=l=>_retroBase(l.descricao);
   function _ensPalavra(base){ // a palavra que a Íris vai guardar: as 5 primeiras palavras que importam
     return base.split(' ').filter(p=>p.length>2).slice(0,5).join(' ').slice(0,60);}
@@ -2202,7 +2209,9 @@
     const p=(n,cor,t)=>`<span class="soon" style="background:rgba(${cor},.16);color:rgb(${cor});font-size:10px;padding:1px 6px" title="${t}">${_ensN(n)}</span>`;
     return (ENS.contCat?p(ENS.contCat,'214,69,69',`${_ensN(ENS.contCat)} sem categoria, de junho para cá`):'')
          + (ENS.contCt?p(ENS.contCt,'124,92,255',`${_ensN(ENS.contCt)} com categoria, mas sem contato`):'');}
-  function _ensPinta(){const el=document.getElementById('navEns');if(el)el.innerHTML=ensBadge();}
+  function _ensPinta(){const el=document.getElementById('navEns');if(el)el.innerHTML=ensBadge();
+    const av=document.getElementById('ensMudou');if(av&&ENS.vis&&!ENS.carregando){const agora=ENS.grupos.slice(0,80).map(g=>g.base).join('|'),tela=ENS.vis.filter(g=>g.n>0).map(g=>g.base).join('|');
+      av.innerHTML=agora!==tela?`<div class="note" style="border-color:var(--amber);display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">A Íris preencheu mais coisas desde que você abriu esta tela. Os botões continuam valendo para as linhas que você está vendo.<button class="btn ghost" style="padding:3px 11px;font-size:12px;margin-left:auto" onclick="render()">Atualizar a lista</button></div>`:'';}}
   async function viewEnsinar(){const box=document.getElementById('content');
     box.innerHTML='<div class="loading"><span class="spin"></span> Vendo o que falta…</div>';
     await ensCarregar(true);
@@ -2211,7 +2220,7 @@
     const ct=id=>{const c=CONTATOS.find(x=>x.id==id);return c?c.nome:'';};
     const opcoesCat=sel=>catsAtivas().slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>`<option value="${c.id}"${Number(sel)===c.id?' selected':''}>${_remEsc(c.nome)}</option>`).join('');
     const opcoesCt=sel=>(contatosAtivos()||[]).slice().sort((a,b)=>String(a.nome).localeCompare(String(b.nome))).map(c=>`<option value="${c.id}"${Number(sel)===c.id?' selected':''}>${_remEsc(c.nome)}</option>`).join('');
-    const top=ENS.grupos.slice(0,80);
+    const top=ENS.grupos.slice(0,80);ENS.vis=top; // v2.9.111: os botões olham esta cópia; a lista pode recarregar por trás (retro, importação) sem trocar as linhas da tela
     const linha=(g,i)=>`<tr style="border-top:1px solid var(--line)" id="ensL${i}">
       <td style="padding:8px"><div style="font-weight:700">${_remEsc(g.desc)}</div>
         <div class="mut" style="font-size:11px">${g.n} lançamento(s) · ${BRL(g.valor)} · ${g.lojas.slice(0,4).map(L).join(', ')}${g.lojas.length>4?` +${g.lojas.length-4}`:''}${g.nCat&&g.nCt?` · ${g.nCat} sem categoria, ${g.nCt} só sem contato`:g.nCt?' · só falta o contato':''}</div>
@@ -2223,6 +2232,7 @@
         <button class="btn ghost" style="padding:4px 9px;font-size:12px" onclick="ensAplicar(${i},false)" title="Preenche só estas linhas, sem guardar regra">só estas</button>
         <button class="btn ghost" style="padding:4px 9px;font-size:12px" onclick="ensVer(${i})" title="Ver os lançamentos deste grupo">ver</button></td></tr>`;
     box.innerHTML=`<div class="note">🎓 Aqui fica o que a Íris ainda não sabe em <b>${_remEsc(nomeTodas()==='Grupo todo'?'Óticas Rocha':nomeTodas())}</b> (cada empresa tem a sua lista, porque as categorias são de cada uma), de junho para cá, <b>agrupado pela descrição</b> e começando pelo que mais repete. Escolha a categoria e clique em <b>Ensinar</b>: ela preenche todas as linhas iguais e guarda a regra para as próximas. Tudo fica <b>amarelo</b>, para alguém conferir depois.</div>
+      <div id="ensMudou"></div><div id="ensDesfazer"></div>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:14px">
         <div class="card"><div class="mut" style="font-size:12px;font-weight:600">Sem categoria</div><div style="font-size:22px;font-weight:800;color:${ENS.contCat?'var(--red)':'var(--green)'}">${_ensN(ENS.contCat)}</div><div class="mut" style="font-size:11px">é o que mais atrapalha o fechamento</div></div>
         <div class="card"><div class="mut" style="font-size:12px;font-weight:600">Sem contato</div><div style="font-size:22px;font-weight:800;color:${ENS.contCt?'#7c5cff':'var(--green)'}">${_ensN(ENS.contCt)}</div><div class="mut" style="font-size:11px">já têm categoria · só falta de quem é</div></div>
@@ -2243,7 +2253,29 @@
   function ensComboCt(el,i){_abrirCombo(el,_comboItemsCont(),v=>ensPoe('ensK'+i,v,'— sem contato —'));}
   function ensNovaCat(i){abrirNovaCat(null,'ensC'+i);}
   function ensNovoCt(i){abrirNovoContato(null,'ensK'+i);}
-  function ensVer(i){const g=ENS.grupos[i];if(!g)return;
+  // v2.9.110: desfazer o último "Ensinar" — tira a categoria que acabou de entrar e apaga a regra
+  function ensBarraDesfazer(){const box=document.getElementById('ensDesfazer');if(!box)return;const u=ENS.ultimo;
+    if(!u){box.innerHTML='';return;}
+    box.innerHTML=`<div style="border:1px solid rgba(31,157,107,.45);background:rgba(31,157,107,.08);border-radius:10px;padding:9px 12px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px">
+      <span>Preenchi <b>${u.n}</b> lançamento(s) de <b>${_remEsc(u.desc)}</b>${u.regraId?' e guardei a regra':''}.</span>
+      <button class="btn ghost" style="padding:3px 11px;font-size:12px;margin-left:auto" onclick="ensDesfazer()">Desfazer</button></div>`;}
+  async function ensDesfazer(){const u=ENS.ultimo;if(!u)return;
+    let n=0;
+    for(const ids of [u.ids.cat,u.ids.ct]){const campo=(ids===u.ids.cat)?'categoria_id':'contato_id';
+      for(let k=0;k<ids.length;k+=200){const parte=ids.slice(k,k+200);
+        const up=campo==='categoria_id'?{categoria_id:null,contato_id:null,iris:null}:{contato_id:null};
+        let q=sb.from('lancamentos').update(up).in('id',parte).is('conferido_por',null);
+        if(campo==='categoria_id')q=q.eq('categoria_id',u.catId);else q=q.eq('contato_id',u.ctId);
+        let {error}=await q;
+        if(error&&/iris|column/i.test(error.message||'')){const up2=campo==='categoria_id'?{categoria_id:null,contato_id:null}:{contato_id:null};
+          let q2=sb.from('lancamentos').update(up2).in('id',parte).is('conferido_por',null);
+          if(campo==='categoria_id')q2=q2.eq('categoria_id',u.catId);else q2=q2.eq('contato_id',u.ctId);
+          ({error}=await q2);}
+        if(!error)n+=parte.length;}}
+    if(u.regraId){try{await sb.from('regras_palavras').delete().eq('id',u.regraId);await carregarRegrasP();}catch(e){}}
+    ENS.ultimo=null;ENS.em=0;toast(`Desfeito: ${n} lançamento(s) voltaram a ficar sem categoria${u.regraId?' e a regra foi apagada':''}.`,'ok');
+    viewEnsinar();}
+  function ensVer(i){const g=(ENS.vis||ENS.grupos)[i];if(!g)return;
     const cat=id=>{const c=CATS.find(x=>x.id==id);return c?c.nome:'—';};
     const ct=id=>{const c=CONTATOS.find(x=>x.id==id);return c?c.nome:'';};
     const L=(g.linhas||[]).slice().sort((a,b)=>(a.loja-b.loja)||String(a.data).localeCompare(String(b.data)));
@@ -2264,7 +2296,7 @@
         <tbody>${linhas||'<tr><td colspan="5" class="mut" style="padding:10px">—</td></tr>'}</tbody></table></div>
       <p class="mut" style="font-size:12px;margin:8px 0 0">Se clicar em <b>Ensinar</b>, a Íris guarda a palavra <b>${_remEsc(_ensPalavra(g.base))}</b> e usa em qualquer loja desta empresa. Se essas linhas não forem todas a mesma coisa, use <b>só estas</b>.</p>
       <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn ghost" onclick="fecharModal()">Fechar</button></div></div></div>`;}
-  async function ensAplicar(i,ensinar){const g=ENS.grupos[i];if(!g||!podeEditar())return;
+  async function ensAplicar(i,ensinar){const g=(ENS.vis||ENS.grupos)[i];if(!g||!podeEditar())return;
     const selC=document.getElementById('ensC'+i),selK=document.getElementById('ensK'+i);
     const _v=el=>Number((el&&(el.dataset?el.dataset.v:el.value))||0);
     const catId=g.nCat?_v(selC):Number(g.catDoCt||0);
@@ -2272,22 +2304,26 @@
     if(g.nCat&&!catId){toast('Escolha a categoria desse grupo.','erro');return;}
     if(!g.nCat&&!ctId){toast('Escolha o contato desse grupo.','erro');return;}
     const lin=document.getElementById('ensL'+i);if(lin)lin.style.opacity='.5';
-    let nc=0,nk=0,erro='';
+    let nc=0,nk=0,erro='',regraId=null;
     try{
       if(g.ids.cat.length&&catId){const up=ctId?{categoria_id:catId,contato_id:ctId}:{categoria_id:catId};
         for(let k=0;k<g.ids.cat.length;k+=200){const parte=g.ids.cat.slice(k,k+200);
-          const {error}=await sb.from('lancamentos').update(up).in('id',parte).is('categoria_id',null);if(error)erro=error.message;else nc+=parte.length;}}
+          let {error}=await sb.from('lancamentos').update(Object.assign({iris:'ensino'},up)).in('id',parte).is('categoria_id',null);
+          if(error&&/iris|column/i.test(error.message||'')){({error}=await sb.from('lancamentos').update(up).in('id',parte).is('categoria_id',null));}
+          if(error)erro=error.message;else nc+=parte.length;}}
       if(g.ids.ct.length&&ctId){for(let k=0;k<g.ids.ct.length;k+=200){const parte=g.ids.ct.slice(k,k+200);
           const {error}=await sb.from('lancamentos').update({contato_id:ctId}).in('id',parte).is('contato_id',null);if(error)erro=error.message;else nk+=parte.length;}}
       if(ensinar&&catId){const palavra=_ensPalavra(g.base);
         if(normDesc(palavra).length>=3&&!REGRAS_P.some(r=>normDesc(r.palavra)===normDesc(palavra)&&String(r.categoria_id)===String(catId))){
           const row={palavra:palavra.toUpperCase(),categoria_id:catId,contato_id:ctId,loja_id:null,origem:'iris',ativa:true,criado_por:USER.id};
-          const {error}=await sb.from('regras_palavras').insert(row);if(!error)await carregarRegrasP();}}
+          const {data:rd,error}=await sb.from('regras_palavras').insert(row).select('id');if(!error){regraId=(rd&&rd[0]&&rd[0].id)||null;await carregarRegrasP();}}}
     }catch(e){erro=String(e.message||e);}
     if(erro){toast('Erro: '+erro,'erro');if(lin)lin.style.opacity='1';return;}
+    ENS.ultimo={desc:g.desc,n:nc+nk,ids:{cat:g.ids.cat.slice(),ct:g.ids.ct.slice()},catId,ctId,regraId};
+    ensBarraDesfazer();
     toast(`${nc+nk} lançamento(s) preenchidos${ensinar?' · a Íris guardou a regra para as próximas':''}. Ficaram amarelos.`,'ok');
     if(lin)lin.remove();
-    ENS.cont=Math.max(0,ENS.cont-(nc+nk));ENS.contCat=Math.max(0,ENS.contCat-nc);ENS.contCt=Math.max(0,ENS.contCt-nk);ENS.grupos[i].n=0;_ensPinta();
+    ENS.cont=Math.max(0,ENS.cont-(nc+nk));ENS.contCat=Math.max(0,ENS.contCat-nc);ENS.contCt=Math.max(0,ENS.contCt-nk);g.n=0;_ensPinta();
     if(ensinar)setTimeout(()=>{irisRetroativo(true).then(r=>{if(r.cat||r.ct)toast(`A Íris também aproveitou e preencheu mais ${r.cat+r.ct} parecido(s).`,'ok');ensCarregar(true);});},300);}
 
   // ---- v2.9.99: PAINEL "FECHAR DE JUNHO PARA CÁ" — o que falta em cada empresa, mês a mês ----
@@ -2457,6 +2493,7 @@
       if(FORA_BANCO&&!lancForaDoBanco(l))return false;
       if(DASH_FILTRO&&!dashFiltroOk(l))return false;
       if(IRIS_FILTRO&&!irisFiltroOk(l))return false;
+      if(IRIS_FEZ&&!irisFezOk(l))return false;
       if(!q)return true;
       const cat=(l.categorias&&l.categorias.nome)||'';const cont=(l.contatos&&l.contatos.nome)||'';
       const txt=(l.descricao||'').toLowerCase().includes(q.toLowerCase())||cat.toLowerCase().includes(q.toLowerCase())||cont.toLowerCase().includes(q.toLowerCase());
@@ -2685,6 +2722,7 @@
       if(FORA_BANCO&&!lancForaDoBanco(l))return false;
       if(DASH_FILTRO&&!dashFiltroOk(l))return false;
       if(IRIS_FILTRO&&!irisFiltroOk(l))return false;
+      if(IRIS_FEZ&&!irisFezOk(l))return false;
       if(!q)return true;
       const cat=(l.categorias&&l.categorias.nome)||'';const cont=(l.contatos&&l.contatos.nome)||'';
       const txt=(l.descricao||'').toLowerCase().includes(q.toLowerCase())||cat.toLowerCase().includes(q.toLowerCase())||cont.toLowerCase().includes(q.toLowerCase());
@@ -3271,7 +3309,7 @@
     <button class="burger" style="width:32px;height:32px" onclick="navMes(-1)">‹</button>
     <span style="font-weight:700;font-size:14px;min-width:130px;text-align:center">${MESES_NOME[mesSel]} ${ANO_FIXO}</span>
     <button class="burger" style="width:32px;height:32px" onclick="navMes(1)">›</button></div>`;}
-  function navMes(d){mesSel+=d;if(mesSel<0)mesSel=0;if(mesSel>11)mesSel=11;filtroDia='';DASH_FILTRO=null;FORA_BANCO=false;IRIS_FILTRO='';render();if(page!=='lanc')navConfAtualizar().catch(()=>{});}
+  function navMes(d){mesSel+=d;if(mesSel<0)mesSel=0;if(mesSel>11)mesSel=11;filtroDia='';DASH_FILTRO=null;FORA_BANCO=false;IRIS_FILTRO='';IRIS_FEZ='';render();if(page!=='lanc')navConfAtualizar().catch(()=>{});}
   // ---- FECHAMENTO DO MÊS (saldo por mês, saldo real no fim do mês, fechar/travar) ----
   // Fechamentos do ano desta loja: mes(1-12) -> linha da tabela fechamentos
   let FECH_ANO={};

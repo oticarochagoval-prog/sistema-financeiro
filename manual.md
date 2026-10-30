@@ -342,6 +342,18 @@ Ela já vem com a categoria e o contato sugeridos quando aquela descrição já 
 
 Tudo o que é preenchido fica **amarelo**, para alguém dar o ok depois. Nada é conferido sozinho por aqui.
 
+### Errei ao ensinar? Dá para desfazer (v2.9.110)
+
+Logo depois de clicar em **Ensinar** (ou em **só estas**), aparece em cima da tela uma faixa verde: *"Preenchi 46 lançamento(s) de TAL COISA e guardei a regra"*, com o botão **Desfazer**. Clicou em Desfazer, ela **tira a categoria e o contato daquelas mesmas linhas** e **apaga a regra** que tinha acabado de guardar — volta tudo como estava. Ela só desfaz as linhas daquele ensino e só se ninguém tiver conferido no meio tempo; o que alguém já conferiu ela não mexe.
+
+A faixa fica na tela até você ensinar outro grupo ou sair da página.
+
+### Revisar o que a Íris preencheu (v2.9.110)
+
+Agora fica guardado **como cada linha foi preenchida**: pela regra que você ensinou, pela passada dela de junho para cá, pela semelhança ou pela IA. Com isso, em **Lançamentos**, embaixo dos três quadrinhos da Íris, tem o botão **"Revisar o que a Íris preencheu · N"**. Clicou, a lista mostra **só o que ela preencheu e ninguém conferiu ainda**. É o lugar de dar aquela varrida para ver se não escapou nada errado.
+
+Se achar uma linha errada, é só corrigir ali na hora: ela marca aquela linha como **corrigida** (entra no "vocês corrigiram" do termômetro) e não repete aquele erro.
+
 ## Termômetro da Íris (v2.9.100)
 
 No quadro da Íris, no Dashboard, os números agora mostram a evolução do mês:
@@ -1039,6 +1051,8 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 | 30/10/2026 | 2.9.107 | O botão "ver" em Ensinar a Íris agora mostra os lançamentos do grupo (dia, loja, descrição, valor e como está hoje) e as categorias/contatos que já foram usados neles, para conferir antes de ensinar | — |
 | 30/10/2026 | 2.9.108 | Em Ensinar a Íris, a categoria e o contato passaram a usar a mesma caixinha de busca de Lançamentos (digita um pedaço do nome e acha), no lugar da listona que travava e cortava os nomes no fim | — |
 | 30/10/2026 | 2.9.109 | No DRE, a linha "Imposto" passou a se chamar **Simples Nacional** (é só o Simples; os outros impostos ficam em Custo Fixo). Limpeza das categorias repetidas feita no banco: DESPESAS, IMPOSTOS, MIDIA, ÓCULOS / FZ GRIFES e SISTEMAS viraram uma só cada, "Imposto (Simples)" virou SIMPLES NACIONAL, e os contatos DAIANA, EMPRESTIMOS e ISABELLA foram juntados | — |
+| 30/10/2026 | 2.9.110 | **Dá para desfazer.** Quando a Íris preenche sozinha, agora fica marcado quem fez: o que ela aprendeu de junho para cá e o que você ensinou na tela "Ensinar a Íris". Logo depois de ensinar aparece uma faixa verde com o botão **Desfazer**, que tira a categoria e o contato daquelas linhas e apaga a regra. E em Lançamentos tem o botão **"Revisar o que a Íris preencheu"**, que mostra só o que ela preencheu e ninguém conferiu ainda | — |
+| 30/10/2026 | 2.9.111 | **Correção importante em Ensinar a Íris.** Depois do primeiro Ensinar, a lista recarregava por trás (a Íris passava de novo em tudo e reordenava os grupos) e os botões **ver / Ensinar / só estas** das outras linhas passavam a apontar para o grupo errado — o "ver" abria outra descrição e o Ensinar podia guardar a regra com a palavra errada. Agora os botões ficam presos às linhas que estão na tela, e quando a lista muda por trás aparece um aviso amarelo com o botão **Atualizar a lista** | Conferir as regras ensinadas em 30/10 (ver conversa) |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
