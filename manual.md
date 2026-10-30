@@ -322,6 +322,51 @@ Em **Análise → Fechar de junho para cá** tem um quadro com cada empresa (Roc
 
 Clicando na caixinha, o sistema abre aquela loja naquele mês, em Lançamentos. Em cima aparece o total do grupo e o botão para a Íris aplicar de junho para cá.
 
+## Ensinar a Íris (v2.9.100)
+
+No menu **Dia a dia → Ensinar a Íris** fica tudo o que ela ainda não sabe, de junho/2026 para cá, **agrupado pela descrição** e começando pelo que mais repete. **Cada empresa tem a sua lista** (Óticas Rocha, Diversas, Grupo de compras, GV Lentes, Casa), porque as categorias e os contatos são de cada uma: troque a empresa lá em cima para ver a fila dela. Ao lado do nome, no menu, aparecem dois números: o **vermelho** é quanto falta de **categoria** (é o que atrapalha o fechamento) e o **roxo** é quanto já tem categoria e só falta o **contato**.
+
+Em cada linha da lista você vê a descrição, quantos lançamentos são, o valor somado e em quais lojas. Aí:
+
+- **Ensinar** — ela preenche todas essas linhas e **guarda a regra**: na próxima vez que aparecer, em qualquer loja, já vem preenchido. Logo depois ela ainda passa de novo em tudo e aproveita o que aprendeu nos parecidos.
+- **só estas** — preenche só as linhas desse grupo, sem guardar regra (para coisa que não vai se repetir).
+- **ver** — mostra qual palavra a Íris vai guardar.
+
+Se faltar a categoria ou o contato certo, use **+ criar categoria** ou **+ criar contato** ali mesmo, sem sair da tela.
+
+Entrada (dinheiro que chega) não pede contato, então não aparece na fila por isso — só entra se estiver sem categoria.
+
+Ela já vem com a categoria e o contato sugeridos quando aquela descrição já apareceu antes. Quando a mesma descrição já teve mais de uma categoria, aparece um aviso em amarelo para você conferir antes.
+
+Tudo o que é preenchido fica **amarelo**, para alguém dar o ok depois. Nada é conferido sozinho por aqui.
+
+## Termômetro da Íris (v2.9.100)
+
+No quadro da Íris, no Dashboard, os números agora mostram a evolução do mês:
+
+- **preenchi sozinha** — quantos por cento dos lançamentos do mês ela preencheu, com a comparação com o mês passado;
+- **conferi sozinha** — quantos por cento ela conferiu sem ninguém olhar, também comparando;
+- **acerto** — quantos por cento do que ela fez não precisou ser corrigido.
+
+É por aí que se acompanha se ela está chegando nos 90%.
+
+## Pagamentos de todo mês do Caixinha (v2.9.103)
+
+Na aba **Senhas** do Caixinha existem os cartões de "pagamento todo mês": **PIX BLOGUEIRAS** e **PIX ALUGUÉIS LOJAS**. Agora o Fluxo marca esses pagamentos como pagos sozinho, quando eles saem no extrato do banco — do mesmo jeito que já faz com as Lentes e com o Banco Caixinha.
+
+O quadro fica na tela **Caixinha (espelho)**, embaixo do nome "Pagamentos de todo mês".
+
+Como ela decide:
+
+- **Blogueiras:** a saída tem que ter o **mesmo valor** do cartão **e** bater o nome (aceita diferença de uma letra, tipo SUELEN e SUELLEN) ou o CPF que aparece mascarado no extrato (***.788.816-**).
+- **Aluguéis:** a saída daquela loja no mês com "ALUGUEL" na descrição. Quando tem mais de uma, ganha a que tem o nome do proprietário ou o nome da seção. Rateio ("ALUGUEL ESCRITÓRIO · PARA DVL"), "ALUGUEL SALA" e linha de outra loja ("R4 ALUGUEL") não entram.
+- Quando sobra dúvida, ela **não marca**: a linha aparece em "Confira você", com o botão **é esse, marcar**.
+- Item com observação **NÃO PAGAR** ou **NÃO FAZER** nunca é marcado sozinho.
+
+Ela **só marca**. Nunca desmarca, nunca mexe no que foi marcado à mão e não altera mais nada no Caixinha. Cada linha do extrato é usada uma vez só.
+
+Roda quando você importa o extrato, quando abre Lançamentos e quando abre a tela Caixinha (espelho). Precisa estar logado no Caixinha nesse computador.
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -982,6 +1027,12 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 | 29/10/2026 | 2.9.97 | **Pergunte à Íris**: botão em toda tela para a equipe tirar dúvida do sistema conversando com a Íris (ela só explica; conhece o manual e o histórico; conversas guardadas no login de cada um). Quando não sabe, não inventa: a dúvida vai para Gestão → Dúvidas da equipe e a resposta do gestor vira ensino. Primeira mensagem de boas-vindas aparece uma vez para cada pessoa | Rodar o SQL da v2.9.97 (sistema-financeiro) |
 | 29/10/2026 | 2.9.98 | Conserto no Pergunte à Íris: dava "sem pergunta" porque a conversa começa com o recado dela; agora responde normalmente, e quando dá erro aparece um "tentar de novo" | — |
 | 29/10/2026 | 2.9.99 | A Íris volta e aplica de junho/2026 para cá o que já aprendeu (ensinos + linha gêmea com uma categoria só), ao ensinar, no robô das 6h e num botão no Dashboard; nunca mexe em linha conferida, mês fechado nem no que foi posto à mão, e deixa tudo amarelo para conferir. Nova tela Análise → Fechar de junho para cá: cada empresa × mês com o que falta (sem categoria, falta conferir, pronto, fechado) | — |
+| 29/10/2026 | 2.9.100 | Nova tela Dia a dia → **Ensinar a Íris**: o que ela ainda não sabe, agrupado pela descrição, do que mais repete para o que menos repete, com o número esperando no menu; "Ensinar" preenche o grupo inteiro e guarda a regra, "só estas" preenche sem guardar. No Dashboard, o quadro da Íris virou termômetro: % preenchido sozinha e % conferido sozinha, comparando com o mês passado | — |
+| 29/10/2026 | 2.9.101 | Quando chega linha nova do banco (a entrada automática, de hora em hora), a Íris já aplica o que aprendeu — então o que alguém ensinou agora há pouco vale no mesmo dia, sem esperar as 6h | — |
+| 30/10/2026 | 2.9.102 | Em Ensinar a Íris, o número do menu virou dois: vermelho = sem categoria, roxo = só sem contato; na tela, um quadro para cada um. A lista começa pelos grupos que estão sem categoria | — |
+| 30/10/2026 | 2.9.103 | O Fluxo marca sozinho, pelo extrato, os pagamentos de todo mês da aba Senhas do Caixinha (PIX BLOGUEIRAS e PIX ALUGUÉIS LOJAS): confere valor e nome/CPF nas blogueiras, e a saída de aluguel da loja nos aluguéis; na dúvida fica como sugestão para confirmar com um clique. Nunca desmarca nem mexe no que foi marcado à mão. O quadro fica na tela Caixinha (espelho) | — |
+| 30/10/2026 | 2.9.104 | Ensinar a Íris: cada empresa tem a sua fila (as categorias são de cada uma), botões "+ criar categoria" e "+ criar contato" na própria tela, e entrada sem contato não entra mais na fila. A linha gêmea do retroativo também passou a valer só dentro da mesma empresa | — |
+| 30/10/2026 | 2.9.105 | No retroativo, a categoria que a Íris preenche respeita a empresa da loja (a Casa tem as categorias dela) — não entra mais categoria de uma empresa em lançamento de outra | — |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
