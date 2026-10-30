@@ -381,6 +381,15 @@ Ela **só marca**. Nunca desmarca, nunca mexe no que foi marcado à mão e não 
 
 Roda quando você importa o extrato, quando abre Lançamentos e quando abre a tela Caixinha (espelho). Precisa estar logado no Caixinha nesse computador.
 
+### Na Agenda e no Dashboard (v2.9.112)
+
+Esses mesmos pagamentos (aluguéis e blogueiras) **aparecem sozinhos na Agenda de pagamentos** da loja deles e no **"A pagar no mês"** do Dashboard, com a etiqueta verde **Caixinha** — igual os cartões do FaturaFácil. Ninguém precisa lançar.
+
+- **Dia:** o dia em que foi pago no mês anterior (pelo extrato). Quando ainda não tem histórico, aluguel cai no **dia 10** e blogueira no **dia 5**, com a marca *dia estimado*. No mês seguinte já vem o dia certo.
+- **Pago:** fica verde quando o pagamento sai no extrato (ou quando alguém marca no Caixinha).
+- **Some sozinho:** se a Heloísa excluir o item no Caixinha, ou escrever **NÃO PAGAR** / **NÃO FAZER** na Obs, ele sai da Agenda e do total. Nada é mudado no Caixinha por aqui.
+- As blogueiras "DIVIDIDAS LOJAS GV" e os aluguéis do "ESCRITÓRIO" entram na conta da Diversas.
+
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
 - **Cada módulo tem o seu** (Óticas Rocha no Óticas, Diversas na Diversas, Grupo de compras, GV Lentes e Casa cada um no seu). No alto aparece **5/164 conferidos**, quantos **faltam** e quantos dá por dia útil até o fim do mês.
@@ -1053,6 +1062,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 | 30/10/2026 | 2.9.109 | No DRE, a linha "Imposto" passou a se chamar **Simples Nacional** (é só o Simples; os outros impostos ficam em Custo Fixo). Limpeza das categorias repetidas feita no banco: DESPESAS, IMPOSTOS, MIDIA, ÓCULOS / FZ GRIFES e SISTEMAS viraram uma só cada, "Imposto (Simples)" virou SIMPLES NACIONAL, e os contatos DAIANA, EMPRESTIMOS e ISABELLA foram juntados | — |
 | 30/10/2026 | 2.9.110 | **Dá para desfazer.** Quando a Íris preenche sozinha, agora fica marcado quem fez: o que ela aprendeu de junho para cá e o que você ensinou na tela "Ensinar a Íris". Logo depois de ensinar aparece uma faixa verde com o botão **Desfazer**, que tira a categoria e o contato daquelas linhas e apaga a regra. E em Lançamentos tem o botão **"Revisar o que a Íris preencheu"**, que mostra só o que ela preencheu e ninguém conferiu ainda | — |
 | 30/10/2026 | 2.9.111 | **Correção importante em Ensinar a Íris.** Depois do primeiro Ensinar, a lista recarregava por trás (a Íris passava de novo em tudo e reordenava os grupos) e os botões **ver / Ensinar / só estas** das outras linhas passavam a apontar para o grupo errado — o "ver" abria outra descrição e o Ensinar podia guardar a regra com a palavra errada. Agora os botões ficam presos às linhas que estão na tela, e quando a lista muda por trás aparece um aviso amarelo com o botão **Atualizar a lista** | Conferir as regras ensinadas em 30/10 (ver conversa) |
+| 30/10/2026 | 2.9.112 | **Aluguéis e blogueiras do Caixinha na Agenda.** Os pagamentos de todo mês da aba Senhas do Caixinha (PIX ALUGUÉIS LOJAS e PIX BLOGUEIRAS) agora aparecem sozinhos na Agenda de pagamentos de cada loja e no "A pagar no mês" do Dashboard, com a etiqueta verde **Caixinha**. O dia é o dia em que pagou no mês anterior (pelo extrato); sem histórico, aluguel cai no dia 10 e blogueira no dia 5 (marcado "dia estimado"). Fica pago quando o pagamento sai no extrato. O que a Heloísa tirar do Caixinha, ou marcar "NÃO PAGAR" na Obs, some daqui sozinho | — |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
