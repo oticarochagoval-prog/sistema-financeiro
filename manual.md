@@ -332,7 +332,9 @@ Em cada linha da lista você vê a descrição, quantos lançamentos são, o val
 - **só estas** — preenche só as linhas desse grupo, sem guardar regra (para coisa que não vai se repetir).
 - **ver** — mostra qual palavra a Íris vai guardar.
 
-Se faltar a categoria ou o contato certo, use **+ criar categoria** ou **+ criar contato** ali mesmo, sem sair da tela.
+Se faltar a categoria ou o contato certo, use **+ criar categoria** ou **+ criar contato** ali mesmo, sem sair da tela — abre a mesma janelinha de Lançamentos.
+
+No grupo do DRE, cada opção vem explicada: Custo Fixo (aluguel, luz, salário, o dia a dia), CMV (lente, armação, óculos), Receita (dinheiro de venda), Imposto (o Simples) e Não Operacional (empréstimo e retirada de sócios). **Custo Fixo já vem escolhido**, que é o mais comum; se errar, muda depois em Gestão → Categorias.
 
 Entrada (dinheiro que chega) não pede contato, então não aparece na fila por isso — só entra se estiver sem categoria.
 
@@ -1033,6 +1035,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 | 30/10/2026 | 2.9.103 | O Fluxo marca sozinho, pelo extrato, os pagamentos de todo mês da aba Senhas do Caixinha (PIX BLOGUEIRAS e PIX ALUGUÉIS LOJAS): confere valor e nome/CPF nas blogueiras, e a saída de aluguel da loja nos aluguéis; na dúvida fica como sugestão para confirmar com um clique. Nunca desmarca nem mexe no que foi marcado à mão. O quadro fica na tela Caixinha (espelho) | — |
 | 30/10/2026 | 2.9.104 | Ensinar a Íris: cada empresa tem a sua fila (as categorias são de cada uma), botões "+ criar categoria" e "+ criar contato" na própria tela, e entrada sem contato não entra mais na fila. A linha gêmea do retroativo também passou a valer só dentro da mesma empresa | — |
 | 30/10/2026 | 2.9.105 | No retroativo, a categoria que a Íris preenche respeita a empresa da loja (a Casa tem as categorias dela) — não entra mais categoria de uma empresa em lançamento de outra | — |
+| 30/10/2026 | 2.9.106 | Criar categoria ficou mais fácil: a mesma janelinha de Lançamentos também em Ensinar a Íris, cada grupo do DRE explicado em português (Custo Fixo = aluguel, luz, salário…), Custo Fixo já escolhido e sem a opção "A definir" | — |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |

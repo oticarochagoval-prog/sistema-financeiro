@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.105', APP_DATA='30/10/2026';
+  const APP_VERSAO='2.9.106', APP_DATA='30/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -2233,26 +2233,8 @@
         ${ENS.grupos.length>80?`<div class="mut" style="font-size:12px;margin-top:8px">Mostrando os 80 maiores de ${ENS.grupos.length}. Resolvendo esses, os outros aparecem.</div>`:''}</div>`
       :'<div class="card empty"><div class="big">🎉</div><div>Nada esperando. A Íris está em dia.</div></div>'}`;}
   // v2.9.104: criar categoria ou contato na hora, sem sair da tela
-  async function ensNovaCat(i){
-    const nome=prompt('Nome da nova categoria:');if(!nome||!nome.trim())return;
-    const g0=prompt('Grupo no DRE? Digite: rec (Receita), cmv (CMV), imp (Imposto), fixo (Custo Fixo), nop (Não Operacional) ou deixe vazio para "A definir"','adef')||'adef';
-    const g=['rec','cmv','imp','fixo','nop'].includes(String(g0).toLowerCase())?String(g0).toLowerCase():'adef';
-    const {data,error}=await sb.from('categorias').insert({..._modNovo(),loja_id:null,nome:nome.trim().toUpperCase(),grupo:g}).select().single();
-    if(error){toast('Erro: '+error.message,'erro');return;}
-    CATS.push(data);document.querySelectorAll('select[id^="ensC"]').forEach(sel=>{const v=sel.value;
-      sel.insertAdjacentHTML('beforeend',`<option value="${data.id}">${_remEsc(data.nome)}</option>`);sel.value=v;});
-    const sel=document.getElementById('ensC'+i);if(sel)sel.value=String(data.id);
-    toast('Categoria criada e escolhida.','ok');}
-  async function ensNovoCt(i){
-    const nome=prompt('Nome do novo contato:');if(!nome||!nome.trim())return;
-    const t0=prompt('É empresa ou funcionário? Digite: e (empresa) ou f (funcionário)','e')||'e';
-    const tipo=t0.toLowerCase().startsWith('f')?'funcionario':'empresa';
-    const {data,error}=await sb.from('contatos').insert({..._modNovo(),loja_id:null,nome:nome.trim().toUpperCase(),tipo}).select().single();
-    if(error){toast('Erro: '+error.message,'erro');return;}
-    CONTATOS.push(data);document.querySelectorAll('select[id^="ensK"]').forEach(sel=>{const v=sel.value;
-      sel.insertAdjacentHTML('beforeend',`<option value="${data.id}">${_remEsc(data.nome)}</option>`);sel.value=v;});
-    const sel=document.getElementById('ensK'+i);if(sel)sel.value=String(data.id);
-    toast('Contato criado e escolhido.','ok');}
+  function ensNovaCat(i){abrirNovaCat(null,'ensC'+i);}
+  function ensNovoCt(i){abrirNovoContato(null,'ensK'+i);}
   function ensVer(i){const g=ENS.grupos[i];if(!g)return;
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(560px,94vw)">
       <h3 style="margin:0 0 6px">${_remEsc(g.desc)}</h3>
@@ -2875,13 +2857,17 @@
   }
 
   let novoCatLanc=null,novoContatoLanc=null,novoCatImport=null,novoContatoImport=null;
+  // v2.9.106: grupo do DRE escrito do jeito que a equipe entende; Custo Fixo já vem escolhido
+  const GRUPO_AJUDA={fixo:'Custo Fixo — aluguel, luz, salário, o dia a dia da loja',cmv:'CMV — lente, armação, óculos (a mercadoria)',rec:'Receita — dinheiro que entra de venda',imp:'Imposto — o Simples e outros impostos',nop:'Não Operacional — empréstimo e retirada de sócios'};
+  const grupoOptions=sel=>['fixo','cmv','rec','imp','nop'].map(k=>`<option value="${k}"${(sel||'fixo')===k?' selected':''}>${GRUPO_AJUDA[k]}</option>`).join('');
+  let _novaCatSel=null,_novoCtSel=null;
   function abrirNovaCatImport(i){abrirNovaCat();novoCatImport=i;}
   function abrirNovoContatoImport(i){abrirNovoContato();novoContatoImport=i;}
-  function abrirNovaCat(lancId){
-    novoCatLanc=(typeof lancId==='number')?lancId:null;novoCatImport=null;
-    const grupos='<option value="adef">A definir (classifica depois)</option>'+Object.entries(GRUPOS).filter(([k])=>k!=='neutra'&&k!=='adef').map(([k,g])=>`<option value="${k}">${g.nome}</option>`).join('');
+  function abrirNovaCat(lancId,selDestino){
+    novoCatLanc=(typeof lancId==='number')?lancId:null;novoCatImport=null;_novaCatSel=selDestino||null;
+    const grupos=grupoOptions('fixo');
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
-      <h3>+ Nova categoria</h3><p>Se não souber o grupo do DRE, deixe "A definir".</p>
+      <h3>+ Nova categoria</h3><p>Na dúvida, deixe em <b>Custo Fixo</b>: depois é fácil mudar em Gestão → Categorias.</p>
       <span class="qlabel">Nome</span><input id="ncNome" class="maiusc" placeholder="Ex: Frete" autofocus>
       <span class="qlabel">Grupo no DRE</span><select id="ncGrupo">${grupos}</select><div id="ncErr"></div>
       <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" onclick="salvarNovaCat()">Cadastrar</button></div></div></div>`;
@@ -2893,13 +2879,17 @@
     const {data,error}=await sb.from('categorias').insert({..._modNovo(),loja_id:null,nome,grupo}).select().single();
     if(error){document.getElementById('ncErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
     CATS.push(data);
+    if(_novaCatSel){const alvo=_novaCatSel;_novaCatSel=null;fecharModal();
+      document.querySelectorAll('select[id^="ensC"]').forEach(sel=>{const v=sel.value;sel.insertAdjacentHTML('beforeend',`<option value="${data.id}">${_remEsc(data.nome)}</option>`);sel.value=v;});
+      const sel=document.getElementById(alvo);if(sel)sel.value=String(data.id);
+      toast('Categoria criada e escolhida.','ok');return;}
     if(novoCatImport!=null){const idx=novoCatImport;novoCatImport=null;IMPORT[idx].catId=data.id;fecharModal();toast('Categoria criada e aplicada!','ok');_keepY=window.scrollY;render();return;}
     if(novoCatLanc){const lid=novoCatLanc;novoCatLanc=null;fecharModal();toast('Categoria criada e aplicada!','ok');await mudarCampoLanc(lid,'categoria_id',data.id);_keepY=window.scrollY;render();return;}
     fecharModal();toast('Categoria criada!','ok');render();
     setTimeout(()=>{const s=document.getElementById('qCat');if(s)s.value=data.id;},60);
   }
-  function abrirNovoContato(lancId){
-    novoContatoLanc=(typeof lancId==='number')?lancId:null;novoContatoImport=null;
+  function abrirNovoContato(lancId,selDestino){
+    novoContatoLanc=(typeof lancId==='number')?lancId:null;novoContatoImport=null;_novoCtSel=selDestino||null;
     document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal">
       <h3>+ Novo contato</h3><p>Empresa (fornecedor) ou funcionário.</p>
       <span class="qlabel">Nome</span><input id="nctNome" class="maiusc" placeholder="Ex: Ultra, ou Maria" autofocus>
@@ -2913,6 +2903,10 @@
     const {data,error}=await sb.from('contatos').insert({..._modNovo(),loja_id:null,nome,tipo}).select().single();
     if(error){document.getElementById('nctErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
     CONTATOS.push(data);
+    if(_novoCtSel){const alvo=_novoCtSel;_novoCtSel=null;fecharModal();
+      document.querySelectorAll('select[id^="ensK"]').forEach(sel=>{const v=sel.value;sel.insertAdjacentHTML('beforeend',`<option value="${data.id}">${_remEsc(data.nome)}</option>`);sel.value=v;});
+      const sel=document.getElementById(alvo);if(sel)sel.value=String(data.id);
+      toast('Contato criado e escolhido.','ok');return;}
     if(novoContatoImport!=null){const idx=novoContatoImport;novoContatoImport=null;IMPORT[idx].contatoId=data.id;fecharModal();toast('Contato criado e aplicado!','ok');_keepY=window.scrollY;render();return;}
     if(novoContatoLanc){const lid=novoContatoLanc;novoContatoLanc=null;fecharModal();toast('Contato criado e aplicado!','ok');await mudarCampoLanc(lid,'contato_id',data.id);_keepY=window.scrollY;render();return;}
     fecharModal();toast('Contato criado!','ok');render();
@@ -2923,8 +2917,7 @@
   async function abrirNovaCatEdit(){
     const nome=prompt('Nome da nova categoria:');
     if(!nome||!nome.trim())return;
-    const grupo=prompt('Grupo no DRE? Digite: rec (Receita), cmv (CMV), imp (Imposto), fixo (Custo Fixo), nop (Não Op.) ou deixe vazio para "A definir"','adef')||'adef';
-    const g=['rec','cmv','imp','fixo','nop'].includes(grupo)?grupo:'adef';
+    const g='fixo'; // v2.9.106: entra como Custo Fixo; muda depois em Gestão → Categorias
     const {data,error}=await sb.from('categorias').insert({..._modNovo(),loja_id:null,nome:nome.trim().toUpperCase(),grupo:g}).select().single();
     if(error){toast('Erro: '+error.message,'erro');return;}
     CATS.push(data);
