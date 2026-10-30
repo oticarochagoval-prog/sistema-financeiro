@@ -326,15 +326,15 @@ Clicando na caixinha, o sistema abre aquela loja naquele mês, em Lançamentos. 
 
 No menu **Dia a dia → Ensinar a Íris** fica tudo o que ela ainda não sabe, de junho/2026 para cá, **agrupado pela descrição** e começando pelo que mais repete. **Cada empresa tem a sua lista** (Óticas Rocha, Diversas, Grupo de compras, GV Lentes, Casa), porque as categorias e os contatos são de cada uma: troque a empresa lá em cima para ver a fila dela. Ao lado do nome, no menu, aparecem dois números: o **vermelho** é quanto falta de **categoria** (é o que atrapalha o fechamento) e o **roxo** é quanto já tem categoria e só falta o **contato**.
 
-Em cada linha da lista você vê a descrição, quantos lançamentos são, o valor somado e em quais lojas. Aí:
+Em cada linha da lista você vê a descrição, quantos lançamentos são, o valor somado e em quais lojas. A categoria e o contato são escolhidos na mesma caixinha de busca de Lançamentos: clique e digite um pedaço do nome (por exemplo "mid" acha MIDIA), as setas sobem e descem e o Enter confirma. Aí:
 
 - **Ensinar** — ela preenche todas essas linhas e **guarda a regra**: na próxima vez que aparecer, em qualquer loja, já vem preenchido. Logo depois ela ainda passa de novo em tudo e aproveita o que aprendeu nos parecidos.
 - **só estas** — preenche só as linhas desse grupo, sem guardar regra (para coisa que não vai se repetir).
-- **ver** — mostra qual palavra a Íris vai guardar.
+- **ver** — abre a lista dos lançamentos daquele grupo: dia, loja, descrição, valor e como está hoje (sem categoria, ou com qual). Em cima aparecem as categorias e os contatos que já foram usados nessas linhas. É por aqui que você confere se é tudo a mesma coisa antes de ensinar.
 
 Se faltar a categoria ou o contato certo, use **+ criar categoria** ou **+ criar contato** ali mesmo, sem sair da tela — abre a mesma janelinha de Lançamentos.
 
-No grupo do DRE, cada opção vem explicada: Custo Fixo (aluguel, luz, salário, o dia a dia), CMV (lente, armação, óculos), Receita (dinheiro de venda), Imposto (o Simples) e Não Operacional (empréstimo e retirada de sócios). **Custo Fixo já vem escolhido**, que é o mais comum; se errar, muda depois em Gestão → Categorias.
+No grupo do DRE, cada opção vem explicada: Custo Fixo (aluguel, luz, salário, o dia a dia), CMV (lente, armação, óculos), Receita (dinheiro de venda), Simples Nacional (só o Simples; os outros impostos ficam em Custo Fixo) e Não Operacional (empréstimo e retirada de sócios). **Custo Fixo já vem escolhido**, que é o mais comum; se errar, muda depois em Gestão → Categorias.
 
 Entrada (dinheiro que chega) não pede contato, então não aparece na fila por isso — só entra se estiver sem categoria.
 
@@ -1036,6 +1036,9 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 | 30/10/2026 | 2.9.104 | Ensinar a Íris: cada empresa tem a sua fila (as categorias são de cada uma), botões "+ criar categoria" e "+ criar contato" na própria tela, e entrada sem contato não entra mais na fila. A linha gêmea do retroativo também passou a valer só dentro da mesma empresa | — |
 | 30/10/2026 | 2.9.105 | No retroativo, a categoria que a Íris preenche respeita a empresa da loja (a Casa tem as categorias dela) — não entra mais categoria de uma empresa em lançamento de outra | — |
 | 30/10/2026 | 2.9.106 | Criar categoria ficou mais fácil: a mesma janelinha de Lançamentos também em Ensinar a Íris, cada grupo do DRE explicado em português (Custo Fixo = aluguel, luz, salário…), Custo Fixo já escolhido e sem a opção "A definir" | — |
+| 30/10/2026 | 2.9.107 | O botão "ver" em Ensinar a Íris agora mostra os lançamentos do grupo (dia, loja, descrição, valor e como está hoje) e as categorias/contatos que já foram usados neles, para conferir antes de ensinar | — |
+| 30/10/2026 | 2.9.108 | Em Ensinar a Íris, a categoria e o contato passaram a usar a mesma caixinha de busca de Lançamentos (digita um pedaço do nome e acha), no lugar da listona que travava e cortava os nomes no fim | — |
+| 30/10/2026 | 2.9.109 | No DRE, a linha "Imposto" passou a se chamar **Simples Nacional** (é só o Simples; os outros impostos ficam em Custo Fixo). Limpeza das categorias repetidas feita no banco: DESPESAS, IMPOSTOS, MIDIA, ÓCULOS / FZ GRIFES e SISTEMAS viraram uma só cada, "Imposto (Simples)" virou SIMPLES NACIONAL, e os contatos DAIANA, EMPRESTIMOS e ISABELLA foram juntados | — |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |

@@ -297,10 +297,10 @@
   let filtroConta=''; // '' = todas · 'banco' · 'caixinha' (lançamentos antigos da aba Caixinha)
 
   const BRL=n=>(n<0?'-':'')+'R$ '+Math.abs(Number(n)).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Imposto',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
+  const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.106', APP_DATA='30/10/2026';
+  const APP_VERSAO='2.9.109', APP_DATA='30/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -2173,7 +2173,8 @@
       const fechado=new Set((fe||[]).filter(f=>f.fechado).map(f=>f.loja_id+'|'+f.mes));
       const livre=l=>!l.conferido_por&&!fechado.has(l.loja_id+'|'+parseInt(String(l.data).slice(5,7),10));
       const G={};
-      ls.forEach(l=>{const b=_ensChave(l);if(b.length<4)return;const g=G[b]=G[b]||{base:b,semCat:[],semCt:[],cats:{},cts:{},lojas:new Set(),ex:l};
+      ls.forEach(l=>{const b=_ensChave(l);if(b.length<4)return;const g=G[b]=G[b]||{base:b,semCat:[],semCt:[],cats:{},cts:{},lojas:new Set(),ex:l,todos:[]};
+        if(g.todos.length<120)g.todos.push({id:l.id,loja:l.loja_id,data:l.data,desc:String(l.descricao||'').slice(0,70),valor:Number(l.valor)||0,cat:l.categoria_id,ct:l.contato_id,cf:!!l.conferido_por});
         if(l.categoria_id){g.cats[l.categoria_id]=(g.cats[l.categoria_id]||0)+1;if(l.contato_id)g.cts[l.contato_id]=(g.cts[l.contato_id]||0)+1;}
         if(!livre(l))return;
         if(!l.categoria_id){g.semCat.push(l);g.lojas.add(l.loja_id);}
@@ -2186,7 +2187,7 @@
         return {base:g.base,desc:String(g.ex.descricao||'').slice(0,90),n:g.semCat.length+g.semCt.length,
           nCat:g.semCat.length,nCt:g.semCt.length,lojas:[...g.lojas],
           valor:[...g.semCat,...g.semCt].reduce((t,l)=>t+Math.abs(Number(l.valor)||0),0),
-          ids:{cat:g.semCat.map(l=>l.id),ct:g.semCt.map(l=>l.id)},
+          ids:{cat:g.semCat.map(l=>l.id),ct:g.semCt.map(l=>l.id)},linhas:g.todos,catsN:cats.map(([id,n])=>({id:Number(id),n})),ctsN:cts.map(([id,n])=>({id:Number(id),n})),
           catSug:cats.length?Number(cats[0][0]):null,catOutras:cats.length>1,
           ctSug:cts.length?Number(cts[0][0]):null,
           catDoCt:g.semCt.length?g.semCt[0].categoria_id:null};
@@ -2215,8 +2216,8 @@
       <td style="padding:8px"><div style="font-weight:700">${_remEsc(g.desc)}</div>
         <div class="mut" style="font-size:11px">${g.n} lançamento(s) · ${BRL(g.valor)} · ${g.lojas.slice(0,4).map(L).join(', ')}${g.lojas.length>4?` +${g.lojas.length-4}`:''}${g.nCat&&g.nCt?` · ${g.nCat} sem categoria, ${g.nCt} só sem contato`:g.nCt?' · só falta o contato':''}</div>
         ${g.catSug&&g.catOutras?`<div class="mut" style="font-size:11px;color:var(--amber)">já apareceu com mais de uma categoria — confira</div>`:''}</td>
-      <td style="padding:8px;min-width:190px">${g.nCat?`<select id="ensC${i}" style="width:100%;font-size:12px"><option value="">— escolha a categoria —</option>${opcoesCat(g.catSug)}</select><span onclick="ensNovaCat(${i})" style="cursor:pointer;font-size:11px;color:var(--blue)">+ criar categoria</span>`:`<span class="mut" style="font-size:12px">${_remEsc(cat(g.catDoCt))}</span>`}</td>
-      <td style="padding:8px;min-width:170px"><select id="ensK${i}" style="width:100%;font-size:12px"><option value="">— sem contato —</option>${opcoesCt(g.ctSug)}</select><span onclick="ensNovoCt(${i})" style="cursor:pointer;font-size:11px;color:var(--blue)">+ criar contato</span></td>
+      <td style="padding:8px;min-width:200px">${g.nCat?`<div class="combo" id="ensC${i}" data-v="${g.catSug||''}" onclick="ensComboCat(this,${i})" title="Clique e digite para buscar"><span>${g.catSug?_remEsc(cat(g.catSug)):'— escolha a categoria —'}</span></div><span onclick="ensNovaCat(${i})" style="cursor:pointer;font-size:11px;color:var(--blue)">+ criar categoria</span>`:`<span class="mut" style="font-size:12px">${_remEsc(cat(g.catDoCt))}</span>`}</td>
+      <td style="padding:8px;min-width:180px"><div class="combo" id="ensK${i}" data-v="${g.ctSug||''}" onclick="ensComboCt(this,${i})" title="Clique e digite para buscar"><span>${g.ctSug?_remEsc(ct(g.ctSug)):'— sem contato —'}</span></div><span onclick="ensNovoCt(${i})" style="cursor:pointer;font-size:11px;color:var(--blue)">+ criar contato</span></td>
       <td style="padding:8px;white-space:nowrap;text-align:right">
         <button class="btn" style="padding:4px 11px;font-size:12px;font-weight:800" onclick="ensAplicar(${i},true)" title="Preenche estas linhas e a Íris guarda a regra para as próximas">Ensinar</button>
         <button class="btn ghost" style="padding:4px 9px;font-size:12px" onclick="ensAplicar(${i},false)" title="Preenche só estas linhas, sem guardar regra">só estas</button>
@@ -2233,18 +2234,41 @@
         ${ENS.grupos.length>80?`<div class="mut" style="font-size:12px;margin-top:8px">Mostrando os 80 maiores de ${ENS.grupos.length}. Resolvendo esses, os outros aparecem.</div>`:''}</div>`
       :'<div class="card empty"><div class="big">🎉</div><div>Nada esperando. A Íris está em dia.</div></div>'}`;}
   // v2.9.104: criar categoria ou contato na hora, sem sair da tela
+  const _ensNomeCat=v=>{const c=CATS.find(x=>x.id==v);return c?c.nome:'';};
+  const _ensNomeCt=v=>{const c=CONTATOS.find(x=>x.id==v);return c?c.nome:'';};
+  function ensPoe(id,v,vazio){const el=document.getElementById(id);if(!el)return;el.dataset.v=v||'';
+    const nome=id.startsWith('ensC')?_ensNomeCat(v):_ensNomeCt(v);
+    const sp=el.querySelector('span');if(sp)sp.textContent=v&&nome?nome:vazio;}
+  function ensComboCat(el,i){_abrirCombo(el,_comboItemsCat(),v=>ensPoe('ensC'+i,v,'— escolha a categoria —'));}
+  function ensComboCt(el,i){_abrirCombo(el,_comboItemsCont(),v=>ensPoe('ensK'+i,v,'— sem contato —'));}
   function ensNovaCat(i){abrirNovaCat(null,'ensC'+i);}
   function ensNovoCt(i){abrirNovoContato(null,'ensK'+i);}
   function ensVer(i){const g=ENS.grupos[i];if(!g)return;
-    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(560px,94vw)">
-      <h3 style="margin:0 0 6px">${_remEsc(g.desc)}</h3>
-      <p class="mut" style="font-size:12.5px;margin:0 0 10px">${g.n} lançamento(s) · ${BRL(g.valor)} · ${g.lojas.map(x=>lojaNomeCurto(x)).join(', ')}</p>
-      <p style="font-size:12.5px">A Íris vai guardar a palavra <b>${_remEsc(_ensPalavra(g.base))}</b>. Quando aparecer isso de novo, em qualquer loja, ela já preenche.</p>
-      <div style="display:flex;justify-content:flex-end"><button class="btn ghost" onclick="fecharModal()">Fechar</button></div></div></div>`;}
+    const cat=id=>{const c=CATS.find(x=>x.id==id);return c?c.nome:'—';};
+    const ct=id=>{const c=CONTATOS.find(x=>x.id==id);return c?c.nome:'';};
+    const L=(g.linhas||[]).slice().sort((a,b)=>(a.loja-b.loja)||String(a.data).localeCompare(String(b.data)));
+    const jaTem=g.catsN&&g.catsN.length?`<div style="margin:6px 0 10px;font-size:12.5px">Categorias que já usaram nessas linhas: ${g.catsN.map(c=>`<span class="catchip">${_remEsc(cat(c.id))} · ${c.n}</span>`).join(' ')}${g.ctsN&&g.ctsN.length?`<div class="mut" style="margin-top:4px">Contatos: ${g.ctsN.map(c=>_remEsc(ct(c.id))+' ('+c.n+')').join(' · ')}</div>`:''}</div>`:'';
+    const linhas=L.map(x=>`<tr style="border-top:1px solid var(--line)${x.cf?';opacity:.55':''}">
+      <td style="padding:4px 6px;white-space:nowrap" class="mut">${isoParaBR(x.data).slice(0,5)}</td>
+      <td style="padding:4px 6px;white-space:nowrap">${_remEsc(lojaNomeCurto(x.loja))}</td>
+      <td style="padding:4px 6px">${_remEsc(x.desc)}</td>
+      <td style="padding:4px 6px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:${x.valor<0?'var(--red)':'var(--green)'}">${BRL(Math.abs(x.valor))}</td>
+      <td style="padding:4px 6px;font-size:11.5px" class="mut">${x.cat?_remEsc(cat(x.cat)):'<b style="color:var(--red)">sem categoria</b>'}${x.ct?' · '+_remEsc(ct(x.ct)):''}${x.cf?' · conferido':''}</td></tr>`).join('');
+    const tot=L.reduce((t,x)=>t+Math.abs(x.valor),0);
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(760px,96vw)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><h3 style="margin:0">${_remEsc(g.desc)}</h3><button class="delx" style="font-size:18px" onclick="fecharModal()">✕</button></div>
+      <p class="mut" style="font-size:12.5px;margin:4px 0 2px">${g.n} esperando de ${L.length} lançamento(s) ${L.length>=120?'(mostrando os 120 primeiros) ':''}· ${BRL(tot)} · ${g.lojas.map(x=>lojaNomeCurto(x)).join(', ')}</p>
+      ${jaTem}
+      <div style="max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:10px">
+        <table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="background:var(--panel-2)"><th style="text-align:left;padding:5px 6px">Dia</th><th style="text-align:left;padding:5px 6px">Loja</th><th style="text-align:left;padding:5px 6px">Descrição</th><th style="text-align:right;padding:5px 6px">Valor</th><th style="text-align:left;padding:5px 6px">Hoje está</th></tr></thead>
+        <tbody>${linhas||'<tr><td colspan="5" class="mut" style="padding:10px">—</td></tr>'}</tbody></table></div>
+      <p class="mut" style="font-size:12px;margin:8px 0 0">Se clicar em <b>Ensinar</b>, a Íris guarda a palavra <b>${_remEsc(_ensPalavra(g.base))}</b> e usa em qualquer loja desta empresa. Se essas linhas não forem todas a mesma coisa, use <b>só estas</b>.</p>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn ghost" onclick="fecharModal()">Fechar</button></div></div></div>`;}
   async function ensAplicar(i,ensinar){const g=ENS.grupos[i];if(!g||!podeEditar())return;
     const selC=document.getElementById('ensC'+i),selK=document.getElementById('ensK'+i);
-    const catId=g.nCat?Number((selC||{}).value||0):Number(g.catDoCt||0);
-    const ctId=Number((selK||{}).value||0)||null;
+    const _v=el=>Number((el&&(el.dataset?el.dataset.v:el.value))||0);
+    const catId=g.nCat?_v(selC):Number(g.catDoCt||0);
+    const ctId=_v(selK)||null;
     if(g.nCat&&!catId){toast('Escolha a categoria desse grupo.','erro');return;}
     if(!g.nCat&&!ctId){toast('Escolha o contato desse grupo.','erro');return;}
     const lin=document.getElementById('ensL'+i);if(lin)lin.style.opacity='.5';
@@ -2858,7 +2882,7 @@
 
   let novoCatLanc=null,novoContatoLanc=null,novoCatImport=null,novoContatoImport=null;
   // v2.9.106: grupo do DRE escrito do jeito que a equipe entende; Custo Fixo já vem escolhido
-  const GRUPO_AJUDA={fixo:'Custo Fixo — aluguel, luz, salário, o dia a dia da loja',cmv:'CMV — lente, armação, óculos (a mercadoria)',rec:'Receita — dinheiro que entra de venda',imp:'Imposto — o Simples e outros impostos',nop:'Não Operacional — empréstimo e retirada de sócios'};
+  const GRUPO_AJUDA={fixo:'Custo Fixo — aluguel, luz, salário, o dia a dia da loja',cmv:'CMV — lente, armação, óculos (a mercadoria)',rec:'Receita — dinheiro que entra de venda',imp:'Simples Nacional — só o Simples (os outros impostos vão em Custo Fixo)',nop:'Não Operacional — empréstimo e retirada de sócios'};
   const grupoOptions=sel=>['fixo','cmv','rec','imp','nop'].map(k=>`<option value="${k}"${(sel||'fixo')===k?' selected':''}>${GRUPO_AJUDA[k]}</option>`).join('');
   let _novaCatSel=null,_novoCtSel=null;
   function abrirNovaCatImport(i){abrirNovaCat();novoCatImport=i;}
@@ -2880,9 +2904,7 @@
     if(error){document.getElementById('ncErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
     CATS.push(data);
     if(_novaCatSel){const alvo=_novaCatSel;_novaCatSel=null;fecharModal();
-      document.querySelectorAll('select[id^="ensC"]').forEach(sel=>{const v=sel.value;sel.insertAdjacentHTML('beforeend',`<option value="${data.id}">${_remEsc(data.nome)}</option>`);sel.value=v;});
-      const sel=document.getElementById(alvo);if(sel)sel.value=String(data.id);
-      toast('Categoria criada e escolhida.','ok');return;}
+      ensPoe(alvo,data.id,'— escolha a categoria —');toast('Categoria criada e escolhida.','ok');return;}
     if(novoCatImport!=null){const idx=novoCatImport;novoCatImport=null;IMPORT[idx].catId=data.id;fecharModal();toast('Categoria criada e aplicada!','ok');_keepY=window.scrollY;render();return;}
     if(novoCatLanc){const lid=novoCatLanc;novoCatLanc=null;fecharModal();toast('Categoria criada e aplicada!','ok');await mudarCampoLanc(lid,'categoria_id',data.id);_keepY=window.scrollY;render();return;}
     fecharModal();toast('Categoria criada!','ok');render();
@@ -2904,9 +2926,7 @@
     if(error){document.getElementById('nctErr').innerHTML='<div class="err">'+error.message+'</div>';return;}
     CONTATOS.push(data);
     if(_novoCtSel){const alvo=_novoCtSel;_novoCtSel=null;fecharModal();
-      document.querySelectorAll('select[id^="ensK"]').forEach(sel=>{const v=sel.value;sel.insertAdjacentHTML('beforeend',`<option value="${data.id}">${_remEsc(data.nome)}</option>`);sel.value=v;});
-      const sel=document.getElementById(alvo);if(sel)sel.value=String(data.id);
-      toast('Contato criado e escolhido.','ok');return;}
+      ensPoe(alvo,data.id,'— sem contato —');toast('Contato criado e escolhido.','ok');return;}
     if(novoContatoImport!=null){const idx=novoContatoImport;novoContatoImport=null;IMPORT[idx].contatoId=data.id;fecharModal();toast('Contato criado e aplicado!','ok');_keepY=window.scrollY;render();return;}
     if(novoContatoLanc){const lid=novoContatoLanc;novoContatoLanc=null;fecharModal();toast('Contato criado e aplicado!','ok');await mudarCampoLanc(lid,'contato_id',data.id);_keepY=window.scrollY;render();return;}
     fecharModal();toast('Contato criado!','ok');render();
@@ -3033,7 +3053,7 @@
     const EXPLICA={
       rec:'O que a loja recebe: vendas, cartão, à vista, prestações.',
       cmv:'Custo da mercadoria vendida: óculos, lentes, laboratório, surfaçagem.',
-      imp:'Impostos: Simples Nacional, tributos.',
+      imp:'Só o Simples Nacional. Os outros impostos vão em Custo Fixo.',
       fixo:'Custos pra loja funcionar: aluguel, folha, energia, internet, mídia.',
       nop:'Fora da operação do dia a dia: retirada dos sócios, empréstimos, compra de equipamento.',
       neutra:'Não entra no resultado nem no DRE: transferência entre lojas, depósito da gaveta, A estornar e estorno recebido. Fica só para o saldo do banco bater (não exclua).',
@@ -3194,7 +3214,7 @@
       ${lineG('','Receita','rec','rec')}
       ${lineG('−','Custo da Mercadoria (CMV)','cmv','cmv',{sign:-1})}
       ${line('=','Margem de Contribuição','margem',{cls:''})}
-      ${lineG('−','Imposto','imp','imp',{sign:-1})}
+      ${lineG('−','Simples Nacional','imp','imp',{sign:-1})}
       ${lineG('−','Custo Fixo','fixo','fixo',{sign:-1})}
       ${line('=','Resultado Operacional','resultOp')}
       ${lineG('−','Não Operacional','nop','nop',{sign:-1})}
@@ -5063,7 +5083,7 @@
         ${linhaDRE('Receita',gr.rec,'')}
         ${linhaDRE('Custo Mercadoria (CMV)',-gr.cmv,'−')}
         ${linhaDRE('Margem de Contribuição',margem,'=',true)}
-        ${linhaDRE('Imposto',-gr.imp,'−')}
+        ${linhaDRE('Simples Nacional',-gr.imp,'−')}
         ${linhaDRE('Custo Fixo',-gr.fixo,'−')}
         ${linhaDRE('Resultado Operacional',resultOp,'=',true)}
         ${linhaDRE('Não Operacional',-gr.nop,'−')}
