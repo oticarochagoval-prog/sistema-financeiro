@@ -298,6 +298,16 @@ Em toda tela do Fluxo tem o botão **Pergunte à Íris**, no canto de baixo à d
 
 Em **Gestão → Dúvidas da equipe** fica o que a Íris não soube responder, com quem perguntou, quando e em qual tela. O botão **responder** manda a resposta para a pessoa e ensina a Íris: na próxima vez ela já responde sozinha.
 
+### Ela avisa dos pagamentos (v2.9.114)
+
+A Íris não abre mais sozinha só para dar oi. Na primeira vez que a pessoa entra, sim — para saber que ela existe. Depois disso, ela só abre quando tem **lembrete de pagamento**, e no máximo **uma vez por dia**:
+
+- **Faltam X dias** para vencer. O X é o que estiver escrito no campo **Avisar** do item no Caixinha (ex.: "5 dias antes"); sem isso, 5 dias.
+- **Hoje é dia de pagar.**
+- **Passou do dia e não está marcado como pago.**
+
+Os lembretes saem dos pagamentos de todo mês do Caixinha (aluguéis, blogueiras e o cartão CONTAS PRA NÃO ESQUECER). Quando o pagamento é marcado lá, ou sai no extrato, ela para de lembrar sozinha. Por enquanto só Lucas e Heloísa recebem esses avisos.
+
 ## A Íris volta e aplica de junho para cá (v2.9.99)
 
 Antes, o que a Íris aprendia só valia dali para frente. Agora, toda vez que ela aprende alguma coisa — e também no robô das 6h — ela **volta em tudo de junho/2026 para cá** e preenche o que ainda está sem categoria ou sem contato.
@@ -364,6 +374,22 @@ No quadro da Íris, no Dashboard, os números agora mostram a evolução do mês
 
 É por aí que se acompanha se ela está chegando nos 90%.
 
+## O Fluxo marca sozinho no FaturaFácil (v2.9.115)
+
+O Fluxo já lia o FaturaFácil para montar a Agenda. Agora ele também **escreve lá**: quando o pagamento de uma fatura sai no extrato do Sicoob, ele marca a fatura como paga no FaturaFácil, com o selo **achado no extrato**, dizendo a conta e o dia. Isso roda sozinho na importação do extrato e no robô das 6h.
+
+Como ele acha o pagamento no meio de dezenas de linhas parecidas:
+
+- **Só olha do dia do vencimento em diante**, até 50 dias depois (tem cartão que ela paga virando o mês).
+- **Descarta transferência entre contas:** toda saída que tem uma entrada igual em outra conta nos dias vizinhos é dinheiro trocando de lugar, não pagamento. É assim que ele acerta o Black 412619, em que três linhas do mesmo valor caem no mesmo dia.
+- **Descarta a tentativa que o banco estornou** e soma as parcelas seguintes: na ROCHA 5 de outubro, a de 22/10 foi recusada e o pago foi 27/10 R$ 160,14 + 29/10 R$ 2.542,64.
+- **Se o pagamento saiu antes do vencimento**, ele não marca sozinho — avisa para conferir.
+- **Se tiver mais de uma linha possível**, também não marca: vira aviso.
+
+**O ressarcimento (o botão Estornar):** quando a Diversas devolve o dinheiro para a loja que pagou — a linha "CARTAO TAL TOTAL · DE DVL" no extrato —, ele marca o estorno com a data e o valor do banco. Aqui ele **aceita diferença de centavos**, porque às vezes o valor que volta não é exatamente o da fatura.
+
+**O que ele nunca faz:** mexer em fatura que a Heloísa já marcou à mão. Ele só escreve onde está em branco, ou onde foi ele mesmo que marcou antes.
+
 ## Pagamentos de todo mês do Caixinha (v2.9.103)
 
 Na aba **Senhas** do Caixinha existem os cartões de "pagamento todo mês": **PIX BLOGUEIRAS** e **PIX ALUGUÉIS LOJAS**. Agora o Fluxo marca esses pagamentos como pagos sozinho, quando eles saem no extrato do banco — do mesmo jeito que já faz com as Lentes e com o Banco Caixinha.
@@ -389,6 +415,23 @@ Esses mesmos pagamentos (aluguéis e blogueiras) **aparecem sozinhos na Agenda d
 - **Pago:** fica verde quando o pagamento sai no extrato (ou quando alguém marca no Caixinha).
 - **Some sozinho:** se a Heloísa excluir o item no Caixinha, ou escrever **NÃO PAGAR** / **NÃO FAZER** na Obs, ele sai da Agenda e do total. Nada é mudado no Caixinha por aqui.
 - As blogueiras "DIVIDIDAS LOJAS GV" e os aluguéis do "ESCRITÓRIO" entram na conta da Diversas.
+
+### Faturas de cartão e contas de valor que muda (v2.9.113)
+
+No Caixinha existe o cartão **CONTAS PRA NÃO ESQUECER**, com itens como **FATURA CARTÃO ROCHA 5**, em que o valor muda todo mês (fica em branco lá). O Fluxo trata esses assim:
+
+- Procura **só na conta da própria loja** (pela seção do item, ou pelo nome quando a seção não diz).
+- **Soma no mês** todas as despesas que batem com o `apelido_extrato` do item e **desconta as estornadas** — se saiu −2.702,78 e voltou +2.702,78 de estorno, as duas se anulam; sobrando −160,14 e −2.542,64, o pago do mês é **2.702,78**.
+- Só marca pago se sobrar valor maior que zero, e grava esse total. No histórico do Caixinha fica a lista das datas e valores usados (ex.: *12/10 160,14 + 13/10 2.542,64 = R$ 2.702,78*).
+- "DÉB.CONV.DEMAIS EMPRESAS" é texto genérico e aparece em outras contas para outras cobranças: só vale quando está no `apelido_extrato` daquele item **e** na conta daquela loja.
+
+**Dia do vencimento:** se a Heloísa escrever o dia no Caixinha, é esse que vale. Sem ele, usa o dia em que pagou no mês passado; sem histórico, aluguel e conta caem no dia 10 e blogueira no dia 5 (marcado *dia estimado*).
+
+**Valor na Agenda:** enquanto o mês não foi pago, aparece o valor do mês passado, marcado *valor do mês passado*. Na primeira vez, aparece sem número (*valor só na hora que pagar*) e não soma no "A pagar no mês".
+
+**Pago à mão sem valor:** se alguém já marcou pago no Caixinha e não pôs o valor, o Fluxo só completa o valor pelo extrato — não cria outro registro e não muda quem marcou.
+
+**Fatura repetida:** se a mesma fatura já vem do FaturaFácil naquele mês e loja, a linha do Caixinha não aparece de novo — fica só a do FaturaFácil, que é mais detalhada.
 
 ## Ranking e produtividade no Dashboard (v2.9.25)
 
@@ -458,6 +501,10 @@ Existem **dois empréstimos diferentes**, e cada um mora num lugar:
 > ⛔ **Nunca** exclua nem lance o pagamento do escritório como despesa da loja que pagou. Categoria A ESTORNAR + botão. Excluir some com o dinheiro da escada do banco; lançar como despesa infla o custo da loja errada.
 
 > 💡 Tudo sobre a ligação com o Caixinha (Banco, Lentes, Caixa) está no **Manual do Caixinha** — botão 🔗? na barra de cima.
+
+**O complemento do banco (v2.9.116).** No app do Sicoob, "DÉB.CONV.DEMAIS EMPRESAS" vem com um complemento que diz o que é. Antes isso se perdia e as linhas ficavam todas iguais. Agora a descrição fica "DÉB.CONV.DEMAIS EMPRESAS · MASTERCARD", e o `apelido_extrato` do item pode ser só **MASTERCARD** — aí a fatura do cartão nunca casa com o consórcio do mesmo dia. Só entra complemento que é nome (MASTERCARD, CONSÓRCIOS, ZURICH MIN, SICOOB SEG); código de documento (IOF/1-6, LC-202609) fica de fora. Vale para o que for importado daqui para frente.
+
+**Valor fixo casa só com aquele valor (v2.9.116).** Se o item tem valor escrito no Caixinha, o Fluxo só olha linhas daquele valor exato. É o caso do SEGURO da conta 412619: R$ 132,24 todo dia 1º, enquanto na mesma conta cai outro débito de R$ 150,66 com o mesmo texto a cada três meses — esse nunca entra no item do seguro.
 
 ### "o que é?" e o Banco Caixinha (v2.9.34)
 
@@ -1063,6 +1110,10 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 | 30/10/2026 | 2.9.110 | **Dá para desfazer.** Quando a Íris preenche sozinha, agora fica marcado quem fez: o que ela aprendeu de junho para cá e o que você ensinou na tela "Ensinar a Íris". Logo depois de ensinar aparece uma faixa verde com o botão **Desfazer**, que tira a categoria e o contato daquelas linhas e apaga a regra. E em Lançamentos tem o botão **"Revisar o que a Íris preencheu"**, que mostra só o que ela preencheu e ninguém conferiu ainda | — |
 | 30/10/2026 | 2.9.111 | **Correção importante em Ensinar a Íris.** Depois do primeiro Ensinar, a lista recarregava por trás (a Íris passava de novo em tudo e reordenava os grupos) e os botões **ver / Ensinar / só estas** das outras linhas passavam a apontar para o grupo errado — o "ver" abria outra descrição e o Ensinar podia guardar a regra com a palavra errada. Agora os botões ficam presos às linhas que estão na tela, e quando a lista muda por trás aparece um aviso amarelo com o botão **Atualizar a lista** | Conferir as regras ensinadas em 30/10 (ver conversa) |
 | 30/10/2026 | 2.9.112 | **Aluguéis e blogueiras do Caixinha na Agenda.** Os pagamentos de todo mês da aba Senhas do Caixinha (PIX ALUGUÉIS LOJAS e PIX BLOGUEIRAS) agora aparecem sozinhos na Agenda de pagamentos de cada loja e no "A pagar no mês" do Dashboard, com a etiqueta verde **Caixinha**. O dia é o dia em que pagou no mês anterior (pelo extrato); sem histórico, aluguel cai no dia 10 e blogueira no dia 5 (marcado "dia estimado"). Fica pago quando o pagamento sai no extrato. O que a Heloísa tirar do Caixinha, ou marcar "NÃO PAGAR" na Obs, some daqui sozinho | — |
+| 30/10/2026 | 2.9.113 | **Faturas de cartão e dia de vencimento do Caixinha.** O Fluxo passou a usar o dia escrito no Caixinha (`vence_dia`) e a gravar quanto foi pago. Entram também os itens de valor que muda todo mês (cartão "CONTAS PRA NÃO ESQUECER", ex.: FATURA CARTÃO ROCHA 5): ele soma no mês as linhas do apelido na conta daquela loja, desconta as estornadas e só marca pago se sobrar valor. Se alguém já tinha marcado pago à mão sem valor, ele só completa o valor — não cria outro registro | — |
+| 30/10/2026 | 2.9.114 | **A Íris só abre sozinha quando tem o que falar.** Antes ela dava "oi" na primeira vez que a pessoa entrava. Agora, passada essa primeira vez, ela só abre quando tem lembrete de pagamento: faltam X dias (o que estiver no campo Avisar do item do Caixinha, ou 5), é hoje, ou passou do dia e não está marcado como pago. No máximo uma vez por dia, e só para quem vê tudo (Lucas e Heloísa) | — |
+| 30/10/2026 | 2.9.115 | **O Fluxo marca sozinho no FaturaFácil.** Todo dia (na importação do extrato e no robô das 6h) ele procura no banco o pagamento de cada fatura e o ressarcimento da Diversas, e marca lá com o selo "achado no extrato", dizendo qual conta pagou e em que dia. Só procura do dia do vencimento em diante, até 50 dias depois; descarta transferência entre contas e a tentativa que o banco estornou; soma várias parcelas quando a fatura saiu picada; e no ressarcimento aceita diferença de centavos. Nunca mexe no que a Heloísa marcou à mão | — |
+| 30/10/2026 | 2.9.116 | **O complemento do Sicoob entra na descrição.** No app do banco as linhas "DÉB.CONV.DEMAIS EMPRESAS" têm um complemento (MASTERCARD, CONSÓRCIOS, ZURICH MIN…) que vinha sendo perdido. Agora ele entra junto: "DÉB.CONV.DEMAIS EMPRESAS · MASTERCARD". Assim a fatura do cartão da loja casa só com a linha do cartão e nunca com a do consórcio. Códigos (IOF/1-6, LC-202609) continuam de fora. Também: item do Caixinha com valor fixo só casa com linha daquele valor exato, e a conta 412619 passou a ser reconhecida | Vale para o que for importado daqui para frente |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |

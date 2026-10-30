@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.112', APP_DATA='30/10/2026';
+  const APP_VERSAO='2.9.116', APP_DATA='30/10/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -388,6 +388,7 @@
     if(!ROBO)try{irisChatLigar();}catch(e){console.warn('iris chat',e);}
     setTimeout(()=>{lentesSincronizar(true).catch(e=>console.error('lentes',e));},800);
     setTimeout(()=>{snSincronizar(true).catch(e=>console.warn('senhas',e));},2200); // v2.9.103
+    setTimeout(()=>{ffPagosSinc(true).catch(e=>console.warn('faturafacil',e));},5200); // v2.9.115: marca no FaturaFácil o que saiu no extrato
     if(ROBO&&PERFIL&&PERFIL.nome==='ÍRIS')setTimeout(()=>roboRodar(),1500);
     setTimeout(()=>{sicoobCarregar().catch(e=>console.error('sicoob',e));},1200);
   }
@@ -2377,9 +2378,47 @@
   const _irisOiChave=()=>'fluxo_iris_oi_'+((USER&&USER.id)||'x');
   function irisOiTexto(){const n=String(PERFIL.nome||'').split(' ')[0];const nome=n?n.charAt(0).toUpperCase()+n.slice(1).toLowerCase():'';
     return `Oi${nome?', '+nome:''}! Sou a Íris. Além de lançar o extrato todo dia de manhã, agora eu também estou aqui para te ajudar com o sistema.\n\nQualquer dúvida — "pra que serve isso?", "isso mudou alguma coisa pro meu trabalho?", "como eu faço tal coisa?" — é só me chamar aqui neste botão, a qualquer hora. Nenhuma pergunta é boba, pode perguntar à vontade.\n\nSe eu não souber, eu anoto e peço pro Lucas, e te aviso quando ele responder.`;}
+  // ---- v2.9.114: a Íris só abre sozinha quando tem o que falar ----
+  // Antes ela dava "oi" na primeira vez e pronto. Agora, passada a primeira vez, ela só abre
+  // quando tem lembrete de pagamento do Caixinha: faltam X dias, é hoje, ou passou e não foi pago.
+  const _irisAvisoChave=()=>'fluxo_iris_aviso_'+((USER&&USER.id)||'x');
+  // quantos dias antes avisar: o que estiver escrito no item do Caixinha (campo "Avisar"), senão 5
+  function _snAvisoDias(it){const c=(it&&it.campos||[]).find(x=>/AVIS|LEMBR/i.test(String(x.k||'')));
+    const n=c?Number(String(c.v||'').replace(/\D/g,'')):0;return n>0&&n<=30?n:5;}
+  async function irisAvisos(){
+    if(!USER||!['tudo'].includes(String(PERFIL.iris_escopo||(ehDono()?'tudo':'dia_a_dia'))))return [];
+    const hoje=_hojeLocal();const de=addDias(hoje,-25),ate=addDias(hoje,15);
+    let itens=[];try{itens=await snItensAgenda(null,de,ate);}catch(e){return [];}
+    const out=[];
+    const _ate=(a,b)=>Math.round((new Date(a+'T00:00:00')-new Date(b+'T00:00:00'))/86400000);
+    itens.forEach(i=>{if(i.status==='pago')return;
+      const dias=_ate(i.venc,hoje);                           // >0 ainda vai vencer, 0 hoje, <0 passou
+      const avisar=i.snAvisar||5;
+      const loja=lojaNomeCurto(i.loja_id)||('loja '+i.loja_id);
+      const nome=String(i.desc||'').replace(/^CONTA DO MÊS · /,'').replace(/^(ALUGUEL|BLOGUEIRA) · /,(m,g)=>g.charAt(0)+g.slice(1).toLowerCase()+' ');
+      const quanto=i.valor>0.004?' · '+BRL(i.valor)+(i.snVaria?' (foi o do mês passado)':''):'';
+      if(dias<0)out.push({urg:2,ord:dias,txt:`**${nome}** (${loja}) venceu dia ${isoParaBR(i.venc).slice(0,5)} e ainda não está marcado como pago${quanto}.`});
+      else if(dias===0)out.push({urg:2,ord:0,txt:`Hoje é dia de pagar **${nome}** (${loja})${quanto}.`});
+      else if(dias<=avisar)out.push({urg:1,ord:dias,txt:`Faltam ${dias} dia${dias>1?'s':''} para **${nome}** (${loja}) — vence ${isoParaBR(i.venc).slice(0,5)}${quanto}.`});});
+    return out.sort((a,b)=>b.urg-a.urg||a.ord-b.ord).slice(0,12);}
+  function irisAvisoTexto(L){const n=String(PERFIL.nome||'').split(' ')[0];const nome=n?n.charAt(0).toUpperCase()+n.slice(1).toLowerCase():'';
+    const venc=L.filter(a=>a.urg===2),perto=L.filter(a=>a.urg===1);
+    let t=`Oi${nome?', '+nome:''}! Passando para lembrar do que está chegando:`;
+    if(venc.length)t+='\n\n'+venc.map(a=>'• '+a.txt).join('\n');
+    if(perto.length)t+='\n\n'+perto.map(a=>'• '+a.txt).join('\n');
+    t+='\n\nIsso vem do cartão de pagamentos de todo mês do Caixinha. Quando marcar pago lá — ou quando o pagamento sair no extrato — eu paro de lembrar sozinha.';
+    return t;}
   function irisChatLigar(){if(!document.getElementById('irisRoot')){const d=document.createElement('div');d.id='irisRoot';document.body.appendChild(d);}
     if(irisChatPode()){let vi=false;try{vi=!!localStorage.getItem(_irisOiChave());}catch(e){}
-      if(!vi){IRISC.oi=true;setTimeout(()=>{if(!IRISC.aberto){IRISC.msgs=[{quem:'iris',texto:irisOiTexto()}];IRISC.oi=false;try{localStorage.setItem(_irisOiChave(),'1');}catch(e){}irisChatAbrir();}},2500);}}
+      if(!vi){IRISC.oi=true;setTimeout(()=>{if(!IRISC.aberto){IRISC.msgs=[{quem:'iris',texto:irisOiTexto()}];IRISC.oi=false;try{localStorage.setItem(_irisOiChave(),'1');}catch(e){}irisChatAbrir();}},2500);}
+      else{// já conhece a Íris: ela só abre se tiver lembrete, e no máximo uma vez por dia
+        setTimeout(async()=>{try{
+          const hoje=_hojeLocal();let ja='';try{ja=localStorage.getItem(_irisAvisoChave())||'';}catch(e){}
+          if(ja===hoje||IRISC.aberto)return;
+          const L=await irisAvisos();if(!L.length||IRISC.aberto)return;
+          try{localStorage.setItem(_irisAvisoChave(),hoje);}catch(e){}
+          IRISC.msgs=[{quem:'iris',texto:irisAvisoTexto(L)}];irisChatAbrir();
+        }catch(e){}},4000);}}
     irisChatRender();}
   function irisChatAbrir(){IRISC.aberto=true;IRISC.lista=false;IRISC.oi=false;try{localStorage.setItem(_irisOiChave(),'1');}catch(e){}if(!IRISC.msgs.length)IRISC.msgs=[{quem:'iris',texto:`Oi${PERFIL.nome?', '+_remEsc(String(PERFIL.nome).split(' ')[0].charAt(0)+String(PERFIL.nome).split(' ')[0].slice(1).toLowerCase()):''}! Pode perguntar qualquer coisa do Fluxo, sem medo de pergunta boba.`}];
     irisChatEnsinos();irisChatRender();setTimeout(()=>{const i=document.getElementById('irisInput');if(i)i.focus();},60);}
@@ -4045,6 +4084,7 @@
         return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)">
           <div style="flex:1;min-width:240px"><b>${c.apelido}</b> <span class="mut">· conta ${String(c.numero_conta).replace(/(\d)(\d)$/,'$1-$2')}</span><div class="mut" style="font-size:12px;margin-top:3px">${st}</div>${cv?`<div class="mut" style="font-size:12px;margin-top:2px${d!=null&&d<=30?';color:var(--amber);font-weight:700':''}">${cv}</div>`:''}</div>
           <span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button class="btn" onclick="puxarSicoob(${c.id})">Puxar do Sicoob</button><span class="mut" style="font-size:12px">ou um mês antigo:</span><select id="sicMes${c.id}" class="qin" style="width:auto;height:34px;font-size:12.5px">${sicoobMesesOpcoes().map(ym=>`<option value="${ym}">${MESES_NOME[Number(ym.slice(5,7))-1]} ${ym.slice(0,4)}${Number(ym.slice(0,4))===ANO_FIXO&&mesFechadoISO(ym+'-15')?' (fechado)':''}</option>`).join('')}</select><button class="btn ghost" onclick="puxarSicoobMes(${c.id})">Puxar o mês</button></span></div>`;}).join('')}</div>`;}
+  const _sicComp=d=>{const t=String(d||'').trim();return t.length>=4&&!/[0-9]/.test(t)&&/^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ /-]+$/.test(t)&&!/^pix$/i.test(t);};
   async function sicoobMontarOFX(c,mesYm){ // v2.9.25: mesmo OFX para o botão e para a entrada automática · v2.9.54: mesYm = um mês fechado inteiro
     // começa um pouco antes do último dia já importado (o que já entrou aparece como "já lançado")
     let de=c.data_inicio||'2026-10-01';
@@ -4060,7 +4100,10 @@
     const ini=d8(rows[0].data),fim=d8(rows[rows.length-1].data);
     let ofx=`OFXHEADER:100\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>\n<DTSTART>${ini}\n<DTEND>${fim}\n`;
     rows.forEach(r=>{const v=Number(r.valor),dt=d8(r.data),cc=Math.round(Math.abs(v)*100),k=dt+'|'+cc;seq[k]=(seq[k]||0)+1;
-      ofx+=`<STMTTRN>\n<TRNTYPE>${v<0?'DEBIT':'CREDIT'}\n<DTPOSTED>${dt}\n<TRNAMT>${v.toFixed(2)}\n<FITID>${dt}${cc}${seq[k]}\n<MEMO>${limpa(r.historico)}\n<NAME>${limpa(r.complemento)}\n</STMTTRN>\n`;});
+      // v2.9.116: no app do Sicoob o "DÉB.CONV.DEMAIS EMPRESAS" tem um complemento (MASTERCARD, CONSÓRCIOS…) que vem no campo documento.
+      // Quando é nome de verdade (só letras), juntamos na descrição; códigos tipo IOF/1-6 ou LC-202609 ficam de fora.
+      const nome=limpa(r.complemento)||(_sicComp(r.documento)?limpa(r.historico)+' · '+limpa(r.documento):'');
+      ofx+=`<STMTTRN>\n<TRNTYPE>${v<0?'DEBIT':'CREDIT'}\n<DTPOSTED>${dt}\n<TRNAMT>${v.toFixed(2)}\n<FITID>${dt}${cc}${seq[k]}\n<MEMO>${limpa(r.historico)}\n<NAME>${nome}\n</STMTTRN>\n`;});
     ofx+='</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>';
     return {ofx,rows};}
   // ---- v2.9.54: puxar um mês antigo (junho em diante) do que o robô já guardou — um mês e uma loja por vez ----
@@ -4474,6 +4517,7 @@
     let parcN=0;try{parcN=await agendaParcelasDoExtrato(lancadasAgora);}catch(e){}
     try{parcN+=await irisParcelasFaltando([lojaAtual]);}catch(e){} // v2.9.95: parcela escrita na descrição
     try{await snSincronizar(true);}catch(e){} // v2.9.103: pagamentos de todo mês do Caixinha
+    try{await ffPagosSinc(true);}catch(e){} // v2.9.115: faturas pagas e ressarcidas no FaturaFácil
     let depN=0,depErr='';if(IMPORT_DEP.length){const rr=await cxMarcarDepositos(IMPORT_DEP);depN=rr.n;depErr=rr.err;
       const ag=new Date().toISOString();for(const {m,r} of IMPORT_DEP){const lid=r._lancId||(r.jaExiste&&r.jaExiste.id);if(lid&&m.conf){try{await sb.from('lancamentos').update({ref_externa:'cxd:'+m.id,conferido_por:'CAIXINHA',conferido_em:ag}).eq('id',lid);}catch(e){}}} // v2.9.29
       IMPORT_DEP=[];}
@@ -4609,7 +4653,9 @@
     // v2.9.92: espelho do FaturaFácil — a parte de cada loja por cartão (só na semana do vencimento; não acumula)
     try{(await ffItensAgenda(lojaIds,de,ate)).forEach(x=>itens.push(x));}catch(e){console.warn('FaturaFácil:',e&&e.message);AG_FF_ERRO=(e&&e.message)||String(e);}
     // v2.9.112: espelho dos pagamentos de todo mês do Caixinha (aluguéis e blogueiras)
-    try{(await snItensAgenda(lojaIds,de,ate)).forEach(x=>itens.push(x));}catch(e){console.warn('Caixinha senhas:',e&&e.message);}
+    try{const ff=new Set(itens.filter(x=>x.tipo==='ff').map(x=>x.loja_id+'|'+x.venc.slice(0,7)));
+      (await snItensAgenda(lojaIds,de,ate)).forEach(x=>{if(/FATURA|CART/.test(x.desc)&&ff.has(x.loja_id+'|'+x.venc.slice(0,7)))return; // a mesma fatura já veio do FaturaFácil
+        itens.push(x);});}catch(e){console.warn('Caixinha senhas:',e&&e.message);}
     itens.forEach(it=>{it.dia=agDiaUtil(it.venc);});
     return itens;
   }
@@ -4649,7 +4695,7 @@
         <span>${nomeDia[new Date(dia+'T00:00:00').getDay()]} ${isoParaBR(dia).slice(0,5)}${fim.length?` <span class="mut" style="font-weight:400">(${fim.map(v=>({6:'sáb',0:'dom'})[new Date(v+'T00:00:00').getDay()]+' '+v.slice(8,10)).join(' e ')})</span>`:''}</span>
         <span style="color:${f>0.004?'var(--red)':'var(--green)'}">${f>0.004?'falta '+BRL(f):'tudo pago ✓'}</span></div>
         ${L.map(i=>`<div onclick="agAbrirItem('${i.k}')" style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border-bottom:1px solid var(--line);font-size:12.5px;${i.status==='pago'?'text-decoration:line-through;opacity:.6;':''}" onmouseover="this.style.background='var(--panel-2)'" onmouseout="this.style.background=''">
-          <span>${lojaTag(i)}${i.desc}${i.parcela?' '+i.parcela:''}${i.tipo==='ff'?' <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:rgba(124,92,255,.5);color:#7c5cff">FaturaFácil</span>':i.tipo==='senha'?' <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:rgba(31,157,107,.5);color:var(--green)">Caixinha</span>'+(i.cat&&/estimado/.test(i.cat)?' <span class="mut" style="font-size:10.5px">· dia estimado</span>':''):i.cat?` <span class="mut">· ${_remEsc(i.cat)}</span>`:''}</span>
+          <span>${lojaTag(i)}${i.desc}${i.parcela?' '+i.parcela:''}${i.tipo==='ff'?' <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:rgba(124,92,255,.5);color:#7c5cff">FaturaFácil</span>':i.tipo==='senha'?' <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:rgba(31,157,107,.5);color:var(--green)">Caixinha</span>'+(i.snSemValor?' <span class="mut" style="font-size:10.5px">· valor só na hora que pagar</span>':i.snVaria?' <span class="mut" style="font-size:10.5px">· valor do mês passado</span>':'')+(i.cat&&/estimado/.test(i.cat)?' <span class="mut" style="font-size:10.5px">· dia estimado</span>':''):i.cat?` <span class="mut">· ${_remEsc(i.cat)}</span>`:''}</span>
           <b style="white-space:nowrap;font-variant-numeric:tabular-nums">${i.ffPagoParte&&i.status!=='pago'?'<span class="mut" style="font-weight:600">falta </span>'+BRL(falta(i)).replace('R$ ',''):BRL(i.valor).replace('R$ ','')} <span class="mut" style="font-weight:400">›</span></b></div>`).join('')}</div>`;}).join('')||'<div class="mut" style="padding:20px;text-align:center">Nada para pagar neste mês.</div>';
     // v2.9.95: resumo por semana (sábado a sexta, igual à Agenda) — clique vai até a semana na lista
     const semanas=[];for(let w=agInicioSemana(de);w<=ate;w=addDias(w,7)){const fimW=addDias(w,6);const L=itens.filter(i=>i.dia>=w&&i.dia<=fimW);
@@ -5105,7 +5151,10 @@
     // v2.9.93: partes dos cartões do FaturaFácil que vencem no mês e ainda não saíram do extrato (o que já foi pago em parte sai da conta)
     try{(await ffItensAgenda([lojaAtual],mIni,mFim)).forEach(i=>{if(i.status==='pago')return;const v=Math.round((i.valor-(i.ffPagoParte||0))*100)/100;if(v>0.004){i.dia=agDiaUtil(i.venc);somaAp('Cartões (FaturaFácil)',v,i.venc,{desc:i.desc,it:i});}});}catch(e){}
     // v2.9.112: aluguéis e blogueiras do Caixinha que ainda não saíram no extrato
-    try{(await snItensAgenda([lojaAtual],mIni,mFim)).forEach(i=>{if(i.status==='pago')return;i.dia=agDiaUtil(i.venc);somaAp(/^ALUGUEL/.test(i.desc)?'Aluguéis (Caixinha)':'Blogueiras (Caixinha)',i.valor,i.venc,{desc:i.desc,it:i});});}catch(e){}
+    try{const _ffm=new Set(_apagarDash.filter(x=>x.it&&x.it.tipo==='ff').map(x=>x.it.loja_id+'|'+String(x.venc).slice(0,7)));
+      (await snItensAgenda([lojaAtual],mIni,mFim)).forEach(i=>{if(i.status==='pago'||!(i.valor>0.004))return;
+        if(/FATURA|CART/.test(i.desc)&&_ffm.has(i.loja_id+'|'+i.venc.slice(0,7)))return;
+        i.dia=agDiaUtil(i.venc);somaAp(/^ALUGUEL/.test(i.desc)?'Aluguéis (Caixinha)':/^BLOGUEIRA/.test(i.desc)?'Blogueiras (Caixinha)':'Contas do mês (Caixinha)',i.valor,i.venc,{desc:i.desc,it:i});});}catch(e){}
     const apagarLista=Object.entries(apagarCat).map(([nome,valor])=>({nome,valor})).sort((a,b)=>b.valor-a.valor);
     const mesNome=MESES_NOME[mesSel];
 
@@ -6153,6 +6202,114 @@
       <div style="margin-top:10px"><a href="${CX_LINK}" target="_blank" rel="noopener" style="color:var(--blue);font-size:12.5px">Abrir no Caixinha ↗</a><span class="mut" style="font-size:11.5px;margin-left:10px">Para corrigir qualquer número, corrija lá — aqui atualiza sozinho.</span></div>
     </div>`;
   }
+  // ---- v2.9.115: MARCAR SOZINHO NO FATURAFÁCIL O QUE SAIU NO EXTRATO ----
+  // Acha no extrato do Sicoob o PAGAMENTO da fatura e o RESSARCIMENTO da Diversas ("estorno" na tela do FaturaFácil),
+  // e grava lá com o selo de achado no extrato. Regras combinadas com o Lucas:
+  //  · só procura do dia do vencimento em diante (antes disso não existe pagamento de fatura);
+  //  · até 50 dias depois, porque alguns cartões ela paga virando o mês;
+  //  · descarta transferência interna (saída que tem entrada igual em outra conta nos dias vizinhos);
+  //  · soma várias linhas no mesmo mês e anula as que o banco estornou;
+  //  · no ressarcimento aceita diferença de centavos;
+  //  · nunca passa por cima do que a Heloísa marcou à mão.
+  let FFP={em:0,rodando:false,pagou:0,estornou:0,erro:'',sug:[]};
+  const FFP_ROT=id=>({12:'GV',13:'FZ',14:'VR',15:'Casa',16:'DVL',19:'412619'}[id]||('R'+id));
+  const _ffpTxt=t=>String(t||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+  const _ffpBRL=v=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const _ffpDia=(iso)=>isoParaBR(iso).slice(0,5);
+  // venc da fatura: no FaturaFácil o mês é 0-based
+  function _ffpVenc(ano,mes,dia){const m=mes+1,ult=Number(_fimMes(`${ano}-${String(m).padStart(2,'0')}`).slice(8,10));
+    return `${ano}-${String(m).padStart(2,'0')}-${String(Math.min(dia||10,ult)).padStart(2,'0')}`;}
+  async function ffPagosSinc(silencioso){
+    if(FFP.rodando)return FFP;const c=ctCli();if(!c)return FFP;const s=c.schema('faturafacil');
+    FFP.rodando=true;FFP.erro='';FFP.sug=[];let nPag=0,nEst=0;
+    try{
+      const hoje=_hojeLocal();
+      const {data:cart,error:e1}=await s.from('cartoes').select('id,nome,dia_vencimento,arquivado');if(e1)throw e1;
+      const cDe={};(cart||[]).forEach(x=>cDe[x.id]=x);
+      const {data:pgs,error:e2}=await s.from('pagamentos_fatura')
+        .select('cartao_id,mes,ano,valor_fatura,valor_pago,pago_em,pago_por,origem,estornado,partes_pag').eq('ano',ANO_FIXO);if(e2)throw e2;
+      const alvos=(pgs||[]).filter(p=>{const k=cDe[p.cartao_id];if(!k)return false;
+        const venc=_ffpVenc(p.ano,p.mes,k.dia_vencimento);if(venc>hoje)return false;              // ainda nem venceu
+        const faltaPag=!p.pago_em&&Number(p.valor_fatura||0)>0.5;
+        const faltaEst=!p.estornado&&Number(p.valor_pago||0)>0.5;
+        return faltaPag||faltaEst;});
+      if(!alvos.length){FFP.em=Date.now();return FFP;}
+      const de=alvos.reduce((m,p)=>{const v=_ffpVenc(p.ano,p.mes,cDe[p.cartao_id].dia_vencimento);return v<m?v:m;},'9999-99-99');
+      const ate=addDias(hoje,1);
+      let ls=[];for(let o=0;;o+=1000){const {data,error}=await sb.from('lancamentos').select('id,loja_id,data,descricao,valor,ref_externa').gte('data',addDias(de,-5)).lte('data',ate).order('id').range(o,o+999);if(error)throw error;ls=ls.concat(data||[]);if(!data||data.length<1000)break;}
+      const usados=new Set(ls.filter(l=>String(l.ref_externa||'').startsWith('ffp:')).map(l=>String(l.ref_externa)));
+      // transferência interna: saída que tem entrada igual em OUTRA conta em ±3 dias
+      const _ehTransf=l=>Number(l.valor)<0&&ls.some(e=>Number(e.valor)>0&&Math.abs(Number(e.valor)-Math.abs(Number(l.valor)))<0.02
+        &&e.loja_id!==l.loja_id&&Math.abs(_dias(e.data,l.data))<=3);
+      // o banco tentou e devolveu: tem um crédito "ESTORNO" do mesmo valor, na mesma conta, nos dias vizinhos
+      const _ehEstornada=l=>ls.some(e=>Number(e.valor)>0&&e.loja_id===l.loja_id&&/ESTORNO/.test(_ffpTxt(e.descricao))
+        &&Math.abs(Number(e.valor)-Math.abs(Number(l.valor)))<0.02&&Math.abs(_dias(e.data,l.data))<=5);
+      for(const p of alvos){
+        const k=cDe[p.cartao_id],venc=_ffpVenc(p.ano,p.mes,k.dia_vencimento),lim=addDias(venc,50);
+        const ref=`ffp:${p.cartao_id}:${p.ano}-${p.mes}`;
+        // ---------- 1) PAGAMENTO ----------
+        if(!p.pago_em&&Number(p.valor_fatura||0)>0.5&&!usados.has(ref)){
+          const alvo=Math.abs(Number(p.valor_fatura));
+          const cands=ls.filter(l=>Number(l.valor)<0&&l.data>=venc&&l.data<=lim&&!String(l.ref_externa||'').startsWith('ffp:')
+            &&!/CARTAO .*TOTAL/.test(_ffpTxt(l.descricao))&&Math.abs(Math.abs(Number(l.valor))-alvo)<0.02&&!_ehTransf(l)&&!_ehEstornada(l));
+          if(cands.length===1){
+            const l=cands[0];
+            const ok=await _ffpGravaPag(s,p,[l],alvo,FFP_ROT(l.loja_id),`banco: ${FFP_ROT(l.loja_id)} ${_ffpDia(l.data)} ${_ffpBRL(alvo)}`);
+            if(ok){nPag++;usados.add(ref);await _ffpCarimba([l],ref);p.valor_pago=alvo;p.pago_por=FFP_ROT(l.loja_id);}
+          }else if(cands.length>1){FFP.sug.push({cartao:k.nome,mes:p.mes,porque:`${cands.length} linhas de ${_ffpBRL(alvo)} no extrato`});}
+          else{
+            // soma de várias linhas na conta da loja, descontando o que o banco estornou (caso ROCHA 5)
+            const porLoja={};ls.filter(l=>Number(l.valor)<0&&l.data>=venc&&l.data<=lim&&!String(l.ref_externa||'').startsWith('ffp:')
+              &&/DEBITO AUTOMATICO|DEB CONV/.test(_ffpTxt(l.descricao))).forEach(l=>{(porLoja[l.loja_id]=porLoja[l.loja_id]||[]).push(l);});
+            for(const lj of Object.keys(porLoja)){
+              let lin=porLoja[lj].slice().sort((a,b)=>String(a.data).localeCompare(String(b.data)));
+              const anul=new Set();
+              ls.filter(e=>Number(e.valor)>0&&String(e.loja_id)===String(lj)&&/ESTORNO/.test(_ffpTxt(e.descricao))&&e.data>=venc&&e.data<=lim)
+                .forEach(e=>{const al=lin.find(d=>!anul.has(d.id)&&Math.abs(Math.abs(Number(d.valor))-Number(e.valor))<0.02);if(al)anul.add(al.id);});
+              lin=lin.filter(d=>!anul.has(d.id));
+              const soma=Math.round(lin.reduce((t,d)=>t+Math.abs(Number(d.valor)),0)*100)/100;
+              if(lin.length&&Math.abs(soma-alvo)<0.02){
+                const txt=lin.map(x=>`${_ffpDia(x.data)} ${_ffpBRL(Math.abs(Number(x.valor)))}`).join(' + ');
+                const ok=await _ffpGravaPag(s,p,lin,alvo,FFP_ROT(lin[0].loja_id),`banco: ${FFP_ROT(lin[0].loja_id)} ${txt} = ${_ffpBRL(alvo)}`);
+                if(ok){nPag++;usados.add(ref);await _ffpCarimba(lin,ref);p.valor_pago=alvo;p.pago_por=FFP_ROT(lin[0].loja_id);}
+                break;}}
+            // saiu antes do vencimento? não marco sozinho, mas aviso para a Heloísa conferir
+            if(!p.valor_pago){const antes=ls.filter(l=>Number(l.valor)<0&&l.data<venc&&l.data>=addDias(venc,-10)
+                &&!/CARTAO .*TOTAL/.test(_ffpTxt(l.descricao))&&Math.abs(Math.abs(Number(l.valor))-alvo)<0.02&&!_ehTransf(l)&&!_ehEstornada(l));
+              if(antes.length===1)FFP.sug.push({cartao:k.nome,mes:p.mes,porque:`achei ${_ffpBRL(alvo)} na ${FFP_ROT(antes[0].loja_id)} em ${_ffpDia(antes[0].data)}, antes do vencimento (${_ffpDia(venc)}) — confira`});}
+          }
+        }
+        // ---------- 2) RESSARCIMENTO DA DIVERSAS (o "Estornar" da tela) ----------
+        if(!p.estornado&&Number(p.valor_pago||0)>0.5){
+          const vp=Math.abs(Number(p.valor_pago)),tol=Math.max(1,vp*0.005);
+          const quem=String(p.pago_por||'').toUpperCase();
+          const ent=ls.filter(l=>Number(l.valor)>0&&l.data>=venc&&l.data<=addDias(venc,60)
+            &&/CARTAO .*TOTAL/.test(_ffpTxt(l.descricao))&&/\bDE \w+/.test(_ffpTxt(l.descricao))
+            &&Math.abs(Number(l.valor)-vp)<=tol
+            &&(!quem||!FF_LOJA[quem]||Number(l.loja_id)===FF_LOJA[quem]));
+          if(ent.length===1){
+            const e=ent[0],vr=Math.round(Number(e.valor)*100)/100;
+            const parte=[{id:'ext'+String(e.id),obs:'achado no extrato (Fluxo)',por:'DVL',data:e.data,quem:'EXTRATO SICOOB',valor:vr}];
+            const {error}=await s.from('pagamentos_fatura').update({estornado:true,estornado_em:e.data,valor_estornado:vr,
+              quem_estornou:'EXTRATO SICOOB',partes_est:parte,atualizado_em:new Date().toISOString()})
+              .eq('cartao_id',p.cartao_id).eq('ano',p.ano).eq('mes',p.mes).eq('estornado',false);
+            if(!error)nEst++;else FFP.erro=error.message;
+          }else if(ent.length>1)FFP.sug.push({cartao:k.nome,mes:p.mes,porque:`${ent.length} ressarcimentos parecidos`});
+        }
+      }
+      FFP.pagou=nPag;FFP.estornou=nEst;FFP.em=Date.now();_ffCacheEm=0;
+      if(!silencioso&&(nPag||nEst))toast(`FaturaFácil: ${nPag} fatura(s) marcada(s) como paga(s) e ${nEst} ressarcimento(s) pelo extrato.`,'ok');
+      return FFP;
+    }catch(e){FFP.erro=(e&&e.message)||String(e);if(!silencioso)toast('FaturaFácil: '+FFP.erro,'erro');return FFP;}
+    finally{FFP.rodando=false;}}
+  async function _ffpGravaPag(s,p,linhas,valor,rot,texto){
+    const partes=linhas.map(l=>({id:'ext'+String(l.id),obs:'achado no extrato (Fluxo)',por:rot,data:l.data,quem:'EXTRATO SICOOB',valor:Math.round(Math.abs(Number(l.valor))*100)/100}));
+    const {error}=await s.from('pagamentos_fatura').update({valor_pago:valor,pago_em:linhas[linhas.length-1].data,pago_por:rot,
+      quem_pagou:'EXTRATO SICOOB',origem:'extrato',extrato_ref:texto,partes_pag:partes,atualizado_em:new Date().toISOString()})
+      .eq('cartao_id',p.cartao_id).eq('ano',p.ano).eq('mes',p.mes).is('pago_em',null);
+    if(error){FFP.erro=error.message;return false;}return true;}
+  async function _ffpCarimba(linhas,ref){for(const l of linhas){try{await sb.from('lancamentos').update({ref_externa:ref}).eq('id',l.id).is('ref_externa',null);}catch(e){}}}
+
   // ---- v2.9.103: ESPELHO DOS PAGAMENTOS MENSAIS DO CAIXINHA (aba Senhas) ----
   // Lê os cartões "pagamento todo mês" (PIX BLOGUEIRAS e PIX ALUGUÉIS LOJAS) e marca pago sozinho
   // quando o pagamento aparece no extrato do banco. Nunca desmarca, nunca mexe em pago feito à mão.
@@ -6160,9 +6317,11 @@
   const _snTxt=t=>String(t||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
   const _snMes=iso=>String(iso||'').slice(0,7);
   // secao do Caixinha → conta do Fluxo
-  function _snLoja(secao){const u=_snTxt(secao);const m=u.match(/\bROCHA (\d{1,2})\b/);if(m){const L=LOJAS.find(l=>l.id===Number(m[1]));return L?L.id:null;}
-    if(/GV/.test(u)&&/OPTICAL|SURFACAGEM|LENTES/.test(u)&&!/DIVIDIDAS/.test(u))return 12;
-    if(/ESCRITORIO|DIVIDIDAS/.test(u))return 16;return null;}
+  function _snLoja(secao,titulo){const ver=t=>{const u=_snTxt(t);const m=u.match(/\bROCHA (\d{1,2})\b/);if(m){const L=LOJAS.find(l=>l.id===Number(m[1]));return L?L.id:null;}
+      if(/GV/.test(u)&&/OPTICAL|SURFACAGEM|LENTES/.test(u)&&!/DIVIDIDAS/.test(u))return 12;
+      if(/412619/.test(u))return 19;
+      if(/ESCRITORIO|DIVIDIDAS/.test(u))return 16;return null;};
+    return ver(secao)||(titulo?ver(titulo):null);} // v2.9.113: "FATURA CARTÃO ROCHA 3" acha a loja pelo título quando a seção não diz
   // distância de 1 letra: SUELEN = SUELLEN, VILACA = VILAÇA
   function _snPerto(a,b){if(a===b)return true;if(Math.abs(a.length-b.length)>1||a.length<5||b.length<5)return false;
     let i=0,j=0,d=0;while(i<a.length&&j<b.length){if(a[i]===b[j]){i++;j++;continue;}if(++d>1)return false;
@@ -6195,9 +6354,13 @@
     const vivos=(cart||[]).filter(x=>!x.excluido);const titDe={};vivos.forEach(x=>titDe[x.id]=x.titulo);
     const ids=vivos.map(x=>x.id);let itens=[];
     if(ids.length){const {data,error}=await c.from('senhas_itens').select('*').in('cartao_id',ids);if(error)throw error;
-      itens=(data||[]).filter(x=>!x.excluido).map(x=>Object.assign({},x,{cartao:titDe[x.cartao_id]||'',lojaFluxo:_snLoja(x.secao)}));}
-    let pagos=[];if(ids.length){const {data,error}=await c.from('senhas_pagos').select('item_id,mes,pago_em,extrato_ref,extrato_lanc_id').in('mes',meses);if(error)throw error;pagos=data||[];}
+      itens=(data||[]).filter(x=>!x.excluido).map(x=>Object.assign({},x,{cartao:titDe[x.cartao_id]||'',lojaFluxo:_snLoja(x.secao,x.titulo)}));}
+    let pagos=[];if(ids.length){const {data,error}=await c.from('senhas_pagos').select('item_id,mes,pago_em,extrato_ref,extrato_lanc_id,valor').in('mes',meses);if(error)throw error;pagos=data||[];}
     _snCache={em:Date.now(),itens,pagos,meses:chave};return _snCache;}
+  // v2.9.113: três tipos de item — aluguel, blogueira (valor fixo) e valor que muda todo mês (fatura de cartão etc.)
+  const _snClasse=it=>/ALUGU/i.test(it.cartao||'')?'aluguel':/BLOGUEIR/i.test(it.cartao||'')?'blogueira':'conta';
+  const _snFixo=it=>Math.abs(Number(it&&it.valor)||0);   // >0 = valor fixo todo mês; 0 = muda todo mês (fatura de cartão)
+  const _snRotulo=c=>c==='aluguel'?'ALUGUEL':c==='blogueira'?'BLOGUEIRA':'CONTA DO MÊS';
   // data em que um pagamento do Caixinha saiu: pelo extrato (dd/mm no começo do texto) ou pela hora em que marcaram
   function _snDataPago(p,mes){const m=String(p.extrato_ref||'').match(/^(\d{2})\/(\d{2})/);if(m){const y=Number(mes.slice(0,4))+(Number(m[2])<Number(mes.slice(5,7))-6?1:0);return `${y}-${m[2]}-${m[1]}`;}
     return p.pago_em?String(p.pago_em).slice(0,10):null;}
@@ -6208,16 +6371,29 @@
     const out=[];
     D.itens.forEach(it=>{if(!it.lojaFluxo||(lojaIds&&!lojaIds.includes(it.lojaFluxo)))return;
       if(/NAO PAGAR|NAO FAZER/.test(_snObs(it)))return;
-      const aluguel=/ALUGU/i.test(it.cartao),valor=Math.abs(Number(it.valor)||0);if(!valor)return;
+      const cls=_snClasse(it),fixo=_snFixo(it);
       meses.forEach(m=>{if(it.desde&&m<it.desde)return;
         const p=pg[it.id+'|'+m],ant=pg[it.id+'|'+mesShift(m,-1)];
-        let dia=aluguel?10:5;const dAnt=ant?_snDataPago(ant,mesShift(m,-1)):null;if(dAnt)dia=Number(dAnt.slice(8,10))||dia;
+        // dia: o que a Heloísa escreveu no Caixinha manda; senão o dia em que pagou no mês passado; senão 10 (aluguel/conta) ou 5 (blogueira)
+        const dAnt=ant?_snDataPago(ant,mesShift(m,-1)):null;
+        let dia=Number(it.vence_dia)||0,estimado=false;
+        if(!dia){dia=dAnt?Number(dAnt.slice(8,10)):0;if(!dia){dia=cls==='blogueira'?5:10;estimado=true;}}
         const ult=Number(_fimMes(m).slice(8,10));const venc=`${m}-${String(Math.min(dia,ult)).padStart(2,'0')}`;
         if(venc<de||venc>ate)return;
-        out.push({k:'s'+it.id+m,tipo:'senha',loja_id:it.lojaFluxo,desc:`${aluguel?'ALUGUEL':'BLOGUEIRA'} · ${String(it.titulo||'').toUpperCase()}`,valor,venc,
+        // valor: o fixo do Caixinha; quando muda todo mês, o do próprio mês se já pagou, senão o do mês passado
+        const vPago=p&&Number(p.valor)?Math.abs(Number(p.valor)):0,vAnt=ant&&Number(ant.valor)?Math.abs(Number(ant.valor)):0;
+        const valor=fixo||vPago||vAnt||0,varia=!fixo;
+        out.push({k:'s'+it.id+m,snItemId:it.id,snAvisar:_snAvisoDias(it),tipo:'senha',loja_id:it.lojaFluxo,desc:`${_snRotulo(cls)} · ${String(it.titulo||'').toUpperCase()}`,valor,venc,
           status:p?'pago':'aberto',pagoEm:p?_snDataPago(p,m):null,pagoComo:p?(p.extrato_ref?'baixa pelo extrato (Caixinha)':'marcado no Caixinha'):null,
-          cat:(aluguel?'Aluguel':'Blogueira')+' (todo mês · Caixinha)'+(dAnt?'':' · dia estimado')});});});
+          snVaria:varia&&!vPago,snSemValor:varia&&!valor,
+          cat:(cls==='aluguel'?'Aluguel':cls==='blogueira'?'Blogueira':'Conta do mês')+' (todo mês · Caixinha)'+(estimado?' · dia estimado':'')+(varia&&!vPago?(valor?' · valor do mês passado':' · valor só na hora que pagar'):'')});});});
     return out;}
+  // valor e texto do que foi casado no extrato (uma linha, ou a soma de várias na fatura do cartão)
+  const _snValor=r=>Math.round((r.soma||Math.abs(Number(r.lanc.valor)))*100)/100;
+  function _snRefTexto(r){const L=r.usadas||[r.lanc];
+    if(L.length===1)return `${isoParaBR(L[0].data).slice(0,5)} · ${String(L[0].descricao||'').slice(0,60)} · ${BRL(Math.abs(Number(L[0].valor)))}`;
+    const partes=L.slice(0,12).map(x=>`${isoParaBR(x.data).slice(0,5)} ${BRL(Math.abs(Number(x.valor))).replace('R$ ','')}`);
+    return `${partes.join(' + ')}${L.length>12?` + mais ${L.length-12}`:''} = ${BRL(r.soma||0)}`;}
   async function snSincronizar(silencioso){
     if(SN.rodando)return SN;const c=cxClient();if(!c)return SN;
     if(!(await cxSessao())){SN.erro='nao_logado';return SN;}
@@ -6229,28 +6405,47 @@
       const titDe={};(cart||[]).forEach(x=>titDe[x.id]=x.titulo);
       const {data:itens,error:e2}=await c.from('senhas_itens').select('*').in('cartao_id',ids);
       if(e2)throw e2;
-      const its=(itens||[]).filter(x=>!x.excluido).map(x=>Object.assign({},x,{cartao:titDe[x.cartao_id]||'',lojaFluxo:_snLoja(x.secao)}));
+      const its=(itens||[]).filter(x=>!x.excluido).map(x=>Object.assign({},x,{cartao:titDe[x.cartao_id]||'',lojaFluxo:_snLoja(x.secao,x.titulo)}));
       SN.itens=its;
       const meses=[...new Set([`${ANO_FIXO}-${_mm(mesSel)}`,_hojeLocal().slice(0,7),mesShift(_hojeLocal().slice(0,7),-1)])].sort();
-      const {data:pg,error:e3}=await c.from('senhas_pagos').select('item_id,mes').in('mes',meses);
+      const {data:pg,error:e3}=await c.from('senhas_pagos').select('item_id,mes,valor,extrato_ref').in('mes',meses);
       if(e3)throw e3;
       SN.pagos=new Set((pg||[]).map(p=>p.item_id+'|'+p.mes));
-      // lançamentos do Fluxo nesses meses, só saídas
+      const pagoRec={};(pg||[]).forEach(p=>pagoRec[p.item_id+'|'+p.mes]=p);
+      // lançamentos do Fluxo nesses meses (entradas junto: o estorno da fatura é crédito)
       const lojas=[...new Set(its.map(i=>i.lojaFluxo).filter(Boolean))];if(!lojas.length)return SN;
       const de=meses[0]+'-01',ate=_fimMes(meses[meses.length-1]);
-      const {data:ls,error:e4}=await sbTudo(()=>sb.from('lancamentos').select('id,loja_id,data,descricao,valor,ref_externa').in('loja_id',lojas).lt('valor',0).gte('data',de).lte('data',ate).order('id'));
+      const {data:ls,error:e4}=await sbTudo(()=>sb.from('lancamentos').select('id,loja_id,data,descricao,valor,ref_externa').in('loja_id',lojas).gte('data',de).lte('data',ate).order('id'));
       if(e4)throw e4;
       const usados=new Set((ls||[]).map(l=>String(l.ref_externa||'')).filter(r=>r.startsWith('snp:')));
-      const marcar=[],sug=[];
+      const marcar=[],sug=[],completar=[];
       for(const it of its){
         if(!it.lojaFluxo)continue;
         const naoPagar=/NAO PAGAR|NAO FAZER/.test(_snObs(it));
         for(const mes of meses){
           if(it.desde&&mes<it.desde)continue;
-          if(SN.pagos.has(it.id+'|'+mes))continue;                       // já pago (à mão ou por aqui): não mexe
-          const linhas=(ls||[]).filter(l=>l.loja_id===it.lojaFluxo&&_snMes(l.data)===mes&&!String(l.ref_externa||'').startsWith('snp:'));
-          let cands=[];
-          if(/ALUGU/i.test(it.cartao)){
+          const jaPago=SN.pagos.has(it.id+'|'+mes),rec=pagoRec[it.id+'|'+mes];
+          // v2.9.113: já pago à mão e sem valor → só completa o valor; já pago com valor → não mexe
+          if(jaPago&&!(rec&&(rec.valor===null||rec.valor===undefined||Number(rec.valor)===0)))continue;
+          const todas=(ls||[]).filter(l=>l.loja_id===it.lojaFluxo&&_snMes(l.data)===mes);
+          const linhas=todas.filter(l=>Number(l.valor)<0&&!String(l.ref_externa||'').startsWith('snp:'));
+          let cands=[],soma=null,usadas=null;
+          if(!_snFixo(it)){
+            // v2.9.113: fatura de cartão e afins — valor muda todo mês. Soma as linhas do apelido na conta da própria loja
+            // e tira as que foram estornadas (crédito "ESTORNO" do mesmo valor). "DÉB.CONV.DEMAIS EMPRESAS" só vale aqui
+            // porque o apelido é do item E a busca é só na conta desta loja.
+            const aps=_snApelidos(it);if(!aps.length)continue;
+            const bate=l=>{const u=_snTxt(l.descricao);return aps.some(a=>_snTxt(a)&&u.includes(_snTxt(a)));};
+            const desp=linhas.filter(bate).sort((a,b)=>String(a.data).localeCompare(String(b.data)));
+            if(!desp.length)continue;
+            const anul=new Set();
+            todas.filter(l=>Number(l.valor)>0&&/ESTORNO/.test(_snTxt(l.descricao))).forEach(e=>{
+              const v=Math.abs(Number(e.valor));const alvo=desp.find(d=>!anul.has(d.id)&&Math.abs(Math.abs(Number(d.valor))-v)<0.01);if(alvo)anul.add(alvo.id);});
+            usadas=desp.filter(d=>!anul.has(d.id));
+            soma=Math.round(usadas.reduce((t,d)=>t+Math.abs(Number(d.valor)),0)*100)/100;
+            if(soma<=0.004)continue;                                     // tudo estornado: não é pagamento
+            cands=usadas;
+          }else if(/ALUGU/i.test(it.cartao)){
             cands=linhas.filter(l=>{const u=_snTxt(l.descricao);
               return (/ALUGUEL/.test(u)||_snApelidos(it).some(a=>u.includes(_snTxt(a)))) && _snAluguelVale(l.descricao,it.lojaFluxo);});
             const porNome=cands.filter(l=>_snNomeBate(l.descricao,it.titulo)||_snApelidos(it).some(a=>_snTxt(l.descricao).includes(_snTxt(a))));
@@ -6264,25 +6459,36 @@
               .filter(l=>_snNomeBate(l.descricao,it.titulo)||_snCpfBate(l.descricao,_snChavePix(it))||_snApelidos(it).some(a=>_snTxt(l.descricao).includes(_snTxt(a))));
           }
           if(!cands.length)continue;
-          const l=cands.sort((a,b)=>String(a.data).localeCompare(String(b.data)))[0];
-          const reg={item:it,mes,lanc:l,n:cands.length};
-          if(cands.length===1&&!naoPagar)marcar.push(reg);else sug.push(Object.assign(reg,{porque:naoPagar?'o cartão diz para não pagar':`${cands.length} linhas parecidas no extrato`}));
+          const l=cands.slice().sort((a,b)=>String(a.data).localeCompare(String(b.data)))[0];
+          const reg={item:it,mes,lanc:l,n:cands.length,soma,usadas};
+          const certo=usadas?true:cands.length===1;                      // na fatura, várias linhas somadas é o normal
+          if(jaPago){if(certo)completar.push(reg);continue;}             // só completa o valor do que já estava pago
+          if(certo&&!naoPagar)marcar.push(reg);else sug.push(Object.assign(reg,{porque:naoPagar?'o cartão diz para não pagar':`${cands.length} linhas parecidas no extrato`}));
         }
       }
       // grava
-      let n=0;
+      let n=0,nv=0;
       for(const r of marcar){
         const ref=`snp:${r.item.id}:${r.mes}`;if(usados.has(ref))continue;
-        const txt=`${isoParaBR(r.lanc.data).slice(0,5)} · ${String(r.lanc.descricao||'').slice(0,60)} · ${BRL(Math.abs(Number(r.lanc.valor)))}`;
+        const txt=_snRefTexto(r),val=_snValor(r);
         const base={item_id:r.item.id,mes:r.mes,pago_por_nome:'EXTRATO SICOOB'};
-        let {error}=await c.from('senhas_pagos').insert(Object.assign({origem:'extrato',extrato_ref:txt,extrato_lanc_id:r.lanc.id},base));
+        let {error}=await c.from('senhas_pagos').insert(Object.assign({origem:'extrato',extrato_ref:txt,extrato_lanc_id:String(r.lanc.id),valor:val},base));
+        if(error&&/valor/i.test(error.message||'')){({error}=await c.from('senhas_pagos').insert(Object.assign({origem:'extrato',extrato_ref:txt,extrato_lanc_id:String(r.lanc.id)},base)));}
         if(error&&/column|origem|extrato_/i.test(error.message||'')){({error}=await c.from('senhas_pagos').insert(base));}
         if(error){if(/duplicate|conflict/i.test(error.message||''))continue;SN.erro=error.message;continue;}
         n++;usados.add(ref);SN.pagos.add(r.item.id+'|'+r.mes);
-        try{await sb.from('lancamentos').update({ref_externa:ref}).eq('id',r.lanc.id).is('ref_externa',null);}catch(e){}
+        for(const x of (r.usadas||[r.lanc])){try{await sb.from('lancamentos').update({ref_externa:ref}).eq('id',x.id).is('ref_externa',null);}catch(e){}}
       }
-      SN.marcou=n;SN.sug=sug;SN.em=Date.now();
+      // v2.9.113: pago marcado à mão sem valor → só completa o valor (não cria outro registro, não mexe em mais nada)
+      for(const r of completar){
+        const {error}=await c.from('senhas_pagos').update({valor:_snValor(r)}).eq('item_id',r.item.id).eq('mes',r.mes).is('valor',null);
+        if(error){if(/column|valor/i.test(error.message||''))break;SN.erro=error.message;continue;}
+        nv++;
+      }
+      SN.completou=nv;
+      SN.marcou=n;SN.sug=sug;SN.em=Date.now();_snCache.em=0;
       if(!silencioso&&n)toast(`${n} pagamento(s) do mês do Caixinha marcados como pagos pelo extrato.`,'ok');
+      if(!silencioso&&nv)toast(`${nv} pagamento(s) já marcados no Caixinha ganharam o valor pelo extrato.`,'ok');
       return SN;
     }catch(e){SN.erro=(e&&e.message)||String(e);if(!silencioso)toast('Pagamentos do mês: '+SN.erro,'erro');return SN;}
     finally{SN.rodando=false;const b=document.getElementById('snBox');if(b)b.innerHTML=snCardHTML();}}
@@ -6290,7 +6496,9 @@
     const r=SN.sug.find(x=>x.item.id===itemId&&x.mes===mes&&x.lanc.id===lancId);if(!r)return;
     const txt=`${isoParaBR(r.lanc.data).slice(0,5)} · ${String(r.lanc.descricao||'').slice(0,60)} · ${BRL(Math.abs(Number(r.lanc.valor)))}`;
     const base={item_id:itemId,mes,pago_por_nome:(PERFIL.nome||'FLUXO')+' (pelo Fluxo)'};
-    let {error}=await c.from('senhas_pagos').insert(Object.assign({origem:'extrato',extrato_ref:txt,extrato_lanc_id:lancId},base));
+    const val=Math.round(Math.abs(Number(r.soma||r.lanc.valor))*100)/100;
+    let {error}=await c.from('senhas_pagos').insert(Object.assign({origem:'extrato',extrato_ref:txt,extrato_lanc_id:String(lancId),valor:val},base));
+    if(error&&/valor/i.test(error.message||'')){({error}=await c.from('senhas_pagos').insert(Object.assign({origem:'extrato',extrato_ref:txt,extrato_lanc_id:String(lancId)},base)));}
     if(error&&/column|origem|extrato_/i.test(error.message||'')){({error}=await c.from('senhas_pagos').insert(base));}
     if(error){toast('Não consegui marcar: '+error.message,'erro');return;}
     try{await sb.from('lancamentos').update({ref_externa:`snp:${itemId}:${mes}`}).eq('id',lancId).is('ref_externa',null);}catch(e){}
