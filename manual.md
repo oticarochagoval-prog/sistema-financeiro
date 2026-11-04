@@ -283,6 +283,20 @@ No alto de Lançamentos aparece o quadro da **Íris**. Ela olha todos os lançam
 - A lista não "pula": quando a linha atualiza, ela continua no mesmo lugar da tela.
 - Com um filtro ligado (Íris verde/amarelo/vermelho ou vindo do Dashboard), a linha marcada **não some** enquanto você termina de mexer nela.
 
+## Mapa de calor (v2.9.117)
+
+Em **Gestão → Mapa de calor**, só para gestores. Mostra quem trabalhou no mês, em que dias e a que horas. Troque a empresa lá em cima para ver só as Óticas Rocha, a Diversas, a Casa e assim por diante.
+
+- **Quem trabalhou no mês** — um cartão por pessoa: total de ações, dias ativos, horário em que costuma trabalhar e quantas idas ao sistema.
+- **Dia a dia do mês** — cada quadradinho é um dia; quanto mais escuro, mais trabalho. Sábado e domingo têm o fundo mais claro.
+- **A que horas cada uma trabalha** — o mês inteiro somado, hora a hora. É aqui que aparece a rotina de cada uma.
+- **Íris à parte** — ela faz muito mais que as pessoas, então fica numa faixa própria com escala de cor separada; assim as pessoas continuam comparáveis entre si.
+- **O mês em números** — tabela com conferiu, lançou à mão, importou, ensinou a Íris, dias ativos, idas e o maior dia.
+
+**Sumiu do sistema:** quando alguém passa 3 dias úteis sem mexer em nada, aparece um aviso amarelo no alto da tela.
+
+**O que conta como ação:** conferir um lançamento, lançar à mão, importar extrato e ensinar a Íris. **Idas ao sistema** é aproximação — cada bloco de trabalho separado por mais de 45 minutos de silêncio conta como uma ida, porque o sistema não guarda o login de cada pessoa.
+
 ## Pergunte à Íris (v2.9.97)
 
 Em toda tela do Fluxo tem o botão **Pergunte à Íris**, no canto de baixo à direita. Clicou, abre uma conversa: é só escrever a dúvida com as suas palavras, como você falaria com uma colega.
@@ -1114,6 +1128,7 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 | 30/10/2026 | 2.9.114 | **A Íris só abre sozinha quando tem o que falar.** Antes ela dava "oi" na primeira vez que a pessoa entrava. Agora, passada essa primeira vez, ela só abre quando tem lembrete de pagamento: faltam X dias (o que estiver no campo Avisar do item do Caixinha, ou 5), é hoje, ou passou do dia e não está marcado como pago. No máximo uma vez por dia, e só para quem vê tudo (Lucas e Heloísa) | — |
 | 30/10/2026 | 2.9.115 | **O Fluxo marca sozinho no FaturaFácil.** Todo dia (na importação do extrato e no robô das 6h) ele procura no banco o pagamento de cada fatura e o ressarcimento da Diversas, e marca lá com o selo "achado no extrato", dizendo qual conta pagou e em que dia. Só procura do dia do vencimento em diante, até 50 dias depois; descarta transferência entre contas e a tentativa que o banco estornou; soma várias parcelas quando a fatura saiu picada; e no ressarcimento aceita diferença de centavos. Nunca mexe no que a Heloísa marcou à mão | — |
 | 30/10/2026 | 2.9.116 | **O complemento do Sicoob entra na descrição.** No app do banco as linhas "DÉB.CONV.DEMAIS EMPRESAS" têm um complemento (MASTERCARD, CONSÓRCIOS, ZURICH MIN…) que vinha sendo perdido. Agora ele entra junto: "DÉB.CONV.DEMAIS EMPRESAS · MASTERCARD". Assim a fatura do cartão da loja casa só com a linha do cartão e nunca com a do consórcio. Códigos (IOF/1-6, LC-202609) continuam de fora. Também: item do Caixinha com valor fixo só casa com linha daquele valor exato, e a conta 412619 passou a ser reconhecida | Vale para o que for importado daqui para frente |
+| 31/10/2026 | 2.9.117 | **Mapa de calor** (Gestão, só para gestores): quem trabalhou no mês, em que dias e a que horas. Três partes — um cartão por pessoa com total, dias ativos, horário típico e idas ao sistema; o dia a dia do mês em quadradinhos; e as 24 horas somadas. A Íris aparece numa faixa separada, para não ofuscar as pessoas. Quando alguém passa 3 dias úteis sem mexer, aparece o aviso "Sumiu do sistema" | — |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
