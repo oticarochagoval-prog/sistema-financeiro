@@ -300,7 +300,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.117', APP_DATA='31/10/2026';
+  const APP_VERSAO='2.9.118', APP_DATA='04/11/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -4146,14 +4146,17 @@
   async function sicoobCarregar(){
     try{const {data,error}=await sb.from('sicoob_contas').select('*').eq('ativo',true).order('id');if(error)return;SICOOB_CONTAS=data||[];}catch(e){return;}
     sicoobAviso();renderNav();if((page==='import'&&IMPORT.length===0)||page==='lanc')render();
-    setTimeout(()=>{sicoobAutoEntrar().catch(e=>console.error('auto',e));},1500);
+    setTimeout(()=>{sicoobAutoEntrar().catch(e=>console.error('auto',e));},6000); // v2.9.118: deixa a tela abrir primeiro
     setTimeout(()=>{caixinhaParaFluxo().catch(e=>console.error('caixinha',e));},4000);
   }
   function sicoobProblemas(){const out=[];
     SICOOB_CONTAS.forEach(c=>{const d=_sicDiasAte(c.cert_vence),h=_sicHoras(c.ultimo_ok);
       if(d!=null&&d<0)out.push(`Certificado da ${c.apelido} VENCEU em ${_sicBR(c.cert_vence)}: o extrato automático parou`);
       else if(d!=null&&d<=30)out.push(`Certificado da ${c.apelido} vence em ${d} dia${d===1?'':'s'} (${_sicBR(c.cert_vence)}): renovar e trocar no portal do Sicoob`);
-      if(c.ultimo_erro)out.push(`Extrato automático da ${c.apelido} falhou: ${String(c.ultimo_erro).slice(0,140)}`);
+      // v2.9.118: "tempo esgotado" é tropeço passageiro do Sicoob e se resolve na próxima rodada.
+      // Só vira aviso se o extrato daquela conta realmente ficou para trás (mais de 36h sem sucesso).
+      const atrasada=h==null||h>36;
+      if(c.ultimo_erro&&atrasada)out.push(`Extrato automático da ${c.apelido} falhou: ${String(c.ultimo_erro).slice(0,140)}`);
       else if(c.ultimo_ok&&h>36)out.push(`Extrato automático da ${c.apelido} sem atualizar há ${Math.round(h/24)} dia(s)`);});
     return out;}
   function sicoobAviso(){const el=document.getElementById('sicoobAviso');if(!el)return;const ps=sicoobProblemas();
@@ -4295,7 +4298,21 @@
     const vistos=_autoVistosLer(c);let falta=fits.filter(f=>!vistos.has(f));if(!falta.length)return {novo:false,fits};
     const ja=new Set();for(let i=0;i<falta.length;i+=150){const {data,error}=await sb.from('lancamentos').select('fitid').eq('loja_id',Number(c.loja_id)).in('fitid',falta.slice(i,i+150));if(error)return {novo:true,fits};(data||[]).forEach(x=>ja.add(x.fitid));}
     falta=falta.filter(f=>!ja.has(f));if(!falta.length)_autoVistosSalvar(c,fits);return {novo:falta.length>0,fits};}
+  // v2.9.118: antes de montar o OFX (que é a parte lenta), uma pergunta de um segundo ao banco:
+  // "entrou alguma linha nova nesta conta desde a última vez?". Se não entrou, nem começa.
+  const _autoMarcaChave=c=>'fluxo_auto_marca_'+c.id;
+  async function _autoVale(c){
+    try{const {data,error}=await sb.from('sicoob_extrato').select('transaction_id,data').eq('conta_id',c.id)
+        .gte('data','2026-06-01').order('data',{ascending:false}).limit(1);
+      if(error)return true;
+      const t=(data&&data[0])?String(data[0].data)+'|'+String(data[0].transaction_id):'vazio';
+      let ant='';try{ant=localStorage.getItem(_autoMarcaChave(c))||'';}catch(e){}
+      if(ant&&ant===t)return false;                       // nada novo no banco desde a última passada
+      try{localStorage.setItem(_autoMarcaChave(c),t);}catch(e){}
+      return true;
+    }catch(e){return true;}}
   async function _autoEntrarConta(c,ym,veu,msg){
+    if(veu&&!ym&&!(await _autoVale(c)))return null;
     const m=await sicoobMontarOFX(c,ym||undefined);if(!m||m.erro||m.vazio)return null;
     let _fits=null;if(veu&&!ym){const t=await _autoTemNovo(c,m.ofx);if(!t.novo)return null;_fits=t.fits;}
     try{return await _autoEntrarContaOFX(c,ym,veu,msg,m);}finally{if(_fits)_autoVistosSalvar(c,_fits);}}
@@ -4337,7 +4354,7 @@
     _autoRodando=true;const antes=lojaAtual,res=[];
     const veu=document.createElement('div');veu.id='autoVeu';veu.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center'; // tranca a tela de propósito: enquanto lança, o sistema troca de loja por baixo
     try{for(const c of contas){
-        const r=await _autoEntrarConta(c,null,veu,'Lançando o extrato automático do Sicoob…');
+        const r=await _autoEntrarConta(c,null,veu,`Lançando o extrato da ${_nomeLoja(Number(c.loja_id))}… (só aparece quando tem linha nova)`);
         if(r&&r.ok)res.push(`${_nomeLoja(Number(c.loja_id))}: ${r.ok} lançamento(s) entraram sozinhos${r.esperando?` · ${r.esperando} esperando no Importar`:''}`);}
     }catch(e){console.error('entrada automática',e);}
     finally{IMPORT=[];importObs='';IMPORT_DEP=[];_IMP_API=false;IMP_MARC={modo:'todas',crit:[]};
