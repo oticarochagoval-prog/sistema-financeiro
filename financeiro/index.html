@@ -255,7 +255,7 @@
         <span class="pagetitle" id="ptitle">Dashboard</span>
         <div id="modBox" class="modbox" style="display:none"></div>
         <select class="store" id="store" onchange="trocarLoja()"></select>
-        <button class="iconbtn txt" onclick="location.href='/'" title="Voltar para a tela de módulos">Módulos</button>
+        <button class="iconbtn txt" onclick="location.href='/?modulos'" title="Voltar para a tela de módulos">Módulos</button>
         <button class="iconbtn" id="temaBtn" onclick="alternarTema()" title="Tema claro / escuro">🌙</button>
         <button class="iconbtn help" onclick="go('manual')" title="Manual: como usar o sistema">?</button>
         <button class="iconbtn help cx" onclick="go('manualcx')" title="Manual do espelho do Caixinha: Lentes, Banco Caixinha (estornos) e Caixa">🔗?</button>
@@ -302,7 +302,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.122', APP_DATA='04/11/2026';
+  const APP_VERSAO='2.9.125', APP_DATA='04/11/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1564,9 +1564,9 @@
     ['comparativo','Comparativo','📈',true],['relcontato','Por contato','👥',true],['juros','Juros por loja','🏦',true],['confpix','Conferência de Pix','🔎',true],
     ['__g','Gestão'],
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
-    ['recorrentes','Recorrentes','🔁',true],['duvidas','Dúvidas da equipe','💬',true],['mapa','Mapa de calor','▦',true],['lixeira','Lixeira','🗑',true],['backup','Backup e restaurar','🛟',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],['manualcx','Manual do Caixinha','🔗',true],
+    ['recorrentes','Recorrentes','🔁',true],['duvidas','Dúvidas da equipe','💬',true],['decimo','Saldo do 13º','⅓',true],['mapa','Mapa de calor','▦',true],['lixeira','Lixeira','🗑',true],['backup','Backup e restaurar','🛟',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],['manualcx','Manual do Caixinha','🔗',true],
   ];
-  const TITLES={mapa:'Mapa de calor · quem trabalhou no mês',ensinar:'Ensinar a Íris · o que ela ainda não sabe',fechar:'Fechar de junho para cá · o que falta em cada empresa',duvidas:'Dúvidas da equipe · o que a Íris não soube',confpix:'Conferência de Pix · banco × Linx',visao:'Dashboard',radar:'Radar do mês',lanc:'Lançamentos',import:'Importar extrato',apagar:'Agenda de pagamentos',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',remanejos:'Remanejos',emprestimos:'Empréstimos entre lojas — espelho do Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',backup:'Backup e restaurar',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
+  const TITLES={decimo:'Saldo do 13º · quanto entrou, quanto falta guardar',mapa:'Mapa de calor · quem trabalhou no mês',ensinar:'Ensinar a Íris · o que ela ainda não sabe',fechar:'Fechar de junho para cá · o que falta em cada empresa',duvidas:'Dúvidas da equipe · o que a Íris não soube',confpix:'Conferência de Pix · banco × Linx',visao:'Dashboard',radar:'Radar do mês',lanc:'Lançamentos',import:'Importar extrato',apagar:'Agenda de pagamentos',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',remanejos:'Remanejos',emprestimos:'Empréstimos entre lojas — espelho do Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',backup:'Backup e restaurar',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
   // ícones do menu: traço simples, da mesma cor do texto (claro e escuro), no estilo do Microvix
   const NAV_ICON={backup:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',confpix:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',remanejos:'<path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/>',emprestimos:'<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',visao:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',radar:'<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.8 5.41a2 2 0 0 1-1.27 1.27L7.76 16.24l1.8-5.41a2 2 0 0 1 1.27-1.27z"/>',lanc:'<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',import:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',apagar:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',caixa:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M16 14v4M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/>',caixinha:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',dre:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',fechamento:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',concsipag:'<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>',comparativo:'<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',relcontato:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',juros:'<path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"/>',categorias:'<path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',cadcontatos:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',recorrentes:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',lixeira:'<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',config:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',manual:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',manualcx:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'};
   // menu que abre e fecha por grupo (Dia a dia / Análise / Gestão); lembra no navegador; o grupo da tela aberta fica sempre aberto
@@ -1938,7 +1938,12 @@
           for(const m of meses){mesSel=m;page='lanc';IRIS_GRUPO={loja:null,map:{},n:0};await viewLanc();await irisCarregarGrupo();await irisCarregarSugestoes();_irisIAEmCurso=false;await irisPedirIA();
             if(MODULO_ATUAL==='diversas')await irisAutoDiversas();else{await irisAutoContatos();await irisAutoConferirCategorias();}}
           log.push(lojaNomeCurto(L.id)+' ok');}catch(e){log.push(lojaNomeCurto(L.id)+' erro: '+(e.message||e));}}
-      window.__roboFim={ok:true,log};}
+      // v2.9.123: junto com o log, o robô leva o estado de cada conta do Sicoob,
+      // para a rodada do GitHub terminar com erro se alguma ficou para trás.
+      let contas=[];try{if(!(SICOOB_CONTAS||[]).length){const {data}=await sb.from('sicoob_contas').select('apelido,ultimo_ok,ultimo_erro,ativo').eq('ativo',true);if(data)SICOOB_CONTAS=data;}
+        contas=(SICOOB_CONTAS||[]).filter(c=>c.ativo!==false).map(c=>({nome:c.apelido||'conta',
+          horas:c.ultimo_ok?Math.round((Date.now()-new Date(c.ultimo_ok).getTime())/36e5):null,erro:c.ultimo_erro||''}));}catch(e){}
+      window.__roboFim={ok:true,log,contas};}
     catch(e){window.__roboFim={ok:false,erro:String((e&&e.message)||e),log};}}
   // v2.9.71: a Íris preenche sozinha o CONTATO que ela sugere (só o contato, nas saídas). A categoria continua com vocês.
   async function irisAutoContatos(){if(!podeEditar()||MODULO_ATUAL==='diversas')return 0;_irisMemo.t=0;const R=irisAvaliar();
@@ -2609,7 +2614,7 @@
     IRISC.ensinos=null;toast('Respondida. A Íris já aprendeu.','ok');render();}
 
   function render(){lojaFaixaLigar();if(!ROBO&&document.getElementById('irisRoot'))irisChatRender();
-    const V={mapa:viewMapa,ensinar:viewEnsinar,fechar:viewFechar,duvidas:viewDuvidas,confpix:viewConfPix,visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,remanejos:viewRemanejos,emprestimos:viewEmprestimos,recorrentes:viewRecorrentes,lixeira:viewLixeira,backup:viewBackup,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
+    const V={decimo:viewDecimo,mapa:viewMapa,ensinar:viewEnsinar,fechar:viewFechar,duvidas:viewDuvidas,confpix:viewConfPix,visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,remanejos:viewRemanejos,emprestimos:viewEmprestimos,recorrentes:viewRecorrentes,lixeira:viewLixeira,backup:viewBackup,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
     const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));preencherRemDash().catch(e=>console.error('rem dash',e));preencherPixDash().catch(e=>console.error('pix dash',e));preencherRankDash().catch(e=>console.error('rank dash',e));preencherIrisDash().catch(e=>console.error('iris',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -3749,6 +3754,330 @@
     },700);
   }
 
+  // ================= v2.9.124 · PICPAY DO LUCAS (CSV) + 13º =================
+  // O PicPay é a conta pessoal do Lucas (CPF 086.308.156-80, ag. 0001, conta 47610307-0).
+  // O app gera o extrato em CSV. Aqui ele entra igual ao OFX do Sicoob: o CSV é convertido
+  // no mesmo formato, então toda a conferência (não duplicar, adivinhar categoria, Íris) é a mesma.
+  const PP_COFRES=['EMPRESTIMO MAQUINA FREE','3.000.00 G.VR PRONAMPE','PRONAMP R7/8 PAGGV E R6','KTM PRONAMP',
+    'CARRO PRONAMPE R4 01/23','1.530.00 GVR EMPREST','CONFRAT/FERIAS 2.750.00','CREDITO ROLETA','ESTORNO CAPACETE LUCAS'];
+  const PP_SALDO='CONTA PRINCIPAL', PP_CARTAO='CARTÃO PICPAY';
+  function ehPicPay(){const L=LOJAS.find(l=>l.id===lojaAtual);return !!(L&&/picpay/i.test(L.nome));}
+  function _ppContaNome(cofre){return cofre?('COFRINHO · '+cofre):PP_SALDO;}
+
+  // lê CSV respeitando "aspas" e descobrindo sozinho se o separador é ; ou ,
+  function _csvLinhas(txt){
+    const t=String(txt).replace(/^﻿/,'').replace(/\r\n?/g,'\n');
+    const prim=t.split('\n')[0]||'';
+    const sep=((prim.match(/;/g)||[]).length>=(prim.match(/,/g)||[]).length)?';':',';
+    const out=[];let f='',l=[],q=false;
+    for(let i=0;i<t.length;i++){const c=t[i];
+      if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;continue;}
+      if(c==='"'){q=true;continue;}
+      if(c===sep){l.push(f);f='';continue;}
+      if(c==='\n'){l.push(f);f='';if(l.some(x=>String(x).trim()!==''))out.push(l);l=[];continue;}
+      f+=c;}
+    l.push(f);if(l.some(x=>String(x).trim()!==''))out.push(l);
+    return out;}
+
+  // "+R$ 2.350,00" · "−R$ 16.941,05" (o PicPay usa o menos unicode) · "-1234.56" · "(250,00)"
+  function _ppValor(s){
+    const t=String(s||'').replace(/\s|R\$/gi,'');
+    if(!/\d/.test(t))return null;
+    const neg=/^[-\u2212\u2013\u2014]/.test(t)||/^\(/.test(t)||/[-\u2212]$/.test(t)||/\)$/.test(t);
+    const temSinal=neg||/^\+/.test(t);
+    let n=t.replace(/[^\d.,]/g,'');
+    if(/[.,]\d{1,2}$/.test(n)){const sep=n.slice(n.search(/[.,]\d{1,2}$/),n.search(/[.,]\d{1,2}$/)+1);
+      n=(sep===',')?n.replace(/\./g,'').replace(',','.'):n.replace(/,/g,'');}
+    else n=n.replace(/[.,]/g,'');
+    const x=parseFloat(n);if(isNaN(x))return null;
+    return {abs:Math.abs(x),neg,temSinal};}
+
+  // normaliza SEM comer os números (o normDesc apaga dígito de 3+, e cofrinho tem número no nome)
+  function _ppNorm(t){return String(t||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]+/g,' ').trim();}
+  // o que é cada linha — quem manda é a coluna "forma de pagamento":
+  // "Com cartão" = cartão de crédito, não mexe no saldo · "Com saldo + cartão" = parte no cartão: entra no saldo e fica para conferir
+  function _ppClasse(tipo,quem,forma){
+    const f=_ppNorm(forma),t=_ppNorm(tipo);
+    if(f==='COM CARTAO')return 'cartao';
+    if(/DINHEIRO GUARDADO/.test(t))return 'guardado';
+    if(/DINHEIRO RESGATADO/.test(t))return 'resgatado';
+    return 'normal';}
+  function _ppMisto(forma){const f=_ppNorm(forma);return /CARTAO/.test(f)&&/SALDO/.test(f);}
+  // nome do cofrinho: vem em "No cofrinho X" / "Do cofrinho X", na coluna origem/destino
+  function _ppCofre(quem){
+    const d=_ppNorm(quem),m=d.match(/COFRINHO\s+(.+)$/);if(!m)return null;
+    const alvo=m[1].trim();let bom=null,pt=0;
+    PP_COFRES.forEach(c=>{const n=_ppNorm(c);if(!n)return;let p=0;
+      if(alvo===n)p=100;
+      else if(alvo.indexOf(n)>=0||n.indexOf(alvo)>=0)p=70;
+      else{const w=n.split(' ').filter(x=>x.length>1);p=w.length?Math.round(w.filter(x=>alvo.indexOf(x)>=0).length/w.length*60):0;}
+      if(p>pt){pt=p;bom=c;}});
+    return pt>=50?bom:null;}
+  // entrou ou saiu? o PicPay sempre traz + ou − no valor; o texto só serve se não vier sinal
+  function _ppSinal(txt,vv){
+    if(vv&&vv.temSinal)return vv.neg?-1:1;
+    const d=normDesc(txt);
+    if(/PAGAMENTO REALIZADO|PAGAMENTO EFETUADO|PIX ENVIADO|PIX REALIZADO|TRANSFERENCIA ENVIADA|DINHEIRO GUARDADO|COMPRA REALIZADA|RECARGA|PAGUE CONTAS|BOLETO|SAQUE/.test(d))return -1;
+    if(/PIX RECEBIDO|PIX DEVOLVIDO|TRANSFERENCIA RECEBIDA|DINHEIRO RESGATADO|DEPOSITO|RECEBIMENTO|ESTORNO|CASHBACK|RENDIMENTO/.test(d))return 1;
+    return (vv&&vv.neg)?-1:1;}
+  function _ppHash(s){let h=5381;const t=String(s||'');for(let i=0;i<t.length;i++)h=((h*33)^t.charCodeAt(i))>>>0;return h.toString(36);}
+
+  // CSV do PicPay → mesmo formato do extrato do banco (chave da linha: data + hora + valor + origem/destino)
+  async function picpayCsvParaOFX(file){
+    const txt=await file.text();
+    const rows=_csvLinhas(txt);
+    if(rows.length<2)throw new Error('não achei linhas nesse CSV');
+    let hi=-1;
+    for(let i=0;i<Math.min(rows.length,20);i++){if(rows[i].some(c=>/^\s*"?data/i.test(String(c)))){hi=i;break;}}
+    if(hi<0)throw new Error('não achei a coluna "Data" — esse arquivo é o extrato do PicPay em CSV?');
+    const H=rows[hi].map(c=>normDesc(c));
+    const acha=(re,ex)=>{for(let i=0;i<H.length;i++){if(re.test(H[i])&&!(ex&&ex.test(H[i])))return i;}return -1;};
+    const cData=acha(/DATA/,/HORA/),cHora=acha(/HORA/),cVal=acha(/VALOR|QUANTIA|MONTANTE/,/SALDO/),cSaldo=acha(/SALDO/);
+    const cDesc=acha(/DESCRI|LANCAMENTO|MOVIMENTA|HISTORICO|TRANSACAO|TIPO/),
+          cQuem=acha(/ORIGEM|DESTINO|FAVORECIDO|PAGADOR|RECEBEDOR|CONTRAPARTE|NOME|QUEM/);
+    if(cData<0||cVal<0)throw new Error('o CSV não tem as colunas de Data e Valor');
+    const tx=[];const extras=[];
+    for(let j=0;j<H.length;j++)if([cData,cHora,cVal,cSaldo,cDesc,cQuem].indexOf(j)<0&&H[j])extras.push(j);
+    for(let i=hi+1;i<rows.length;i++){const r=rows[i];
+      const dRaw=String(r[cData]||'').trim();if(!dRaw)continue;
+      let dt='';const m1=dRaw.match(/(\d{2})\/(\d{2})\/(\d{4})/),m2=dRaw.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if(m1)dt=m1[3]+m1[2]+m1[1];else if(m2)dt=m2[1]+m2[2]+m2[3];else continue;
+      const vv=_ppValor(r[cVal]);if(!vv||!vv.abs)continue;
+      let hora=cHora>=0?String(r[cHora]||'').trim():'';
+      if(!hora)hora=((dRaw.match(/\d{2}:\d{2}(:\d{2})?/)||[''])[0]);
+      hora=((String(hora).match(/\d{2}:\d{2}(:\d{2})?/)||[''])[0]).slice(0,5);
+      const quem=cQuem>=0?String(r[cQuem]||'').trim():'';
+      const tipo=cDesc>=0?String(r[cDesc]||'').trim():'';
+      const forma=extras.map(j=>String(r[j]||'').trim()).filter(Boolean).join(' ');
+      const dsc=[tipo,quem].filter(Boolean).join(' · ');
+      const texto=dsc||'(sem descrição)';
+      const cls=_ppClasse(tipo,quem,forma),cofre=(cls==='guardado'||cls==='resgatado')?_ppCofre(quem):null;
+      const sin=cls==='cartao'?-1:_ppSinal(texto,vv);
+      tx.push({dt,hora,abs:vv.abs,sin,desc:dsc||texto,quem,cls,cofre,texto,forma,misto:_ppMisto(forma)});}
+    if(!tx.length)throw new Error('não achei lançamentos nesse CSV');
+    const seq={},limpa=x=>String(x||'').replace(/[<>\r\n]/g,' ').replace(/\s+/g,' ').trim();
+    // uma ordem por LINHA do extrato: o PicPay repete linha idêntica no mesmo minuto
+    // (duas recargas de R$ 26,00 às 06:10; dois guardados de R$ 2.850,00 às 08:51). Sem isso a segunda sumia.
+    tx.forEach(t=>{const k=t.dt+'|'+(t.hora||'')+'|'+Math.round(t.abs*100)+'|'+_ppHash(_ppNorm(t.quem||t.desc));seq[k]=(seq[k]||0)+1;t.seq=seq[k];});
+    const de=tx.map(t=>t.dt).sort()[0],ate=tx.map(t=>t.dt).sort()[tx.length-1];
+    let ofx='OFXHEADER:100\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>\n<DTSTART>'+de+'\n<DTEND>'+ate+'\n';
+    let n=0,nCofre=0,nCartao=0,semCofre=0;
+    const por=(t,v,conta,tipo,sufixo,rotulo)=>{
+      const fit='PP'+t.dt+(t.hora||'').replace(/\D/g,'')+Math.round(t.abs*100)+_ppHash(_ppNorm(t.quem||t.desc))+(t.seq||1)+(sufixo||'');
+      ofx+='<STMTTRN>\n<TRNTYPE>'+(v<0?'DEBIT':'CREDIT')+'\n<DTPOSTED>'+t.dt+'\n<TRNAMT>'+v.toFixed(2)+'\n<FITID>'+fit
+        +'\n<MEMO>'+limpa(rotulo||t.desc)+'\n<NAME>'+limpa(t.quem||rotulo||t.desc)
+        +'\n<PPCONTA>'+limpa(conta)+'\n<PPTIPO>'+tipo+'\n<PPQUEM>'+limpa(t.quem)+'\n<PPHORA>'+limpa(t.hora)
+        +'\n<PPFORMA>'+limpa(t.forma)+(t.misto?'\n<PPMISTO>1':'')+'\n</STMTTRN>\n';
+      n++;};
+    tx.forEach(t=>{
+      if(t.cls==='cartao'){por(t,-t.abs,PP_CARTAO,'cartao','',t.desc);nCartao++;return;}
+      if(t.cls==='guardado'||t.cls==='resgatado'){
+        if(!t.cofre){semCofre++;por(t,t.sin*t.abs,PP_SALDO,'normal','',t.desc);return;}
+        const rot=(t.cls==='guardado'?'GUARDADO NO COFRINHO · ':'RESGATADO DO COFRINHO · ')+t.cofre;
+        por(t,t.sin*t.abs,PP_SALDO,'cofre','S',rot);
+        por(t,-t.sin*t.abs,_ppContaNome(t.cofre),'cofre','C',rot);
+        nCofre++;return;}
+      por(t,t.sin*t.abs,PP_SALDO,'normal','',t.desc);});
+    ofx+='</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>';
+    return {ofx,n,linhas:tx.length,nCofre,nCartao,semCofre,nMisto:tx.filter(t=>t.misto).length};}
+
+  // cada linha vai para a conta certa (saldo / cofrinho / cartão) e o 13º já entra classificado
+  function ppAjustar(lista){
+    const pela=nome=>{const u=normDesc(nome);return CONTAS.find(c=>normDesc(c.nome)===u)||null;};
+    const cCof=catPorNome('PICPAY · COFRINHO (NEUTRA)'),cCar=catPorNome('PICPAY · CARTÃO DE CRÉDITO (NEUTRA)'),c13=catPorNome('13º DAS LOJAS (RECEBIDO)');
+    PP_FALTA=[];
+    lista.forEach(r=>{
+      const cn=r.ppConta||PP_SALDO,c=pela(cn);
+      if(c)r.contaId=c.id;else if(PP_FALTA.indexOf(cn)<0)PP_FALTA.push(cn);
+      if(r.grupo==='ja'||r.grupo==='lentes')return;
+      if(r.ppMisto){r.ppMistoCartao=true;r.corrigir=true;}
+      if(r.ppTipo==='cofre'){r.ppCofre=true;if(cCof){r.catId=cCof.id;r.resolvido=true;r.grupo='regra';r.regra='cofrinho do PicPay (não é gasto, é dinheiro guardado)';}}
+      else if(r.ppTipo==='cartao'){r.ppCartao=true;if(cCar){r.catId=cCar.id;r.resolvido=true;r.grupo='regra';r.regra='cartão de crédito do PicPay (não mexe no saldo)';}}
+      else{const d=dec13Info(r);
+        if(d){r.dec13=d;r.contatoId=null;if(c13){r.catId=c13.id;r.resolvido=true;r.grupo='regra';r.regra='13º da '+d.cx+' ('+d.emp+' · '+BRL(d.valor)+')';}}}
+    });}
+  let PP_FALTA=[];
+
+  // ---- a regra do 13º: Pix recebido de uma loja, pelo nome da empresa, no valor fixo dela ----
+  const DEC13=[
+    {cx:'ROCHA 1',  loja:'Rocha 1',  ch:'r1',  emp:'OTICA ROCHA COMERCIO VAREJISTA', valor:2350},
+    {cx:'ROCHA 2',  loja:'Rocha 2',  ch:'r2',  emp:'DVL',                            valor:2350},
+    {cx:'ROCHA 3',  loja:'Rocha 3',  ch:'r3',  emp:'PRIME',                          valor:1700},
+    {cx:'ROCHA 4',  loja:'Rocha 4',  ch:'r4',  emp:'DTR',                            valor:1550},
+    {cx:'ROCHA 5',  loja:'Rocha 5',  ch:'r5',  emp:'MM',                             valor:1850},
+    {cx:'ROCHA 6',  loja:'Rocha 6',  ch:'r6',  emp:'ROCHA PRODUTOS OPTICOS LTDA',    valor:1850},
+    {cx:'ROCHA 7',  loja:'Rocha 7',  ch:'r7',  emp:'IPT',                            valor:1600},
+    {cx:'ROCHA 8',  loja:'Rocha 8',  ch:'r8',  emp:'PREMIUM',                        valor:1700},
+    {cx:'ROCHA 9',  loja:'Rocha 9',  ch:'r9',  emp:'CP',                             valor:850},
+    {cx:'ROCHA 10', loja:'Rocha 10', ch:'r10', emp:'CM',                             valor:1800},
+    {cx:'ROCHA 11', loja:'Rocha 11', ch:'r11', emp:'VILA',                           valor:1150},
+    {cx:'GV LENTES',loja:'GV Lentes',ch:'gv',  emp:'GV OPTICAL',                      valor:2100},
+    // a Casa paga pelo CNPJ da Rocha 1 (no banco é a mesma empresa); quem separa é o valor, R$ 250
+    {cx:'CASA',     loja:'Casa',     ch:'casa',emp:'OTICA ROCHA COMERCIO VAREJISTA',    valor:250}];
+  const DEC13_DESDE='2026-05-01'; // o 13º da Casa já aparece em 08/05/2026; o das lojas começa em 05/06
+  function _dec13Nomes(d){
+    const extra=(LOJA_CNPJ[d.ch]||[]).slice(1);
+    return [d.emp].concat(extra).concat(d.ch==='gv'?['GV OPTICAL','GV LENTES']:[]).filter(Boolean);}
+  function _dec13Cnpj(d){return (LOJA_CNPJ[d.ch]||[])[0]||'';}
+  // devolve a loja do 13º, ou null. Valor diferente NÃO é 13º (fica como está: empréstimo, parcela, reembolso).
+  function dec13Info(r){
+    if(!r||!(r.amt>0))return null;
+    if(r.iso&&r.iso<DEC13_DESDE)return null;
+    const cents=Math.round(Math.abs(r.amt)*100);
+    const cand=DEC13.filter(d=>Math.round(d.valor*100)===cents);
+    if(!cand.length)return null;
+    const bruto=[r.full,r.desc,r.ppQuem,r.memo,r.name].filter(Boolean).join(' ');
+    const txt=normDesc(bruto),dig=String(bruto).replace(/\D/g,'');
+    for(const d of cand){const cnpj=_dec13Cnpj(d);if(cnpj&&dig.indexOf(cnpj)>=0)return d;}
+    for(const d of cand){
+      if(_dec13Nomes(d).some(nm=>{const n=normDesc(nm);return n&&new RegExp('(^| )'+n.replace(/ /g,' ')+'( |$)').test(txt);}))return d;}
+    return null;}
+
+  // ---- ESPELHO DO 13º NA CAIXINHA (caixinhas tipo 'decimo', uma por loja) ----
+  // Nunca apaga nada. Se a Heloísa já lançou à mão na mesma loja/mês/valor, não cria outro: só liga a referência.
+  let DEC13_EST={em:0,lanc:[],cx:[],faltaCol:false,erro:''};
+  // os Pix de 13º: o lado do PicPay é a fonte boa (é lá que o dinheiro cai); o lado da loja
+  // completa o que o PicPay não cobre. Mesma data, mesma empresa e mesmo valor = o mesmo Pix, conta uma vez só.
+  async function dec13Fluxo(){
+    const porLoja={},ids=[];
+    DEC13.forEach(d=>{const L=LOJAS.find(l=>normDesc(lojaNomeCurto(l.id))===normDesc(d.loja));if(L){porLoja[L.id]=d;ids.push(L.id);}});
+    const out=[],visto={};
+    const PP=LOJAS.find(l=>/picpay/i.test(l.nome));
+    const c13=catPorNome('13º DAS LOJAS (RECEBIDO)');
+    // 1) lado do PicPay
+    if(PP){const {data}=await sbTudo(()=>sb.from('lancamentos').select('id,data,valor,descricao,fitid,categoria_id').eq('loja_id',PP.id).gt('valor',0).gte('data',DEC13_DESDE).order('id'));
+      (data||[]).forEach(l=>{const v=Math.round(Number(l.valor)*100);
+        const cand=DEC13.filter(x=>Math.round(x.valor*100)===v);if(!cand.length)return;
+        const d=dec13Info({amt:Number(l.valor),iso:l.data,full:String(l.descricao||'')})||((c13&&String(l.categoria_id)===String(c13.id)&&cand.length===1)?cand[0]:null);
+        if(!d)return;
+        const k=d.cx+'|'+l.data+'|'+v+'|'+(visto[d.cx+'|'+l.data+'|'+v]||0);visto[d.cx+'|'+l.data+'|'+v]=(visto[d.cx+'|'+l.data+'|'+v]||0)+1;
+        out.push({d,lancId:l.id,data:l.data,valor:d.valor,fitid:l.fitid||'',lado:'picpay',desc:String(l.descricao||''),ref:'dec13:pp:'+l.id,k});});}
+    // 2) lado da loja, só o que o PicPay não trouxe
+    if(ids.length){const {data}=await sbTudo(()=>sb.from('lancamentos').select('id,loja_id,data,valor,descricao,fitid').in('loja_id',ids).lt('valor',0).gte('data',DEC13_DESDE).order('id'));
+      const usado={};out.forEach(x=>{usado[x.d.cx+'|'+x.data+'|'+Math.round(x.valor*100)]=(usado[x.d.cx+'|'+x.data+'|'+Math.round(x.valor*100)]||0)+1;});
+      (data||[]).forEach(l=>{const d=porLoja[l.loja_id];if(!d)return;
+        const v=Math.round(Math.abs(Number(l.valor))*100);
+        if(v!==Math.round(d.valor*100))return;
+        if(!/13/.test(String(l.descricao||'')))return;
+        const k=d.cx+'|'+l.data+'|'+v;
+        if(usado[k]){usado[k]--;return;} // esse Pix já veio pelo PicPay
+        out.push({d,lancId:l.id,data:l.data,valor:d.valor,fitid:l.fitid||'',lado:'loja',desc:String(l.descricao||''),ref:'dec13:'+l.id});});}
+    return out.sort((a,b)=>String(a.data).localeCompare(b.data));}
+  async function dec13Caixinha(){ // o que já existe nas caixinhas de décimo
+    const c=cxClient();if(!c||!(await cxSessao()))return null;
+    const {data:cxs,error:e1}=await c.from('caixinhas').select('id,nome,tipo,arquivada').eq('tipo','decimo');if(e1)throw e1;
+    const vivas=(cxs||[]).filter(x=>!x.arquivada);
+    const ids=vivas.map(x=>x.id);if(!ids.length)return {caixas:vivas,comps:[],lancs:[]};
+    const {data:comps,error:e2}=await c.from('competencias').select('id,caixinha_id,ano,mes,fechada').in('caixinha_id',ids);if(e2)throw e2;
+    const cids=(comps||[]).map(x=>x.id);let lancs=[];
+    if(cids.length){const r=await c.from('lancamentos').select('*').in('competencia_id',cids);
+      if(r.error)throw r.error;lancs=(r.data||[]).filter(x=>!x.excluido);}
+    return {caixas:vivas,comps:comps||[],lancs};}
+  // monta o plano: o que vai gravar e o que já existia (NÃO grava nada)
+  async function dec13Plano(){
+    const fl=await dec13Fluxo();
+    const cx=await dec13Caixinha();
+    if(!cx)return {erro:'entre no Caixinha (botão “Entrar no Caixinha”) para eu poder conferir o que já está lá.',fl};
+    const temCol=cx.lancs.length?('extrato_ref' in cx.lancs[0]):null;
+    const porNome={};cx.caixas.forEach(c=>porNome[normDesc(c.nome)]=c);
+    const compDe={};cx.comps.forEach(c=>{compDe[c.caixinha_id+'|'+c.ano]=c;});
+    const lancDe={};cx.lancs.forEach(l=>{(lancDe[l.competencia_id]=lancDe[l.competencia_id]||[]).push(l);});
+    const grava=[],ja=[],semCaixa=[],semComp={};
+    const usados={};
+    fl.sort((a,b)=>a.d.cx===b.d.cx?String(a.data).localeCompare(b.data):DEC13.findIndex(x=>x.cx===a.d.cx)-DEC13.findIndex(x=>x.cx===b.d.cx));
+    fl.forEach(x=>{
+      const cxa=porNome[normDesc(x.d.cx)];
+      if(!cxa){semCaixa.push(x);return;}
+      const ano=Number(String(x.data).slice(0,4)),comp=compDe[cxa.id+'|'+ano];
+      if(!comp){semComp[cxa.id+'|'+ano]={caixinha_id:cxa.id,nome:cxa.nome,ano};}
+      const mes=String(x.data).slice(0,7),cents=Math.round(x.valor*100);
+      const cands=comp?(lancDe[comp.id]||[]).filter(l=>l.tipo==='entrada'&&String(l.data).slice(0,7)===mes&&Math.round(Number(l.valor)*100)===cents&&!usados[l.id]):[];
+      if(cands.length){const l=cands[0];usados[l.id]=true;
+        ja.push({x,cxa,lanc:l,precisaLigar:temCol===false?false:!l.extrato_ref});}
+      else grava.push({x,cxa,comp:comp||null});});
+    return {fl,cx,grava,ja,semCaixa,semComp:Object.values(semComp),temCol};}
+  // PAUSADO em 04/11/2026 (pedido do Lucas): a Caixinha vai virar o módulo Caixa do Nítido,
+  // no mesmo banco. Até lá o Fluxo NÃO grava nada lá — só lê, para comparar.
+  const DEC13_GRAVAR=false;
+  async function dec13Sinc(){return {pausado:true};}
+  function dec13Rodar(){toast('Gravar na Caixinha está pausado: ela vai virar o módulo Caixa do Nítido. Aqui a tela só compara.','ok');}
+
+  // ---- TELA: SALDO DO 13º ----
+  async function viewDecimo(){
+    const box=document.getElementById('content');
+    box.innerHTML='<div class="loading"><span class="spin"></span> Conferindo o 13º…</div>';
+    let p=null,erro='';
+    try{p=await dec13Plano();}catch(e){erro=String(e.message||e);}
+    if(!p||p.erro||erro){
+      box.innerHTML='<div class="note">⅓ <b>Saldo do 13º</b> — quanto entrou no ano, quanto já saiu e quanto deveria estar guardado.</div>'
+        +'<div class="note" style="border-color:rgba(255,92,92,.4)">'+(_remEsc((p&&p.erro)||erro||'não consegui ler'))+'</div>';return;}
+    const PP=LOJAS.find(l=>/picpay/i.test(l.nome));
+    // quanto entrou (por loja), pelos Pix que já estão no Fluxo
+    const porCx={};DEC13.forEach(d=>porCx[d.cx]={d,n:0,tot:0,meses:{}});
+    p.fl.forEach(x=>{const o=porCx[x.d.cx];o.n++;o.tot+=x.valor;o.meses[String(x.data).slice(5,7)]=(o.meses[String(x.data).slice(5,7)]||0)+x.valor;});
+    // quanto já foi pago: saídas nas caixinhas de décimo
+    const pagoDe={};const nomeCx={};(p.cx.caixas||[]).forEach(c=>nomeCx[c.id]=c.nome);
+    const compCx={};(p.cx.comps||[]).forEach(c=>compCx[c.id]=c.caixinha_id);
+    (p.cx.lancs||[]).forEach(l=>{if(l.tipo==='entrada')return;const cxid=compCx[l.competencia_id];const nm=normDesc(nomeCx[cxid]||'');
+      const d=DEC13.find(x=>normDesc(x.cx)===nm);if(!d)return;pagoDe[d.cx]=(pagoDe[d.cx]||0)+Number(l.valor||0);});
+    const entrou=Object.values(porCx).reduce((a,o)=>a+o.tot,0);
+    const pago=Object.values(pagoDe).reduce((a,v)=>a+v,0);
+    const guardar=entrou-pago;
+    // o que existe de verdade no PicPay: saldo livre + cofrinhos
+    let livre=0,cof=0,cofs=[],semPP=!PP;
+    if(PP){try{
+      const {data:cts}=await sb.from('contas').select('id,nome,saldo_inicial_banco').eq('loja_id',PP.id).eq('arquivada',false);
+      const {data:lc}=await sbTudo(()=>sb.from('lancamentos').select('conta_id,valor').eq('loja_id',PP.id).order('id'));
+      const som={};(lc||[]).forEach(l=>{som[l.conta_id]=(som[l.conta_id]||0)+Number(l.valor||0);});
+      (cts||[]).forEach(c=>{const s=Number(c.saldo_inicial_banco||0)+(som[c.id]||0);
+        if(/^CART/i.test(c.nome))return;
+        if(/^COFRINHO/i.test(c.nome)){cof+=s;cofs.push({nome:c.nome.replace(/^COFRINHO · /,''),saldo:s});}
+        else livre+=s;});
+    }catch(e){}}
+    const kpi=(t,v,s,cor)=>'<div class="card" style="padding:12px 14px;flex:1;min-width:150px"><div class="mut" style="font-size:11.5px">'+t+'</div>'
+      +'<div style="font-size:19px;font-weight:700'+(cor?';color:'+cor:'')+'">'+v+'</div>'+(s?'<div class="mut" style="font-size:11px">'+s+'</div>':'')+'</div>';
+    const falta=guardar-(livre+cof);
+    const linhas=DEC13.map(d=>{const o=porCx[d.cx],pg=pagoDe[d.cx]||0;
+      return '<tr><td>'+d.cx+'<div class="mut" style="font-size:11px">'+_remEsc(d.emp)+' · '+BRL(d.valor)+' por mês</div></td>'
+        +'<td style="text-align:center">'+o.n+'</td><td style="text-align:right">'+BRL(o.tot)+'</td>'
+        +'<td style="text-align:right">'+(pg?BRL(pg):'<span class="mut">—</span>')+'</td>'
+        +'<td style="text-align:right"><b>'+BRL(o.tot-pg)+'</b></td></tr>';}).join('');
+    box.innerHTML='<div class="note">⅓ <b>Saldo do 13º</b> — o 13º que cada empresa manda por Pix todo mês para o PicPay. '
+      +'Aqui: quanto entrou no ano, quanto já saiu para pagar e quanto deveria estar guardado.</div>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">'
+      +kpi('Entrou no ano',BRL(entrou),p.fl.length+' Pix desde junho')
+      +kpi('Já foi pago',BRL(pago),'saídas nas caixinhas de 13º')
+      +kpi('Deveria estar guardado',BRL(guardar),'entrou menos o que saiu')
+      +kpi('Tem no PicPay',BRL(livre+cof),'saldo livre '+BRL(livre)+' + cofrinhos '+BRL(cof))
+      +kpi(falta>0.005?'Falta guardar':'Sobra guardada',BRL(Math.abs(falta)),falta>0.005?'o PicPay tem menos do que devia':'o PicPay tem a mais',falta>0.005?'var(--red)':'var(--green)')
+      +'</div>'
+      +(semPP?'<div class="note" style="border-color:rgba(255,92,92,.4)">A empresa <b>PicPay Lucas</b> ainda não existe. Rode o SQL da v2.9.124 no projeto <b>sistema-financeiro</b>.</div>':'')
+      +'<div class="card"><div class="cardhead"><h3 style="font-size:14px">Por empresa</h3></div><div style="overflow:auto">'
+      +'<table style="width:100%;font-size:12.5px;border-collapse:collapse"><thead><tr style="background:var(--panel-2)">'
+      +'<th style="text-align:left;padding:6px">Empresa</th><th style="padding:6px">Pix</th><th style="text-align:right;padding:6px">Entrou</th>'
+      +'<th style="text-align:right;padding:6px">Pago</th><th style="text-align:right;padding:6px">Guardar</th></tr></thead><tbody>'
+      +linhas+'</tbody></table></div></div>'
+      +(cofs.length?'<div class="card" style="margin-top:14px"><div class="cardhead"><h3 style="font-size:14px">Cofrinhos do PicPay</h3></div><div style="overflow:auto">'
+        +'<table style="width:100%;font-size:12.5px;border-collapse:collapse"><tbody>'
+        +cofs.map(c=>'<tr><td style="padding:6px">'+_remEsc(c.nome)+'</td><td style="padding:6px;text-align:right">'+BRL(c.saldo)+'</td></tr>').join('')
+        +'<tr><td style="padding:6px"><b>Total nos cofrinhos</b></td><td style="padding:6px;text-align:right"><b>'+BRL(cof)+'</b></td></tr>'
+        +'</tbody></table></div></div>':'')
+      +'<div class="card" style="margin-top:14px"><div class="cardhead"><h3 style="font-size:14px">Confronto com a Caixinha</h3>'
+      +'<span class="tag">'+p.ja.length+' lançados lá · '+p.grava.length+' só aqui</span></div>'
+      +'<div class="note" style="margin:0 0 10px">Esta tela <b>só olha</b> a Caixinha, não escreve nada nela. '
+      +'A Caixinha vai virar o módulo Caixa do Nítido, no mesmo banco — quando isso estiver pronto, o espelho automático entra.</div>'
+      +'<div class="mut" style="font-size:12.5px;padding:0 2px 10px">Abaixo, cada Pix de 13º do Fluxo e se ele já está lançado na caixinha de 13º da loja.</div>'
+      +(p.semCaixa.length?'<div class="note" style="margin:0 0 10px">'+p.semCaixa.length+' Pix de empresa que ainda não tem caixinha de 13º lá.</div>':'')
+      +'<div style="overflow:auto;max-height:340px"><table style="width:100%;font-size:12px;border-collapse:collapse"><tbody>'
+      +p.ja.map(j=>'<tr><td style="padding:5px">'+_remEsc(j.cxa.nome)+'</td><td style="padding:5px">'+isoParaBR(j.x.data)+'</td><td style="padding:5px;text-align:right">'+BRL(j.x.valor)+'</td><td style="padding:5px;color:var(--green)">já está na Caixinha</td></tr>').join('')
+      +p.grava.map(g=>'<tr><td style="padding:5px">'+_remEsc(g.cxa.nome)+'</td><td style="padding:5px">'+isoParaBR(g.x.data)+'</td><td style="padding:5px;text-align:right">'+BRL(g.x.valor)+'</td><td style="padding:5px;color:#9a4b00">falta na Caixinha</td></tr>').join('')
+      +'</tbody></table></div></div>';}
+  async function dec13Rodar(){
+    const p=await dec13Plano();if(p.erro){toast(p.erro,'erro');return;}
+    if(!confirm('Vou gravar '+p.grava.length+' entrada(s) de 13º na Caixinha e ligar a referência de '+p.ja.filter(j=>j.precisaLigar).length+' que a Heloísa já lançou.\n\nNada é apagado. Pode rodar?'))return;
+    const r=await dec13Sinc(false);if(r&&!r.erro&&!r.faltaCol)viewDecimo();}
+  // ================= fim do bloco v2.9.124 =================
+
   // ---- IMPORTAR EXTRATO (OFX real do Sicoob) ----
   let IMPORT=[];let IMPORT_ABERTO={};let IMP_MARC={modo:'todas',crit:[]};
   let importPeriodo={de:'',ate:''};
@@ -3995,7 +4324,8 @@
       if(!dt||isNaN(amt))return;
       const iso=dt.slice(0,4)+'-'+dt.slice(4,6)+'-'+dt.slice(6,8);
       const desc=(name||memo||'').trim();
-      trans.push({iso,amt,fitid,memo,name,desc});
+      const ppConta=get('PPCONTA'),ppTipo=get('PPTIPO'),ppQuem=get('PPQUEM'),ppHora=get('PPHORA'),ppForma=get('PPFORMA'),ppMisto=get('PPMISTO'); // v2.9.124: extrato do PicPay
+      trans.push({iso,amt,fitid,memo,name,desc,ppConta,ppTipo,ppQuem,ppHora,ppForma,ppMisto});
     });
     return trans;
   }
@@ -4047,8 +4377,8 @@
       <div class="card"><div class="cardhead"><h3>Selecionar arquivo .OFX</h3><span class="tag">${LOJAS.find(l=>l.id===lojaAtual)?.nome||''}</span></div>
         <div style="border:1.5px dashed #38465a;border-radius:14px;padding:34px;text-align:center;margin-top:12px">
           <div style="font-size:30px;margin-bottom:10px">⤓</div>
-          <input type="file" id="ofxFile" accept=".ofx,.pdf" onchange="lerArquivoOFX(this)" style="display:none">
-          <button class="btn" onclick="document.getElementById('ofxFile').click()">Escolher extrato (OFX ou PDF)</button>
+          <input type="file" id="ofxFile" accept=".ofx,.pdf,.csv" onchange="lerArquivoOFX(this)" style="display:none">
+          <button class="btn" onclick="document.getElementById('ofxFile').click()">Escolher extrato (${ehPicPay()?'CSV do PicPay':'OFX ou PDF'})</button>
           <div class="mut" style="margin-top:10px;font-size:12px">Baixe o extrato do Sicoob em OFX ou em PDF e selecione aqui. O PDF traz o texto completo de cada linha (ex.: SALARIO HELOISA nas transferências para a DVL).</div>
         </div></div>`;
       mostrarUltimasImportacoes();irisImportStatus().catch(e=>console.error(e));
@@ -4421,8 +4751,14 @@
       if(r.conta&&nomes.length&&!nomes.some(n=>normDesc(r.conta).includes(normDesc(n)))&&!confirm(`Esse PDF é da conta "${r.conta}".\nVocê está na ${L?L.nome:''}.\n\nImportar mesmo assim?`)){input.value='';return;}
       if(!importObs)importObs='EXTRATO EM PDF';
       return _processarOFX(r.ofx,input);}
+    // v2.9.124: extrato do PicPay em CSV (só na empresa PicPay Lucas)
+    if(nomeArq.endsWith('.csv')){
+      if(!ehPicPay()){toast('⚠️ CSV só na empresa PicPay Lucas. Aqui o extrato é OFX ou PDF do Sicoob.','erro');input.value='';return;}
+      let r;try{toast('Lendo o CSV do PicPay…','ok');r=await picpayCsvParaOFX(file);}catch(e){toast('Não consegui ler o CSV: '+(e.message||e),'erro');input.value='';return;}
+      if(!importObs)importObs='EXTRATO DO PICPAY (CSV)';
+      return _processarOFX(r.ofx,input);}
     if(!nomeArq.endsWith('.ofx')){
-      toast('⚠️ Escolha o extrato do Sicoob em OFX ou PDF.','erro');
+      toast(ehPicPay()?'⚠️ Na PicPay escolha o extrato em CSV.':'⚠️ Escolha o extrato do Sicoob em OFX ou PDF.','erro');
       input.value='';return;
     }
     const reader=new FileReader();
@@ -4437,7 +4773,7 @@
       }
       // v2.9.7: o extrato é desta loja? (número da conta que vem no arquivo × conta cadastrada de cada loja)
       importContaNova='';
-      if(!_IMP_API){const ck=conferirContaExtrato(((txt.match(/<ACCTID>\s*([^<\r\n]+)/i)||[])[1]||'').trim());
+      if(!_IMP_API&&!ehPicPay()){const ck=conferirContaExtrato(((txt.match(/<ACCTID>\s*([^<\r\n]+)/i)||[])[1]||'').trim());
         if(ck.bloqueia){if(input)input.value='';IMPORT=[];mostrarBloqueioConta(ck);return;}
         if(ck.aprender)importContaNova=ck.d;}
       const trans=parseOFX(txt);
@@ -4557,7 +4893,8 @@
         return item;
       });
       IMPORT_ABERTO={};
-      IMPORT.forEach(r=>{if(r.amt>0&&r.grupo!=='ja'&&r.grupo!=='lentes')r.contatoId=contatoEntradaAuto(r.full||r.desc);});
+      if(ehPicPay())ppAjustar(IMPORT); // v2.9.124: conta certa (saldo / cofrinho / cartão) e regra do 13º
+      IMPORT.forEach(r=>{if(r.amt>0&&r.grupo!=='ja'&&r.grupo!=='lentes'&&!r.dec13)r.contatoId=contatoEntradaAuto(r.full||r.desc);});
       IMPORT_DEP=[];IMPORT_CX_LOGIN=false;
       try{if(await cxSessao()){IMPORT_CX_LOGIN=true;await cxCarregar(true);}}catch(e){}
       if(IMPORT.some(r=>r.estornar)){const kq=cxCaixaDoExtrato();IMPORT.forEach(r=>{if(r.estornar&&!r.cxLoja){if(kq)r.cxLoja=kq.id;if(!r.cxDevedor&&r.lojaEstorno)r.cxDevedor=cxDevedorDaDescricao(r.lojaEstorno)||String(r.lojaEstorno).toUpperCase();}});} // v2.9.37: caixa = esta loja (quem pagou); contato = quem devolve
@@ -4616,7 +4953,7 @@
       if(r.grupo==='lentes'&&r.jaLentes){if(r.fitid&&!r.jaLentes.fitid){try{await sb.from('lancamentos').update({fitid:r.fitid}).eq('id',r.jaLentes.id);}catch(e){}}ligados++;continue;}
       if(soClassificados&&!r.catId){pulados++;continue;}
       if(mesFechadoISO(r.iso)){fech++;continue;}
-      const reg={loja_id:lojaAtual,conta_id:contaSicoob?contaSicoob.id:null,data:r.iso,descricao:(r.desc||'').toUpperCase().slice(0,200),
+      const reg={loja_id:lojaAtual,conta_id:r.contaId||(contaSicoob?contaSicoob.id:null),data:r.iso,descricao:(r.desc||'').toUpperCase().slice(0,200),
         valor:r.amt,tipo:r.amt>0?'receita':'despesa',categoria_id:r.catId||null,contato_id:r.contatoId||null,
         pago:true,origem:'ofx',fitid:r.fitid||null,criado_por:(auto&&!ROBO)?null:USER.id};if(r.obs&&r.obs.trim())reg.documento=r.obs.trim().toUpperCase();
       const {data:ins,error}=await sb.from('lancamentos').insert(reg).select('id').single();

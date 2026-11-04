@@ -368,6 +368,8 @@ Tudo o que é preenchido fica **amarelo**, para alguém dar o ok depois. Nada é
 
 **E avisa quando o extrato para (v2.9.122).** Junto com os pagamentos, ela olha o robô do Sicoob. Se alguma conta passou de **36 horas** sem importar, a mensagem começa por aí: de qual conta se trata, há quantos dias está parada e, quando existe, o que o banco respondeu (por exemplo "tempo esgotado"). É o aviso que faz o robô não falhar calado — antes, só quem abrisse o Dashboard e olhasse o quadro "Extrato em dia?" ficava sabendo.
 
+E a própria rodada das 6h, no GitHub, **termina com erro** quando alguma conta passa das 36h (v2.9.123). Como o GitHub manda e-mail quando uma rodada falha, você fica sabendo mesmo sem abrir o sistema. Tropeço de um dia, que se resolve sozinho na rodada seguinte, continua não gerando e-mail.
+
 ### Errei ao ensinar? Dá para desfazer (v2.9.110)
 
 Logo depois de clicar em **Ensinar** (ou em **só estas**), aparece em cima da tela uma faixa verde: *"Preenchi 46 lançamento(s) de TAL COISA e guardei a regra"*, com o botão **Desfazer**. Clicou em Desfazer, ela **tira a categoria e o contato daquelas mesmas linhas** e **apaga a regra** que tinha acabado de guardar — volta tudo como estava. Ela só desfaz as linhas daquele ensino e só se ninguém tiver conferido no meio tempo; o que alguém já conferiu ela não mexe.
@@ -1079,6 +1081,75 @@ Cada loja tem a sua conta do Sicoob guardada (Rocha 1 18769-0 … Rocha 11 10975
 
 Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo valor, data igual ou até 5 dias úteis depois), ao confirmar a importação o depósito fica **conferido no banco** no Caixinha, como "conferido pelo extrato". No **Caixinha (espelho)** aparece o quadro "Depósitos da gaveta no banco": quantos foram conferidos pelo extrato, à mão (pela Rhaiane), aguardando, e em vermelho os que passaram de 5 dias úteis sem aparecer: **não chegou no banco**.
 
+## PicPay do Lucas (v2.9.124)
+
+O PicPay é a conta pessoal do Lucas. É para lá que cada empresa manda o Pix do 13º todo mês, e é lá que o dinheiro fica guardado nos cofrinhos.
+
+No Fluxo ele aparece como uma empresa, dentro de **Diversas**, com três tipos de conta:
+
+- **CONTA PRINCIPAL** — o saldo de verdade, o dinheiro que está livre.
+- **CARTÃO PICPAY** — as compras no cartão de crédito ("Pagamento realizado · Com cartão", recarga de celular e parecidos). **Não mexem no saldo**: ficam nessa conta separada só para o gasto não se perder. Quem mexe no saldo é a fatura, quando ela é paga.
+- **COFRINHO · …** — um para cada cofrinho, cada um com o saldo dele.
+
+### Importar o extrato
+
+No PicPay, baixe o extrato em **CSV** (o app oferece PDF ou CSV — aqui é o CSV). Depois: escolha a empresa **PicPay Lucas**, vá em **Importar extrato** e selecione o arquivo. O resto é igual ao extrato do Sicoob: o Fluxo mostra tudo para você conferir antes de lançar.
+
+Se você importar o mesmo arquivo de novo, **nada duplica**: cada linha tem um código feito de data + hora + valor + quem mandou ou recebeu, e o Fluxo reconhece o que já entrou.
+
+### Cofrinho
+
+"Dinheiro guardado · cofrinho X" e "Dinheiro resgatado · cofrinho X" não são gasto nem receita: é dinheiro saindo do saldo e indo para o cofrinho, ou voltando. O Fluxo lança **as duas pontas**: tira do saldo e põe no cofrinho (ou o contrário). Por isso uma linha do extrato vira dois lançamentos — é assim que cada cofrinho fica com o saldo certo.
+
+Se o nome do cofrinho vier escrito de um jeito que o Fluxo não reconhece, a linha entra no saldo mesmo e aparece para você classificar.
+
+### Pagamento meio no saldo, meio no cartão
+
+A coluna **forma de pagamento** do extrato diz de onde saiu o dinheiro: "Com saldo", "Com cartão" ou "Com saldo + cartão". A última é a chata: o PicPay mostra só o total, não diz quanto foi de cada lado. Essas linhas entram inteiras no saldo e ficam **marcadas para conferir**, para você ajustar na mão se o valor do cartão for grande. No extrato de maio a outubro só apareceu uma assim.
+
+### Saldo inicial do PicPay
+
+O extrato do PicPay só mostra o período que você baixou — o dinheiro que já estava no saldo e nos cofrinhos antes disso não aparece. Por isso, depois da primeira importação, abra o app, anote o saldo de cada cofrinho e o saldo livre, e preencha o **saldo inicial** de cada conta em Configurações. Sem isso os cofrinhos ficam negativos e a comparação do 13º sai errada.
+
+## Saldo do 13º (v2.9.124)
+
+Fica em **Gestão › Saldo do 13º** (só o gestor vê).
+
+Todo mês cada empresa manda por Pix um valor fixo de 13º para o PicPay:
+
+| Empresa | No banco aparece como | Valor |
+|---|---|---|
+| Rocha 1 | OTICA ROCHA COMERCIO VAREJISTA | R$ 2.350,00 |
+| Rocha 2 | DVL | R$ 2.350,00 |
+| Rocha 3 | PRIME | R$ 1.700,00 |
+| Rocha 4 | DTR | R$ 1.550,00 |
+| Rocha 5 | MM | R$ 1.850,00 |
+| Rocha 6 | ROCHA PRODUTOS OPTICOS LTDA | R$ 1.850,00 |
+| Rocha 7 | IPT | R$ 1.600,00 |
+| Rocha 8 | PREMIUM | R$ 1.700,00 |
+| Rocha 9 | CP | R$ 850,00 |
+| Rocha 10 | CM | R$ 1.800,00 |
+| Rocha 11 | VILA | R$ 1.150,00 |
+| GV Lentes | GV OPTICAL | R$ 2.100,00 |
+| Casa | OTICA ROCHA COMERCIO VAREJISTA (mesmo CNPJ da Rocha 1) | R$ 250,00 |
+
+A Casa paga pelo mesmo CNPJ da Rocha 1 — no banco é a mesma empresa. Quem separa as duas é o valor: R$ 2.350,00 é da Rocha 1, R$ 250,00 é da Casa.
+
+**Tem que bater o nome da empresa E o valor.** Pix da mesma empresa com valor diferente **não é 13º** — fica no Fluxo do jeito que está (empréstimo, parcela, reembolso). Foi isso que evitou, por exemplo, que um vale de R$ 1.800,00 fosse confundido com o 13º da Rocha 10.
+
+A tela mostra cinco números:
+
+- **Entrou no ano** — a soma de todos os Pix de 13º desde maio de 2026.
+- **Já foi pago** — as saídas que estão nas caixinhas de 13º de cada loja.
+- **Deveria estar guardado** — o que entrou menos o que saiu.
+- **Tem no PicPay** — o saldo livre mais todos os cofrinhos (o cartão de crédito não conta).
+- **Falta guardar / Sobra guardada** — a diferença entre os dois de cima. Vermelho quer dizer que o PicPay tem menos do que deveria.
+
+Embaixo vem o detalhe empresa por empresa, o saldo de cada cofrinho e o **confronto com a Caixinha**: cada Pix de 13º e se ele já está lançado na caixinha de 13º daquela loja.
+
+> **Por enquanto o Fluxo só olha a Caixinha, não escreve nada lá.** A Caixinha vai virar o módulo Caixa do Nítido, no mesmo banco; quando isso estiver pronto, o espelho automático do 13º entra.
+
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -1136,6 +1207,9 @@ Quando o extrato da loja traz o depósito da gaveta (texto com "DEP…", mesmo v
 | 04/11/2026 | 2.9.120 | **O Fluxo virou o módulo Financeiro da casa Nítido.** O sistema passou a morar na pasta `financeiro/` do mesmo repositório e o endereço agora é `.../financeiro/`. Na barra de cima entrou o botão **Módulos**, que volta para a tela de escolha de sistemas. Mesmo login, mesmo banco, nada mudou no trabalho do dia a dia | O robô das 6h foi apontado para o endereço novo |
 | 04/11/2026 | 2.9.121 | O arquivo de configuração passou a ser lido da raiz do site (`/config.js`), compartilhado por todos os módulos da casa Nítido. As funções da Íris e do leitor de boleto continuam em `/api/`, na raiz, sem mudança | — |
 | 04/11/2026 | 2.9.122 | **A Íris avisa quando o extrato para.** Se alguma conta passar de um dia e meio sem importar, ela abre e avisa, dizendo há quantos dias está parada e o que o banco respondeu. Antes isso só aparecia para quem abrisse o Dashboard; agora o robô não falha mais calado. O aviso vem junto com o dos pagamentos, em uma mensagem só, no máximo uma vez por dia e só para quem vê tudo | — |
+| 04/11/2026 | 2.9.123 | O botão **Módulos** passou a abrir `/?modulos`, para a tela de escolha aparecer mesmo para quem tem módulo lembrado. E a rodada das 6h agora **termina com erro** quando alguma conta fica mais de 36h sem importar — assim o GitHub manda e-mail e o robô não falha calado. Timeout passageiro, que se resolve na rodada seguinte, continua não gerando aviso | — |
+| 04/11/2026 | 2.9.124 | **PicPay do Lucas e saldo do 13º.** O extrato do PicPay entra em CSV, com o cartão de crédito separado do saldo e cada cofrinho com saldo próprio. O Fluxo reconhece sozinho o Pix do 13º de cada empresa (nome da empresa + valor certo) e a tela **Saldo do 13º** mostra quanto entrou, quanto já foi pago e quanto deveria estar guardado, comparado com o que existe no PicPay | fluxo-v2.9.124-picpay.sql |
+| 04/11/2026 | 2.9.125 | Leitor do PicPay acertado com o extrato de verdade (466 linhas de maio a novembro): o sinal de menos que o app usa, a coluna **forma de pagamento** separando cartão de saldo, o nome do cofrinho vindo de "No cofrinho X", e linha repetida no mesmo minuto deixando de se perder. O **13º da Casa** sai pelo CNPJ da Rocha 1 (R$ 250) e o ano começa em **maio**, não em junho | — |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
