@@ -271,7 +271,7 @@
   <div id="modalRoot"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
+  <script src="/config.js"></script>
   <script>
   let sb=null, conectado=false;
   let USER=null, PERFIL={nome:'',papel:''};
@@ -302,7 +302,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.120', APP_DATA='04/11/2026';
+  const APP_VERSAO='2.9.122', APP_DATA='04/11/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -2475,11 +2475,23 @@
   // quantos dias antes avisar: o que estiver escrito no item do Caixinha (campo "Avisar"), senão 5
   function _snAvisoDias(it){const c=(it&&it.campos||[]).find(x=>/AVIS|LEMBR/i.test(String(x.k||'')));
     const n=c?Number(String(c.v||'').replace(/\D/g,'')):0;return n>0&&n<=30?n:5;}
+  // v2.9.122: o robô do extrato não pode falhar calado. Se alguma conta passou de 36h sem importar,
+  // a Íris abre e avisa — mesmo que ninguém tenha olhado o Dashboard.
+  async function irisExtratoParado(){
+    try{
+      if(!(SICOOB_CONTAS||[]).length){const {data}=await sb.from('sicoob_contas').select('apelido,ultimo_ok,ultimo_erro,ativo').eq('ativo',true);if(data)SICOOB_CONTAS=data;}
+      const h=c=>c.ultimo_ok?Math.round((Date.now()-new Date(c.ultimo_ok).getTime())/36e5):null;
+      return (SICOOB_CONTAS||[]).filter(c=>c.ativo!==false).map(c=>({nome:c.apelido||'conta',hrs:h(c),erro:c.ultimo_erro}))
+        .filter(x=>x.hrs==null||x.hrs>36)
+        .sort((a,b)=>(b.hrs==null?1e9:b.hrs)-(a.hrs==null?1e9:a.hrs));
+    }catch(e){return [];}}
   async function irisAvisos(){
     if(!USER||!['tudo'].includes(String(PERFIL.iris_escopo||(ehDono()?'tudo':'dia_a_dia'))))return [];
     const hoje=_hojeLocal();const de=addDias(hoje,-25),ate=addDias(hoje,15);
-    let itens=[];try{itens=await snItensAgenda(null,de,ate);}catch(e){return [];}
     const out=[];
+    try{(await irisExtratoParado()).forEach(x=>out.push({urg:3,ord:-(x.hrs==null?9999:x.hrs),
+      txt:`O extrato da **${x.nome}** ${x.hrs==null?'nunca foi importado':`está há ${Math.round(x.hrs/24)} dia(s) sem importar`}${x.erro?` — o banco respondeu: ${String(x.erro).slice(0,70)}`:''}.`}));}catch(e){}
+    let itens=[];try{itens=await snItensAgenda(null,de,ate);}catch(e){return out.sort((a,b)=>b.urg-a.urg||a.ord-b.ord).slice(0,12);}
     const _ate=(a,b)=>Math.round((new Date(a+'T00:00:00')-new Date(b+'T00:00:00'))/86400000);
     itens.forEach(i=>{if(i.status==='pago')return;
       const dias=_ate(i.venc,hoje);                           // >0 ainda vai vencer, 0 hoje, <0 passou
@@ -2492,11 +2504,15 @@
       else if(dias<=avisar)out.push({urg:1,ord:dias,txt:`Faltam ${dias} dia${dias>1?'s':''} para **${nome}** (${loja}) — vence ${isoParaBR(i.venc).slice(0,5)}${quanto}.`});});
     return out.sort((a,b)=>b.urg-a.urg||a.ord-b.ord).slice(0,12);}
   function irisAvisoTexto(L){const n=String(PERFIL.nome||'').split(' ')[0];const nome=n?n.charAt(0).toUpperCase()+n.slice(1).toLowerCase():'';
-    const venc=L.filter(a=>a.urg===2),perto=L.filter(a=>a.urg===1);
-    let t=`Oi${nome?', '+nome:''}! Passando para lembrar do que está chegando:`;
-    if(venc.length)t+='\n\n'+venc.map(a=>'• '+a.txt).join('\n');
-    if(perto.length)t+='\n\n'+perto.map(a=>'• '+a.txt).join('\n');
-    t+='\n\nIsso vem do cartão de pagamentos de todo mês do Caixinha. Quando marcar pago lá — ou quando o pagamento sair no extrato — eu paro de lembrar sozinha.';
+    const ext=L.filter(a=>a.urg===3),venc=L.filter(a=>a.urg===2),perto=L.filter(a=>a.urg===1);
+    let t=`Oi${nome?', '+nome:''}!`;
+    if(ext.length){t+=`\n\n**Olha o extrato:**\n`+ext.map(a=>'• '+a.txt).join('\n')
+      +`\n\nEu lanço o extrato todo dia às 6h. Quando passa de um dia e meio sem entrar, é porque o robô tropeçou — vale abrir Importar extrato e puxar à mão, ou me chamar aqui.`;}
+    if(venc.length||perto.length){
+      t+=(ext.length?'\n\n**E dos pagamentos:**':'\n\nPassando para lembrar do que está chegando:');
+      if(venc.length)t+='\n'+venc.map(a=>'• '+a.txt).join('\n');
+      if(perto.length)t+='\n'+perto.map(a=>'• '+a.txt).join('\n');
+      t+='\n\nIsso vem do cartão de pagamentos de todo mês do Caixinha. Quando marcar pago lá — ou quando o pagamento sair no extrato — eu paro de lembrar sozinha.';}
     return t;}
   function irisChatLigar(){if(!document.getElementById('irisRoot')){const d=document.createElement('div');d.id='irisRoot';document.body.appendChild(d);}
     if(irisChatPode()){let vi=false;try{vi=!!localStorage.getItem(_irisOiChave());}catch(e){}
