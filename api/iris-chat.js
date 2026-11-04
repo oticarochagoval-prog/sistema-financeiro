@@ -10,10 +10,18 @@ const MODELO = process.env.IA_MODELO_CHAT || 'claude-sonnet-4-5';
 let _manual = null, _manualEm = 0;
 async function manual(host) {
   if (_manual && Date.now() - _manualEm < 30 * 60 * 1000) return _manual;
-  try {
-    const r = await fetch('https://' + host + '/manual.md');
-    if (r.ok) { _manual = await r.text(); _manualEm = Date.now(); }
-  } catch (e) { }
+  // v2.9.127: o Fluxo virou o módulo financeiro/ da casa Nítido. Procura lá primeiro e cai na raiz
+  // se ainda estiver no lugar antigo — assim a Íris não fica sem manual no dia da troca da raiz.
+  for (const p of ['/financeiro/manual.md', '/manual.md']) {
+    try {
+      const r = await fetch('https://' + host + p);
+      if (!r.ok) continue;
+      const t = await r.text();
+      if (!t || !/#\s/.test(t.slice(0, 500))) continue; // veio HTML de erro, não o manual
+      _manual = t; _manualEm = Date.now();
+      return _manual;
+    } catch (e) { }
+  }
   return _manual || '';
 }
 

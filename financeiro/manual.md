@@ -1150,6 +1150,57 @@ Embaixo vem o detalhe empresa por empresa, o saldo de cada cofrinho e o **confro
 > **Por enquanto o Fluxo só olha a Caixinha, não escreve nada lá.** A Caixinha vai virar o módulo Caixa do Nítido, no mesmo banco; quando isso estiver pronto, o espelho automático do 13º entra.
 
 
+## O que vai para a Lixeira não volta sozinho (v2.9.126)
+
+Antes era assim: você mandava uma linha do extrato para a Lixeira (por exemplo, uma duplicata) e, na importação seguinte, ela voltava. A importação só olhava o que estava lançado; não olhava a Lixeira. Dava retrabalho e confusão — a pessoa achava que tinha feito errado.
+
+Agora a importação olha a Lixeira. Quando uma linha do extrato já foi mandada para lá, ela aparece num grupo chamado **"Estão na Lixeira"**, **desmarcada**, com o aviso de quem tirou, quando, e como estava escrita lá. Ela **não entra** se ninguém fizer nada.
+
+Se foi engano e você quer trazer de volta, é só marcar o quadradinho da linha. Nada é perdido nos dois sentidos: não volta sem você querer, e não some sem poder voltar.
+
+Isso vale tanto para a importação à mão quanto para a entrada automática das 6h.
+
+### E de quando até quando a importação olha?
+
+A entrada automática **não varre o ano todo**. Ela começa de três dias antes da última importação completa daquela empresa — ou seja, na prática olha só os últimos dias. Varrer um mês antigo inteiro só acontece quando alguém pede, pelo botão de mês fechado. Com a regra da Lixeira acima, mesmo esse caso ficou seguro.
+
+
+## Conferir os lançamentos digitados à mão
+
+Esta parte é o que a equipe mais pergunta. Vale para quem está conferindo mês por mês o que foi digitado à mão antes do extrato automático existir.
+
+### Achei a mesma coisa lançada duas vezes
+
+Fica **a do extrato**, vai para a Lixeira **a que foi digitada à mão**.
+
+O motivo é prático: a linha do extrato carrega o código do banco. Se você tirar a do extrato e deixar a digitada, na importação seguinte a do banco volta e a duplicata aparece de novo. Tirando a digitada, isso não acontece.
+
+Antes de tirar: se a linha digitada tiver **descrição melhor ou categoria já marcada** e a do extrato estiver crua, copie a descrição e a categoria para a do extrato primeiro. O extrato traz a data e o valor certos; quem digitou costuma ter escrito a melhor explicação.
+
+Se as duas vieram do extrato, ou se você não tem certeza de que é a mesma coisa, **não tire nenhuma**: deixe anotado como dúvida. Valor igual não quer dizer coisa igual — SALÁRIO JUAN e SALÁRIO HELOÍSA, BONIF LAYLLA e BONIF LARISSA são pagamentos diferentes do mesmo valor.
+
+### Quem pode mandar para a Lixeira
+
+Só o gestor — hoje o Lucas e a Heloísa. Quem é lançador (Carol, Rhaiane, Flávia) **não tem a lixeirinha** e não precisa: o trabalho é **achar e anotar**, não decidir. O que ficou marcado como dúvida o gestor resolve depois.
+
+Nada é apagado de verdade: o que vai para a Lixeira continua guardado, com quem tirou e quando, e dá para voltar.
+
+### O quadradinho do lado do valor
+
+Ele quer dizer **"olhei e está certo, pode ficar"**.
+
+- Tem certeza de que a linha é de verdade? **Marque.** Isso fecha a linha e ninguém precisa olhar de novo.
+- Parece repetida, ou você ficou na dúvida? **Não marque.** Linha marcada é tratada como resolvida e ninguém volta nela.
+
+### "não está no extrato" — isso é erro?
+
+Não. Essa etiqueta vermelha diz só que a linha foi **digitada à mão** e não veio do banco. É o normal em parcela de empréstimo entre as empresas, em acerto interno e em tudo que não passa pela conta. Não é motivo para tirar nada.
+
+### Em caso de dúvida
+
+Fala com o gestor. Não tire nada do que você não tem certeza — o que ficou de fora dá trabalho uma vez; o que foi tirado errado dá trabalho duas.
+
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -1210,6 +1261,8 @@ Embaixo vem o detalhe empresa por empresa, o saldo de cada cofrinho e o **confro
 | 04/11/2026 | 2.9.123 | O botão **Módulos** passou a abrir `/?modulos`, para a tela de escolha aparecer mesmo para quem tem módulo lembrado. E a rodada das 6h agora **termina com erro** quando alguma conta fica mais de 36h sem importar — assim o GitHub manda e-mail e o robô não falha calado. Timeout passageiro, que se resolve na rodada seguinte, continua não gerando aviso | — |
 | 04/11/2026 | 2.9.124 | **PicPay do Lucas e saldo do 13º.** O extrato do PicPay entra em CSV, com o cartão de crédito separado do saldo e cada cofrinho com saldo próprio. O Fluxo reconhece sozinho o Pix do 13º de cada empresa (nome da empresa + valor certo) e a tela **Saldo do 13º** mostra quanto entrou, quanto já foi pago e quanto deveria estar guardado, comparado com o que existe no PicPay | fluxo-v2.9.124-picpay.sql |
 | 04/11/2026 | 2.9.125 | Leitor do PicPay acertado com o extrato de verdade (466 linhas de maio a novembro): o sinal de menos que o app usa, a coluna **forma de pagamento** separando cartão de saldo, o nome do cofrinho vindo de "No cofrinho X", e linha repetida no mesmo minuto deixando de se perder. O **13º da Casa** sai pelo CNPJ da Rocha 1 (R$ 250) e o ano começa em **maio**, não em junho | — |
+| 05/11/2026 | 2.9.126 | **O que vai para a Lixeira não volta sozinho.** Até agora a importação não olhava a Lixeira: se alguém tirasse uma linha do banco, ela voltava na importação seguinte. Agora essas linhas aparecem num grupo próprio, **desmarcadas**, dizendo quem tirou e quando — e só entram de novo se alguém marcar na mão | — |
+| 05/11/2026 | 2.9.127 | As regras da conferência entraram no manual, então **a Íris passa a saber respondê-las** (duplicata, o quadradinho de conferido, "não está no extrato", quem manda para a Lixeira). E ela passou a procurar o manual também em `financeiro/manual.md`: no dia em que o Nítido trocar a raiz, ela não fica sem saber de nada | — |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |

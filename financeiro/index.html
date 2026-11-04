@@ -302,7 +302,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.125', APP_DATA='04/11/2026';
+  const APP_VERSAO='2.9.127', APP_DATA='05/11/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -4389,6 +4389,10 @@
       const valorTd=`<td class="amt ${r.amt>0?'green':'red'}" style="white-space:nowrap">${r.amt>0?'+':'-'}${BRL(Math.abs(r.amt))}</td>`;
       const data=`<td class="mut">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</td>`;
       if(r.grupo==='ja')return `<tr style="opacity:.7">${data}<td>${r.desc}<div class="mut" style="font-size:11px;margin-top:2px">${r.jaImportado?'já importado antes (mesmo código do banco)':`já digitado: <b>${r.jaExiste.descricao||''}</b> — vai só ganhar o código do banco`}${r.jaConfira?` <span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--amber);color:var(--amber);font-weight:700">confira: lançado em ${isoParaBR(r.jaExiste.data).slice(0,5)}, no banco ${isoParaBR(r.iso).slice(0,5)}</span>`:''}</div></td><td colspan="2">${r.jaImportado?'<span class="mut" style="font-size:11px">nada a fazer</span>':`<span class="arqbtn" style="cursor:pointer" onclick="IMPORT[${i}].grupo='falta';IMPORT[${i}].jaExiste=null;IMPORT[${i}].catId='';_keepY=window.scrollY;render()">não é esse — lançar como novo</span>`}</td>${valorTd}</tr>`;
+      if(r.grupo==='lixeira'){const lx=r.naLixeira||{};
+        return `<tr style="opacity:.75;background:rgba(245,183,64,.06)"><td class="mut" style="white-space:nowrap"><label style="display:flex;gap:6px;align-items:center;cursor:pointer" title="Trazer de volta? Só marque se foi engano"><input type="checkbox" ${impSel(r)?'checked':''} onchange="IMPORT[${i}].selManual=this.checked;_keepY=window.scrollY;render()">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</label></td>
+          <td>${r.desc}<div class="mut" style="font-size:11px;margin-top:2px">está na Lixeira${lx.em?' desde '+isoParaBR(String(lx.em).slice(0,10)):''}${lx.por?' · '+_remEsc(nomeDe(lx.por)||''):''}${lx.desc&&normDesc(lx.desc)!==normDesc(r.desc)?' · lá está como "'+_remEsc(lx.desc)+'"':''}</div></td>
+          <td></td><td></td>${valorTd}</tr>`;}
       if(r.grupo==='lentes')return `<tr style="opacity:.6">${data}<td>${r.desc}<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)">🔗 já lançado pelas Lentes: ${r.jaLentes.descricao}</span></div></td><td colspan="2"><span class="arqbtn" onclick="IMPORT[${i}].jaLentes=null;IMPORT[${i}].grupo='falta';_keepY=window.scrollY;render()" style="cursor:pointer">⏭️ não lança de novo · <u>lançar mesmo assim</u></span></td>${valorTd}</tr>`;
       const destaque=!impSel(r)?'style="opacity:.45"':(r.corrigir?'style="background:rgba(245,183,64,.08)"':(r.estornar?'style="background:rgba(125,162,255,.07)"':''));
       const dataSel=`<td class="mut" style="white-space:nowrap"><label style="display:flex;gap:6px;align-items:center;cursor:pointer" title="Lançar esta linha agora?"><input type="checkbox" tabindex="-1" ${impSel(r)?'checked':''} onclick="event.stopPropagation();IMPORT[${i}].selManual=this.checked;_keepY=window.scrollY;render()">${r.iso.slice(8,10)}/${r.iso.slice(5,7)}</label></td>`;
@@ -4397,7 +4401,7 @@
       return `<tr ${destaque}${impSel(r)&&r.resolvido&&!r.corrigir?' style="background:rgba(61,214,140,.06)"':''}>${dataSel}<td>${r.desc}${r.corrigir?' <span class="catchip" style="border-color:var(--amber);color:var(--amber)">confira</span>':''}${r.resolvido&&!r.corrigir?' <span style="color:var(--green);font-weight:800">✓</span>':''}${etqRegra}${(()=>{if(r.amt>=0||r.agenda||r.grupo==='ja'||r.grupo==='lentes')return '';const pc=parcelaDoExtrato(r);return pc?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px">parcela ${pc.a}/${pc.b}: as próximas vão para a Agenda</span></div>`:'';})()}${r.agenda?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--green);color:var(--green)">da Agenda: ${_remEsc(r.agenda.desc||'')}${r.agenda.parcela?' '+r.agenda.parcela:''}${r.agenda.juros?' · '+BRL(r.agenda.juros)+' de juros':''}</span></div>`:''}${r.rateio?`<div style="margin-top:3px"><span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--amber);color:var(--amber)">conta dividida da DVL: é despesa${r.catId?' (confira a categoria)':' — escolha a categoria'}</span></div>`:''}${aprend}</td><td><div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:120px" onclick="abrirComboCatImport(this,${i})"><span>${(CATS.find(c=>String(c.id)===String(r.catId))||{}).nome||'⚠ classificar'}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Nova categoria" onclick="abrirNovaCatImport(${i})">+</button>${(()=>{const t=catTransf();return t&&String(r.catId)===String(t.id)&&!r.corrigir?'':`<button class="miniadd" tabindex="-1" style="height:28px;font-size:11px;padding:0 7px;width:auto;white-space:nowrap" title="Entra como NEUTRA (transferência entre lojas): aparece em Lançamentos, só não conta no resultado. Nada fica de fora." onclick="impNaoEntra(${i})">neutra</button>`;})()}</div>${r.obs||r._obsAberto?`<input class="qin maiusc" tabindex="-1" style="margin-top:4px;font-size:11.5px;padding:4px 8px;width:100%" value="${(r.obs||'').replace(/"/g,'&quot;')}" placeholder="observação (ex.: MARIA — PANFLETAGEM)" oninput="IMPORT[${i}].obs=this.value;IMPORT[${i}]._mexido=true">`:`<div style="margin-top:3px"><span tabindex="-1" onclick="IMPORT[${i}]._obsAberto=true;_keepY=window.scrollY;render()" style="cursor:pointer;font-size:11px;color:var(--muted)">+ obs</span></div>`}</td><td>${r.amt>0?`<span class="mut" style="font-size:12px">${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||''}</span>`:`<div style="display:flex;gap:3px;align-items:center"><div class="combo" style="min-width:110px" onclick="abrirComboContImport(this,${i})"><span>${(CONTATOS.find(c=>String(c.id)===String(r.contatoId))||{}).nome||(r.obs?`<span class="mut">${String(r.obs).slice(0,22).replace(/</g,'&lt;')}</span>`:'— contato')}</span><span class="arw">▾</span></div><button class="miniadd" style="width:28px;height:28px;font-size:15px" title="Novo contato" onclick="abrirNovoContatoImport(${i})">+</button></div>`}</td>${valorTd}</tr>`;
     };
     const idx=IMPORT.map((r,i)=>i).filter(i=>IMPORT_TIPO==='ent'?IMPORT[i].amt>0:IMPORT_TIPO==='sai'?IMPORT[i].amt<0:true);
-    const atencao=idx.filter(i=>{const r=IMPORT[i];return r.grupo==='falta'||!r.grupo||r.corrigir||r.estornar||r.resolvido||(!r.catId&&r.grupo!=='ja'&&r.grupo!=='lentes');});
+    const atencao=idx.filter(i=>{const r=IMPORT[i];if(r.grupo==='lixeira')return false;return r.grupo==='falta'||!r.grupo||r.corrigir||r.estornar||r.resolvido||(!r.catId&&r.grupo!=='ja'&&r.grupo!=='lentes');});
     const pend=atencao.filter(i=>{const r=IMPORT[i];return !r.catId||r.corrigir||impEstornoPendente(r);}).length;
     const GRUPOS_IMP=[
       ['ja','✓ Já estavam lançados','não entram de novo — os digitados à mão só ganham o código do banco'],
@@ -4406,6 +4410,7 @@
       ['dep','🏧 Depósitos da gaveta','neutro: dinheiro da caixinha levado ao banco'],
       ['transf','⇆ Transferências entre lojas','neutro: dinheiro passando de uma loja pra outra'],
       ['lentes','🔗 Boletos de lentes','já vieram do Caixinha'],
+      ['lixeira','Estão na Lixeira','alguém tirou isso de propósito — não entram de novo. Marque só se foi engano'],
       ['agenda','Pagamentos da Agenda','já estavam na Agenda: entram com a categoria de lá e dão baixa ao confirmar'],
       ['regra','🔑 Classificados pelas palavras-chave',''],
       ['adivinhado','🤖 Classificados pelas regras antigas','confira se quiser'],
@@ -4478,7 +4483,7 @@
   // O robô (GitHub, 3x por dia) puxa o extrato pela API do Sicoob e guarda em sicoob_extrato.
   // Aqui o botão "Puxar do Sicoob" monta o mesmo OFX do banco (mesmo código de linha → não duplica)
   // e passa pela importação de sempre: a equipe só confere e confirma.
-  let SICOOB_CONTAS=[],_IMP_API=false;
+  let SICOOB_CONTAS=[],_IMP_API=false,LIXF={};
   // v2.9.26: horários do robô (GitHub, hora de Brasília; o GitHub às vezes atrasa alguns minutos)
   const ROBO_HORAS=['05:37','12:37','19:37'];
   function roboDaLoja(id){const L=id||lojaAtual;return (SICOOB_CONTAS||[]).find(c=>Number(c.loja_id)===Number(L))||null;}
@@ -4787,11 +4792,15 @@
       importPeriodo={de:ds?`${ds[1].slice(6,8)}/${ds[1].slice(4,6)}/${ds[1].slice(0,4)}`:'',ate:de?`${de[1].slice(6,8)}/${de[1].slice(4,6)}/${de[1].slice(0,4)}`:''};
       // o que já está no Fluxo neste período: boletos das Lentes, linhas importadas antes (mesmo código do banco) e linhas digitadas à mão
       const datas=trans.map(t=>t.iso).filter(Boolean).sort();
-      let LENT=[],EXIST=[];
+      let LENT=[],EXIST=[];LIXF={};
       try{if(datas.length){
         const {data}=await sb.from('lancamentos').select('id,data,valor,descricao,fitid').eq('loja_id',lojaAtual).like('ref_externa','fz%').gte('data',addDias(datas[0],-3)).lte('data',addDias(datas[datas.length-1],3));LENT=data||[];
         const {data:ex}=await sbTudo(()=>sb.from('lancamentos').select('id,data,valor,descricao,fitid,origem,conta_id,categoria_id,ref_externa').eq('loja_id',lojaAtual).gte('data',addDias(datas[0],-3)).lte('data',addDias(datas[datas.length-1],3)).order('id'));
         EXIST=(ex||[]).filter(l=>!contaEhCaixinha(l.conta_id));
+        // v2.9.126: o que foi mandado para a Lixeira de propósito não volta sozinho na importação
+        try{const {data:lx}=await sb.from('lixeira').select('id,dados,excluido_em,excluido_por').eq('loja_id',lojaAtual).is('restaurado_em',null).limit(3000);
+          (lx||[]).forEach(x=>{const d=x.dados||{},f=d.fitid;if(!f||LIXF[f])return;
+            LIXF[f]={em:x.excluido_em,por:x.excluido_por,desc:String(d.descricao||'')};});}catch(e){}
         // v2.9.11: contas abertas da Agenda (boleto pago que já estava lá entra com a categoria dela e dá baixa)
         try{let {data:ag,error:eag}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,categoria_id,contato_id,documento').eq('loja_id',lojaAtual).eq('status','aberto').gte('vencimento',addDias(datas[0],-30)).lte('vencimento',addDias(datas[datas.length-1],7)).limit(2000);if(eag&&/documento/i.test(eag.message||'')){({data:ag}=await sb.from('contas_pagar').select('id,descricao,valor,vencimento,parcela,categoria_id,contato_id').eq('loja_id',lojaAtual).eq('status','aberto').gte('vencimento',addDias(datas[0],-30)).lte('vencimento',addDias(datas[datas.length-1],7)).limit(2000));}AGENDA_AB=ag||[];}catch(e){AGENDA_AB=[];}
       }}catch(e){}
@@ -4815,6 +4824,7 @@
         // 1) já está lançado? mesmo código do banco, ou digitado à mão com mesma data e mesmo valor
         let ex=t.fitid&&porFitid[t.fitid];
         if(ex){usadosEx.add(ex.id);item.grupo='ja';item.jaExiste=ex;item.jaImportado=true;return item;}
+        if(t.fitid&&LIXF[t.fitid]){item.grupo='lixeira';item.naLixeira=LIXF[t.fitid];return item;} // v2.9.126: alguém mandou pra Lixeira — não volta sem alguém marcar
         ex=EXIST.find(l=>!usadosEx.has(l.id)&&(!l.fitid||_IMP_API)&&l.data===t.iso&&cents(l.valor)===cents(t.amt)&&Math.sign(Number(l.valor))===Math.sign(t.amt));
         if(ex){usadosEx.add(ex.id);item.grupo='ja';item.jaExiste=ex;return item;}
         // v2.9.54: digitado à mão com data um pouco diferente (até 3 dias, mesmo valor) → já lançado, mas "confira"
@@ -4918,7 +4928,9 @@
   let IMPORT_TIPO='';
   // o que vai ser lançado: critérios da barra "Marcar para lançar" (podem somar) + ajustes à mão na caixinha
   function impCrit(r,c){return c==='ent'?r.amt>0:c==='sai'?r.amt<0:c==='mexi'?!!(r.resolvido||r._mexido):c==='class'?!!r.catId:false;}
-  function impSel(r){if(!r)return false;if(r.grupo==='ja'||r.grupo==='lentes')return true;if(r.selManual!==undefined)return r.selManual;
+  function impSel(r){if(!r)return false;if(r.grupo==='ja'||r.grupo==='lentes')return true;
+    if(r.grupo==='lixeira')return r.selManual===true; // v2.9.126: só entra se alguém marcar na mão
+    if(r.selManual!==undefined)return r.selManual;
     if(IMP_MARC.modo==='nenhuma')return false;if(IMP_MARC.modo==='todas')return true;return IMP_MARC.crit.some(c=>impCrit(r,c));}
   function impMarcar(k){IMPORT.forEach(r=>{delete r.selManual;});
     if(k==='todas'||k==='nenhuma')IMP_MARC={modo:k,crit:[]};
