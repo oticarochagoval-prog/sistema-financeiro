@@ -302,7 +302,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.127', APP_DATA='05/11/2026';
+  const APP_VERSAO='2.9.128', APP_DATA='05/11/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1451,7 +1451,9 @@
   function cxDevedorLido(id){const s=document.getElementById(id);if(!s)return '';return s.value==='__outro'?(document.getElementById(id+'Outro').value||'').trim().toUpperCase():s.value;}
   function cxDevedorDaDescricao(txt){const lj=lojaDaDescricao(txt||'');if(!lj)return '';const k=cxCaixaPorNome(lj);return k?String(k.nome).toUpperCase():String(lj).toUpperCase();}
   // v2.9.49: o Banco Caixinha é SEMPRE o da loja deste extrato (de onde saiu o dinheiro) — não dá para trocar
-  function cxCaixaDoExtrato(){const k=cxCaixaDaLojaAtual();if(k)return k;const L=LOJAS.find(x=>x.id===lojaAtual);if(!L)return null;
+  function cxCaixaDoExtrato(){
+    if(ehPicPay())return null; // v2.9.128: a PicPay é conta pessoal do Lucas; nada dela vai parar no Caixinha
+    const k=cxCaixaDaLojaAtual();if(k)return k;const L=LOJAS.find(x=>x.id===lojaAtual);if(!L)return null;
     if(_modDe(L)==='diversas')return (CX.caixasConta||[]).find(c=>/DIVERS/i.test(c.nome))||null;if(_modDe(L)==='casa')return (CX.caixasConta||[]).find(c=>/^CASA$/i.test(String(c.nome).trim()))||null;return null;}
   function cxCaixaTravadaHTML(id,k){return k?`<input type="hidden" id="${id}" value="${k.id}"><div class="qin" style="margin-bottom:8px;background:var(--bg);display:flex;align-items:center;gap:8px"><b>${_remEsc(k.nome)}</b><span class="mut" style="font-size:11.5px">a loja deste extrato · não muda</span></div>`
       :`<select id="${id}" class="qin" style="margin-bottom:4px">${cxOpcoesLojas('').replace('qual loja deve?','escolha')}</select><p class="mut" style="font-size:11.5px;margin:0 0 8px">Esta loja não tem caixinha no Caixinha: escolha.</p>`;}
@@ -3797,7 +3799,8 @@
   // o que é cada linha — quem manda é a coluna "forma de pagamento":
   // "Com cartão" = cartão de crédito, não mexe no saldo · "Com saldo + cartão" = parte no cartão: entra no saldo e fica para conferir
   function _ppClasse(tipo,quem,forma){
-    const f=_ppNorm(forma),t=_ppNorm(tipo);
+    const f=_ppNorm(forma),t=_ppNorm(tipo),q=_ppNorm(quem);
+    if(/FATURA PICPAY|FATURA DO PICPAY|PICPAY CARD/.test(q))return 'fatura';
     if(f==='COM CARTAO')return 'cartao';
     if(/DINHEIRO GUARDADO/.test(t))return 'guardado';
     if(/DINHEIRO RESGATADO/.test(t))return 'resgatado';
@@ -3861,7 +3864,7 @@
     tx.forEach(t=>{const k=t.dt+'|'+(t.hora||'')+'|'+Math.round(t.abs*100)+'|'+_ppHash(_ppNorm(t.quem||t.desc));seq[k]=(seq[k]||0)+1;t.seq=seq[k];});
     const de=tx.map(t=>t.dt).sort()[0],ate=tx.map(t=>t.dt).sort()[tx.length-1];
     let ofx='OFXHEADER:100\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>\n<DTSTART>'+de+'\n<DTEND>'+ate+'\n';
-    let n=0,nCofre=0,nCartao=0,semCofre=0;
+    let n=0,nCofre=0,nCartao=0,semCofre=0,nFatura=0;
     const por=(t,v,conta,tipo,sufixo,rotulo)=>{
       const fit='PP'+t.dt+(t.hora||'').replace(/\D/g,'')+Math.round(t.abs*100)+_ppHash(_ppNorm(t.quem||t.desc))+(t.seq||1)+(sufixo||'');
       ofx+='<STMTTRN>\n<TRNTYPE>'+(v<0?'DEBIT':'CREDIT')+'\n<DTPOSTED>'+t.dt+'\n<TRNAMT>'+v.toFixed(2)+'\n<FITID>'+fit
@@ -3870,6 +3873,9 @@
         +'\n<PPFORMA>'+limpa(t.forma)+(t.misto?'\n<PPMISTO>1':'')+'\n</STMTTRN>\n';
       n++;};
     tx.forEach(t=>{
+      // v2.9.128: a fatura do cartão não é gasto novo — é o saldo pagando o que já foi gasto no cartão
+      if(t.cls==='fatura'){por(t,-t.abs,PP_SALDO,'fatura','S','PAGAMENTO DA FATURA DO CARTÃO PICPAY');
+        por(t,t.abs,PP_CARTAO,'fatura','C','PAGAMENTO DA FATURA DO CARTÃO PICPAY');nFatura++;return;}
       if(t.cls==='cartao'){por(t,-t.abs,PP_CARTAO,'cartao','',t.desc);nCartao++;return;}
       if(t.cls==='guardado'||t.cls==='resgatado'){
         if(!t.cofre){semCofre++;por(t,t.sin*t.abs,PP_SALDO,'normal','',t.desc);return;}
@@ -3879,12 +3885,14 @@
         nCofre++;return;}
       por(t,t.sin*t.abs,PP_SALDO,'normal','',t.desc);});
     ofx+='</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>';
-    return {ofx,n,linhas:tx.length,nCofre,nCartao,semCofre,nMisto:tx.filter(t=>t.misto).length};}
+    return {ofx,n,linhas:tx.length,nCofre,nCartao,nFatura,semCofre,nMisto:tx.filter(t=>t.misto).length};}
 
   // cada linha vai para a conta certa (saldo / cofrinho / cartão) e o 13º já entra classificado
   function ppAjustar(lista){
     const pela=nome=>{const u=normDesc(nome);return CONTAS.find(c=>normDesc(c.nome)===u)||null;};
     const cCof=catPorNome('PICPAY · COFRINHO (NEUTRA)'),cCar=catPorNome('PICPAY · CARTÃO DE CRÉDITO (NEUTRA)'),c13=catPorNome('13º DAS LOJAS (RECEBIDO)');
+    const cEmp=catPorNome('PICPAY · DINHEIRO DAS EMPRESAS (NEUTRA)');
+    if(!cEmp)PP_FALTA.push('categoria PICPAY · DINHEIRO DAS EMPRESAS (NEUTRA) — rode o SQL da v2.9.128');
     PP_FALTA=[];
     lista.forEach(r=>{
       const cn=r.ppConta||PP_SALDO,c=pela(cn);
@@ -3892,9 +3900,13 @@
       if(r.grupo==='ja'||r.grupo==='lentes')return;
       if(r.ppMisto){r.ppMistoCartao=true;r.corrigir=true;}
       if(r.ppTipo==='cofre'){r.ppCofre=true;if(cCof){r.catId=cCof.id;r.resolvido=true;r.grupo='regra';r.regra='cofrinho do PicPay (não é gasto, é dinheiro guardado)';}}
+      else if(r.ppTipo==='fatura'){r.ppCartao=true;if(cCar){r.catId=cCar.id;r.resolvido=true;r.grupo='regra';r.regra='fatura do cartão: sai do saldo e abate o cartão';}}
       else if(r.ppTipo==='cartao'){r.ppCartao=true;if(cCar){r.catId=cCar.id;r.resolvido=true;r.grupo='regra';r.regra='cartão de crédito do PicPay (não mexe no saldo)';}}
       else{const d=dec13Info(r);
         if(d){r.dec13=d;r.contatoId=null;if(c13){r.catId=c13.id;r.resolvido=true;r.grupo='regra';r.regra='13º da '+d.cx+' ('+d.emp+' · '+BRL(d.valor)+')';}}}
+      // v2.9.128: o que sobrou entra NEUTRO. A PicPay é cofre, não empresa: a despesa já está lançada
+      // na empresa que mandou o Pix. Classificar de novo aqui contaria o mesmo dinheiro duas vezes.
+      if(!r.catId&&cEmp){r.catId=cEmp.id;r.resolvido=true;r.grupo='regra';r.regra='dinheiro das empresas passando pela PicPay (neutro)';r.contatoId=null;}
     });}
   let PP_FALTA=[];
 

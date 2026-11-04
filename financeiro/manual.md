@@ -1111,6 +1111,27 @@ A coluna **forma de pagamento** do extrato diz de onde saiu o dinheiro: "Com sal
 
 O extrato do PicPay só mostra o período que você baixou — o dinheiro que já estava no saldo e nos cofrinhos antes disso não aparece. Por isso, depois da primeira importação, abra o app, anote o saldo de cada cofrinho e o saldo livre, e preencha o **saldo inicial** de cada conta em Configurações. Sem isso os cofrinhos ficam negativos e a comparação do 13º sai errada.
 
+### Por que a PicPay não tem categoria para escolher
+
+Categoria serve para o DRE: saber no que o grupo gastou. Mas esse gasto **já está lançado na empresa**. Quando a DVL manda um Pix para a PicPay, a saída já aparece no Fluxo da DVL, com categoria e contato. Se a PicPay classificasse de novo, o mesmo dinheiro contaria duas vezes e o resultado do grupo pioraria sem motivo.
+
+Por isso **toda linha da PicPay entra neutra, sozinha**. Não fica nada em branco esperando alguém, não entra no DRE, não conta duas vezes. A PicPay não é uma empresa: é um cofre, e cofre só precisa responder quanto tem e de quem é.
+
+Quem conta a história de cada empréstimo é o **cofrinho**, não a categoria: o dinheiro entra, volta em pedaços, e o saldo do cofrinho mostra o que falta.
+
+Se um dia uma linha for de verdade um gasto seu, troque a categoria daquela uma. Uma, não quinhentas.
+
+### A fatura do cartão
+
+O pagamento da fatura não é gasto novo — é o saldo pagando o que já foi gasto no cartão. Ele entra como **transferência**: sai da conta principal e abate a conta CARTÃO PICPAY.
+
+Repare que a conta do cartão pode ficar positiva. Isso não é erro: quer dizer que foi pago mais do que aparece de compra **neste extrato**. A maior parte do gasto do cartão não vem no extrato do PicPay, vem na fatura do cartão — que é onde o FaturaFácil olha.
+
+### A PicPay não encosta no Caixinha
+
+Como a PicPay fica no módulo Diversas, sem este cuidado o sistema tentaria casar os pagamentos dela com os empréstimos do Banco Caixinha da conta Diversas. Não faz: nada que vem da PicPay vira lançamento no Caixinha.
+
+
 ## Saldo do 13º (v2.9.124)
 
 Fica em **Gestão › Saldo do 13º** (só o gestor vê).
@@ -1263,6 +1284,7 @@ Fala com o gestor. Não tire nada do que você não tem certeza — o que ficou 
 | 04/11/2026 | 2.9.125 | Leitor do PicPay acertado com o extrato de verdade (466 linhas de maio a novembro): o sinal de menos que o app usa, a coluna **forma de pagamento** separando cartão de saldo, o nome do cofrinho vindo de "No cofrinho X", e linha repetida no mesmo minuto deixando de se perder. O **13º da Casa** sai pelo CNPJ da Rocha 1 (R$ 250) e o ano começa em **maio**, não em junho | — |
 | 05/11/2026 | 2.9.126 | **O que vai para a Lixeira não volta sozinho.** Até agora a importação não olhava a Lixeira: se alguém tirasse uma linha do banco, ela voltava na importação seguinte. Agora essas linhas aparecem num grupo próprio, **desmarcadas**, dizendo quem tirou e quando — e só entram de novo se alguém marcar na mão | — |
 | 05/11/2026 | 2.9.127 | As regras da conferência entraram no manual, então **a Íris passa a saber respondê-las** (duplicata, o quadradinho de conferido, "não está no extrato", quem manda para a Lixeira). E ela passou a procurar o manual também em `financeiro/manual.md`: no dia em que o Nítido trocar a raiz, ela não fica sem saber de nada | — |
+| 05/11/2026 | 2.9.128 | **A PicPay não pede classificação.** Toda linha dela entra neutra sozinha: a despesa já está lançada na empresa que mandou o Pix, classificar de novo contaria o mesmo dinheiro duas vezes. O pagamento da fatura do cartão virou transferência (sai do saldo, abate o cartão) e nada da PicPay encosta mais no Caixinha | fluxo-v2.9.128-categoria.sql |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
