@@ -198,6 +198,8 @@
   .toast.ok{background:var(--green);color:#04130c}.toast.erro{background:var(--red)}
   /* ---- v2.9.15: versão para celular ---- */
   .menucel{display:none}.menuveu{display:none}
+  /* v2.9.129: no computador a Íris mora no menu; a bolinha flutuante fica só no celular, onde o menu some */
+  @media(min-width:761px){ .irisflut{display:none!important} }
   @media(max-width:760px){
     #app.show{display:block}
     .side{position:fixed;left:0;top:0;bottom:0;height:100%;width:270px;z-index:60;transform:translateX(-105%);transition:transform .2s;box-shadow:0 0 30px rgba(0,0,0,.45)}
@@ -302,7 +304,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.128', APP_DATA='05/11/2026';
+  const APP_VERSAO='2.9.130', APP_DATA='06/11/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -1559,7 +1561,7 @@
 
   const MENU=[
     ['__d','Dia a dia'],
-    ['visao','Dashboard','◫',true],['radar','Radar do mês','🧭',true],['lanc','Lançamentos','≣',true],['ensinar','Ensinar a Íris','🎓',true],['import','Importar extrato','⤓',true],
+    ['irischat','Pergunte à Íris','?',true],['visao','Dashboard','◫',true],['radar','Radar do mês','🧭',true],['lanc','Lançamentos','≣',true],['ensinar','Ensinar a Íris','🎓',true],['import','Importar extrato','⤓',true],
     ['apagar','Agenda de pagamentos','🧾',true],['remanejos','Remanejos','↹',true],['caixa','Fechamento de caixa','🧮',true],['caixinha','Caixinha (espelho)','💵',true],['emprestimos','Empréstimos (espelho)','⇄',true],
     ['__a','Análise'],
     ['dre','DRE','📊',true],['fechamento','Fechamento do mês','🔐',true],['fechar','Fechar de junho para cá','✅',true],['concsipag','Cartão × Sipag','💳',true],
@@ -1586,6 +1588,9 @@
       if(MODULO_ATUAL!=='oticas'&&['concsipag','caixa','juros','manualcx'].includes(id))return '';
       if(!['oticas','laboratorio','compras'].includes(MODULO_ATUAL)&&['caixinha','emprestimos'].includes(id))return ''; // v2.9.28: GV Lentes e Grupo de compras também usam o dinheiro do Caixinha
       if(NAV_FECHADO[secDe[id]]&&secDe[page]!==secDe[id])return '';
+      // v2.9.129: a Íris saiu de cima da tabela — no computador ela mora no menu, e abre a mesma janelinha
+      if(id==='irischat'){if(!irisChatPode())return '';
+        return `<div class="nav" data-label="${l}" onclick="irisChatAbrir()" title="Tire dúvidas do Fluxo com a Íris"><span class="ic">${irisAvatar(17)}</span><span class="navtxt">${l}</span></div>`;}
       if(id==='ensinar')return `<div class="nav ${id===page?'active':''}" data-label="${l}" onclick="go('${id}')"><span class="ic">${ic}</span><span class="navtxt">${l}</span><span id="navEns">${ensBadge()}</span></div>`; // v2.9.100
       if(id==='lanc')return `<div class="nav ${id===page?'active':''}" data-label="${l}" onclick="go('${id}')"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">${NAV_ICON[id]}</svg></span><span class="navtxt">${l}</span><span id="navConf">${navConfBadge()}</span></div>`; // v2.9.27: 0/164 conferidos no menu
       const rb=id==='import'?roboDaLoja():null; // v2.9.26: "sozinho" no menu quando o robô está ligado nesta loja
@@ -2006,6 +2011,16 @@
     if(categoriaExigeContato(l.categoria_id)&&!l.contato_id&&!String(l.documento||'').trim())return false; // v2.9.36: nome escrito em "contato sem cadastro" vale
     const n=String(cat.nome||'').toUpperCase(),r=l.ref_externa||'';
     if(n===CAT_ESTORNAR&&!r.startsWith('cxb:'))return false;if(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'))return false;return true;}
+  // v2.9.129: quando o quadradinho não deixa marcar, a linha diz POR QUÊ — a Rhaiane perguntou isso
+  // dois dias seguidos para a Íris. Resposta escrita na tela vale mais do que resposta explicada.
+  function lancMotivo(l){const cat=l.categorias;
+    if(!l.categoria_id||!cat)return 'falta a categoria';
+    if(cat.grupo==='adef')return 'falta dizer o que é';
+    if(categoriaExigeContato(l.categoria_id)&&!l.contato_id&&!String(l.documento||'').trim())return 'falta o contato';
+    const n=String(cat.nome||'').toUpperCase(),r=l.ref_externa||'';
+    if(n===CAT_ESTORNAR&&!r.startsWith('cxb:'))return cxPodeCriar()?'falta mandar pro Banco Caixinha':'o gestor manda pro Banco Caixinha';
+    if(n===CAT_ESTORNO_REC&&!r.startsWith('cxp:'))return cxPodeCriar()?'falta marcar a devolução':'o gestor marca a devolução';
+    return 'falta resolver antes';}
   // v2.9.26: muda categoria/contato/conferido SEM recarregar a tela (sem o "apagão")
   // v2.9.27: conferidos da loja no mês ao lado de "Lançamentos" no menu (vermelho = nada conferido, amarelo = falta, verde = tudo)
   let NAV_CONF={},_navConfSeq=0;
@@ -2586,9 +2601,9 @@
         <div style="padding:10px 12px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center">${irisAvatar(30)}
           <div style="line-height:1.25"><b>Íris</b> <span class="mut" style="font-size:11px">· tira-dúvidas do Fluxo</span><div class="mut" style="font-size:11px">você está em ${_remEsc(TITLES[page]||page)}</div></div>
           <button class="btn ghost" style="margin-left:auto;padding:3px 9px;font-size:11px" onclick="${IRISC.lista?'IRISC.lista=false;irisChatRender()':'irisChatConversas()'}">${IRISC.lista?'voltar':'conversas anteriores'}</button>
-          <button class="delx" style="font-size:17px" onclick="irisChatFechar()">✕</button></div>
+          <button class="delx" style="font-size:15px" onclick="irisChatFechar()" title="Esconder — a conversa continua aqui quando você abrir de novo">▾</button></div>
         ${IRISC.lista?lista:chat}</div>`:''}
-      <div onclick="${IRISC.aberto?'irisChatFechar()':'irisChatAbrir()'}" title="Tire dúvidas do Fluxo com a Íris" style="position:fixed;right:16px;bottom:16px;z-index:9998;cursor:pointer;background:#13293d;color:#fff;border-radius:30px;padding:8px 16px 8px 8px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.28)">${irisAvatar(26)}Pergunte à Íris${IRISC.oi?'<span style="position:absolute;top:-3px;right:-3px;width:13px;height:13px;border-radius:50%;background:var(--red);border:2px solid #13293d"></span>':''}</div>`;
+      <div class="irisflut" onclick="${IRISC.aberto?'irisChatFechar()':'irisChatAbrir()'}" title="Tire dúvidas do Fluxo com a Íris" style="position:fixed;right:16px;bottom:16px;z-index:9998;cursor:pointer;background:#13293d;color:#fff;border-radius:30px;padding:8px 16px 8px 8px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.28)">${irisAvatar(26)}Pergunte à Íris${IRISC.oi?'<span style="position:absolute;top:-3px;right:-3px;width:13px;height:13px;border-radius:50%;background:var(--red);border:2px solid #13293d"></span>':''}</div>`;
     const c=root.querySelector('div[style*="overflow:auto"]');if(c&&!IRISC.lista)c.scrollTop=c.scrollHeight;}
 
   // ---- v2.9.97: DÚVIDAS DA EQUIPE (só o gestor) — o que a Íris não soube responder espera aqui ----
@@ -2807,7 +2822,9 @@
         <td>${selCat}</td>
         <td>${selCont}</td>
         <td class="amt ${l.valor>0?'green':'red'}" style="white-space:nowrap">${l.valor>0?'+':'-'}${BRL(Math.abs(l.valor))}</td>
-        <td style="text-align:center;white-space:nowrap">${editavel?(()=>{const pr=lancPronto(l),cf=!!l.conferido_por;return `<label title="${pr?(cf?'Conferido: clique para desmarcar':'Marcar como conferido'):'Resolva antes de conferir'}" style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin-right:6px;cursor:${pr?'pointer':'not-allowed'};line-height:1.1"><input type="checkbox" ${cf?'checked':''} ${pr?'':'disabled'} onchange="lancConferir(${l.id},this.checked,this)" style="width:16px;height:16px;accent-color:var(--green)">${cf?`<span style="font-size:9.5px;color:var(--muted);margin-top:2px">${_remEsc(String(l.conferido_por).split(' ')[0])}${l.conferido_em?' · '+new Date(l.conferido_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):''}</span>`:''}</label>`;})():''}${editavel?`<button class="delx" onclick="abrirEditarLanc(${l.id})" title="Editar tudo">✏️</button> ${podeLixeira()?`<button class="delx" onclick="excluirLanc(${l.id})" title="Mandar para a Lixeira (dá para restaurar)">🗑</button>`:''}`:''}</td>
+        <td style="text-align:center;white-space:nowrap">${editavel?(()=>{const pr=lancPronto(l),cf=!!l.conferido_por;
+          if(!pr)return `<span class="mut" title="Esta linha ainda não pode ser conferida" style="display:inline-block;vertical-align:middle;margin-right:6px;font-size:9.5px;max-width:110px;line-height:1.15;white-space:normal;text-align:center">${lancMotivo(l)}</span>`;
+          return `<label title="${cf?'Conferido: clique para desmarcar':'Marcar como conferido'}" style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin-right:6px;cursor:pointer;line-height:1.1"><input type="checkbox" ${cf?'checked':''} onchange="lancConferir(${l.id},this.checked,this)" style="width:16px;height:16px;accent-color:var(--green)">${cf?`<span style="font-size:9.5px;color:var(--muted);margin-top:2px">${_remEsc(String(l.conferido_por).split(' ')[0])}${l.conferido_em?' · '+new Date(l.conferido_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):''}</span>`:''}</label>`;})():''}${editavel?`<button class="delx" onclick="abrirEditarLanc(${l.id})" title="Editar tudo">✏️</button> ${podeLixeira()?`<button class="delx" onclick="excluirLanc(${l.id})" title="Mandar para a Lixeira (dá para restaurar)">🗑</button>`:''}`:''}</td>
       </tr>`;
     }).join('');
     const nCx=LANC.filter(l=>contaEhCaixinha(l.conta_id)&&parseInt(l.data.split('-')[1],10)-1===mesSel).length;
@@ -5002,6 +5019,7 @@
     try{parcN+=await irisParcelasFaltando([lojaAtual]);}catch(e){} // v2.9.95: parcela escrita na descrição
     try{await snSincronizar(true);}catch(e){} // v2.9.103: pagamentos de todo mês do Caixinha
     try{await ffPagosSinc(true);}catch(e){} // v2.9.115: faturas pagas e ressarcidas no FaturaFácil
+    try{await cxDepSinc(true);}catch(e){} // v2.9.130: depósito da gaveta que bate com o Caixinha já fica conferido
     let depN=0,depErr='';if(IMPORT_DEP.length){const rr=await cxMarcarDepositos(IMPORT_DEP);depN=rr.n;depErr=rr.err;
       const ag=new Date().toISOString();for(const {m,r} of IMPORT_DEP){const lid=r._lancId||(r.jaExiste&&r.jaExiste.id);if(lid&&m.conf){try{await sb.from('lancamentos').update({ref_externa:'cxd:'+m.id,conferido_por:'CAIXINHA',conferido_em:ag}).eq('id',lid);}catch(e){}}} // v2.9.29
       IMPORT_DEP=[];}
@@ -6654,6 +6672,45 @@
   function cxDepStatus(m){if(m.conf)return {st:'ok',txt:/^EXTRATO/i.test(m.confPor||'')?`conferido pelo extrato em ${_brDia(m.confEm)}`:`conferido por ${m.confPor||'—'}${m.confEm?' em '+_brDia(m.confEm):''}`};
     const n=diasUteisDepois(m.data,_hojeLocal());return n>CX_DEP_PRAZO?{st:'nao',txt:'não chegou no banco'}:{st:'esp',txt:'aguardando o extrato'};}
   function cxDepositosDaLoja(k){return (k&&k.mov||[]).filter(m=>m.tipo==='deposito'&&!m.para&&(m.data||'')>=CX_DEP_DESDE);}
+  // ---- v2.9.130: a Íris confere sozinha o depósito da gaveta ----
+  // Ela só confere quando COMPARA duas fontes: o depósito lançado no Caixinha e a linha do extrato,
+  // mesmo valor e dentro do prazo. Carimbar só porque a categoria é "depósito" não seria conferir.
+  // Lê o Caixinha e escreve SÓ do lado do Fluxo — gravar no Caixinha está pausado até virar o módulo Caixa.
+  async function cxDepSinc(silencioso){
+    const c=cxClient();if(!c||!(await cxSessao()))return {pulou:true};
+    if(!CX.carregado&&!(await cxCarregar()))return {pulou:true,erro:CX.erro};
+    const cat=catPorNome(CAT_DEPGAV);if(!cat)return {pulou:true};
+    const {data,error}=await sbTudo(()=>sb.from('lancamentos')
+      .select('id,loja_id,data,valor,conferido_por,ref_externa')
+      .eq('categoria_id',cat.id).gt('valor',0).gte('data',CX_DEP_DESDE).order('id'));
+    if(error)return {erro:error.message};
+    const todos=data||[],jaLigado=new Set();
+    todos.forEach(l=>{const r=String(l.ref_externa||'');if(r.startsWith('cxd:'))jaLigado.add(r.slice(4));});
+    const pend={};
+    todos.forEach(l=>{if(l.conferido_por||String(l.ref_externa||'').startsWith('cxd:'))return;(pend[l.loja_id]=pend[l.loja_id]||[]).push(l);});
+    const cents=v=>Math.round(Math.abs(Number(v))*100),ag=new Date().toISOString(),pares=[];
+    (LOJAS||[]).forEach(L=>{
+      const linhas=pend[L.id];if(!linhas||!linhas.length)return;
+      const ch=cxChaveLoja(L.nome),k=(CX.caixas||[]).find(x=>cxChaveLoja(x.nome)===ch);if(!k)return;
+      const usadas=new Set();
+      cxDepositosDaLoja(k).filter(m=>!jaLigado.has(String(m.id))).sort((a,b)=>(a.data||'')<(b.data||'')?-1:1).forEach(m=>{
+        const cs=linhas.filter(l=>!usadas.has(l.id)&&cents(l.valor)===cents(m.valor)
+            &&l.data>=addDias(m.data,-1)&&diasUteisDepois(m.data,l.data)<=CX_DEP_PRAZO)
+          .sort((a,b)=>Math.abs(_dias(a.data,m.data))-Math.abs(_dias(b.data,m.data)));
+        if(!cs.length)return;
+        usadas.add(cs[0].id);pares.push({m,l:cs[0]});});});
+    let n=0,err='';
+    for(const p of pares){
+      const {error:e2}=await sb.from('lancamentos')
+        .update({ref_externa:'cxd:'+p.m.id,conferido_por:'CAIXINHA',conferido_em:ag})
+        .eq('id',p.l.id).is('conferido_por',null);
+      if(e2){err=err||e2.message;continue;}
+      n++;}
+    if(!silencioso)toast(n?(n+' depósito(s) conferido(s) pelo Caixinha'+(err?' · erro: '+err:'')):'Nenhum depósito novo bateu com o Caixinha.',err?'erro':'ok');
+    return {n,err,achados:pares.length};}
+  async function cxDepRodar(){const r=await cxDepSinc(false);
+    if(r&&r.pulou)toast('Entre no Caixinha primeiro (botão “Entrar no Caixinha”).','erro');
+    else if(r&&r.n)render();}
   // casa os depósitos ainda não conferidos com as linhas do extrato (só linhas com "DEP…" no texto)
   function cxCasarDepositos(itens){const k=cxCaixaDaLojaAtual();if(!k)return [];const cents=v=>Math.round(Math.abs(Number(v))*100);
     const linhas=(itens||[]).filter(r=>r.amt>0&&/\bDEP/.test(normDesc(r.full||r.desc)));const usadas=new Set(),out=[];
@@ -7067,6 +7124,7 @@
     const naoCh=[];CX.caixas.forEach(k=>cxDepositosDaLoja(k).forEach(m=>{if(cxDepStatus(m).st==='nao')naoCh.push({k,m});}));naoCh.sort((a,b)=>(a.m.data||'')<(b.m.data||'')?-1:1);
     if(!linhas&&!naoCh.length)return '';
     return `<div class="card" style="margin-top:14px"><div class="cardhead"><h3>Depósitos da gaveta no banco — ${MESES_NOME[mi]}</h3></div>
+      <div style="margin:4px 0 8px"><button class="btn" style="padding:5px 12px;font-size:12.5px" onclick="cxDepRodar()">Conferir os depósitos que batem com o Caixinha</button></div>
       <p class="mut" style="font-size:12px;margin:4px 0 8px">Quando o extrato da loja traz o depósito (mesmo valor, até ${CX_DEP_PRAZO} dias úteis depois), ele fica conferido sozinho no Caixinha. O que passar de ${CX_DEP_PRAZO} dias úteis sem aparecer fica como "não chegou no banco".</p>
       ${naoCh.length?`<div style="border:1px solid var(--red);border-left:4px solid var(--red);border-radius:10px;padding:8px 12px;margin-bottom:10px"><b style="color:var(--red)">Não chegou no banco (${naoCh.length})</b>${naoCh.map(({k,m})=>`<div style="display:flex;gap:10px;font-size:13px;padding:4px 0;border-top:1px solid var(--line)"><span style="min-width:80px">${k.nome}</span><span class="mut">${_brDia(m.data)} · ${m.desc||'DEPÓSITO'}${m.por?' · lançado por '+m.por:''}</span><b style="margin-left:auto">${BRL(m.valor)}</b></div>`).join('')}</div>`:''}
       ${linhas?`<div style="overflow:auto"><table><thead><tr><th>Loja</th><th style="text-align:right">Depósitos</th><th style="text-align:right">Pelo extrato</th><th style="text-align:right">À mão</th><th style="text-align:right">Aguardando</th><th style="text-align:right">Não chegou</th></tr></thead><tbody>${linhas}</tbody></table></div>`:''}</div>`;}
