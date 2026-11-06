@@ -1249,7 +1249,9 @@ O botão **▾** no alto da janelinha **esconde** a conversa, não apaga: quando
 
 Quando o depósito que a loja lançou no Caixinha aparece no extrato — **mesmo valor, até 5 dias úteis depois** —, a Íris marca a linha como conferida e escreve **CAIXINHA** no lugar do nome de quem conferiu. Ninguém precisa fazer nada.
 
-Ela faz isso em todas as lojas de uma vez, sobre tudo que estiver pendente, e não só no que acabou de ser importado. Roda depois de cada importação e também pelo botão **"Conferir os depósitos que batem com o Caixinha"**, na tela Caixinha (espelho).
+Ela faz isso em todas as lojas de uma vez, sobre tudo que estiver pendente desde **junho de 2026**, e não só no que acabou de ser importado.
+
+Repare que a tela "Depósitos da gaveta no banco" continua mostrando só de outubro para cá. É de propósito: antes de setembro a maioria das lojas ainda nem lançava depósito no Caixinha, então aquele período apareceria cheio de "não chegou no banco" sem que ninguém tivesse errado nada. Roda depois de cada importação e também pelo botão **"Conferir os depósitos que batem com o Caixinha"**, na tela Caixinha (espelho).
 
 O que ela **não** faz:
 
@@ -1326,6 +1328,7 @@ A regra por trás: ela só confere quando **comparou duas fontes independentes**
 | 05/11/2026 | 2.9.128 | **A PicPay não pede classificação.** Toda linha dela entra neutra sozinha: a despesa já está lançada na empresa que mandou o Pix, classificar de novo contaria o mesmo dinheiro duas vezes. O pagamento da fatura do cartão virou transferência (sai do saldo, abate o cartão) e nada da PicPay encosta mais no Caixinha | fluxo-v2.9.128-categoria.sql |
 | 06/11/2026 | 2.9.129 | **O quadradinho travado agora diz por quê.** Em vez de um quadradinho vazio que não deixa marcar, a linha mostra o que falta: a categoria, o contato, ou mandar pro Banco Caixinha. E a **Íris saiu de cima da tabela**: no computador ela virou item do menu, no celular continua a bolinha; o ✕ virou ▾, que esconde sem perder a conversa | — |
 | 06/11/2026 | 2.9.130 | **A Íris confere sozinha o depósito da gaveta.** Quando o depósito lançado no Caixinha bate com a linha do extrato (mesmo valor, até 5 dias úteis depois), ela já marca como conferido, em todas as lojas de uma vez. Antes isso só acontecia durante a importação e só se alguém estivesse logado no Caixinha na hora — de 298 depósitos, só 25 tinham sido pegos | — |
+| 06/11/2026 | 2.9.131 | A conferência automática do depósito da gaveta passou a alcançar **junho** (antes só outubro). A tela "Depósitos da gaveta no banco" continua mostrando de outubro, para não encher de aviso o período em que a loja ainda nem lançava depósito no Caixinha | — |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
