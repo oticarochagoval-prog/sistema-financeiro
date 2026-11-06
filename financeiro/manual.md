@@ -1263,6 +1263,29 @@ O que ela **não** faz:
 A regra por trás: ela só confere quando **comparou duas fontes independentes**. Marcar como conferido só porque a categoria é "depósito da gaveta" não seria conferir, seria carimbar — e aí o visto verde deixaria de valer alguma coisa.
 
 
+## De quem é cada CNPJ do extrato (v2.9.132)
+
+Quando alguém paga por Pix, o Sicoob manda no extrato só o documento de quem recebeu — `06.981.180 0001-16` — e nenhum nome. O comprovante mostra "CEMIG DISTRIBUIÇÃO S.A", mas isso não chega no extrato.
+
+Agora dá para ensinar. Na linha do lançamento aparece **quem é esse CNPJ?**: você clica, escreve o nome, e pronto. A partir daí o nome aparece como etiqueta azul em **todos os lançamentos daquele documento, inclusive nos que já estavam lançados**.
+
+A **descrição gravada não muda nunca**. O texto que o banco mandou continua igual; o nome entra só na hora de mostrar na tela. Nada é reescrito.
+
+### Dar nome a vários de uma vez
+
+Em **Configurações** tem o quadro "Quem é cada CNPJ do extrato": a lista de todos os documentos que aparecem no extrato desde junho, do que mais aparece para o que menos aparece, com quantas linhas e quanto dinheiro cada um tem. Dá nome ali mesmo, um clique por documento.
+
+Vale a pena começar pelos de cima: os dez maiores cobrem a maior parte das linhas.
+
+### Isso resolve a dúvida da conta de luz
+
+A CEMIG é o caso que deu origem a isso. No extrato não vem o número da instalação nem o código de barras — só o CNPJ da CEMIG. Com o nome guardado, a linha passa a dizer **CEMIG**, e aí vale a regra simples: conta de luz que sai da conta de uma loja é a conta de luz daquela loja.
+
+A Rocha 1 é a exceção: ela tem três instalações (BH, DP e Escritório), então aparecem três CEMIGs na conta dela e o extrato não diz qual é qual.
+
+E não tem como escrever uma referência: a conta de luz é paga por **QR Code**, e QR Code não tem campo de mensagem (só o Pix digitado tem). O jeito de separar é **pela conta que paga**: se a CEMIG do Escritório sair da Conta Diversas em vez da Rocha 1, ela se identifica sozinha — e é onde ela faz mais sentido, já que depois é rateada entre as lojas.
+
+
 ## Perguntas que sempre aparecem
 
 | Pergunta | Resposta |
@@ -1329,6 +1352,7 @@ A regra por trás: ela só confere quando **comparou duas fontes independentes**
 | 06/11/2026 | 2.9.129 | **O quadradinho travado agora diz por quê.** Em vez de um quadradinho vazio que não deixa marcar, a linha mostra o que falta: a categoria, o contato, ou mandar pro Banco Caixinha. E a **Íris saiu de cima da tabela**: no computador ela virou item do menu, no celular continua a bolinha; o ✕ virou ▾, que esconde sem perder a conversa | — |
 | 06/11/2026 | 2.9.130 | **A Íris confere sozinha o depósito da gaveta.** Quando o depósito lançado no Caixinha bate com a linha do extrato (mesmo valor, até 5 dias úteis depois), ela já marca como conferido, em todas as lojas de uma vez. Antes isso só acontecia durante a importação e só se alguém estivesse logado no Caixinha na hora — de 298 depósitos, só 25 tinham sido pegos | — |
 | 06/11/2026 | 2.9.131 | A conferência automática do depósito da gaveta passou a alcançar **junho** (antes só outubro). A tela "Depósitos da gaveta no banco" continua mostrando de outubro, para não encher de aviso o período em que a loja ainda nem lançava depósito no Caixinha | — |
+| 06/11/2026 | 2.9.132 | **De quem é cada CNPJ do extrato.** No Pix de pagamento o Sicoob manda só o número ("06.981.180 0001-16"), que ninguém lê. Agora você dá nome uma vez e ele aparece em todos os lançamentos daquele documento, inclusive nos antigos. São 828 linhas e R$ 1,09 milhão hoje sem nome. A descrição gravada não muda | fluxo-v2.9.132-cnpjs.sql |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |

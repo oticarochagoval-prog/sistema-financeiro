@@ -304,7 +304,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.131', APP_DATA='06/11/2026';
+  const APP_VERSAO='2.9.132', APP_DATA='06/11/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -403,7 +403,7 @@
     if(LOJAS.length&&(!lojaAtual||!lojasDoModulo().some(l=>l.id===lojaAtual)))lojaAtual=(lojasDoModulo()[0]||LOJAS[0]).id;
     const {data:cats}=await sb.from('categorias').select('*').order('nome');CATS=cats||[];
     const {data:cont}=await sb.from('contatos').select('*').order('nome');CONTATOS=cont||[];
-    await carregarContas();await carregarFechamentos();await carregarPerfis();await carregarRegrasP();
+    await carregarContas();await carregarFechamentos();await carregarPerfis();await carregarRegrasP();await carregarCnpjs();
     preencherSeletores();
   }
   function preencherSeletores(){
@@ -548,6 +548,38 @@
     else if(/ANTECIPA|CR ANT/i.test(t))tipo='antecipacao';else if(/ELECTRON|MAESTRO|D[EÉ]BITO/i.test(t))tipo='debito';else if(/CR CMP|CR CPS|COMPRAS|CR[EÉ]DITO/i.test(t))tipo='credito_parcela';
     if(!band){const b=t.match(/VISA ELECTRON|ELECTRON|MAESTRO|MASTERCARD|MSTD|MASTER|VISA|ELO|OUTRAS BANDEIRAS|OUT BND|HIPERCARD|AMEX/i);band=b?b[0]:'';}
     if(amt<0)tipo='estorno';return {tipo,band};}
+  // ---- v2.9.132: DE QUEM É ESSE CNPJ ----
+  // O extrato do Sicoob mostra só "06.981.180 0001-16" no Pix de pagamento: nem você nem a equipe
+  // leem isso. Aqui o CNPJ ganha nome UMA vez e passa a aparecer em todo lugar, inclusive para trás.
+  // A descrição gravada NUNCA muda — o nome entra só na hora de mostrar na tela.
+  let CNPJS={};
+  async function carregarCnpjs(){try{const {data,error}=await sb.from('cnpjs').select('cnpj,nome');
+    if(error)return;CNPJS={};(data||[]).forEach(x=>{CNPJS[String(x.cnpj)]=x.nome;});}catch(e){}}
+  // acha o documento na descrição: CNPJ inteiro, ou CPF (às vezes mascarado, "***.108.826-**")
+  function cnpjChave(d){const t=String(d||'');
+    let m=t.match(/\d{2}\.\d{3}\.\d{3}[ \/]?\d{4}-\d{2}/);
+    if(!m)m=t.match(/[\d*]{3}\.\d{3}\.\d{3}-[\d*]{2}/);
+    if(!m)return '';
+    const dig=m[0].replace(/\D/g,'');
+    return dig.length>=6?dig:'';}
+  function cnpjNome(d){const k=cnpjChave(d);return k?(CNPJS[k]||''):'';}
+  function cnpjEtq(d){const k=cnpjChave(d);if(!k)return '';
+    const n=CNPJS[k];
+    if(n)return `<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)" title="Quem recebeu — guardado no dicionário de CNPJ">${_remEsc(n)}</span>`;
+    return podeEditar()?`<span class="arqbtn" onclick="cnpjNomear('${k}')" title="Guardar de quem é esse CNPJ — vale para todos os lançamentos dele">quem é esse CNPJ?</span>`:'';}
+  async function cnpjNomear(k){if(!podeEditar())return;
+    const atual=CNPJS[k]||'';
+    const n=prompt('De quem é esse documento?\n\n'+cnpjFormata(k)+'\n\nO nome vai aparecer em TODOS os lançamentos dele, inclusive os antigos.',atual);
+    if(n===null)return;const nome=String(n).trim().toUpperCase();
+    if(!nome){toast('Sem nome, nada foi guardado.','erro');return;}
+    const {error}=await sb.from('cnpjs').upsert({cnpj:k,nome,criado_por:USER.id,atualizado_em:new Date().toISOString()},{onConflict:'cnpj'});
+    if(error){toast('Não guardei: '+error.message,'erro');return;}
+    CNPJS[k]=nome;toast(nome+' guardado. Vale para todos os lançamentos desse documento.','ok');render();}
+  function cnpjFormata(k){const d=String(k||'');
+    if(d.length===14)return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12);
+    if(d.length===11)return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9);
+    if(d.length===6)return '***.'+d.slice(0,3)+'.'+d.slice(3)+'-**'; // CPF que o banco manda escondido
+    return d;}
   function lojaNomeCurto(id){const L=LOJAS.find(l=>l.id===id);return L?L.nome.split(' — ')[0].trim():'';}
   // categorias neutras usadas na importação
   // v2.9.2 (plano B): de novembro/2026 em diante o Pix de cliente conta como VENDA no dia; no fim do mês entra só o dinheiro da Linx
@@ -2632,7 +2664,7 @@
 
   function render(){lojaFaixaLigar();if(!ROBO&&document.getElementById('irisRoot'))irisChatRender();
     const V={decimo:viewDecimo,mapa:viewMapa,ensinar:viewEnsinar,fechar:viewFechar,duvidas:viewDuvidas,confpix:viewConfPix,visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,remanejos:viewRemanejos,emprestimos:viewEmprestimos,recorrentes:viewRecorrentes,lixeira:viewLixeira,backup:viewBackup,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
-    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));preencherRemDash().catch(e=>console.error('rem dash',e));preencherPixDash().catch(e=>console.error('pix dash',e));preencherRankDash().catch(e=>console.error('rank dash',e));preencherIrisDash().catch(e=>console.error('iris',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
+    const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='config')cnpjPainel().catch(e=>console.error('cnpj',e));if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));preencherRemDash().catch(e=>console.error('rem dash',e));preencherPixDash().catch(e=>console.error('pix dash',e));preencherRankDash().catch(e=>console.error('rank dash',e));preencherIrisDash().catch(e=>console.error('iris',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   let mesSel=new Date().getMonth();let _keepY=null;
@@ -2818,7 +2850,7 @@
       const etq=`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">${String(l.ref_externa||'').startsWith('cxs:')?(()=>{const m=cxMovPorId(String(l.ref_externa).slice(4));return `<span class="catchip" style="font-size:10px;padding:1px 8px;border-color:#c9951a;color:#9a6c00;background:rgba(232,196,104,.25);font-weight:700" title="Saída lançada pela loja no Caixinha (dinheiro da gaveta); entrou sozinha no Fluxo. Não soma no saldo do banco nem no extrato; entra no resultado (DRE).">💵 do Caixinha · não soma no banco${m&&m.por?' · '+_remEsc(m.por):''}</span>${m&&m.cat?`<span class="catchip" style="font-size:10px;padding:1px 7px">no Caixinha: ${_remEsc(m.cat)}</span>`:''}`;})():(ehCx?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--gold);color:var(--gold)">💵 caixinha antiga</span>':'')}${l.origem==='lentes'||/^fzl?:/.test(l.ref_externa||'')?'<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--blue);color:var(--blue)" title="Veio da aba Lentes do Caixinha. Para corrigir valor ou data, corrija lá.">🔗 Lentes</span>'+(podeEditar()&&/^fzl?:/.test(l.ref_externa||'')?`<button class="catchip" onclick="lentesNaoPago(${l.id})" style="font-size:10px;padding:1px 7px;cursor:pointer;color:var(--muted)" title="Este boleto não foi pago: volta a previsto no Caixinha e sai daqui">✕ não foi pago</button>`:''):''}${String(l.ref_externa||'').startsWith('cxs:')?'':`${(()=>{const e=origemEtq(l);return `<span class="catchip" style="font-size:10px;padding:1px 7px" title="${e.title}">${e.t}</span>`+(lancForaDoBanco(l)?`<span class="catchip" style="font-size:10px;padding:1px 7px;border-color:var(--red);color:var(--red);font-weight:700" title="Digitado à mão e não apareceu no extrato do banco (o extrato já chegou até ${isoParaBR(_lancMaxFit()).slice(0,5)}). Confira: pode ser de outra loja, de outra conta ou com valor errado.">não está no extrato</span>`:'');})()}`}${l.anexo_url?`<a class="catchip" href="${l.anexo_url}" target="_blank" rel="noopener" style="font-size:10px;padding:1px 7px;text-decoration:none">📎 boleto</a>`:''}${(_achou||_devol)?'':ponteHTML(l)}${vaiEst}${depChipHTML(l)}</div>`;
       return `<tr id="lr${l.id}" class="${neutra?'neutra':''}${l.id===LANC_FOCO?' lancFoco':''}" onclick="lancFoco(${l.id})" style="${String(l.ref_externa||'').startsWith('cxs:')?'background:rgba(232,196,104,.18)':(ehCx?'background:rgba(232,196,104,.06)':'')}">
         <td class="mut" style="white-space:nowrap">${editavel&&podeLixeira()?`<input type="checkbox" style="margin-right:6px;vertical-align:middle" ${LANC_SEL.has(l.id)?'checked':''} onclick="lancSel(${l.id},this.checked)" title="Marcar para mandar para a Lixeira junto com outras">`:''}${isoParaBR(l.data).slice(0,5)}${(()=>{const st=lancStatus(l);return `<span title="${st==='ok'?'Conferido':st==='y'?'Classificado, falta conferir':'Falta resolver: categoria, contato do funcionário ou mandar para o Banco Caixinha'}" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:7px;vertical-align:middle;background:${st==='ok'?'var(--green)':st==='y'?'var(--amber)':'var(--red)'}"></span>`;})()}</td>
-        <td style="min-width:140px">${editavel?`<input class="inlinedesc maiusc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" onchange="mudarDescLanc(${l.id},this.value)" title="Clique pra editar">`:l.descricao}${l.parcela?`<span class="parc">${l.parcela}</span>`:''}${etq}</td>
+        <td style="min-width:140px">${editavel?`<input class="inlinedesc maiusc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" onchange="mudarDescLanc(${l.id},this.value)" title="Clique pra editar">`:l.descricao}${l.parcela?`<span class="parc">${l.parcela}</span>`:''}${cnpjEtq(l.descricao)}${etq}</td>
         <td>${selCat}</td>
         <td>${selCont}</td>
         <td class="amt ${l.valor>0?'green':'red'}" style="white-space:nowrap">${l.valor>0?'+':'-'}${BRL(Math.abs(l.valor))}</td>
@@ -6520,9 +6552,34 @@
         ${PERFIS_LISTA.filter(p=>p.id!==USER.id).map(p=>`<div class="cfgrow">${p.nome}<span class="mut" style="margin-left:auto;font-size:12px">${PAPEL_NOME[p.papel]||p.papel}</span></div>`).join('')}
         <p class="mut" style="font-size:12px;margin-top:8px">Excluir e restaurar: dono e operador. Contas, saldo inicial e reabrir mês: só gestor. Para trocar o papel de alguém, peça ao Lucas (é uma linha no banco).</p>
       </div>
+      <div class="card" style="margin-top:16px" id="cfgCnpj"><div class="cardhead"><h3>Quem é cada CNPJ do extrato</h3></div>
+        <p class="mut" style="font-size:12.5px;margin:4px 0 8px">No Pix de pagamento o banco manda só o número. Dê nome uma vez e ele aparece em todos os lançamentos daquele documento, inclusive nos antigos. A descrição gravada não muda.</p>
+        <div class="loading"><span class="spin"></span> Procurando…</div></div>
       <div class="card" style="margin-top:16px"><div class="cardhead"><h3>ℹ️ Sobre</h3></div>
         <p class="mut" style="font-size:13px;line-height:1.7;margin-top:6px">Fluxo — sistema financeiro do Grupo Rocha. Dados salvos com segurança no banco. Cada loja tem seus lançamentos; categorias e contatos são compartilhados.</p></div>`;
   }
+  // v2.9.132: lista os documentos do extrato que ainda não têm nome, do que mais aparece para o que menos aparece
+  async function cnpjPainel(){
+    const box=document.getElementById('cfgCnpj');if(!box)return;
+    const alvo=box.querySelector('.loading');if(!alvo)return;
+    let ls=[];
+    try{const {data,error}=await sbTudo(()=>sb.from('lancamentos').select('descricao,valor').lt('valor',0).gte('data','2026-06-01').order('id'));
+      if(error)throw error;ls=data||[];}
+    catch(e){alvo.outerHTML='<div class="mut" style="font-size:12.5px">Não consegui levantar agora ('+_remEsc(e.message||String(e))+').</div>';return;}
+    const cont={};
+    ls.forEach(l=>{const k=cnpjChave(l.descricao);if(!k)return;
+      const o=cont[k]=cont[k]||{n:0,v:0};o.n++;o.v+=Math.abs(Number(l.valor)||0);});
+    const todos=Object.entries(cont).sort((a,b)=>b[1].n-a[1].n);
+    const faltam=todos.filter(([k])=>!CNPJS[k]), temNome=todos.length-faltam.length;
+    if(!todos.length){alvo.outerHTML='<div class="mut" style="font-size:12.5px">Nenhum documento solto no extrato. 👍</div>';return;}
+    const linha=([k,o])=>`<tr><td style="white-space:nowrap">${cnpjFormata(k)}</td>
+      <td style="text-align:right">${o.n}</td><td style="text-align:right;white-space:nowrap">${BRL(o.v)}</td>
+      <td style="text-align:right">${CNPJS[k]?`<b>${_remEsc(CNPJS[k])}</b> <span class="arqbtn" onclick="cnpjNomear('${k}')">trocar</span>`:`<span class="arqbtn" onclick="cnpjNomear('${k}')">dar nome</span>`}</td></tr>`;
+    alvo.outerHTML=`<div class="mut" style="font-size:12.5px;margin-bottom:8px">${todos.length} documento(s) no extrato desde junho · <b>${temNome}</b> com nome · <b>${faltam.length}</b> sem nome</div>
+      <div style="overflow:auto;max-height:420px"><table style="width:100%;font-size:12.5px;border-collapse:collapse">
+      <thead><tr style="background:var(--panel-2)"><th style="text-align:left;padding:6px">Documento</th><th style="padding:6px">Linhas</th><th style="text-align:right;padding:6px">Total</th><th style="text-align:right;padding:6px">Nome</th></tr></thead>
+      <tbody>${todos.slice(0,60).map(linha).join('')}</tbody></table></div>
+      ${todos.length>60?`<p class="mut" style="font-size:11.5px;margin-top:6px">Mostrando os 60 que mais aparecem.</p>`:''}`;}
   function toggleSinal(id){
     const b=document.getElementById('sinal'+id);
     const neg=b.dataset.neg==='1';
