@@ -304,7 +304,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.133', APP_DATA='06/11/2026';
+  const APP_VERSAO='2.9.137', APP_DATA='08/11/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -407,7 +407,8 @@
     preencherSeletores();
   }
   function preencherSeletores(){
-    document.getElementById('store').innerHTML=lojasDoModulo().map(l=>`<option value="${l.id}" ${l.id===lojaAtual?'selected':''}>${l.nome}</option>`).join('');
+    document.getElementById('store').innerHTML=lojasDoModulo().map(l=>`<option value="${l.id}" ${l.id===lojaAtual?'selected':''}>${l.nome}</option>`).join('')
+      + ((veGrupo()&&MODULO_ATUAL==='oticas')?`<option value="${GRUPO_ID}" ${lojaAtual===GRUPO_ID?'selected':''}>GRUPO · todas as lojas</option>`:'');
     const mb=document.getElementById('modBox');if(!mb)return;const ms=modulosDisponiveis();
     mb.style.display=ms.length>1?'flex':'none';
     mb.innerHTML=ms.map(([k,n])=>`<button class="${k===MODULO_ATUAL?'on':''}" onclick="trocarModulo('${k}')" title="${n}">${k==='casa'?'🔒 ':''}${n}</button>`).join('');
@@ -1590,21 +1591,23 @@
   async function trocarLoja(){DASH_FILTRO=null;FORA_BANCO=false;IRIS_FILTRO='';IRIS_FEZ='';filtroDia=''; // v2.9.91: trocou de loja ou de mês, os filtros ("mostrando só…") se desligam
     lojaAtual=parseInt(document.getElementById('store').value,10);
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
+    if(lojaAtual===GRUPO_ID){page='grupo';CONTAS=[];renderNav();render();return;} // v2.9.135
+    if(page==='grupo')page='visao';
     await carregarContas();await carregarFechamentos();renderNav();render();
   }
 
   const MENU=[
     ['__d','Dia a dia'],
-    ['irischat','Pergunte à Íris','?',true],['visao','Dashboard','◫',true],['radar','Radar do mês','🧭',true],['lanc','Lançamentos','≣',true],['ensinar','Ensinar a Íris','🎓',true],['import','Importar extrato','⤓',true],
-    ['apagar','Agenda de pagamentos','🧾',true],['remanejos','Remanejos','↹',true],['caixa','Fechamento de caixa','🧮',true],['caixinha','Caixinha (espelho)','💵',true],['emprestimos','Empréstimos (espelho)','⇄',true],
+    ['grupo','Caixa do grupo','Σ',true],['irischat','Pergunte à Íris','?',true],['visao','Dashboard','◫',true],['radar','Radar do mês','🧭',true],['lanc','Lançamentos','≣',true],['ensinar','Ensinar a Íris','🎓',true],['import','Importar extrato','⤓',true],
+    ['apagar','Agenda de pagamentos','🧾',true],['remanejos','Remanejos','↹',true],['caixa','Fechamento de caixa','🧮',true],['caixinha','Caixinha (espelho)','💵',true],['cheques','Cheques','📄',true],['emprestimos','Empréstimos (espelho)','⇄',true],
     ['__a','Análise'],
     ['dre','DRE','📊',true],['fechamento','Fechamento do mês','🔐',true],['fechar','Fechar de junho para cá','✅',true],['concsipag','Cartão × Sipag','💳',true],
     ['comparativo','Comparativo','📈',true],['relcontato','Por contato','👥',true],['juros','Juros por loja','🏦',true],['confpix','Conferência de Pix','🔎',true],
     ['__g','Gestão'],
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
-    ['recorrentes','Recorrentes','🔁',true],['duvidas','Dúvidas da equipe','💬',true],['decimo','Saldo do 13º','⅓',true],['mapa','Mapa de calor','▦',true],['lixeira','Lixeira','🗑',true],['backup','Backup e restaurar','🛟',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],['manualcx','Manual do Caixinha','🔗',true],
+    ['recorrentes','Recorrentes','🔁',true],['bens','Bens','🏷',true],['duvidas','Dúvidas da equipe','💬',true],['decimo','Saldo do 13º','⅓',true],['mapa','Mapa de calor','▦',true],['lixeira','Lixeira','🗑',true],['backup','Backup e restaurar','🛟',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],['manualcx','Manual do Caixinha','🔗',true],
   ];
-  const TITLES={decimo:'Saldo do 13º · quanto entrou, quanto falta guardar',mapa:'Mapa de calor · quem trabalhou no mês',ensinar:'Ensinar a Íris · o que ela ainda não sabe',fechar:'Fechar de junho para cá · o que falta em cada empresa',duvidas:'Dúvidas da equipe · o que a Íris não soube',confpix:'Conferência de Pix · banco × Linx',visao:'Dashboard',radar:'Radar do mês',lanc:'Lançamentos',import:'Importar extrato',apagar:'Agenda de pagamentos',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',remanejos:'Remanejos',emprestimos:'Empréstimos entre lojas — espelho do Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',backup:'Backup e restaurar',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
+  const TITLES={bens:'Bens · o que você e as empresas têm',grupo:'Caixa do grupo · as 11 lojas e o laboratório somados',cheques:'Cheques · depositados, esperando cair',decimo:'Saldo do 13º · quanto entrou, quanto falta guardar',mapa:'Mapa de calor · quem trabalhou no mês',ensinar:'Ensinar a Íris · o que ela ainda não sabe',fechar:'Fechar de junho para cá · o que falta em cada empresa',duvidas:'Dúvidas da equipe · o que a Íris não soube',confpix:'Conferência de Pix · banco × Linx',visao:'Dashboard',radar:'Radar do mês',lanc:'Lançamentos',import:'Importar extrato',apagar:'Agenda de pagamentos',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',remanejos:'Remanejos',emprestimos:'Empréstimos entre lojas — espelho do Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',backup:'Backup e restaurar',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
   // ícones do menu: traço simples, da mesma cor do texto (claro e escuro), no estilo do Microvix
   const NAV_ICON={backup:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',confpix:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',remanejos:'<path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/>',emprestimos:'<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',visao:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',radar:'<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.8 5.41a2 2 0 0 1-1.27 1.27L7.76 16.24l1.8-5.41a2 2 0 0 1 1.27-1.27z"/>',lanc:'<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',import:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',apagar:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',caixa:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M16 14v4M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/>',caixinha:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',dre:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',fechamento:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',concsipag:'<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>',comparativo:'<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',relcontato:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',juros:'<path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"/>',categorias:'<path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',cadcontatos:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',recorrentes:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',lixeira:'<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',config:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',manual:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',manualcx:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'};
   // menu que abre e fecha por grupo (Dia a dia / Análise / Gestão); lembra no navegador; o grupo da tela aberta fica sempre aberto
@@ -1613,9 +1616,13 @@
   function renderNav(){
     const secDe={};let cur=null;MENU.forEach(it=>{if(it[0].startsWith('__'))cur=it[0];else secDe[it[0]]=cur;});
     document.getElementById('nav').innerHTML=MENU.map(it=>{
+      if(it[0].startsWith('__')&&noGrupo()&&it[0]!=='__d')return ''; // v2.9.135: no GRUPO só sobra o Dia a dia
       if(it[0].startsWith('__')){const fech=NAV_FECHADO[it[0]]&&secDe[page]!==it[0];
         return `<div class="seclabel dobra ${fech?'fechada':''}" onclick="navDobrar('${it[0]}')" title="${fech?'Abrir':'Fechar'} ${it[1]}"><span>${it[1]}</span><span class="seta">▾</span></div>`;}
       const [id,l,ic,pronto]=it;
+      if(id==='bens'&&!vePatrimonio())return '';                                // v2.9.137: só quem vê a Casa
+      if(id==='grupo'&&!noGrupo())return '';                                   // v2.9.135: só aparece dentro do GRUPO
+      if(noGrupo()&&!['grupo','manual'].includes(id))return '';                // no GRUPO as telas de loja ficam de fora
       if((id==='config'||id==='backup'||id==='duvidas'||id==='mapa')&&!ehDono())return '';
       if(id==='remanejos'&&!veRemanejos())return '';
       if(id==='confpix'&&(!ehDono()||!['oticas','laboratorio'].includes(MODULO_ATUAL)))return '';
@@ -2591,12 +2598,12 @@
   function irisAvisoTexto(L){const n=String(PERFIL.nome||'').split(' ')[0];const nome=n?n.charAt(0).toUpperCase()+n.slice(1).toLowerCase():'';
     const ext=L.filter(a=>a.urg===3),venc=L.filter(a=>a.urg===2),perto=L.filter(a=>a.urg===1);
     let t=`Oi${nome?', '+nome:''}!`;
-    if(ext.length){t+=`\n\n**Olha o extrato:**\n`+ext.map(a=>'• '+a.txt).join('\n')
+    if(ext.length){t+=`\n\n**Olha o extrato:**\n\n`+ext.map(a=>'• '+a.txt).join('\n\n')
       +`\n\nEu lanço o extrato todo dia às 6h. Quando passa de um dia e meio sem entrar, é porque o robô tropeçou — vale abrir Importar extrato e puxar à mão, ou me chamar aqui.`;}
     if(venc.length||perto.length){
       t+=(ext.length?'\n\n**E dos pagamentos:**':'\n\nPassando para lembrar do que está chegando:');
-      if(venc.length)t+='\n'+venc.map(a=>'• '+a.txt).join('\n');
-      if(perto.length)t+='\n'+perto.map(a=>'• '+a.txt).join('\n');
+      if(venc.length)t+='\n\n'+venc.map(a=>'• '+a.txt).join('\n\n');
+      if(perto.length)t+=(venc.length?'\n\n':'\n\n')+perto.map(a=>'• '+a.txt).join('\n\n');
       t+='\n\nIsso vem do cartão de pagamentos de todo mês do Caixinha. Quando marcar pago lá — ou quando o pagamento sair no extrato — eu paro de lembrar sozinha.';}
     return t;}
   function irisChatLigar(){if(!document.getElementById('irisRoot')){const d=document.createElement('div');d.id='irisRoot';document.body.appendChild(d);}
@@ -2643,7 +2650,11 @@
       if(resp.naoSabe)await sb.from('iris_duvidas').insert({conversa_id:IRISC.conv,usuario_id:USER.id,pergunta:txt,pagina:TITLES[page]||page});}catch(e){}}
   function irisChatDeNovo(){const u=[...IRISC.msgs].reverse().find(m=>m.quem==='pessoa');if(!u)return;
     const i=IRISC.msgs.lastIndexOf(u);if(i>=0)IRISC.msgs.splice(i,1);IRISC.erro='';IRISC.erroTec='';irisChatEnviar(u.texto);}
-  function _ircEsc(t){return _remEsc(t).replace(/\n/g,'<br>');}
+  // v2.9.136: o chat mostrava os ** na tela e as linhas ficavam coladas.
+  // Agora **isso** vira negrito e cada lembrete ganha uma linha em branco.
+  function _ircEsc(t){return _remEsc(t)
+    .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')
+    .replace(/\n/g,'<br>');}
   function irisChatRender(){const root=document.getElementById('irisRoot');if(!root)return;
     if(!irisChatPode()){root.innerHTML='';return;}
     const bolha=m=>m.quem==='pessoa'
@@ -2694,7 +2705,7 @@
     IRISC.ensinos=null;toast('Respondida. A Íris já aprendeu.','ok');render();}
 
   function render(){lojaFaixaLigar();if(!ROBO&&document.getElementById('irisRoot'))irisChatRender();
-    const V={decimo:viewDecimo,mapa:viewMapa,ensinar:viewEnsinar,fechar:viewFechar,duvidas:viewDuvidas,confpix:viewConfPix,visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,remanejos:viewRemanejos,emprestimos:viewEmprestimos,recorrentes:viewRecorrentes,lixeira:viewLixeira,backup:viewBackup,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
+    const V={bens:viewBens,grupo:viewGrupo,cheques:viewCheques,decimo:viewDecimo,mapa:viewMapa,ensinar:viewEnsinar,fechar:viewFechar,duvidas:viewDuvidas,confpix:viewConfPix,visao:viewVisao,radar:viewRadar,lanc:viewLanc,categorias:viewCategorias,cadcontatos:viewCadContatos,dre:viewDRE,fechamento:viewFechamento,concsipag:viewConcSipag,import:viewImport,apagar:viewApagar,relcontato:viewRelContato,comparativo:viewComparativo,juros:viewJuros,caixa:viewCaixa,caixinha:viewCaixinha,remanejos:viewRemanejos,emprestimos:viewEmprestimos,recorrentes:viewRecorrentes,lixeira:viewLixeira,backup:viewBackup,config:viewConfig,manual:viewManual,manualcx:viewManualCx};
     const fn=V[page];if(fn){Promise.resolve(fn()).then(()=>{if(page==='config')cnpjPainel().catch(e=>console.error('cnpj',e));if(page==='visao')painelAtrasoLojas();if(page==='visao'){preencherCartoesDash().catch(e=>console.error('cartoes dash',e));preencherAutoDash().catch(e=>console.error('auto dash',e));preencherRemDash().catch(e=>console.error('rem dash',e));preencherPixDash().catch(e=>console.error('pix dash',e));preencherRankDash().catch(e=>console.error('rank dash',e));preencherIrisDash().catch(e=>console.error('iris',e));}if(['visao','fechamento'].includes(page))preencherSaldoDia1().catch(e=>console.error('saldo dia 1',e));}).catch(e=>console.error(e));}else{viewEmBreve();}
   }
   const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -4101,6 +4112,355 @@
   function dec13Rodar(){toast('Gravar na Caixinha está pausado: ela vai virar o módulo Caixa do Nítido. Aqui a tela só compara.','ok');}
 
   // ---- TELA: SALDO DO 13º ----
+  // ===================== v2.9.137: Bens =====================
+  // Pedido do Lucas (08/11/2026): um lugar para anotar o que ele e as empresas têm, quanto custou
+  // e por quanto foi vendido — para o Imposto de Renda não virar caça ao recibo em março.
+  // Só quem vê a Casa enxerga (Lucas, Heloísa e Flávia); isso é travado no banco também.
+  let BENS=[],BENS_ERRO='',BENS_FILTRO='tenho';
+  const BENS_TIPOS=[['veiculo','Veículo'],['imovel','Imóvel'],['outro','Outro']];
+  function vePatrimonio(){return PERFIL.ve_casa===true||PERFIL.papel==='dono';}
+  async function bensCarregar(){BENS_ERRO='';
+    try{const {data,error}=await sb.from('bens').select('*').eq('excluido',false).order('situacao').order('descricao').limit(600);
+      if(error){BENS_ERRO=error.message;return;}BENS=data||[];}catch(e){BENS_ERRO=String(e.message||e);}}
+  const _bNum=s=>Number(String(s||'').replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',','.'))||0;
+  function bensAbrir(id){
+    const b=BENS.find(x=>x.id===id)||{tipo:'veiculo',situacao:'tenho'};
+    const opLoja=LOJAS.filter(l=>!l.arquivada).map(l=>`<option value="${l.id}" ${Number(b.loja_id)===l.id?'selected':''}>${_remEsc(l.nome)}</option>`).join('');
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(640px,94vw)">
+      <h3>${id?'Editar bem':'Anotar um bem'}</h3>
+      <label>O que é<input id="bDesc" class="maiusc" value="${_remEsc(b.descricao||'')}" placeholder="EX: MOTO HONDA XRE 300"></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label style="flex:1;min-width:150px">Tipo<select id="bTipo">${BENS_TIPOS.map(([k,n])=>`<option value="${k}" ${b.tipo===k?'selected':''}>${n}</option>`).join('')}</select></label>
+        <label style="flex:2;min-width:190px">Placa, chassi ou matrícula<input id="bIdent" value="${_remEsc(b.identificacao||'')}"></label>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label style="flex:1;min-width:170px">Está em nome de<input id="bTit" class="maiusc" value="${_remEsc(b.titular||'')}" placeholder="EX: LUCAS (CPF)"></label>
+        <label style="flex:1;min-width:170px">Empresa do grupo (se for)<select id="bLoja"><option value="">— nenhuma, é pessoal —</option>${opLoja}</select></label>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label style="flex:1;min-width:150px">Comprado em<input id="bCompD" type="date" value="${b.comprado_em||''}"></label>
+        <label style="flex:1;min-width:150px">Por quanto<input id="bCompV" inputmode="decimal" value="${b.valor_compra?BRL(b.valor_compra).replace('R$ ',''):''}"></label>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label style="flex:1;min-width:150px">Vendido em<input id="bVendD" type="date" value="${b.vendido_em||''}"></label>
+        <label style="flex:1;min-width:150px">Por quanto<input id="bVendV" inputmode="decimal" value="${b.valor_venda?BRL(b.valor_venda).replace('R$ ',''):''}"></label>
+      </div>
+      <label>Vendido para quem<input id="bComp" class="maiusc" value="${_remEsc(b.comprador||'')}"></label>
+      <label>Documento (recibo, nota, comprovante)<input id="bDoc" value="${_remEsc(b.documento||'')}"></label>
+      <label>Observação<input id="bObs" class="maiusc" value="${_remEsc(b.obs||'')}"></label>
+      <p class="mut" style="font-size:12px">Deixou a data de venda preenchida? Ele passa sozinho para a lista de vendidos.</p>
+      <div id="bErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" id="bOk" onclick="bensSalvar(${id||0})">Salvar</button></div></div></div>`;}
+
+  async function bensSalvar(id){
+    const g=k=>(document.getElementById(k)||{}).value||'';
+    const err=document.getElementById('bErr');
+    const desc=g('bDesc').trim().toUpperCase();
+    if(!desc){err.innerHTML='<div class="err">Escreva o que é.</div>';return;}
+    const vend=g('bVendD');
+    const row={descricao:desc,tipo:g('bTipo')||'veiculo',identificacao:g('bIdent').trim()||null,
+      titular:g('bTit').trim().toUpperCase()||null,loja_id:Number(g('bLoja'))||null,
+      comprado_em:g('bCompD')||null,valor_compra:_bNum(g('bCompV'))||null,
+      vendido_em:vend||null,valor_venda:_bNum(g('bVendV'))||null,
+      comprador:g('bComp').trim().toUpperCase()||null,documento:g('bDoc').trim()||null,
+      obs:g('bObs').trim().toUpperCase()||null,situacao:vend?'vendido':'tenho',
+      atualizado_por:USER?USER.id:null,atualizado_em:new Date().toISOString()};
+    const btn=document.getElementById('bOk');btn.disabled=true;btn.textContent='Salvando...';
+    let error;
+    if(id){({error}=await sb.from('bens').update(row).eq('id',id));}
+    else{row.criado_por=USER?USER.id:null;({error}=await sb.from('bens').insert(row));}
+    if(error){err.innerHTML='<div class="err">'+(/relation|exist/i.test(error.message||'')?'Falta rodar o SQL da v2.9.137 (tabela de bens).':_remEsc(error.message))+'</div>';btn.disabled=false;btn.textContent='Salvar';return;}
+    fecharModal();toast('Anotado.','ok');await bensCarregar();viewBens();}
+
+  async function bensArquivar(id){if(!ehDono())return;const b=BENS.find(x=>x.id===id);if(!b)return;
+    if(!confirm(`Tirar "${b.descricao}" da lista?\n\nNão apaga do banco, só sai da tela.`))return;
+    const {error}=await sb.from('bens').update({excluido:true,atualizado_por:USER?USER.id:null,atualizado_em:new Date().toISOString()}).eq('id',id);
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    await bensCarregar();viewBens();}
+
+  function bensIR(){
+    const tenho=BENS.filter(b=>b.situacao==='tenho'),vend=BENS.filter(b=>b.situacao==='vendido');
+    const ano=new Date().getFullYear();
+    const doAno=vend.filter(b=>String(b.vendido_em||'').slice(0,4)===String(ano));
+    const lin=b=>`${b.descricao}${b.identificacao?' ('+b.identificacao+')':''} · ${b.titular||'sem titular'}`;
+    let t=`BENS E DIREITOS — posição em ${isoParaBR(_hojeLocal())}\n\n`;
+    t+=tenho.length?tenho.map(b=>`• ${lin(b)}\n  custo de aquisição: ${b.valor_compra?BRL(b.valor_compra):'(falta)'}${b.comprado_em?' · comprado em '+isoParaBR(b.comprado_em):''}${b.documento?' · doc '+b.documento:''}`).join('\n\n'):'(nada anotado)';
+    t+=`\n\n\nVENDIDOS EM ${ano}\n\n`;
+    t+=doAno.length?doAno.map(b=>{const g=(Number(b.valor_venda)||0)-(Number(b.valor_compra)||0);
+      return `• ${lin(b)}\n  comprado por ${b.valor_compra?BRL(b.valor_compra):'(falta)'} · vendido por ${b.valor_venda?BRL(b.valor_venda):'(falta)'} em ${isoParaBR(b.vendido_em)}${b.comprador?' para '+b.comprador:''}\n  diferença: ${BRL(g)}${g>0?' (venda acima do custo — pergunte ao contador sobre ganho de capital)':''}`;}).join('\n\n'):'(nenhum)';
+    t+=`\n\nLista gerada pelo Fluxo. Confira com a contabilidade antes de declarar.`;
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(720px,95vw)">
+      <h3>Resumo para o Imposto de Renda</h3>
+      <textarea id="bIRtxt" readonly style="width:100%;height:46vh;font:12.5px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap">${_remEsc(t)}</textarea>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Fechar</button>
+        <button class="btn" onclick="(function(){const e=document.getElementById('bIRtxt');e.select();document.execCommand('copy');toast('Copiado. Cole no e-mail para o contador.','ok');})()">Copiar tudo</button></div></div></div>`;}
+
+  async function viewBens(){
+    const C=document.getElementById('content');
+    if(!BENS.length&&!BENS_ERRO)C.innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
+    await bensCarregar();
+    if(BENS_ERRO&&!BENS.length){C.innerHTML=`<div class="note" style="border-color:var(--red)"><b>Não consegui ler os bens.</b><br>${_remEsc(BENS_ERRO)}<br><span class="mut">Se fala em "bens", falta rodar o SQL da v2.9.137.</span></div>`;return;}
+    const f=BENS_FILTRO;
+    const lista=BENS.filter(b=>f==='todos'||b.situacao===f);
+    const totalTenho=BENS.filter(b=>b.situacao==='tenho').reduce((s,b)=>s+(Number(b.valor_compra)||0),0);
+    const semCusto=BENS.filter(b=>b.situacao==='tenho'&&!b.valor_compra).length;
+    const aba=(k,n)=>`<button class="btn ${f===k?'':'ghost'}" style="padding:4px 12px;font-size:12.5px" onclick="BENS_FILTRO='${k}';viewBens()">${n}</button>`;
+    C.innerHTML=`
+      <div class="note" style="border-color:var(--blue)">O que você e as empresas têm, quanto custou e por quanto foi vendido. É daqui que sai a lista de <b>Bens e Direitos</b> do Imposto de Renda — o valor que entra lá é o <b>custo de compra</b>, não o preço de hoje. Só quem vê a Casa enxerga esta tela.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        ${aba('tenho','Tenho')} ${aba('vendido','Vendidos')} ${aba('todos','Todos')}
+        <span style="margin-left:auto;display:flex;gap:8px">
+          ${vePatrimonio()&&podeEditar()?`<button class="btn" onclick="bensAbrir(0)">+ Anotar um bem</button>`:''}
+          <button class="btn ghost" onclick="bensIR()">Resumo para o IR</button></span>
+      </div>
+      ${semCusto?`<div class="note" style="border-color:var(--amber)"><b>${semCusto} bem(ns) sem o valor de compra.</b> Sem esse número o IR não fecha — é o custo de aquisição que vai na declaração.</div>`:''}
+      <div class="card" style="padding:0;overflow:auto"><table>
+        <thead><tr><th>O que é</th><th>De quem</th><th style="text-align:right">Comprado por</th><th style="text-align:right">Vendido por</th><th>Documento</th><th></th></tr></thead>
+        <tbody>${lista.map(b=>{
+          const ganho=b.situacao==='vendido'?(Number(b.valor_venda)||0)-(Number(b.valor_compra)||0):null;
+          return `<tr>
+            <td><b>${_remEsc(b.descricao)}</b>${b.identificacao?`<div class="mut" style="font-size:11px">${_remEsc(b.identificacao)}</div>`:''}${b.obs?`<div class="mut" style="font-size:11px">${_remEsc(b.obs)}</div>`:''}</td>
+            <td>${_remEsc(b.titular||'—')}${b.loja_id?`<div class="mut" style="font-size:11px">${_remEsc(lojaNomeCurto(b.loja_id))}</div>`:''}</td>
+            <td class="amt" style="white-space:nowrap">${b.valor_compra?BRL(b.valor_compra):'<span class="mut">falta</span>'}${b.comprado_em?`<div class="mut" style="font-size:11px">${isoParaBR(b.comprado_em)}</div>`:''}</td>
+            <td class="amt" style="white-space:nowrap">${b.valor_venda?BRL(b.valor_venda):'<span class="mut">—</span>'}${b.vendido_em?`<div class="mut" style="font-size:11px">${isoParaBR(b.vendido_em)}${b.comprador?' · '+_remEsc(b.comprador):''}</div>`:''}${ganho!==null&&b.valor_compra&&b.valor_venda?`<div class="mut" style="font-size:11px;color:${ganho>0?'var(--amber)':'var(--muted)'}">diferença ${BRL(ganho)}</div>`:''}</td>
+            <td class="mut" style="font-size:11.5px">${_remEsc(b.documento||'—')}</td>
+            <td style="text-align:right;white-space:nowrap">${podeEditar()?`<button class="delx" onclick="bensAbrir(${b.id})" title="Editar">✏️</button>`:''}${ehDono()?` <button class="delx" onclick="bensArquivar(${b.id})" title="Tirar da lista">🗑</button>`:''}</td></tr>`;}).join('')}
+        ${lista.length?`<tr style="border-top:2px solid var(--line)"><td colspan="2"><b>Custo de tudo que você tem</b></td><td class="amt" style="font-weight:800">${BRL(totalTenho)}</td><td colspan="3"></td></tr>`:''}</tbody></table>
+        ${lista.length?'':'<div class="empty"><div class="big">—</div>Nada anotado ainda. Comece pela moto que você acabou de vender.</div>'}</div>`;}
+
+  // ===================== v2.9.135: GRUPO — as lojas como uma empresa só =====================
+  // Pedido do Lucas (07/11/2026): ver o caixa do grupo inteiro num lugar, como se fosse um CNPJ só.
+  // Quem vê: quem vê a Casa (hoje Lucas, Heloísa e Flávia) — é exatamente o mesmo grupo de pessoas.
+  const GRUPO_ID=-1;
+  function veGrupo(){return PERFIL.ve_casa===true||PERFIL.papel==='dono';}
+  function noGrupo(){return lojaAtual===GRUPO_ID;}
+  let GRUPO_CACHE=null;
+  const _ehGaveta=nome=>/caixinha/i.test(String(nome||''));
+  async function grupoCarregar(force){
+    if(GRUPO_CACHE&&!force&&Date.now()-GRUPO_CACHE.em<180000)return GRUPO_CACHE;
+    const {data:cs,error:e1}=await sb.from('contas').select('id,nome,loja_id,saldo_inicial_banco,arquivada');
+    if(e1)throw new Error(e1.message);
+    const {data:ls,error:e2}=await sbTudo(()=>sb.from('lancamentos').select('data,valor,conta_id').order('id'));
+    if(e2)throw new Error(e2.message);
+    GRUPO_CACHE={em:Date.now(),contas:cs||[],lanc:ls||[]};
+    return GRUPO_CACHE;
+  }
+  function _grupoOrdem(lojaId){const L=LOJAS.find(l=>l.id===lojaId);return L?(Number(L.ordem)||99):999;}
+  async function viewGrupo(){
+    const C=document.getElementById('content');
+    C.innerHTML='<div class="loading"><span class="spin"></span> Somando todas as contas...</div>';
+    let G;
+    try{G=await grupoCarregar();}
+    catch(e){C.innerHTML=`<div class="note" style="border-color:var(--red)"><b>Não consegui somar o grupo.</b><br>${_remEsc(String(e.message||e))}</div>`;return;}
+    const porConta={};G.contas.forEach(c=>{porConta[c.id]=c;});
+    // saldo de cada conta = saldo inicial + tudo que passou nela
+    const saldo={};G.contas.forEach(c=>{saldo[c.id]=Number(c.saldo_inicial_banco||0);});
+    const mes={}; // AAAA-MM -> {entrou, saiu}
+    G.lanc.forEach(l=>{
+      const c=porConta[l.conta_id];if(!c)return;
+      const v=Number(l.valor)||0;
+      saldo[c.id]=(saldo[c.id]||0)+v;
+      if(_ehGaveta(c.nome))return;                       // dinheiro de gaveta não é banco
+      const k=String(l.data||'').slice(0,7);if(!k)return;
+      const m=mes[k]||(mes[k]={entrou:0,saiu:0});
+      if(v>0)m.entrou+=v;else m.saiu+=-v;
+    });
+    const meses=Object.keys(mes).sort().slice(-7);
+    const hojeMes=_hojeLocal().slice(0,7);
+    // saldo somado de hoje (sem gaveta e sem conta arquivada)
+    let total=0;const linhasConta=[];
+    G.contas.filter(c=>!c.arquivada&&!_ehGaveta(c.nome)).forEach(c=>{
+      const s=saldo[c.id]||0;total+=s;
+      linhasConta.push({nome:lojaNomeCurto(c.loja_id)||'—',conta:c.nome,saldo:s,ordem:_grupoOrdem(c.loja_id)});
+    });
+    linhasConta.sort((a,b)=>a.ordem-b.ordem||(a.conta<b.conta?-1:1));
+    const neg=linhasConta.filter(x=>x.saldo<-0.005);
+    const somaNeg=neg.reduce((s,x)=>s+x.saldo,0);
+    const m0=mes[hojeMes]||{entrou:0,saiu:0};
+    const card=(t,v,cor,nota)=>`<div class="card" style="flex:1;min-width:190px"><div class="mut" style="font-size:12px">${t}</div>
+      <div style="font-size:23px;font-weight:800;color:${cor};margin-top:3px">${BRL(v)}</div>${nota?`<div class="mut" style="font-size:11.5px;margin-top:3px">${nota}</div>`:''}</div>`;
+    C.innerHTML=`
+      <div class="note" style="border-color:var(--blue)">As 11 lojas, o laboratório e as outras contas somados, como se fossem uma empresa só. Transferência entre lojas não aparece: o que sai de uma entra na outra e se anula. O dinheiro da gaveta fica de fora, porque não é banco. Esta tela é só para quem vê a Casa.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        ${card('Saldo somado hoje',total,total<0?'var(--red)':'var(--green)',`${linhasConta.length} contas · ${neg.length} no vermelho`)}
+        ${card('Entrou em '+MESES_NOME[Number(hojeMes.slice(5,7))-1],m0.entrou,'var(--green)')}
+        ${card('Saiu em '+MESES_NOME[Number(hojeMes.slice(5,7))-1],m0.saiu,'var(--red)')}
+        ${card('Sobrou no mês',m0.entrou-m0.saiu,(m0.entrou-m0.saiu)<0?'var(--red)':'var(--green)','mês ainda correndo')}
+      </div>
+      ${neg.length?`<div class="note" style="border-color:rgba(214,69,69,.45)"><b>${neg.length} conta(s) no vermelho, somando ${BRL(somaNeg)}.</b> É limite de cheque especial e conta garantida sendo usado — a conta mais cara do grupo.</div>`:''}
+      <div class="card" style="padding:0;overflow:auto;margin-bottom:14px"><table>
+        <thead><tr><th>Mês</th><th style="text-align:right">Entrou</th><th style="text-align:right">Saiu</th><th style="text-align:right">Sobrou</th></tr></thead>
+        <tbody>${meses.map(k=>{const m=mes[k],d=m.entrou-m.saiu;
+          return `<tr><td>${MESES_NOME[Number(k.slice(5,7))-1]} ${k.slice(0,4)}${k===hojeMes?' <span class="mut" style="font-size:11px">(correndo)</span>':''}</td>
+            <td class="amt green">${BRL(m.entrou)}</td><td class="amt red">${BRL(m.saiu)}</td>
+            <td class="amt ${d<0?'red':'green'}" style="font-weight:800">${BRL(d)}</td></tr>`;}).join('')}</tbody></table></div>
+      <div style="font-weight:700;margin:0 0 6px 2px">Saldo de cada conta hoje</div>
+      <div class="card" style="padding:0;overflow:auto"><table>
+        <thead><tr><th>Empresa</th><th>Conta</th><th style="text-align:right">Saldo</th></tr></thead>
+        <tbody>${linhasConta.map(x=>`<tr><td>${_remEsc(x.nome)}</td><td class="mut">${_remEsc(x.conta)}</td>
+          <td class="amt ${x.saldo<0?'red':'green'}">${BRL(x.saldo)}</td></tr>`).join('')}
+          <tr style="border-top:2px solid var(--line)"><td colspan="2"><b>Somando tudo</b></td>
+          <td class="amt ${total<0?'red':'green'}" style="font-weight:800">${BRL(total)}</td></tr></tbody></table></div>
+      <div style="margin-top:10px"><button class="btn ghost" onclick="grupoRecarregar()">Atualizar os números</button>
+        <span class="mut" style="font-size:12px;margin-left:8px">lido do banco agora há pouco; clique para refazer a soma</span></div>`;
+  }
+  async function grupoRecarregar(){GRUPO_CACHE=null;await viewGrupo();}
+
+  // ===================== v2.9.134: Cheques =====================
+  // O cheque não passa pela gaveta: sai da mão do cliente e vai direto para o envelope do banco.
+  // Então ele não entra no Caixinha e não se lança à mão. Aqui a pessoa só ANOTA que depositou;
+  // quando a linha aparecer no extrato, o Fluxo liga as duas e classifica como VENDA EM CHEQUE
+  // (não como à vista nem como Pix — igual à aba de cheque da Linx).
+  const CHQ_PRAZO=3;            // dias úteis para cobrar
+  const CHQ_JANELA=10;          // até quando ainda procuro a linha no extrato
+  let CHEQUES=[],CHQ_ERRO='',CHQ_SEM_TABELA=false;
+  function chqCatId(){const c=catsAtivas().find(x=>String(x.nome).toUpperCase()==='VENDA EM CHEQUE');return c?c.id:null;}
+  function chqPodeEditar(){return podeEditar();}
+  async function chqCarregar(){CHQ_ERRO='';
+    try{const {data,error}=await sb.from('cheques').select('*').eq('excluido',false).order('data_deposito',{ascending:false}).limit(600);
+      if(error){CHQ_ERRO=error.message;CHQ_SEM_TABELA=/cheques/i.test(error.message||'')&&/exist|relation/i.test(error.message||'');return;}
+      CHEQUES=data||[];}catch(e){CHQ_ERRO=String(e.message||e);}}
+  function chqEspera(c){return diasUteisDepois(c.data_deposito,_hojeLocal());}
+  function chqAtrasado(c){return c.status==='aguardando'&&chqEspera(c)>CHQ_PRAZO;}
+
+  async function chqAbrirNovo(){if(!chqPodeEditar())return;
+    const hoje=_hojeLocal();
+    const opLoja=LOJAS.filter(l=>!l.arquivada).map(l=>`<option value="${l.id}" ${l.id===lojaAtual?'selected':''}>${_remEsc(l.nome)}</option>`).join('');
+    const opConta=(CONTAS||[]).map(c=>`<option value="${c.id}">${_remEsc(c.nome)}</option>`).join('');
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)fecharModal()"><div class="modal" style="width:min(560px,94vw)">
+      <h3>Anotar cheque depositado</h3>
+      <p class="mut" style="font-size:12.5px">Não precisa lançar nada em Lançamentos nem no Caixinha. Quando o depósito cair, o Fluxo acha a linha no extrato sozinho e marca aqui.</p>
+      <label>Loja que recebeu<select id="chqLoja">${opLoja}</select></label>
+      <label>Conta onde depositou${opConta?`<select id="chqConta"><option value="">(não sei)</option>${opConta}</select>`:'<input id="chqConta" disabled value="">'}</label>
+      <label>Valor do cheque<input id="chqValor" inputmode="decimal" placeholder="650,00"></label>
+      <label>Dia do depósito<input id="chqData" type="date" value="${hoje}"></label>
+      <label>Quem passou o cheque<input id="chqEmit" class="maiusc" placeholder="EX: PREFEITURA DE ..."></label>
+      <label>Nº do envelope / autenticação<input id="chqDoc" placeholder="EX: 81.245.226-6"></label>
+      <label>Observação (opcional)<input id="chqObs" class="maiusc" placeholder="EX: VENDA DE OCULOS"></label>
+      <div id="chqErr"></div>
+      <div class="modal-btns"><button class="btn ghost" onclick="fecharModal()">Cancelar</button><button class="btn" id="chqOk" onclick="chqSalvarNovo()">Anotar</button></div></div></div>`;}
+
+  async function chqSalvarNovo(){
+    const err=document.getElementById('chqErr');const g=id=>(document.getElementById(id)||{}).value||'';
+    const v=Number(String(g('chqValor')).replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',','.'));const data=g('chqData');const loja=Number(g('chqLoja'));
+    if(!(v>0)){err.innerHTML='<div class="err">Escreva o valor do cheque.</div>';return;}
+    if(!data){err.innerHTML='<div class="err">Escreva o dia do depósito.</div>';return;}
+    if(!loja){err.innerHTML='<div class="err">Escolha a loja.</div>';return;}
+    const btn=document.getElementById('chqOk');btn.disabled=true;btn.textContent='Anotando...';
+    const row={loja_id:loja,conta_id:Number(g('chqConta'))||null,valor:v,data_deposito:data,
+      emitente:(g('chqEmit')||'').trim().toUpperCase()||null,documento:(g('chqDoc')||'').trim()||null,
+      obs:(g('chqObs')||'').trim().toUpperCase()||null,status:'aguardando',criado_por:USER?USER.id:null};
+    const {error}=await sb.from('cheques').insert(row);
+    if(error){err.innerHTML='<div class="err">'+(/relation|exist/i.test(error.message||'')?'Falta rodar o SQL da v2.9.134 (tabela de cheques).':error.message)+'</div>';btn.disabled=false;btn.textContent='Anotar';return;}
+    fecharModal();toast('Cheque anotado. Quando cair no extrato eu marco aqui sozinho.','ok');
+    await chqCarregar();await chqSinc(true);if(page==='cheques')viewCheques();}
+
+  // liga o cheque à linha do extrato: mesmo valor, mesma loja, do dia do depósito em diante
+  async function chqSinc(silencioso){
+    const cat=chqCatId();let achou=0,avisa=[];
+    const pend=CHEQUES.filter(c=>c.status==='aguardando');
+    for(const c of pend){
+      const ate=addDias(c.data_deposito,20);
+      const {data,error}=await sb.from('lancamentos')
+        .select('id,loja_id,conta_id,data,valor,descricao,categoria_id,conferido_por,ref_externa,iris')
+        .eq('loja_id',c.loja_id).gte('data',c.data_deposito).lte('data',ate).gt('valor',0).limit(400);
+      if(error)continue;
+      let cand=(data||[]).filter(l=>Math.abs(Number(l.valor)-Number(c.valor))<0.005
+        && !String(l.ref_externa||'').startsWith('chq:')
+        && (!c.conta_id||!l.conta_id||Number(l.conta_id)===Number(c.conta_id))
+        && diasUteisDepois(c.data_deposito,l.data)<=CHQ_JANELA);
+      if(!cand.length){if(chqAtrasado(c))avisa.push(c);continue;}
+      // se alguma linha fala em cheque, é essa; senão a mais antiga
+      cand.sort((a,b)=>(a.data<b.data?-1:a.data>b.data?1:0));
+      const comNome=cand.find(l=>/CHEQUE|\bCHQ\b|DEP\.?CHEQUE/i.test(l.descricao||''));
+      const l=comNome||cand[0];
+      // classificação feita à mão por uma pessoa não é trocada sem ela mandar
+      const podeTrocar=!l.categoria_id||(!!l.iris&&!l.conferido_por);
+      const up={ref_externa:'chq:'+c.id};
+      if(cat&&podeTrocar&&Number(l.categoria_id)!==Number(cat)){up.categoria_id=cat;up.conferido_por='CHEQUE';up.conferido_em=new Date().toISOString();}
+      const {error:e1}=await sb.from('lancamentos').update(up).eq('id',l.id);
+      if(e1)continue;
+      const {error:e2}=await sb.from('cheques').update({status:'compensado',compensado_em:l.data,lancamento_id:l.id,atualizado_por:USER?USER.id:null,atualizado_em:new Date().toISOString()}).eq('id',c.id);
+      if(e2)continue;
+      c.status='compensado';c.compensado_em=l.data;c.lancamento_id=l.id;c.trocou=up.categoria_id?1:0;c.naoTrocou=(!podeTrocar&&cat&&Number(l.categoria_id)!==Number(cat))?1:0;
+      achou++;}
+    if(!silencioso){
+      if(achou)toast(`${achou} cheque(s) caíram na conta e já entraram como VENDA EM CHEQUE.`,'ok');
+      else if(avisa.length)toast(`Nenhum caiu ainda. ${avisa.length} já passaram de ${CHQ_PRAZO} dias úteis — confira no banco.`,'erro');
+      else toast('Nenhum cheque novo caiu até agora.','ok');}
+    return {achou,avisa:avisa.length};}
+
+  async function chqRodar(){const b=document.getElementById('chqBtnSinc');if(b){b.disabled=true;b.textContent='Procurando...';}
+    await chqCarregar();await chqSinc(false);viewCheques();}
+
+  async function chqDevolvido(id){const c=CHEQUES.find(x=>x.id===id);if(!c||!chqPodeEditar())return;
+    if(!confirm(`Marcar como DEVOLVIDO?\n\n${BRL(c.valor)} · depositado em ${isoParaBR(c.data_deposito)}\nNada é apagado: fica no histórico como devolvido.`))return;
+    const {error}=await sb.from('cheques').update({status:'devolvido',devolvido_em:_hojeLocal(),atualizado_por:USER?USER.id:null,atualizado_em:new Date().toISOString()}).eq('id',id);
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    toast('Marcado como devolvido.','ok');await chqCarregar();viewCheques();}
+
+  async function chqRedepositar(id){const c=CHEQUES.find(x=>x.id===id);if(!c||!chqPodeEditar())return;
+    const d=prompt('Depositou de novo em que dia? (dd/mm/aaaa)',isoParaBR(_hojeLocal()));if(!d)return;
+    const p=String(d).split('/');if(p.length!==3){toast('Data não entendida.','erro');return;}
+    const iso=`${p[2]}-${String(p[1]).padStart(2,'0')}-${String(p[0]).padStart(2,'0')}`;
+    const {error}=await sb.from('cheques').update({status:'aguardando',data_deposito:iso,devolvido_em:null,obs:((c.obs||'')+' · REDEPOSITADO').trim(),atualizado_por:USER?USER.id:null,atualizado_em:new Date().toISOString()}).eq('id',id);
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    toast('Anotado o novo depósito.','ok');await chqCarregar();viewCheques();}
+
+  async function chqArquivar(id){if(!ehDono())return;const c=CHEQUES.find(x=>x.id===id);if(!c)return;
+    if(!confirm(`Tirar este cheque da lista?\n\n${BRL(c.valor)} · ${isoParaBR(c.data_deposito)}\nEle não é apagado do banco, só sai da tela.`))return;
+    const {error}=await sb.from('cheques').update({excluido:true,atualizado_por:USER?USER.id:null,atualizado_em:new Date().toISOString()}).eq('id',id);
+    if(error){toast('Erro: '+error.message,'erro');return;}
+    await chqCarregar();viewCheques();}
+
+  // o que aconteceu com a linha do extrato de cada cheque que já caiu
+  let CHQ_LANC={};
+  async function chqCarregarLanc(){CHQ_LANC={};
+    const ids=CHEQUES.filter(c=>c.lancamento_id).map(c=>c.lancamento_id);if(!ids.length)return;
+    try{const {data}=await sb.from('lancamentos').select('id,categoria_id,descricao,conferido_por').in('id',ids);
+      (data||[]).forEach(l=>{CHQ_LANC[l.id]=l;});}catch(e){}}
+  async function viewCheques(){
+    await chqCarregar();await chqCarregarLanc();
+    const C=document.getElementById('content');
+    if(CHQ_ERRO&&!CHEQUES.length){C.innerHTML=`<div class="note" style="border-color:var(--red)"><b>Não consegui ler os cheques.</b><br>${_remEsc(CHQ_ERRO)}<br><span class="mut">Se fala em "cheques", falta rodar o SQL da v2.9.134.</span></div>`;return;}
+    const aguard=CHEQUES.filter(c=>c.status==='aguardando').sort((a,b)=>(a.data_deposito<b.data_deposito?-1:1));
+    const resto=CHEQUES.filter(c=>c.status!=='aguardando').slice(0,80);
+    const atras=aguard.filter(chqAtrasado);
+    const semCat=!chqCatId();
+    const linha=(c,fim)=>{const esp=chqEspera(c);
+      const sit=c.status==='compensado'?`<span style="color:var(--green);font-weight:700">caiu em ${isoParaBR(c.compensado_em||'')}</span>`
+        :c.status==='devolvido'?`<span style="color:var(--red);font-weight:700">devolvido${c.devolvido_em?' em '+isoParaBR(c.devolvido_em):''}</span>`
+        :chqAtrasado(c)?`<span style="color:var(--red);font-weight:700">${esp} dias úteis esperando — confira no banco</span>`
+        :`<span style="color:var(--amber)">esperando cair${esp?' ('+esp+' dia'+(esp>1?'s':'')+' útil'+(esp>1?'eis':'')+')':''}</span>`;
+      const acoes=!chqPodeEditar()?'':(c.status==='aguardando'
+        ?`<button class="catchip" style="cursor:pointer;font-size:10.5px" onclick="chqDevolvido(${c.id})">foi devolvido</button>`
+        :c.status==='devolvido'?`<button class="catchip" style="cursor:pointer;font-size:10.5px" onclick="chqRedepositar(${c.id})">depositei de novo</button>`:'')
+        +(ehDono()?` <button class="delx" title="Tirar da lista (não apaga do banco)" onclick="chqArquivar(${c.id})">🗑</button>`:'');
+      const lk=c.lancamento_id?CHQ_LANC[c.lancamento_id]:null;
+      const cn=lk?((CATS.find(x=>Number(x.id)===Number(lk.categoria_id))||{}).nome||''):'';
+      const aviso=lk&&chqCatId()&&Number(lk.categoria_id)!==Number(chqCatId())
+        ?`<div class="mut" style="font-size:11px;color:var(--amber)">entrou como ${_remEsc(cn||'sem categoria')} — alguém já tinha classificado; troque na mão se quiser</div>`
+        :(cn?`<div class="mut" style="font-size:11px">entrou como ${_remEsc(cn)}</div>`:'');
+      return `<tr><td class="mut" style="white-space:nowrap">${isoParaBR(c.data_deposito)}</td>
+        <td>${_remEsc(lojaNomeCurto(c.loja_id)||'')}</td>
+        <td>${_remEsc(c.emitente||'—')}${c.obs?`<div class="mut" style="font-size:11px">${_remEsc(c.obs)}</div>`:''}</td>
+        <td class="amt green" style="white-space:nowrap">${BRL(c.valor)}</td>
+        <td class="mut" style="font-size:11.5px">${_remEsc(c.documento||'—')}</td>
+        <td style="font-size:12px">${sit}${aviso}</td>
+        <td style="text-align:right;white-space:nowrap">${acoes}</td></tr>`;};
+    C.innerHTML=`
+      <div class="note" style="border-color:var(--blue)">O cheque não passa pelo Caixinha nem se lança à mão: ele vai direto para o banco. Anote aqui no dia do depósito e pronto — quando o dinheiro cair, a linha do extrato é ligada a este cheque e entra como <b>VENDA EM CHEQUE</b>, separada do Pix e do à vista. Depósito feito depois das 15h processa no dia útil seguinte, e ainda pode ter bloqueio de 1 dia útil.</div>
+      ${semCat?`<div class="note" style="border-color:var(--red)"><b>Falta a categoria VENDA EM CHEQUE.</b> Rode o SQL da v2.9.134 — sem ela eu ligo o cheque à linha, mas não consigo classificar.</div>`:''}
+      ${atras.length?`<div class="note" style="border-color:var(--red)"><b>${atras.length} cheque(s) passaram de ${CHQ_PRAZO} dias úteis e não caíram.</b> Confira no banco se foi devolvido.</div>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        ${chqPodeEditar()?`<button class="btn" onclick="chqAbrirNovo()">+ Anotar cheque depositado</button>`:''}
+        <button class="btn ghost" id="chqBtnSinc" onclick="chqRodar()">Procurar no extrato agora</button>
+        <span class="mut" style="font-size:12px;margin-left:auto">${aguard.length} esperando · ${CHEQUES.filter(c=>c.status==='compensado').length} já caíram</span>
+      </div>
+      <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Depositado</th><th>Loja</th><th>Quem passou</th><th style="text-align:right">Valor</th><th>Envelope</th><th>Situação</th><th></th></tr></thead>
+        <tbody>${aguard.map(c=>linha(c)).join('')}${resto.map(c=>linha(c)).join('')}</tbody></table>
+        ${CHEQUES.length?'':'<div class="empty"><div class="big">—</div>Nenhum cheque anotado. Quando a loja receber um, clique em "Anotar cheque depositado".</div>'}</div>`;}
+
   async function viewDecimo(){
     const box=document.getElementById('content');
     box.innerHTML='<div class="loading"><span class="spin"></span> Conferindo o 13º…</div>';
@@ -5089,6 +5449,7 @@
     try{await snSincronizar(true);}catch(e){} // v2.9.103: pagamentos de todo mês do Caixinha
     try{await ffPagosSinc(true);}catch(e){} // v2.9.115: faturas pagas e ressarcidas no FaturaFácil
     try{await cxDepSinc(true);}catch(e){} // v2.9.130: depósito da gaveta que bate com o Caixinha já fica conferido
+    try{await chqCarregar();await chqSinc(true);}catch(e){} // v2.9.134: cheque depositado que caiu no extrato
     let depN=0,depErr='';if(IMPORT_DEP.length){const rr=await cxMarcarDepositos(IMPORT_DEP);depN=rr.n;depErr=rr.err;
       const ag=new Date().toISOString();for(const {m,r} of IMPORT_DEP){const lid=r._lancId||(r.jaExiste&&r.jaExiste.id);if(lid&&m.conf){try{await sb.from('lancamentos').update({ref_externa:'cxd:'+m.id,conferido_por:'CAIXINHA',conferido_em:ag}).eq('id',lid);}catch(e){}}} // v2.9.29
       IMPORT_DEP=[];}

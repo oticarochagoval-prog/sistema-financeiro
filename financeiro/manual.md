@@ -1263,6 +1263,22 @@ O que ela **não** faz:
 A regra por trás: ela só confere quando **comparou duas fontes independentes**. Marcar como conferido só porque a categoria é "depósito da gaveta" não seria conferir, seria carimbar — e aí o visto verde deixaria de valer alguma coisa.
 
 
+## Cheque: o que fazer quando a loja receber um (v2.9.134)
+
+Cheque é raro, e por isso ninguém lembra o caminho. É este:
+
+1. **Não lance nada no Caixinha.** O Caixinha é o dinheiro da gaveta. O cheque sai da mão do cliente e vai direto para o envelope do banco — a gaveta nunca viu esse dinheiro. Se lançar lá, o caixa do dia fecha errado.
+2. **Não lance nada em Lançamentos.** Quando o depósito cair, o extrato traz a linha sozinho. Se alguém digitar antes, vira lançamento repetido.
+3. **Abra a aba Cheques** (menu Dia a dia) e clique em **+ Anotar cheque depositado**: valor, loja, dia do depósito, quem passou o cheque e o número do envelope do comprovante.
+4. **Guarde o comprovante** e tire foto do cheque, frente e verso. No extrato não aparece nem quem assinou nem o número do cheque — só "DEP.CHEQUE" e o valor. O Sicoob guarda as imagens por 180 dias.
+5. **O Fluxo faz o resto.** Quando o dinheiro cai, ele acha a linha no extrato (mesmo valor, mesma loja, do dia do depósito em diante) e liga as duas. A entrada entra como **VENDA EM CHEQUE** — separada do Pix de cliente e do à vista, igual à aba de cheque da Linx — e já fica conferida.
+
+**Prazos.** Depósito feito depois das 15h só processa no próximo dia útil, e o cheque ainda pode vir com bloqueio ("DEP.CHEQUE BLOQ.1D" = um dia útil). Na prática: depositou numa sexta à tarde, costuma cair na terça.
+
+**Se passar de 3 dias úteis** e não cair, a tela avisa em vermelho. Confira no banco: se voltou, clique em **foi devolvido**; quando depositar de novo, clique em **depositei de novo** e informe a data nova. Nada é apagado — o cheque devolvido continua no histórico.
+
+**Se a linha já estava classificada por uma pessoa**, o Fluxo liga o cheque mas não troca a categoria. Quem classificou troca à mão se quiser.
+
 ## De quem é cada CNPJ do extrato (v2.9.132)
 
 Quando alguém paga por Pix, o Sicoob manda no extrato só o documento de quem recebeu — `06.981.180 0001-16` — e nenhum nome. O comprovante mostra "CEMIG DISTRIBUIÇÃO S.A", mas isso não chega no extrato.
@@ -1356,6 +1372,10 @@ E não tem como escrever uma referência: a conta de luz é paga por **QR Code**
 | 06/11/2026 | 2.9.133 | **A Íris preenche a sugestão na própria linha, nas lojas.** Antes ela só sugeria e alguém tinha que apertar "usar sugestão" uma por uma; agora a categoria já vem preenchida em amarelo e você só confirma ou corrige. Ela nunca mexe em linha já classificada e nunca confere sozinha o que veio da IA | — |
 | 06/11/2026 | 2.9.133 | **A ESTORNAR: um passo só.** O quadradinho de conferir voltou a aparecer nas linhas que ainda não foram ligadas ao Banco Caixinha. Clicou nele, abre a tela de mandar (com loja, valor e quem devolve, para você confirmar); confirmou, a linha já fica conferida no seu nome. Antes eram dois passos | — |
 | 06/11/2026 | 2.9.133 | **O quadradinho de marcar várias saiu da frente.** Ele ficava sempre ligado, colado na data, e dava para marcar linha sem querer. Agora só aparece depois de clicar no 🗑 do cabeçalho da coluna Data, e some sozinho quando termina. Para apagar uma linha só, continua sendo a lixeirinha no fim da linha | — |
+| 06/11/2026 | 2.9.134 | **Aba Cheques.** O cheque não passa pelo Caixinha nem se lança à mão: quem recebe anota aqui no dia do depósito (valor, loja, nº do envelope). Quando o dinheiro cai, o Fluxo liga a linha do extrato a esse cheque e classifica como **VENDA EM CHEQUE**, separada do Pix e do à vista. Se passar de 3 dias úteis sem cair, a tela cobra | fluxo-v2.9.134-cheques.sql |
+| 07/11/2026 | 2.9.135 | **Caixa do grupo.** No seletor de loja, abaixo da Rocha 11, aparece **GRUPO · todas as lojas** para quem vê a Casa (Lucas, Heloísa e Flávia). Mostra as 11 lojas, o laboratório e as outras contas somados como se fossem uma empresa só: o que entrou, o que saiu, o que sobrou mês a mês, e o saldo de cada conta hoje. Não cadastra nada, só mostra | — |
+| 08/11/2026 | 2.9.136 | **A Íris ficou legível.** Os lembretes dela vinham colados um no outro e mostravam os asteriscos do negrito na tela. Agora cada lembrete tem uma linha em branco e o nome da conta aparece em negrito de verdade | — |
+| 08/11/2026 | 2.9.137 | **Tela Bens.** Em Gestão, para quem vê a Casa. Guarda o que você e as empresas têm: o que é, placa ou matrícula, em nome de quem, quanto custou, e quando e por quanto foi vendido. O botão **Resumo para o IR** gera a lista de Bens e Direitos com o custo de aquisição e as vendas do ano, pronta para mandar ao contador | fluxo-v2.9.137-bens.sql |
 | 28/10/2026 | 2.9.90 | Íris confere sozinha a venda de cliente (valor fora do costume não trava); Pix de mesmo valor em outro dia não segura a entrada automática | — |
 | 28/10/2026 | 2.9.89 | Faixa colorida com a loja em Lançamentos, Importar extrato e Agenda; botões dizem o nome da loja | — |
 | 28/10/2026 | 2.9.88 | Previsão: saída e erro só com as contas da loja; não operacional aparece à parte | — |
