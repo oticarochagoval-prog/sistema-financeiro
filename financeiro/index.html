@@ -95,6 +95,15 @@
   .side.collapsed .sidefoot{display:none}
   .main{flex:1;display:flex;flex-direction:column;min-width:0}
   .topbar{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;background:var(--bg)}
+  /* v2.9.139: a loja virou quadradinho. Verde é o módulo, azul é a loja aberta. */
+  .lojachips{display:flex;gap:6px;align-items:center;padding:9px 24px;border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:61px;z-index:19;overflow-x:auto;scrollbar-width:thin}
+  .lojachips .rot{font-size:10.5px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;font-weight:700;margin-right:2px;flex:0 0 auto}
+  .lchip{flex:0 0 auto;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:18px;padding:4px 13px;font-size:12.5px;cursor:pointer;white-space:nowrap;position:relative;font-family:inherit}
+  .lchip:hover{border-color:var(--blue)}
+  .lchip.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+  .lchip.gr{border-style:dashed;color:var(--muted)}
+  .lchip.gr.on{background:var(--green);border-color:var(--green);border-style:solid;color:#04130c}
+  .lchip .pt{position:absolute;top:2px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--red)}
   .pagetitle{font-size:18px;font-weight:700}
   .modbox{margin-left:auto;display:flex;gap:3px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:4px}
   .modbox button{border:0;background:transparent;color:var(--muted);font-weight:600;font-size:12.5px;padding:6px 11px;border-radius:8px;cursor:pointer;white-space:nowrap}
@@ -256,7 +265,7 @@
         <button class="menucel" onclick="abrirMenuCel()" title="Menu">☰</button>
         <span class="pagetitle" id="ptitle">Dashboard</span>
         <div id="modBox" class="modbox" style="display:none"></div>
-        <select class="store" id="store" onchange="trocarLoja()"></select>
+        <select class="store" id="store" onchange="trocarLoja()" style="display:none"></select>
         <button class="iconbtn txt" onclick="location.href='/?modulos'" title="Voltar para a tela de módulos">Módulos</button>
         <button class="iconbtn" id="temaBtn" onclick="alternarTema()" title="Tema claro / escuro">🌙</button>
         <button class="iconbtn help" onclick="go('manual')" title="Manual: como usar o sistema">?</button>
@@ -266,6 +275,7 @@
           <span id="versao" class="mut" style="font-size:10.5px;font-variant-numeric:tabular-nums;white-space:nowrap" title="Versão do sistema"></span>
         </div>
       </div>
+      <div id="lojaChips" class="lojachips" style="display:none"></div>
       <div id="sicoobAviso" style="display:none"></div>
       <div class="content" id="content"><div class="loading"><span class="spin"></span> Carregando...</div></div>
     </div>
@@ -304,7 +314,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.138', APP_DATA='10/11/2026';
+  const APP_VERSAO='2.9.139', APP_DATA='10/11/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -409,6 +419,7 @@
   function preencherSeletores(){
     document.getElementById('store').innerHTML=lojasDoModulo().map(l=>`<option value="${l.id}" ${l.id===lojaAtual?'selected':''}>${l.nome}</option>`).join('')
       + ((veGrupo()&&MODULO_ATUAL==='oticas')?`<option value="${GRUPO_ID}" ${lojaAtual===GRUPO_ID?'selected':''}>GRUPO · todas as lojas</option>`:'');
+    lojaChipsRender();
     const mb=document.getElementById('modBox');if(!mb)return;const ms=modulosDisponiveis();
     mb.style.display=ms.length>1?'flex':'none';
     mb.innerHTML=ms.map(([k,n])=>`<button class="${k===MODULO_ATUAL?'on':''}" onclick="trocarModulo('${k}')" title="${n}">${k==='casa'?'🔒 ':''}${n}</button>`).join('');
@@ -1590,6 +1601,7 @@
   }
   async function trocarLoja(){DASH_FILTRO=null;FORA_BANCO=false;IRIS_FILTRO='';IRIS_FEZ='';filtroDia=''; // v2.9.91: trocou de loja ou de mês, os filtros ("mostrando só…") se desligam
     lojaAtual=parseInt(document.getElementById('store').value,10);
+    try{lojaChipsRender();}catch(e){} // v2.9.139: a faixa de botões acompanha na hora (inclusive quando vai para o GRUPO)
     document.getElementById('content').innerHTML='<div class="loading"><span class="spin"></span> Carregando...</div>';
     if(lojaAtual===GRUPO_ID){page='grupo';CONTAS=[];renderNav();render();return;} // v2.9.135
     if(page==='grupo')page='visao';
@@ -1607,7 +1619,7 @@
     ['categorias','Categorias','🏷️',true],['cadcontatos','Contatos','👤',true],
     ['recorrentes','Recorrentes','🔁',true],['bens','Bens','🏷',true],['duvidas','Dúvidas da equipe','💬',true],['decimo','Saldo do 13º','⅓',true],['mapa','Mapa de calor','▦',true],['lixeira','Lixeira','🗑',true],['backup','Backup e restaurar','🛟',true],['config','Configurações','⚙',true],['manual','Manual','❓',true],['manualcx','Manual do Caixinha','🔗',true],
   ];
-  const TITLES={bens:'Bens · o que você e as empresas têm',grupo:'Caixa do grupo · as 11 lojas e o laboratório somados',cheques:'Cheques · depositados, esperando cair',decimo:'Saldo do 13º · quanto entrou, quanto falta guardar',mapa:'Mapa de calor · quem trabalhou no mês',ensinar:'Ensinar a Íris · o que ela ainda não sabe',fechar:'Fechar de junho para cá · o que falta em cada empresa',duvidas:'Dúvidas da equipe · o que a Íris não soube',confpix:'Conferência de Pix · banco × Linx',visao:'Dashboard',radar:'Radar do mês',lanc:'Lançamentos',import:'Importar extrato',apagar:'Agenda de pagamentos',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',remanejos:'Remanejos',emprestimos:'Empréstimos entre lojas — espelho do Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',backup:'Backup e restaurar',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
+  const TITLES={bens:'Bens · o que você e as empresas têm',grupo:'Caixa do grupo · as 11 Óticas Rocha somadas',cheques:'Cheques · depositados, esperando cair',decimo:'Saldo do 13º · quanto entrou, quanto falta guardar',mapa:'Mapa de calor · quem trabalhou no mês',ensinar:'Ensinar a Íris · o que ela ainda não sabe',fechar:'Fechar de junho para cá · o que falta em cada empresa',duvidas:'Dúvidas da equipe · o que a Íris não soube',confpix:'Conferência de Pix · banco × Linx',visao:'Dashboard',radar:'Radar do mês',lanc:'Lançamentos',import:'Importar extrato',apagar:'Agenda de pagamentos',caixa:'Fechamento de caixa',caixinha:'Caixinha — espelho do sistema Caixinha',remanejos:'Remanejos',emprestimos:'Empréstimos entre lojas — espelho do Caixinha',dre:'DRE — Resultado',fechamento:'Fechamento do mês',concsipag:'Cartão × Sipag',comparativo:'Comparativo',relcontato:'Relatório por contato',juros:'Juros por loja',categorias:'Categorias',cadcontatos:'Contatos',recorrentes:'Recorrentes',lixeira:'Lixeira',backup:'Backup e restaurar',config:'Configurações',manual:'Manual — como usar',manualcx:'Manual — espelho do Caixinha (Lentes, Banco, Caixa)'};
   // ícones do menu: traço simples, da mesma cor do texto (claro e escuro), no estilo do Microvix
   const NAV_ICON={backup:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',confpix:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',remanejos:'<path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/>',emprestimos:'<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',visao:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',radar:'<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.8 5.41a2 2 0 0 1-1.27 1.27L7.76 16.24l1.8-5.41a2 2 0 0 1 1.27-1.27z"/>',lanc:'<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',import:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',apagar:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',caixa:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M16 14v4M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/>',caixinha:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',dre:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',fechamento:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',concsipag:'<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>',comparativo:'<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',relcontato:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',juros:'<path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"/>',categorias:'<path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',cadcontatos:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',recorrentes:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',lixeira:'<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',config:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',manual:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',manualcx:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'};
   // menu que abre e fecha por grupo (Dia a dia / Análise / Gestão); lembra no navegador; o grupo da tela aberta fica sempre aberto
@@ -4112,6 +4124,32 @@
   function dec13Rodar(){toast('Gravar na Caixinha está pausado: ela vai virar o módulo Caixa do Nítido. Aqui a tela só compara.','ok');}
 
   // ---- TELA: SALDO DO 13º ----
+  // ===================== v2.9.139: seletor de loja em quadradinhos =====================
+  // Pedido do Lucas (10/11/2026): o verde continua sendo o módulo e o azul passa a ser a loja aberta.
+  // O <select id="store"> continua existindo escondido, porque várias telas mandam nele direto.
+  // ATRASO_EXTRATO é preenchido pelo painel "Extrato em dia?" do Dashboard — aqui só lemos o que já veio.
+  let ATRASO_EXTRATO={};
+  const _chipRot=()=>MODULO_ATUAL==='oticas'?'Loja':(MODULO_ATUAL==='diversas'?'Conta':'Empresa');
+  function _chipNome(l){
+    if(MODULO_ATUAL==='oticas'){const m=String(l.nome).match(/ROCHA\s*0?(\d{1,2})/i);if(m)return 'R'+m[1];}
+    return String(l.nome).split(' — ')[0].replace(/^Conta\s+/,'').replace(/\s*\(cheques\)/,' · cheques');
+  }
+  function lojaChipsRender(){
+    const box=document.getElementById('lojaChips');if(!box)return;
+    const ls=lojasDoModulo();
+    const temGrupo=veGrupo()&&MODULO_ATUAL==='oticas';
+    if(ls.length<=1&&!temGrupo){box.style.display='none';box.innerHTML='';return;}
+    box.style.display='flex';
+    const chip=l=>{const at=ATRASO_EXTRATO[l.id];const atrasada=(at===null||(typeof at==='number'&&at>2));
+      return `<button class="lchip${l.id===lojaAtual?' on':''}" onclick="irLoja(${l.id})" title="${_remEsc(l.nome)}${atrasada?' · extrato atrasado':''}">${_remEsc(_chipNome(l))}${atrasada?'<span class="pt"></span>':''}</button>`;};
+    box.innerHTML=`<span class="rot">${_chipRot()}</span>`+ls.map(chip).join('')
+      +(temGrupo?`<button class="lchip gr${lojaAtual===GRUPO_ID?' on':''}" onclick="irLoja(${GRUPO_ID})" title="As 11 Óticas somadas">GRUPO · todas</button>`:'');
+    const on=box.querySelector('.lchip.on');if(on&&on.scrollIntoView)try{on.scrollIntoView({block:'nearest',inline:'center'});}catch(e){}
+  }
+  function irLoja(id){const s=document.getElementById('store');if(!s)return;
+    if(![...s.options].some(o=>String(o.value)===String(id))){const o=document.createElement('option');o.value=String(id);s.appendChild(o);}
+    s.value=String(id);trocarLoja();}
+
   // ===================== v2.9.137: Bens =====================
   // Pedido do Lucas (08/11/2026): um lugar para anotar o que ele e as empresas têm, quanto custou
   // e por quanto foi vendido — para o Imposto de Renda não virar caça ao recibo em março.
@@ -6038,7 +6076,8 @@
       const {data:mes}=await sbTudo(()=>sb.from('lancamentos').select('data').eq('loja_id',L.id).in('origem',['ofx','manual']).gte('data',ini).lte('data',hojeISO).order('id'));
       const diasCom=new Set((mes||[]).map(x=>x.data)).size;
       const faltam=ext?Math.floor((hoje-new Date(ext+'T12:00:00'))/86400000):null; // dias sem extrato
-      out.push({L,ext,man,faltam,diasCom,n:(mes||[]).length,robo:_rob.has(Number(L.id)),mod:_modDe(L)});}catch(e){out.push({L,ext:null,man:null,faltam:null,diasCom:0,n:0,robo:_rob.has(Number(L.id)),mod:_modDe(L)});}}
+      out.push({L,ext,man,faltam,diasCom,n:(mes||[]).length,robo:_rob.has(Number(L.id)),mod:_modDe(L)});
+      ATRASO_EXTRATO[L.id]=faltam;}catch(e){out.push({L,ext:null,man:null,faltam:null,diasCom:0,n:0,robo:_rob.has(Number(L.id)),mod:_modDe(L)});}}
     const cor=d=>d==null?'var(--red)':(d<=2?'var(--green)':(d<=7?'var(--amber)':'var(--red)'));
     const cartao=o=>`<div onclick="document.getElementById('store').value='${o.L.id}';trocarLoja();" title="Abrir ${_remEsc(o.L.nome)}" style="cursor:pointer;border:1px solid var(--line);border-left:4px solid ${o.robo?cor(o.faltam):'var(--blue)'};border-radius:9px;padding:8px 10px">
       <div style="font-size:12.5px;font-weight:700">${_remEsc(o.L.nome.split(' — ')[0])}${o.robo?'':' <span class="mut" style="font-weight:600;font-size:10.5px">à mão</span>'}</div>
@@ -6048,6 +6087,7 @@
            <div style="font-size:10.5px;color:var(--blue);font-weight:700">não tem robô — alguém importa</div>`}
       <div class="mut" style="font-size:10.5px;line-height:1.5">${o.ext?'extrato até '+isoParaBR(o.ext).slice(0,5):'—'}<br>manual até ${o.man?isoParaBR(o.man).slice(0,5):'nunca'}<br>este mês: ${o.n} lanç. em ${o.diasCom} de ${diaHoje} dias</div></div>`;
     const grade=l=>`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:8px">${l.map(cartao).join('')}</div>`;
+    try{lojaChipsRender();}catch(e){}
     const oticas=out.filter(o=>o.mod==='oticas'),outras=out.filter(o=>o.mod!=='oticas');
     const atrasadas=out.filter(o=>o.faltam==null||o.faltam>2);
     const html=`<div class="card" style="margin-bottom:16px"><div class="cardhead"><h3>Extrato em dia?</h3><span class="tag">o grupo inteiro · só o extrato do banco prova que o mês está completo</span></div>
