@@ -304,7 +304,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.137', APP_DATA='08/11/2026';
+  const APP_VERSAO='2.9.138', APP_DATA='10/11/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -4252,7 +4252,9 @@
     let G;
     try{G=await grupoCarregar();}
     catch(e){C.innerHTML=`<div class="note" style="border-color:var(--red)"><b>Não consegui somar o grupo.</b><br>${_remEsc(String(e.message||e))}</div>`;return;}
-    const porConta={};G.contas.forEach(c=>{porConta[c.id]=c;});
+    // v2.9.138: o GRUPO é só as Óticas (Rocha 1 a 11). Laboratório, compras, Diversas e Casa ficam de fora.
+    const _ehOtica=id=>{const L=LOJAS.find(l=>l.id===id);return !!L&&_modDe(L)==='oticas';};
+    const porConta={};G.contas.forEach(c=>{if(_ehOtica(c.loja_id))porConta[c.id]=c;});
     // saldo de cada conta = saldo inicial + tudo que passou nela
     const saldo={};G.contas.forEach(c=>{saldo[c.id]=Number(c.saldo_inicial_banco||0);});
     const mes={}; // AAAA-MM -> {entrou, saiu}
@@ -4265,11 +4267,11 @@
       const m=mes[k]||(mes[k]={entrou:0,saiu:0});
       if(v>0)m.entrou+=v;else m.saiu+=-v;
     });
-    const meses=Object.keys(mes).sort().slice(-7);
+    const meses=Object.keys(mes).filter(k=>(mes[k].entrou+mes[k].saiu)>1000).sort().slice(-7);
     const hojeMes=_hojeLocal().slice(0,7);
     // saldo somado de hoje (sem gaveta e sem conta arquivada)
     let total=0;const linhasConta=[];
-    G.contas.filter(c=>!c.arquivada&&!_ehGaveta(c.nome)).forEach(c=>{
+    G.contas.filter(c=>!c.arquivada&&!_ehGaveta(c.nome)&&_ehOtica(c.loja_id)).forEach(c=>{
       const s=saldo[c.id]||0;total+=s;
       linhasConta.push({nome:lojaNomeCurto(c.loja_id)||'—',conta:c.nome,saldo:s,ordem:_grupoOrdem(c.loja_id)});
     });
@@ -4280,7 +4282,7 @@
     const card=(t,v,cor,nota)=>`<div class="card" style="flex:1;min-width:190px"><div class="mut" style="font-size:12px">${t}</div>
       <div style="font-size:23px;font-weight:800;color:${cor};margin-top:3px">${BRL(v)}</div>${nota?`<div class="mut" style="font-size:11.5px;margin-top:3px">${nota}</div>`:''}</div>`;
     C.innerHTML=`
-      <div class="note" style="border-color:var(--blue)">As 11 lojas, o laboratório e as outras contas somados, como se fossem uma empresa só. Transferência entre lojas não aparece: o que sai de uma entra na outra e se anula. O dinheiro da gaveta fica de fora, porque não é banco. Esta tela é só para quem vê a Casa.</div>
+      <div class="note" style="border-color:var(--blue)">As 11 Óticas Rocha somadas, como se fossem uma empresa só. O laboratório, o grupo de compras, a Diversas e a Casa não entram aqui. Transferência entre lojas não aparece: o que sai de uma entra na outra e se anula. O dinheiro da gaveta fica de fora, porque não é banco. Só quem vê a Casa enxerga esta tela.</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
         ${card('Saldo somado hoje',total,total<0?'var(--red)':'var(--green)',`${linhasConta.length} contas · ${neg.length} no vermelho`)}
         ${card('Entrou em '+MESES_NOME[Number(hojeMes.slice(5,7))-1],m0.entrou,'var(--green)')}
