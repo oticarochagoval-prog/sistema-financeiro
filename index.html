@@ -1,35 +1,276 @@
 <!doctype html>
-<!--
-  TEMPORÁRIO — posto pelo chat do Fluxo em 05/11/2026, combinado com o Lucas.
-
-  Até aqui a raiz servia uma CÓPIA VELHA do Fluxo (v2.9.119), parada desde que o Fluxo
-  virou o módulo financeiro/. Ela continuava funcionando e escrevendo no banco de verdade:
-  quem tinha o link antigo salvo estava usando o sistema errado, sem perceber.
-
-  Este arquivo só manda quem chega na raiz para /financeiro/.
-
-  Chat do Nítido: pode substituir à vontade pela tela de entrada da casa.
-  Este arquivo existe só para a raiz não servir Fluxo velho enquanto a entrada não sobe.
--->
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Nítido</title>
-<meta http-equiv="refresh" content="0; url=/financeiro/">
-<script>location.replace('/financeiro/' + (location.search || '') + (location.hash || ''));</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d4ed8'/%3E%3Ctext x='32' y='44' font-family='Arial' font-weight='700' font-size='36' fill='white' text-anchor='middle'%3EN%3C/text%3E%3C/svg%3E">
+<script>
+/* carrega o config.js da raiz; se não existir lá, usa o do Financeiro (financeiro/config.js) */
+(function(){
+  function tenta(src, depois){ var s=document.createElement('script'); s.src=src; s.onload=depois; s.onerror=depois; document.head.appendChild(s); }
+  tenta('/config.js', function(){ if(!window.SUPABASE_URL){ tenta('/financeiro/config.js', function(){ window.__configPronto = true; }); } else { window.__configPronto = true; } });
+})();
+</script>
 <style>
-  :root{color-scheme:light dark}
-  body{font:16px/1.6 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;background:#fff;color:#111;
-       margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
-  a{color:#0a7a3d;font-weight:600}
-  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) body{background:#121212;color:#eee}}
+:root{--azul:#1d4ed8;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--bg:#f6f8fb;--card:#fff;--erro:#b91c1c;--erro-bg:#fef2f2}
+@media (prefers-color-scheme:dark){:root{--ink:#e5e7eb;--muted:#94a3b8;--line:#1f2937;--bg:#0b1220;--card:#111827;--erro-bg:#3b0a0a}}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:32px 28px;width:100%;max-width:380px;box-shadow:0 4px 24px rgba(15,23,42,.06)}
+.marca{display:flex;align-items:center;gap:12px;margin-bottom:24px;text-decoration:none;color:inherit}
+.n{width:44px;height:44px;border-radius:12px;background:var(--azul);color:#fff;font-weight:700;font-size:24px;display:flex;align-items:center;justify-content:center;flex:none}
+.marca h1{margin:0;font-size:24px;letter-spacing:-.02em}
+.marca small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px}
+input,select{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card);color:var(--ink)}
+.btn{width:100%;margin-top:20px;padding:13px;border:0;border-radius:10px;background:var(--azul);color:#fff;font-size:16px;font-weight:600;cursor:pointer}
+.btn[disabled]{opacity:.6;cursor:default}
+.erro{display:none;margin-top:14px;padding:10px 12px;border-radius:10px;background:var(--erro-bg);color:var(--erro);font-size:14px}
+.ajuda{text-align:center;color:var(--muted);font-size:13px;margin-top:18px}
+.ver{text-align:center;color:#94a3b8;font-size:12px;margin-top:22px}
+.top{background:var(--card);border-bottom:1px solid var(--line);padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between}
+.top .marca{margin:0;gap:10px}.top .n{width:32px;height:32px;font-size:18px;border-radius:9px}.top h1{font-size:18px}
+.quem{display:flex;align-items:center;gap:14px;font-size:14px}
+.sair{color:var(--azul);font-weight:600;text-decoration:none;cursor:pointer}
+.quem .v{color:#94a3b8;font-size:11px;text-align:right}
+.mods{max-width:760px;margin:0 auto;padding:40px 16px}
+.mods h2{font-weight:600;font-size:22px;margin:0 0 6px}.mods p{color:var(--muted);margin:0 0 24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.mod{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;display:flex;gap:16px;align-items:flex-start;cursor:pointer;text-decoration:none;color:inherit}
+.mod:hover{border-color:var(--azul);box-shadow:0 4px 20px rgba(29,78,216,.08)}
+.ic{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:22px;color:#fff;flex:none}
+.mod b{display:block;font-size:17px;margin-bottom:4px}.mod span{color:var(--muted);font-size:14px;line-height:1.4}
+.nota{color:#94a3b8;font-size:13px;margin-top:28px}
+.vazio{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;color:var(--muted)}
+#carregando{text-align:center;color:var(--muted);padding:60px 16px}
 </style>
 </head>
 <body>
-  <div>
-    <p>Levando você para o Financeiro…</p>
-    <p>Se não abrir sozinho, clique aqui: <a href="/financeiro/">abrir o Financeiro</a></p>
+
+<div id="carregando">Entrando…</div>
+
+<div id="login" class="wrap" style="display:none">
+  <form class="card" id="form-login" autocomplete="on">
+    <div class="marca"><div class="n">N</div><div><h1>Nítido</h1><small>Grupo Rocha</small></div></div>
+    <label for="quem">Quem é você?</label>
+    <select id="quem">
+      <option value="lucas">Lucas</option>
+      <option value="heloisa">Heloísa</option>
+      <option value="rhaiane">Rhaiane</option>
+      <option value="carol">Carol</option>
+      <option value="__email">Outro (usuário ou e-mail)</option>
+    </select>
+    <div id="bloco-outro" style="display:none">
+      <label for="outro">Usuário ou e-mail</label>
+      <input id="outro" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="ex.: maria.r3 ou maria@email.com">
+    </div>
+    <label for="senha">Senha</label>
+    <input id="senha" type="password" autocomplete="current-password">
+    <button class="btn" id="btn-entrar" type="submit">Entrar</button>
+    <div class="erro" id="erro"></div>
+    <div class="ajuda">Dúvida? Fala com o gestor.</div>
+    <div class="ver" id="ver-login"></div>
+  </form>
+</div>
+
+<div id="modulos" style="display:none">
+  <div class="top">
+    <a class="marca" href="/?modulos"><div class="n">N</div><h1>Nítido</h1></a>
+    <div class="quem"><span id="nome-pessoa"></span><div><a class="sair" id="btn-sair">Sair</a><div class="v" id="ver-top"></div></div></div>
   </div>
+  <div class="mods">
+    <h2 id="ola"></h2><p id="sub">Escolha o módulo</p>
+    <div class="grid" id="grid"></div>
+    <div class="nota" id="nota"></div>
+  </div>
+</div>
+
+<script>
+/* ===== Nítido · entrada (login + módulos) =====
+   Regras da casa: esta página é do chat do Nítido. Os módulos moram em pastas próprias
+   (/financeiro/ = Fluxo, /loja/ = balcão). A sessão fica guardada no navegador no mesmo
+   formato que o supabase-js usa, por isso os módulos abrem sem pedir senha de novo. */
+const APP_VERSAO = '1.1';
+const APP_DATA   = '10/11/2026';
+const DOMINIO_LOGIN = 'caixarocha.com';            // igual ao Fluxo: nome escolhido vira nome@caixarocha.com
+let URL = '', KEY = '', REF = '', CHAVE_SESSAO = '';
+function lerConfig(){
+  URL = (window.SUPABASE_URL || '').replace(/\/$/, '');
+  KEY = window.SUPABASE_ANON_KEY || '';
+  REF = (URL.match(/^https?:\/\/([^.]+)\./) || [,''])[1];
+  CHAVE_SESSAO = 'sb-' + REF + '-auth-token';   // mesma chave que o supabase-js v2 usa
+}
+const CHAVE_QUEM   = 'cr_quem';                     // mesma chave que o Fluxo usa para lembrar o nome
+const CHAVE_ULTIMO = 'nt_ultimo_modulo';
+
+const MODULOS = {
+  financeiro: { nome: 'Financeiro', letra: 'F', cor: '#15803d', desc: 'Lançamentos, extratos, fechamento do mês, Íris', url: '/financeiro/' },
+  loja:       { nome: 'Loja',       letra: 'L', cor: '#1d4ed8', desc: 'Venda, OS, clientes, quadro de OS, caixa da loja', url: '/loja/' }
+};
+// Enquanto o passo 2 (coluna modulos em perfis) não roda, o papel decide:
+const PAPEL_MODULOS = { dono:['financeiro'], operador:['financeiro'], lancador:['financeiro'], contador:['financeiro'], cartoes:['financeiro'], vendedor:['loja'], gerente:['loja'] };
+
+const $ = id => document.getElementById(id);
+const ls = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} },
+  del(k){ try { localStorage.removeItem(k); } catch(e){} }
+};
+
+function mostrar(id){
+  ['carregando','login','modulos'].forEach(x => $(x).style.display = 'none');
+  $(id).style.display = id === 'login' ? 'flex' : 'block';
+}
+
+/* ---------- sessão ---------- */
+function lerSessao(){
+  try { const s = JSON.parse(ls.get(CHAVE_SESSAO) || 'null'); return (s && s.access_token) ? s : null; } catch(e){ return null; }
+}
+function guardarSessao(s){
+  if(!s.expires_at) s.expires_at = Math.floor(Date.now()/1000) + (s.expires_in || 3600);
+  ls.set(CHAVE_SESSAO, JSON.stringify(s));
+  return s;
+}
+function sessaoVencida(s){ return !s.expires_at || (s.expires_at - 60) * 1000 < Date.now(); }
+
+async function auth(caminho, corpo, token){
+  const r = await fetch(URL + '/auth/v1/' + caminho, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', apikey: KEY, Authorization: 'Bearer ' + (token || KEY) },
+    body: corpo ? JSON.stringify(corpo) : undefined
+  });
+  let j = null; try { j = await r.json(); } catch(e){}
+  if(!r.ok) throw Object.assign(new Error((j && (j.msg || j.error_description || j.message)) || ('Erro ' + r.status)), { status: r.status });
+  return j;
+}
+async function renovar(s){
+  try { return guardarSessao(await auth('token?grant_type=refresh_token', { refresh_token: s.refresh_token })); }
+  catch(e){ ls.del(CHAVE_SESSAO); return null; }
+}
+async function sessaoValida(){
+  let s = lerSessao();
+  if(!s) return null;
+  if(sessaoVencida(s)) s = await renovar(s);
+  return s;
+}
+
+/* ---------- perfil ---------- */
+async function meuPerfil(s){
+  const uid = s.user && s.user.id;
+  const r = await fetch(URL + '/rest/v1/perfis?select=*&id=eq.' + encodeURIComponent(uid), {
+    headers: { apikey: KEY, Authorization: 'Bearer ' + s.access_token, Accept: 'application/json' }
+  });
+  if(!r.ok) return null;
+  const lista = await r.json();
+  return lista[0] || null;
+}
+function modulosDe(perfil){
+  if(!perfil) return [];
+  const lista = Array.isArray(perfil.modulos) && perfil.modulos.length ? perfil.modulos : (PAPEL_MODULOS[perfil.papel] || []);
+  return lista.filter(m => MODULOS[m]);
+}
+
+/* ---------- login ---------- */
+function montarLogin(){
+  $('ver-login').textContent = 'v' + APP_VERSAO + ' · ' + APP_DATA;
+  const lembrado = ls.get(CHAVE_QUEM);
+  if(lembrado && [...$('quem').options].some(o => o.value === lembrado)) $('quem').value = lembrado;
+  const outroLembrado = ls.get('nt_usuario'); if(outroLembrado) $('outro').value = outroLembrado;
+  atualizarOutro();
+  $('quem').addEventListener('change', atualizarOutro);
+  $('form-login').addEventListener('submit', entrar);
+  mostrar('login');
+  ($('quem').value === '__email' ? $('outro') : $('senha')).focus();
+}
+function atualizarOutro(){ $('bloco-outro').style.display = $('quem').value === '__email' ? 'block' : 'none'; }
+function erro(msg){ $('erro').textContent = msg; $('erro').style.display = msg ? 'block' : 'none'; }
+
+async function entrar(ev){
+  ev.preventDefault(); erro('');
+  const quem = $('quem').value;
+  let email;
+  if(quem === '__email'){
+    const dig = $('outro').value.trim().toLowerCase();
+    if(!dig) return erro('Digite seu usuário ou e-mail.');
+    email = dig.includes('@') ? dig : dig + '@' + DOMINIO_LOGIN;
+    ls.set('nt_usuario', dig);
+  } else {
+    email = quem + '@' + DOMINIO_LOGIN;
+  }
+  const senha = $('senha').value;
+  if(!senha) return erro('Digite a senha.');
+  $('btn-entrar').disabled = true; $('btn-entrar').textContent = 'Entrando…';
+  try {
+    const s = guardarSessao(await auth('token?grant_type=password', { email, password: senha }));
+    ls.set(CHAVE_QUEM, quem);
+    await depoisDoLogin(s, true);
+  } catch(e){
+    erro(quem === '__email' ? 'E-mail ou senha incorretos.' : 'Senha incorreta (ou esse nome ainda não foi cadastrado).');
+    $('btn-entrar').disabled = false; $('btn-entrar').textContent = 'Entrar';
+  }
+}
+
+async function sair(){
+  const s = lerSessao();
+  ls.del(CHAVE_SESSAO); ls.del(CHAVE_ULTIMO);
+  try { if(s) await auth('logout', null, s.access_token); } catch(e){}
+  location.replace('/');
+}
+
+/* ---------- módulos ---------- */
+function irPara(m){ ls.set(CHAVE_ULTIMO, m); location.replace(MODULOS[m].url); }
+
+async function depoisDoLogin(s, acabouDeEntrar){
+  const perfil = await meuPerfil(s);
+  const mods = modulosDe(perfil);
+  const pediuTela = new URLSearchParams(location.search).has('modulos');
+  if(mods.length === 1 && !pediuTela) return irPara(mods[0]);
+  if(mods.length > 1 && !pediuTela){
+    const ultimo = ls.get(CHAVE_ULTIMO);
+    if(ultimo && mods.includes(ultimo) && !acabouDeEntrar) return irPara(ultimo);
+  }
+  montarModulos(perfil, mods);
+}
+
+function montarModulos(perfil, mods){
+  const nome = (perfil && perfil.nome) ? perfil.nome.charAt(0).toUpperCase() + perfil.nome.slice(1).toLowerCase() : '';
+  $('nome-pessoa').textContent = nome;
+  $('ver-top').textContent = 'v' + APP_VERSAO + ' · ' + APP_DATA;
+  $('ola').textContent = nome ? 'Olá, ' + nome : 'Olá';
+  $('btn-sair').onclick = sair;
+  const g = $('grid'); g.innerHTML = '';
+  if(!mods.length){
+    $('sub').textContent = '';
+    g.innerHTML = '<div class="vazio">Seu acesso ainda não foi liberado. Fala com o gestor.</div>';
+    $('nota').textContent = '';
+  } else {
+    $('sub').textContent = 'Escolha o módulo';
+    mods.forEach(m => {
+      const d = MODULOS[m];
+      const a = document.createElement('a');
+      a.className = 'mod'; a.href = d.url;
+      a.innerHTML = '<div class="ic" style="background:' + d.cor + '">' + d.letra + '</div><div><b>' + d.nome + '</b><span>' + d.desc + '</span></div>';
+      a.addEventListener('click', ev => { ev.preventDefault(); irPara(m); });
+      g.appendChild(a);
+    });
+    $('nota').textContent = mods.length > 1 ? 'Da próxima vez você entra direto no último módulo usado. Para trocar, toque em Nítido no canto de cima.' : '';
+  }
+  mostrar('modulos');
+}
+
+/* ---------- início ---------- */
+(async function(){
+  for(let i=0;i<100 && !window.__configPronto;i++) await new Promise(r=>setTimeout(r,50));
+  lerConfig();
+  if(!URL || !KEY){ $('carregando').textContent = 'Falta o arquivo config.js. Fala com o gestor.'; return; }
+  if(new URLSearchParams(location.search).has('sair')) return sair();
+  const s = await sessaoValida();
+  if(!s) return montarLogin();
+  try { await depoisDoLogin(s, false); }
+  catch(e){ montarLogin(); }
+})();
+</script>
 </body>
 </html>
