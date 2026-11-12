@@ -314,7 +314,7 @@
   const GRUPOS={rec:{nome:'Receita',cls:'rec'},cmv:{nome:'CMV',cls:'cmv'},imp:{nome:'Simples Nacional',cls:'imp'},fixo:{nome:'Custo Fixo',cls:'fixo'},nop:{nome:'Não Operacional',cls:'nop'},neutra:{nome:'Neutra',cls:'neutra'},adef:{nome:'A definir',cls:'adef'}};
   const ANO_FIXO=2026;
   // Versão do sistema — some um número a cada atualização e anote no histórico do manual
-  const APP_VERSAO='2.9.139', APP_DATA='10/11/2026';
+  const APP_VERSAO='2.9.140', APP_DATA='12/11/2026';
 
   // ---- TEMA claro/escuro (fica salvo no navegador de cada pessoa) ----
   function aplicarTema(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');const b=document.getElementById('temaBtn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
@@ -5087,7 +5087,12 @@
   // ---- v2.9.46: CAIXINHA → FLUXO SOZINHO — saída que a loja lança no Caixinha entra na conta Caixinha da loja ----
   // Só tipo "saida" (não entrada, depósito, guardado, empréstimo). Desde 01/10/2026. Marca "no financeiro" lá.
   // Não duplica: liga ao que já estava lançado à mão (mesma loja, mesmo valor, até 3 dias).
-  const CXS_DESDE='2026-10-01';let _cxsRodando=false;
+  // v2.9.140: a busca passou a alcançar junho (antes só outubro), menos agosto — naquele mês o
+  // Caixinha era usado como livro-caixa geral (DESPESAS CARTÃO DE CRÉDITO, CASA, DESPESAS ROCHA 8)
+  // e esse dinheiro saiu do banco, já está no extrato. Puxar ia contar duas vezes.
+  const CXS_DESDE='2026-06-01';
+  const CXS_MESES_FORA=['2026-08'];
+  let _cxsRodando=false;
   function cxMovPorId(id){if(!CX.carregado)return null;if(!CX._movId){CX._movId={};(CX.caixas||[]).forEach(k=>k.mov.forEach(m=>{CX._movId[m.id]=m;}));}return CX._movId[id]||null;}
   const CXS_PADRAO={'MOTOTAXI':'MOTO TAXI','MOTO TAXI':'MOTO TAXI','LOCUCAO':'MIDIA','RETIRADA CAIXINHA':'REP.CAIXINHA','REPOSICAO CAIXINHA':'REP.CAIXINHA','PASSAGEM':'Funcionários','DESPESAS':'DESPESAS','VIGIA':'DESPESAS','FUNCIONARIOS':'Funcionários','LABORATORIO IPATINGA':'Lentes/Laboratório','ESTACIONAMENTO':'ESTACIONAMENTO'};
   const _cxsChave=t=>normDesc(String(t||'').replace(/[^\p{L}\p{N}\s.\/]/gu,' ')).replace(/\s+/g,' ').trim();
@@ -5099,7 +5104,7 @@
       if(!(await cxCarregar(true)))return;CX._movId=null;
       // lojas do Fluxo ↔ caixinhas (tipo loja)
       const pares=[];(CX.caixas||[]).forEach(k=>{const L=LOJAS.find(l=>cxChaveLoja(l.nome)===cxChaveLoja(k.nome));if(L)pares.push({k,L});});
-      const pend=[];pares.forEach(({k,L})=>k.mov.forEach(m=>{if(m.tipo==='saida'&&!m.fin&&(m.data||'')>=CXS_DESDE&&Number(m.valor)>0)pend.push({m,L,k});}));
+      const pend=[];pares.forEach(({k,L})=>k.mov.forEach(m=>{if(m.tipo==='saida'&&!m.fin&&(m.data||'')>=CXS_DESDE&&!CXS_MESES_FORA.includes(String(m.data||'').slice(0,7))&&Number(m.valor)>0)pend.push({m,L,k});}));
       if(!pend.length){if(manual)toast('Nada novo no Caixinha.','ok');return;}
       const ids=[...new Set(pend.map(p=>p.L.id))];
       const {data:cts}=await sb.from('contas').select('id,loja_id,nome').in('loja_id',ids).eq('arquivada',false);
