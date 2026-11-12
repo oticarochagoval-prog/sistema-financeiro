@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nítido · Loja</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d4ed8'/%3E%3Ctext x='32' y='44' font-family='Arial' font-weight='700' font-size='36' fill='white' text-anchor='middle'%3EL%3C/text%3E%3C/svg%3E">
+<script>
+(function(){
+  function tenta(src, depois){ var s=document.createElement('script'); s.src=src; s.onload=depois; s.onerror=depois; document.head.appendChild(s); }
+  tenta('/config.js', function(){ if(!window.SUPABASE_URL){ tenta('/financeiro/config.js', function(){ window.__configPronto = true; }); } else { window.__configPronto = true; } });
+})();
+</script>
+<style>
+:root{--azul:#1d4ed8;--azul2:#e6edfd;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--bg:#f6f8fb;--card:#fff;--ok:#15803d;--ok2:#e8f5ec;--warn:#b45309;--warn2:#fdf3e4;--erro:#b91c1c;--erro2:#fef2f2}
+@media (prefers-color-scheme:dark){:root{--azul:#7ea2ff;--azul2:#1a2a52;--ink:#e5e7eb;--muted:#94a3b8;--line:#1f2937;--bg:#0b1220;--card:#111827;--ok:#4ade80;--ok2:#10301c;--warn:#fbbf24;--warn2:#3a2a0a;--erro:#f87171;--erro2:#3b0a0a}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.45}
+a{color:var(--azul)}
+button{font:inherit;cursor:pointer}
+.top{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;gap:12px}
+.marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;min-width:0}
+.n{width:30px;height:30px;border-radius:8px;background:var(--azul);color:#fff;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;flex:none}
+.marca b{font-size:17px;white-space:nowrap}.marca span{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.quem{display:flex;align-items:center;gap:12px;font-size:14px;flex:none}.quem .v{color:#94a3b8;font-size:11px;text-align:right}
+.sair{color:var(--azul);font-weight:600;background:none;border:0;padding:0}
+nav.menu{background:var(--card);border-bottom:1px solid var(--line);display:flex;gap:4px;padding:6px 12px;overflow-x:auto}
+nav.menu button{background:none;border:0;border-radius:8px;padding:8px 12px;color:var(--muted);font-weight:600;white-space:nowrap}
+nav.menu button.on{background:var(--azul2);color:var(--azul)}
+main{max-width:1100px;margin:0 auto;padding:18px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:20px 0 8px}
+.sub{color:var(--muted);margin:0 0 14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.grid{display:grid;gap:12px}.g2{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}.g3{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px;background:var(--card);color:var(--ink)}
+textarea{min-height:70px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--azul);outline-offset:1px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-weight:600}
+.btn.p{background:var(--azul);color:#fff;border-color:var(--azul)}
+.btn.s{padding:6px 10px;font-size:14px}
+.btn[disabled]{opacity:.5;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.msg{display:none;margin:10px 0;padding:10px 12px;border-radius:10px;font-size:15px}
+.msg.erro{display:block;background:var(--erro2);color:var(--erro)}.msg.ok{display:block;background:var(--ok2);color:var(--ok)}
+.lista{display:grid;gap:8px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;gap:10px;align-items:center;cursor:pointer}
+.item:hover{border-color:var(--azul)}
+.item b{display:block}.item small{color:var(--muted)}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:var(--azul2);color:var(--azul)}
+.tag.ok{background:var(--ok2);color:var(--ok)}.tag.warn{background:var(--warn2);color:var(--warn)}.tag.erro{background:var(--erro2);color:var(--erro)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat b{font-size:24px;display:block}.stat span{color:var(--muted);font-size:13px}
+.quadro{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:10px;overflow-x:auto;padding-bottom:10px}
+.col{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:8px;min-width:0}
+.col h3{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:4px 6px 8px;display:flex;justify-content:space-between}
+.card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;cursor:pointer;font-size:14px}
+.card.atrasada{border-left-color:var(--erro)}.card.hoje{border-left-color:var(--warn)}.card.ok{border-left-color:var(--ok)}
+.card b{display:block;font-size:15px}.card small{color:var(--muted);display:block}
+.tl{border-left:2px solid var(--line);margin:8px 0 0 8px;padding-left:14px}
+.tl div{margin-bottom:8px;font-size:14px}.tl small{color:var(--muted);display:block}
+.pend{background:var(--erro2);color:var(--erro);border-radius:10px;padding:8px 12px;font-size:14px;margin:8px 0}
+.foto{max-width:100%;border-radius:10px;border:1px solid var(--line)}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
+.modal .box{background:var(--card);border-radius:14px;padding:18px;width:100%;max-width:420px}
+.ajuda-fab{position:fixed;right:16px;bottom:16px;width:48px;height:48px;border-radius:50%;background:var(--azul);color:#fff;border:0;font-size:22px;font-weight:700;box-shadow:0 6px 20px rgba(29,78,216,.3)}
+#carregando{text-align:center;color:var(--muted);padding:60px 16px}
+@media (max-width:600px){.quadro{grid-auto-flow:row;grid-auto-columns:auto}.top .quem span.nome{display:none}}
+.so-gestor{display:none}
+</style>
+</head>
+<body>
+<div id="app"><div id="carregando">Abrindo a Loja…</div></div>
+<button class="ajuda-fab" id="fab" title="Ajuda" hidden>?</button>
+
+<script>
+/* ===== Nítido · módulo Loja v0.1 =====
+   Pasta loja/ é do chat do Nítido. Lê /config.js da raiz. Usa a sessão guardada pela entrada (mesma chave do supabase-js).
+   Fala com o banco pela API do Supabase direto (sem biblioteca), schema "loja" e tabelas compartilhadas em public. */
+const APP_VERSAO = '0.1';
+const APP_DATA   = '12/11/2026';
+let URL = '', KEY = '', REF = '', CHAVE_SESSAO = '';
+function lerConfig(){
+  URL = (window.SUPABASE_URL || '').replace(/\/$/, '');
+  KEY = window.SUPABASE_ANON_KEY || '';
+  REF = (URL.match(/^https?:\/\/([^.]+)\./) || [,''])[1];
+  CHAVE_SESSAO = 'sb-' + REF + '-auth-token';
+}
+const ls = { get(k){ try{return localStorage.getItem(k);}catch(e){return null;} }, set(k,v){ try{localStorage.setItem(k,v);}catch(e){} }, del(k){ try{localStorage.removeItem(k);}catch(e){} } };
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dig = s => String(s||'').replace(/\D/g,'');
+const brl = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const dataBR = d => { if(!d) return ''; const [a,m,dd] = String(d).slice(0,10).split('-'); return `${dd}/${m}/${a}`; };
+const hojeISO = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const somaDias = (iso, n) => { const d = new Date(iso+'T12:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+const diasAte = iso => Math.round((new Date(iso+'T12:00:00') - new Date(hojeISO()+'T12:00:00'))/86400000);
+
+/* ---------- sessão (mesmo formato da entrada) ---------- */
+function lerSessao(){ try{ const s = JSON.parse(ls.get(CHAVE_SESSAO)||'null'); return (s && s.access_token) ? s : null; }catch(e){ return null; } }
+function guardarSessao(s){ if(!s.expires_at) s.expires_at = Math.floor(Date.now()/1000) + (s.expires_in||3600); ls.set(CHAVE_SESSAO, JSON.stringify(s)); return s; }
+async function authPost(caminho, corpo, token){
+  const r = await fetch(URL + '/auth/v1/' + caminho, { method:'POST', headers:{ 'Content-Type':'application/json', apikey:KEY, Authorization:'Bearer ' + (token||KEY) }, body: corpo?JSON.stringify(corpo):undefined });
+  let j=null; try{ j = await r.json(); }catch(e){}
+  if(!r.ok) throw new Error((j && (j.msg||j.error_description||j.message)) || ('Erro '+r.status));
+  return j;
+}
+let S = { sessao:null, perfil:null, lojas:[], loja:null, lentes:null, view:'inicio', cliente:null, os:null, busca:'', erro:'' };
+async function sessaoValida(){
+  let s = lerSessao(); if(!s) return null;
+  if((s.expires_at - 60)*1000 < Date.now()){
+    try{ s = guardarSessao(await authPost('token?grant_type=refresh_token', { refresh_token: s.refresh_token })); }
+    catch(e){ ls.del(CHAVE_SESSAO); return null; }
+  }
+  return s;
+}
+async function sair(){ const s = lerSessao(); ls.del(CHAVE_SESSAO); ls.del('nt_ultimo_modulo'); try{ if(s) await authPost('logout', null, s.access_token); }catch(e){} location.replace('/'); }
+
+/* ---------- banco (API REST do Supabase) ---------- */
+async function rest(tabela, opt){
+  opt = opt || {};
+  const schema = opt.schema || 'loja';
+  const h = { apikey:KEY, Authorization:'Bearer ' + S.sessao.access_token, 'Content-Type':'application/json', Accept:'application/json' };
+  if(schema !== 'public'){ h['Accept-Profile'] = schema; h['Content-Profile'] = schema; }
+  if(opt.prefer) h.Prefer = opt.prefer;
+  const r = await fetch(URL + '/rest/v1/' + tabela + (opt.query ? '?' + opt.query : ''), { method: opt.method||'GET', headers:h, body: opt.body ? JSON.stringify(opt.body) : undefined });
+  if(r.status === 401){ ls.del(CHAVE_SESSAO); location.replace('/'); return; }
+  const txt = await r.text(); let j = null; try{ j = txt ? JSON.parse(txt) : null; }catch(e){ j = txt; }
+  if(!r.ok){ const m = (j && (j.message || j.hint || j.details)) || ('Erro ' + r.status); throw new Error(limpaErro(m)); }
+  return j;
+}
+function limpaErro(m){ return String(m).replace(/^.*?: /,'').replace(/\n.*$/s,''); }
+const get = (t, q, schema) => rest(t, { query:q, schema });
+const post = (t, body, schema) => rest(t, { method:'POST', body, prefer:'return=representation', schema });
+const patch = (t, q, body, schema) => rest(t, { method:'PATCH', query:q, body, prefer:'return=representation', schema });
+
+/* ---------- fotos (comprimidas ≤ ~150 KB) ---------- */
+function comprimir(file, maxLado, qualidade){
+  return new Promise((res, rej) => {
+    const img = new Image(); const url = URL_OBJ(file);
+    img.onload = () => {
+      const esc = Math.min(1, (maxLado||1400)/Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width*esc); c.height = Math.round(img.height*esc);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => { URL_REV(url); b ? res(b) : rej(new Error('Não deu para ler a foto')); }, 'image/jpeg', qualidade||0.72);
+    };
+    img.onerror = () => rej(new Error('Não deu para ler a foto'));
+    img.src = url;
+  });
+}
+const URL_OBJ = f => window.URL.createObjectURL(f), URL_REV = u => window.URL.revokeObjectURL(u);
+async function subirFoto(bucket, caminho, blob){
+  const r = await fetch(URL + '/storage/v1/object/' + bucket + '/' + caminho, { method:'POST', headers:{ apikey:KEY, Authorization:'Bearer ' + S.sessao.access_token, 'Content-Type':'image/jpeg', 'x-upsert':'true' }, body: blob });
+  if(!r.ok){ let j=null; try{ j = await r.json(); }catch(e){} throw new Error((j && j.message) || 'Não consegui guardar a foto'); }
+  return caminho;
+}
+async function urlFoto(bucket, caminho){
+  const r = await fetch(URL + '/storage/v1/object/sign/' + bucket + '/' + caminho, { method:'POST', headers:{ apikey:KEY, Authorization:'Bearer ' + S.sessao.access_token, 'Content-Type':'application/json' }, body: JSON.stringify({ expiresIn: 3600 }) });
+  if(!r.ok) return null; const j = await r.json(); return URL + '/storage/v1' + j.signedURL;
+}
+
+/* ---------- regras de prazo (dias úteis simples) ---------- */
+const PRAZOS = { 'Visão simples':3, 'Multifocal':5, 'Bifocal':5, 'Ocupacional':5, 'Lente de contato':2 };
+const TRAT_EXTRA = 4;   // lente com tratamento (AR): dias a mais; o laboratório define o mínimo definitivo
+function prazoMinimo(tipo, comTratamento){ return (PRAZOS[tipo]||4) + (comTratamento ? TRAT_EXTRA : 0); }
+const STATUS = [
+  ['aguardando_lab','Aguardando lab'], ['no_lab','No laboratório'], ['pronta_lab','Pronta no lab'], ['na_loja','Chegou na loja'],
+  ['montada','Montada'], ['pronta','Pronta para entrega'], ['entregue','Entregue'], ['cancelada','Cancelada']
+];
+const statusNome = s => (STATUS.find(x => x[0]===s)||[s,s])[1];
+
+/* ---------- navegação ---------- */
+const VIEWS = { inicio:'Início', clientes:'Clientes', novaos:'Nova OS', quadro:'Quadro de OS', os:'Lista de OS', ajuda:'Ajuda' };
+function go(v, dados){ S.view = v; S.erro = ''; if(dados) Object.assign(S, dados); window.scrollTo(0,0); render(); }
+function nomeLoja(id){ const l = S.lojas.find(x => x.id === id); return l ? l.nome : ('Loja ' + id); }
+function minhaLojaId(){ return S.perfil.loja_id || S.loja; }
+function ehGestor(){ return S.perfil.papel === 'dono'; }
+
+function render(){
+  const app = $('app');
+  const topo = `
+  <div class="top">
+    <a class="marca" href="/?modulos"><div class="n">N</div><div><b>Nítido</b> <span>· Loja ${S.perfil.loja_id ? '· ' + esc(nomeLoja(S.perfil.loja_id)) : ''}</span></div></a>
+    <div class="quem"><span class="nome">${esc(nomeBonito(S.perfil.nome))}</span><div><button class="sair" onclick="sair()">Sair</button><div class="v">v${APP_VERSAO} · ${APP_DATA}</div></div></div>
+  </div>
+  <nav class="menu">${Object.keys(VIEWS).map(v => `<button class="${S.view===v||(S.view==='cliente'&&v==='clientes')||(S.view==='osdet'&&v==='os')?'on':''}" onclick="go('${v}')">${VIEWS[v]}</button>`).join('')}</nav>
+  <main id="main"></main>`;
+  app.innerHTML = topo;
+  const fn = { inicio:viewInicio, clientes:viewClientes, cliente:viewCliente, novaos:viewNovaOS, quadro:viewQuadro, os:viewListaOS, osdet:viewOS, ajuda:viewAjuda }[S.view] || viewInicio;
+  fn($('main'));
+  $('fab').hidden = false;
+}
+const nomeBonito = n => n ? n.split(' ')[0].charAt(0).toUpperCase() + n.split(' ')[0].slice(1).toLowerCase() : '';
+function msg(el, tipo, texto){ el.className = 'msg ' + tipo; el.textContent = texto; el.scrollIntoView({block:'nearest'}); }
+
+/* ---------- início ---------- */
+async function viewInicio(m){
+  m.innerHTML = `<h1>Olá, ${esc(nomeBonito(S.perfil.nome))}</h1><p class="sub">${esc(S.perfil.loja_id ? nomeLoja(S.perfil.loja_id) : 'Todas as lojas')} · ${dataBR(hojeISO())}</p>
+    <div class="stats" id="stats"><div class="stat"><b>…</b><span>OS abertas</span></div></div>
+    <div class="row"><button class="btn p" onclick="go('novaos')">Nova OS</button><button class="btn" onclick="go('clientes')">Buscar cliente</button><button class="btn" onclick="go('quadro')">Quadro de OS</button></div>
+    <h2>Precisa de atenção</h2><div class="lista" id="atencao">Carregando…</div>`;
+  try{
+    const os = await get('os', `select=id,numero,status,previsao,loja_id,cliente:clientes(nome)&status=not.in.(entregue,cancelada)${filtroLoja('&')}&order=previsao.asc`);
+    const atrasadas = os.filter(o => o.previsao && diasAte(o.previsao) < 0);
+    const hoje = os.filter(o => o.previsao && diasAte(o.previsao) === 0);
+    const prontas = os.filter(o => o.status === 'pronta');
+    $('stats').innerHTML = [[os.length,'OS abertas'],[atrasadas.length,'atrasadas'],[hoje.length,'vencem hoje'],[prontas.length,'prontas para entrega']]
+      .map(([n,t],i) => `<div class="stat"><b style="${i===1&&n?'color:var(--erro)':''}">${n}</b><span>${t}</span></div>`).join('');
+    const lista = [...atrasadas, ...hoje, ...prontas.filter(p => !atrasadas.includes(p) && !hoje.includes(p))];
+    $('atencao').innerHTML = lista.length ? lista.map(cardOS).join('') : '<div class="panel" style="color:var(--muted)">Nada atrasado. Bom sinal.</div>';
+  }catch(e){ $('atencao').innerHTML = `<div class="msg erro">${esc(e.message)}</div>`; }
+}
+function filtroLoja(prefixo){ const l = S.perfil.loja_id; return l ? `${prefixo}loja_id=eq.${l}` : ''; }
+
+/* ---------- clientes ---------- */
+function viewClientes(m){
+  m.innerHTML = `<h1>Clientes</h1><p class="sub">Cliente é do grupo: aparece em todas as lojas.</p>
+    <div class="row"><input id="busca" placeholder="Nome, CPF ou telefone" value="${esc(S.busca)}" style="flex:1;min-width:200px"><button class="btn p" onclick="buscarClientes()">Buscar</button><button class="btn" onclick="novoClienteForm()">Novo cliente</button></div>
+    <div class="msg" id="cl-msg"></div><div class="lista" id="cl-lista" style="margin-top:12px"></div><div id="cl-form"></div>`;
+  $('busca').addEventListener('keydown', e => { if(e.key === 'Enter') buscarClientes(); });
+  if(S.busca) buscarClientes();
+}
+async function buscarClientes(){
+  const t = $('busca').value.trim(); S.busca = t; const el = $('cl-lista'); el.innerHTML = 'Buscando…';
+  try{
+    let q = 'select=id,nome,cpf,telefone,cidade&excluido=is.false&order=nome.asc&limit=30';
+    if(t){ const d = dig(t); q += d.length >= 8 ? `&or=(cpf.like.*${d}*,telefone.like.*${d}*)` : `&nome=ilike.*${encodeURIComponent(t)}*`; }
+    const lista = await get('clientes', q);
+    el.innerHTML = lista.length ? lista.map(c => `<div class="item" onclick="abrirCliente(${c.id})"><div><b>${esc(c.nome)}</b><small>${c.cpf ? 'CPF ' + esc(c.cpf) + ' · ' : ''}${esc(c.telefone||'')}${c.cidade ? ' · ' + esc(c.cidade) : ''}</small></div><span class="tag">abrir</span></div>`).join('')
+      : `<div class="panel" style="color:var(--muted)">Nenhum cliente com "${esc(t)}". <a href="#" onclick="novoClienteForm();return false">Cadastrar agora</a>.</div>`;
+  }catch(e){ el.innerHTML = `<div class="msg erro">${esc(e.message)}</div>`; }
+}
+function formCliente(c){
+  c = c || {};
+  return `<div class="panel" id="form-cli"><h2 style="margin-top:0">${c.id ? 'Editar cliente' : 'Novo cliente'}</h2>
+    <div class="grid g2">
+      <div><label>Nome completo</label><input id="c-nome" value="${esc(c.nome||'')}" style="text-transform:uppercase"></div>
+      <div><label>CPF</label><input id="c-cpf" inputmode="numeric" value="${esc(c.cpf||'')}" placeholder="só números"></div>
+      <div><label>Nascimento</label><input id="c-nasc" type="date" value="${esc(c.nascimento||'')}"></div>
+      <div><label>Telefone (WhatsApp)</label><input id="c-tel" inputmode="tel" value="${esc(c.telefone||'')}" placeholder="DDD + número"></div>
+      <div><label>Telefone 2</label><input id="c-tel2" inputmode="tel" value="${esc(c.telefone2||'')}"></div>
+      <div><label>E-mail</label><input id="c-email" type="email" value="${esc(c.email||'')}"></div>
+    </div>
+    <h2>Endereço (obrigatório)</h2>
+    <div class="grid g3">
+      <div><label>CEP</label><input id="c-cep" inputmode="numeric" value="${esc(c.cep||'')}" onblur="buscarCEP()"></div>
+      <div style="grid-column:span 2"><label>Rua</label><input id="c-rua" value="${esc(c.rua||'')}"></div>
+      <div><label>Número</label><input id="c-num" value="${esc(c.numero||'')}"></div>
+      <div><label>Complemento</label><input id="c-comp" value="${esc(c.complemento||'')}"></div>
+      <div><label>Bairro</label><input id="c-bairro" value="${esc(c.bairro||'')}"></div>
+      <div><label>Cidade</label><input id="c-cidade" value="${esc(c.cidade||'')}"></div>
+      <div><label>UF</label><input id="c-uf" maxlength="2" value="${esc(c.uf||'')}"></div>
+    </div>
+    <label>Observação do cliente</label><textarea id="c-obs">${esc(c.obs||'')}</textarea>
+    <div class="msg" id="c-msg"></div>
+    <div class="row" style="margin-top:12px"><button class="btn p" id="c-salvar" onclick="salvarCliente(${c.id||'null'})">Salvar</button><button class="btn" onclick="go(${c.id ? "'cliente'" : "'clientes'"})">Cancelar</button></div>
+  </div>`;
+}
+function novoClienteForm(){ $('cl-form').innerHTML = formCliente(); $('cl-lista').innerHTML = ''; $('c-nome').focus(); }
+async function buscarCEP(){
+  const cep = dig($('c-cep').value); if(cep.length !== 8) return;
+  try{ const r = await fetch('https://viacep.com.br/ws/' + cep + '/json/'); const j = await r.json(); if(j && !j.erro){ if(!$('c-rua').value) $('c-rua').value = (j.logradouro||'').toUpperCase(); if(!$('c-bairro').value) $('c-bairro').value = (j.bairro||'').toUpperCase(); $('c-cidade').value = (j.localidade||'').toUpperCase(); $('c-uf').value = j.uf||''; $('c-num').focus(); } }catch(e){}
+}
+function lerFormCliente(){
+  const v = id => $(id).value.trim();
+  const c = { nome:v('c-nome').toUpperCase(), cpf:dig(v('c-cpf'))||null, nascimento:v('c-nasc')||null, telefone:dig(v('c-tel'))||null, telefone2:dig(v('c-tel2'))||null, email:v('c-email').toLowerCase()||null,
+    cep:dig(v('c-cep'))||null, rua:v('c-rua').toUpperCase()||null, numero:v('c-num')||null, complemento:v('c-comp').toUpperCase()||null, bairro:v('c-bairro').toUpperCase()||null, cidade:v('c-cidade').toUpperCase()||null, uf:v('c-uf').toUpperCase()||null, obs:v('c-obs')||null };
+  const falta = [];
+  if(c.nome.length < 3) falta.push('nome');
+  if(!c.telefone) falta.push('telefone');
+  if(!c.cep || c.cep.length !== 8) falta.push('CEP');
+  if(!c.rua) falta.push('rua'); if(!c.numero) falta.push('número'); if(!c.bairro) falta.push('bairro'); if(!c.cidade) falta.push('cidade');
+  if(c.cpf && c.cpf.length !== 11) falta.push('CPF com 11 dígitos');
+  return { c, falta };
+}
+async function salvarCliente(id){
+  const { c, falta } = lerFormCliente(); const el = $('c-msg');
+  if(falta.length) return msg(el, 'erro', 'Falta: ' + falta.join(', ') + '.');
+  $('c-salvar').disabled = true;
+  try{
+    let r;
+    if(id){ r = await patch('clientes', 'id=eq.' + id, c); S.cliente = r[0]; }
+    else { c.loja_cad_id = minhaLojaId(); r = await post('clientes', c); S.cliente = r[0]; }
+    go('cliente');
+  }catch(e){ msg(el, 'erro', e.message.includes('clientes_cpf_unico') ? 'Já existe cliente com esse CPF. Busca por ele.' : e.message); $('c-salvar').disabled = false; }
+}
+async function abrirCliente(id){
+  try{ const r = await get('clientes', 'select=*&id=eq.' + id); S.cliente = r[0]; go('cliente'); }catch(e){ alertaErro(e.message); }
+}
+async function viewCliente(m){
+  const c = S.cliente; if(!c) return go('clientes');
+  m.innerHTML = `<div class="row" style="justify-content:space-between"><div><h1>${esc(c.nome)}</h1><p class="sub">${c.cpf ? 'CPF ' + esc(c.cpf) + ' · ' : ''}${esc(c.telefone||'')} · ${esc([c.rua,c.numero,c.bairro,c.cidade].filter(Boolean).join(', '))}</p></div>
+    <div class="row"><button class="btn p" onclick="go('novaos',{clienteOS:S.cliente})">Nova OS</button><button class="btn" onclick="editarCliente()">Editar</button></div></div>
+    ${c.obs ? `<div class="panel"><b>Observação:</b> ${esc(c.obs)}</div>` : ''}
+    <div id="cl-edit"></div>
+    <h2>Receitas</h2><div class="lista" id="rx-lista">Carregando…</div>
+    <div class="row" style="margin:10px 0"><button class="btn" onclick="novaReceitaForm()">Nova receita</button></div><div id="rx-form"></div>
+    <h2>Compras e OS</h2><div class="lista" id="os-lista">Carregando…</div>`;
+  carregarReceitas(c.id); carregarOSCliente(c.id);
+}
+function editarCliente(){ $('cl-edit').innerHTML = formCliente(S.cliente); $('c-nome').focus(); }
+async function carregarReceitas(clienteId){
+  try{
+    const rx = await get('receitas', `select=*&cliente_id=eq.${clienteId}&order=data.desc`);
+    $('rx-lista').innerHTML = rx.length ? rx.map(r => `<div class="item" onclick="verReceita(${r.id})"><div><b>${dataBR(r.data)} · ${esc(r.medico||'sem médico')}</b><small>OD ${grau(r.od_esf)} ${grau(r.od_cil)} ${r.od_eixo!=null?r.od_eixo+'°':''} · OE ${grau(r.oe_esf)} ${grau(r.oe_cil)} ${r.oe_eixo!=null?r.oe_eixo+'°':''}${r.adicao?' · Ad '+grau(r.adicao):''} · ${esc(nomeLoja(r.loja_id))}</small></div>${r.foto_path?'<span class="tag">foto</span>':''}</div>`).join('')
+      : '<div class="panel" style="color:var(--muted)">Nenhuma receita ainda.</div>';
+    S.receitasCliente = rx;
+  }catch(e){ $('rx-lista').innerHTML = `<div class="msg erro">${esc(e.message)}</div>`; }
+}
+const grau = v => v == null ? '' : (Number(v) > 0 ? '+' : '') + Number(v).toFixed(2).replace('.', ',');
+function novaReceitaForm(){ $('rx-form').innerHTML = formReceita(); }
+function formReceita(){
+  return `<div class="panel"><h2 style="margin-top:0">Nova receita</h2>
+    <div class="grid g3">
+      <div><label>Data</label><input id="r-data" type="date" value="${hojeISO()}"></div>
+      <div><label>Médico</label><input id="r-med" style="text-transform:uppercase"></div>
+      <div><label>CRM</label><input id="r-crm"></div>
+      <div><label>De onde veio</label><select id="r-fonte"><option value="receita">Receita do médico</option><option value="cartao_lab">Cartão do laboratório</option><option value="lensometro">Lensômetro (óculos antigo)</option><option value="caixa_contato">Caixa de lente de contato</option></select></div>
+      <div><label>Validade</label><input id="r-val" type="date"></div>
+    </div>
+    <h2>Olho direito (OD)</h2>
+    <div class="grid g3"><div><label>Esférico</label><input id="r-odesf" inputmode="decimal" placeholder="-1,25"></div><div><label>Cilíndrico</label><input id="r-odcil" inputmode="decimal" placeholder="-0,50"></div><div><label>Eixo</label><input id="r-odeixo" inputmode="numeric" placeholder="0 a 180"></div></div>
+    <h2>Olho esquerdo (OE)</h2>
+    <div class="grid g3"><div><label>Esférico</label><input id="r-oeesf" inputmode="decimal"></div><div><label>Cilíndrico</label><input id="r-oecil" inputmode="decimal"></div><div><label>Eixo</label><input id="r-oeeixo" inputmode="numeric"></div></div>
+    <div class="grid g3"><div><label>Adição</label><input id="r-ad" inputmode="decimal" placeholder="+2,00"></div><div><label>DNP OD / OE</label><div class="row"><input id="r-dnpod" inputmode="decimal" placeholder="OD"><input id="r-dnpoe" inputmode="decimal" placeholder="OE"></div></div><div><label>Altura OD / OE</label><div class="row"><input id="r-altod" inputmode="decimal" placeholder="OD"><input id="r-altoe" inputmode="decimal" placeholder="OE"></div></div></div>
+    <label>Foto da receita (opcional, ajuda o laboratório)</label><input id="r-foto" type="file" accept="image/*" capture="environment">
+    <label>Observação</label><textarea id="r-obs"></textarea>
+    <div class="msg" id="r-msg"></div>
+    <div class="row" style="margin-top:12px"><button class="btn p" id="r-salvar" onclick="salvarReceita()">Salvar receita</button><button class="btn" onclick="$('rx-form').innerHTML=''">Cancelar</button></div></div>`;
+}
+const num = v => { v = String(v||'').trim().replace(',', '.'); if(v === '') return null; const n = Number(v); return isNaN(n) ? NaN : n; };
+async function salvarReceita(){
+  const el = $('r-msg'); const v = id => $(id).value;
+  const r = { cliente_id:S.cliente.id, loja_id:minhaLojaId(), data:v('r-data'), medico:v('r-med').trim().toUpperCase()||null, crm:v('r-crm').trim()||null, fonte:v('r-fonte'), validade:v('r-val')||null,
+    od_esf:num(v('r-odesf')), od_cil:num(v('r-odcil')), od_eixo:num(v('r-odeixo')), oe_esf:num(v('r-oeesf')), oe_cil:num(v('r-oecil')), oe_eixo:num(v('r-oeeixo')), adicao:num(v('r-ad')),
+    dnp_od:num(v('r-dnpod')), dnp_oe:num(v('r-dnpoe')), altura_od:num(v('r-altod')), altura_oe:num(v('r-altoe')), obs:v('r-obs').trim()||null };
+  for(const k in r){ if(Number.isNaN(r[k])) return msg(el, 'erro', 'Tem um número que não entendi. Use vírgula ou ponto, ex.: -1,25.'); }
+  if(r.od_esf == null && r.oe_esf == null) return msg(el, 'erro', 'Preencha pelo menos o esférico de um olho.');
+  if((r.od_cil != null && r.od_eixo == null) || (r.oe_cil != null && r.oe_eixo == null)) return msg(el, 'erro', 'Cilíndrico sem eixo. Preencha o eixo.');
+  if(!r.loja_id) return msg(el, 'erro', 'Escolha a loja no início da tela.');
+  $('r-salvar').disabled = true;
+  try{
+    const f = $('r-foto').files[0];
+    if(f){ const blob = await comprimir(f, 1600, 0.72); r.foto_path = await subirFoto('receitas', `${r.loja_id}/${hojeISO().slice(0,7)}/cli${S.cliente.id}-${Date.now()}.jpg`, blob); }
+    await post('receitas', r);
+    msg(el, 'ok', 'Receita salva.'); setTimeout(() => { $('rx-form').innerHTML=''; carregarReceitas(S.cliente.id); }, 500);
+  }catch(e){ msg(el, 'erro', e.message); $('r-salvar').disabled = false; }
+}
+async function verReceita(id){
+  const r = (S.receitasCliente||[]).find(x => x.id === id); if(!r) return;
+  let foto = ''; if(r.foto_path){ const u = await urlFoto('receitas', r.foto_path); if(u) foto = `<img class="foto" src="${u}" alt="Foto da receita">`; }
+  modal(`<h2 style="margin-top:0">Receita de ${dataBR(r.data)}</h2><p>${esc(r.medico||'')} ${r.crm?'· CRM '+esc(r.crm):''}</p>
+    <div class="grid g2"><div><b>OD</b> ${grau(r.od_esf)} ${grau(r.od_cil)} ${r.od_eixo!=null?r.od_eixo+'°':''}</div><div><b>OE</b> ${grau(r.oe_esf)} ${grau(r.oe_cil)} ${r.oe_eixo!=null?r.oe_eixo+'°':''}</div></div>
+    <p>${r.adicao?'Adição '+grau(r.adicao)+' · ':''}${r.dnp_od?'DNP '+r.dnp_od+'/'+r.dnp_oe+' · ':''}${r.altura_od?'Altura '+r.altura_od+'/'+r.altura_oe:''}</p>${foto}${r.obs?'<p>'+esc(r.obs)+'</p>':''}`);
+}
+async function carregarOSCliente(clienteId){
+  try{
+    const os = await get('os', `select=id,numero,status,previsao,loja_id,tipo_lente,criado_em,lente:venda_itens!os_lente_item_id_fkey(descricao,preco_vendido)&cliente_id=eq.${clienteId}&order=criado_em.desc`);
+    $('os-lista').innerHTML = os.length ? os.map(o => `<div class="item" onclick="abrirOS(${o.id})"><div><b>OS ${o.numero} · ${esc(nomeLoja(o.loja_id))} · ${dataBR(o.criado_em)}</b><small>${esc(o.lente?o.lente.descricao:'')} ${o.lente&&o.lente.preco_vendido?'· '+brl(o.lente.preco_vendido):''} · previsão ${dataBR(o.previsao)}</small></div><span class="tag ${o.status==='entregue'?'ok':''}">${statusNome(o.status)}</span></div>`).join('')
+      : '<div class="panel" style="color:var(--muted)">Nenhuma OS ainda. A história da Linx entra depois.</div>';
+  }catch(e){ $('os-lista').innerHTML = `<div class="msg erro">${esc(e.message)}</div>`; }
+}
+
+/* ---------- nova OS ---------- */
+async function carregarLentes(){
+  if(S.lentes) return S.lentes;
+  S.lentes = await get('produtos', 'select=id,codigo,nome,linha,preco,atributos&tipo=eq.lente&ativo=is.true&order=nome.asc&limit=1000', 'public');
+  return S.lentes;
+}
+async function viewNovaOS(m){
+  const c = S.clienteOS;
+  m.innerHTML = `<h1>Nova OS</h1><p class="sub">Cliente, receita, lente, armação, medidas e prazo. A OS só vai para o laboratório quando estiver completa.</p>
+    ${!S.perfil.loja_id ? `<div class="panel"><label>Loja desta OS</label><select id="o-loja" onchange="S.loja=Number(this.value)">${S.lojas.filter(l=>l.modulo==='oticas').map(l=>`<option value="${l.id}" ${S.loja===l.id?'selected':''}>${esc(l.nome)}</option>`).join('')}</select></div>` : ''}
+    <div class="panel"><h2 style="margin-top:0">1. Cliente</h2>
+      ${c ? `<div class="item" style="cursor:default"><div><b>${esc(c.nome)}</b><small>${esc(c.telefone||'')}</small></div><button class="btn s" onclick="S.clienteOS=null;go('novaos')">Trocar</button></div>`
+          : `<div class="row"><input id="o-busca" placeholder="Nome, CPF ou telefone" style="flex:1;min-width:200px"><button class="btn" onclick="buscarClienteOS()">Buscar</button><button class="btn" onclick="S.busca='';go('clientes');setTimeout(novoClienteForm,50)">Cadastrar novo</button></div><div class="lista" id="o-cl" style="margin-top:8px"></div>`}
+    </div>
+    <div id="o-resto" ${c?'':'hidden'}>
+    <div class="panel"><h2 style="margin-top:0">2. Receita</h2><div id="o-rx">Carregando…</div></div>
+    <div class="panel"><h2 style="margin-top:0">3. Lente</h2>
+      <input id="o-lente-busca" placeholder="Digite parte do nome (ex.: HD VISION 1.56, MULTIFOCAL, BLUE)" oninput="filtrarLentes()">
+      <div class="lista" id="o-lentes" style="margin-top:8px;max-height:260px;overflow:auto"></div>
+      <div id="o-lente-sel" style="margin-top:8px"></div>
+    </div>
+    <div class="panel"><h2 style="margin-top:0">4. Armação</h2>
+      <div class="grid g2"><div><label>Armação (marca, referência, cor, tamanho)</label><input id="o-arm" placeholder="ex.: RAY-BAN RB1010 835 54" style="text-transform:uppercase"></div><div><label>De onde vem</label><select id="o-arm-origem"><option value="loja">Da loja</option><option value="cliente">Armação do cliente</option><option value="encomenda">Por encomenda</option></select></div></div>
+      <p class="sub" style="margin-top:8px">Na próxima versão a armação entra lendo a etiqueta. Por enquanto, escreva como está na haste.</p>
+    </div>
+    <div class="panel"><h2 style="margin-top:0">5. Medidas</h2>
+      <div class="grid g3"><div><label>DNP OD</label><input id="o-dnpod" inputmode="decimal"></div><div><label>DNP OE</label><input id="o-dnpoe" inputmode="decimal"></div><div><label>Altura OD</label><input id="o-altod" inputmode="decimal"></div><div><label>Altura OE</label><input id="o-altoe" inputmode="decimal"></div><div><label>Aro</label><input id="o-aro" inputmode="decimal"></div><div><label>Ponte</label><input id="o-ponte" inputmode="decimal"></div><div><label>Diagonal maior</label><input id="o-diag" inputmode="decimal"></div></div>
+    </div>
+    <div class="panel"><h2 style="margin-top:0">6. Prazo</h2>
+      <div class="grid g3"><div><label>Tipo</label><select id="o-tipo" onchange="recalcPrazo()">${Object.keys(PRAZOS).map(t=>`<option>${t}</option>`).join('')}</select></div><div><label>Prazo mínimo</label><input id="o-min" readonly></div><div><label>Previsão prometida ao cliente</label><input id="o-prev" type="date" onchange="confPrazo()"></div></div>
+      <div class="msg" id="o-prazo-msg"></div>
+      <label>Observação da OS</label><textarea id="o-obs"></textarea>
+    </div>
+    <div class="msg" id="o-msg"></div>
+    <div class="row"><button class="btn p" id="o-salvar" onclick="salvarOS()">Salvar OS</button><button class="btn" onclick="go('quadro')">Cancelar</button></div>
+    </div>`;
+  if(c){ await prepararReceitasOS(c.id); await carregarLentes(); filtrarLentes(); recalcPrazo(); }
+}
+async function buscarClienteOS(){
+  const t = $('o-busca').value.trim(); const el = $('o-cl'); if(!t) return; el.innerHTML = 'Buscando…';
+  try{
+    let q = 'select=id,nome,cpf,telefone&excluido=is.false&order=nome.asc&limit=20';
+    const d = dig(t); q += d.length >= 8 ? `&or=(cpf.like.*${d}*,telefone.like.*${d}*)` : `&nome=ilike.*${encodeURIComponent(t)}*`;
+    const lista = await get('clientes', q);
+    el.innerHTML = lista.length ? lista.map(c => `<div class="item" onclick='escolherClienteOS(${JSON.stringify(c)})'><div><b>${esc(c.nome)}</b><small>${esc(c.telefone||'')}</small></div><span class="tag">escolher</span></div>`).join('') : '<div class="panel" style="color:var(--muted)">Não achei. Cadastre o cliente primeiro.</div>';
+  }catch(e){ el.innerHTML = `<div class="msg erro">${esc(e.message)}</div>`; }
+}
+function escolherClienteOS(c){ S.clienteOS = c; go('novaos'); }
+async function prepararReceitasOS(clienteId){
+  const el = $('o-rx');
+  try{
+    const rx = await get('receitas', `select=*&cliente_id=eq.${clienteId}&order=data.desc&limit=5`); S.rxOS = rx;
+    el.innerHTML = (rx.length ? rx.map((r,i) => `<label class="item" style="display:flex"><input type="radio" name="o-rx" value="${r.id}" ${i===0?'checked':''} style="width:auto;margin-right:10px"><div style="flex:1"><b>${dataBR(r.data)} · ${esc(r.medico||'sem médico')}</b><small>OD ${grau(r.od_esf)} ${grau(r.od_cil)} ${r.od_eixo!=null?r.od_eixo+'°':''} · OE ${grau(r.oe_esf)} ${grau(r.oe_cil)} ${r.oe_eixo!=null?r.oe_eixo+'°':''}${r.adicao?' · Ad '+grau(r.adicao):''}</small></div></label>`).join('') : '<div class="pend">Este cliente não tem receita. Cadastre a receita na ficha dele antes da OS.</div>')
+      + `<div class="row" style="margin-top:8px"><button class="btn s" onclick="S.cliente=S.clienteOS;go('cliente');setTimeout(novaReceitaForm,100)">Nova receita</button></div>`;
+    const r0 = rx[0]; if(r0){ if(r0.dnp_od) $('o-dnpod').value = r0.dnp_od; if(r0.dnp_oe) $('o-dnpoe').value = r0.dnp_oe; if(r0.altura_od) $('o-altod').value = r0.altura_od; if(r0.altura_oe) $('o-altoe').value = r0.altura_oe; if(r0.adicao) $('o-tipo').value = 'Multifocal'; }
+  }catch(e){ el.innerHTML = `<div class="msg erro">${esc(e.message)}</div>`; }
+}
+function filtrarLentes(){
+  const t = ($('o-lente-busca').value||'').toUpperCase().split(/\s+/).filter(Boolean);
+  const lista = (S.lentes||[]).filter(l => t.every(p => (l.nome + ' ' + (l.linha||'')).toUpperCase().includes(p))).slice(0, 40);
+  $('o-lentes').innerHTML = lista.map(l => `<div class="item" onclick="escolherLente(${l.id})"><div><b>${esc(l.nome)}</b><small>${esc(l.linha||'')} · cód. ${esc(l.codigo)}${l.atributos&&l.atributos.disponibilidade?' · '+esc(l.atributos.disponibilidade):''}</small></div><span class="tag">${brl(l.preco)}</span></div>`).join('') || '<div style="color:var(--muted);padding:8px">Nenhuma lente com esse nome.</div>';
+}
+function escolherLente(id){ S.lenteOS = (S.lentes||[]).find(l => l.id === id); $('o-lente-sel').innerHTML = S.lenteOS ? `<div class="item" style="cursor:default;border-color:var(--azul)"><div><b>${esc(S.lenteOS.nome)}</b><small>cód. ${esc(S.lenteOS.codigo)} · ${brl(S.lenteOS.preco)}</small></div><span class="tag ok">escolhida</span></div>` : ''; recalcPrazo(); }
+function lenteTemTratamento(l){ const n = (l && l.nome || '').toUpperCase(); const t = l && l.atributos && String(l.atributos.tratamento||'').toUpperCase(); return !!(t && t !== 'NENHUM') || /PREMIUM|INVISIBLE|\bAR\b|ANTIRREFLEXO/.test(n); }
+function recalcPrazo(){
+  const tipo = $('o-tipo').value; const min = prazoMinimo(tipo, lenteTemTratamento(S.lenteOS));
+  $('o-min').value = min + ' dias (' + dataBR(somaDias(hojeISO(), min)) + ')';
+  if(!$('o-prev').value || new Date($('o-prev').value) < new Date(somaDias(hojeISO(), min))) $('o-prev').value = somaDias(hojeISO(), min);
+  confPrazo();
+}
+function confPrazo(){
+  const el = $('o-prazo-msg'); const tipo = $('o-tipo').value; const min = prazoMinimo(tipo, lenteTemTratamento(S.lenteOS)); const minData = somaDias(hojeISO(), min);
+  if($('o-prev').value && $('o-prev').value < minData){ msg(el, 'erro', `Impossível antes de ${dataBR(minData)}. Para menos que isso é preciso pedir ao laboratório.`); return false; }
+  el.className = 'msg'; return true;
+}
+async function salvarOS(){
+  const el = $('o-msg'); const c = S.clienteOS; const lojaId = minhaLojaId();
+  const rxSel = document.querySelector('input[name=o-rx]:checked'); const falta = [];
+  if(!c) falta.push('cliente'); if(!rxSel) falta.push('receita'); if(!S.lenteOS) falta.push('lente'); if(!$('o-arm').value.trim()) falta.push('armação');
+  if(!$('o-dnpod').value || !$('o-dnpoe').value) falta.push('DNP'); if(!$('o-altod').value || !$('o-altoe').value) falta.push('altura');
+  if(!lojaId) falta.push('loja');
+  if(falta.length) return msg(el, 'erro', 'Falta: ' + falta.join(', ') + '. A OS só vai para o laboratório completa.');
+  if(!confPrazo()) return msg(el, 'erro', 'Ajuste a previsão.');
+  $('o-salvar').disabled = true;
+  try{
+    const venda = (await post('vendas', { loja_id:lojaId, cliente_id:c.id, vendedor_id:S.sessao.user.id, status:'aberta', origem:'loja' }))[0];
+    const itens = await post('venda_itens', [
+      { venda_id:venda.id, produto_id:S.lenteOS.id, qtd:1, preco_vendido:S.lenteOS.preco, tipo:'lente', descricao:S.lenteOS.nome, preco_tabela:S.lenteOS.preco },
+      { venda_id:venda.id, produto_id:null, qtd:1, tipo:'armacao', descricao:$('o-arm').value.trim().toUpperCase(), preco_tabela:0, preco_vendido:0, encomenda:$('o-arm-origem').value==='encomenda' }
+    ]);
+    const lente = itens.find(i => i.tipo === 'lente'), arm = itens.find(i => i.tipo === 'armacao');
+    const n = id => num($(id).value);
+    const medidas = { dnp_od:n('o-dnpod'), dnp_oe:n('o-dnpoe'), altura_od:n('o-altod'), altura_oe:n('o-altoe'), aro:n('o-aro'), ponte:n('o-ponte'), diagonal:n('o-diag'), armacao_origem:$('o-arm-origem').value };
+    const tipo = $('o-tipo').value;
+    const os = (await post('os', { venda_id:venda.id, loja_id:lojaId, cliente_id:c.id, receita_id:Number(rxSel.value), lente_item_id:lente.id, armacao_item_id:arm.id, tipo_lente:tipo, medidas, previsao:$('o-prev').value, prazo_dias:prazoMinimo(tipo, lenteTemTratamento(S.lenteOS)), obs:$('o-obs').value.trim()||null }))[0];
+    S.clienteOS = null; S.lenteOS = null;
+    S.os = os; go('osdet', { osAviso:'OS ' + os.numero + ' criada.' });
+  }catch(e){ msg(el, 'erro', e.message); $('o-salvar').disabled = false; }
+}
+
+/* ---------- quadro ---------- */
+function cardOS(o){
+  const d = o.previsao ? diasAte(o.previsao) : null; const cls = d == null ? '' : d < 0 ? 'atrasada' : d === 0 ? 'hoje' : 'ok';
+  const quando = d == null ? '' : d < 0 ? `${-d} dia${-d>1?'s':''} atrasada` : d === 0 ? 'vence hoje' : `${d} dia${d>1?'s':''}`;
+  return `<div class="card ${cls}" onclick="abrirOS(${o.id})"><b>OS ${o.numero} · ${esc(o.cliente ? o.cliente.nome : '')}</b><small>${esc(o.lente ? o.lente.descricao : (o.tipo_lente||''))}</small><small>${dataBR(o.previsao)} · ${quando}${!S.perfil.loja_id ? ' · ' + esc(nomeLoja(o.loja_id)) : ''}</small></div>`;
+}
+async function viewQuadro(m){
+  m.innerHTML = `<h1>Quadro de OS</h1><p class="sub">Cada cartão anda sozinho conforme o laboratório marca. Mover à mão fica registrado.</p><div id="quadro">Carregando…</div>`;
+  try{
+    const os = await get('os', `select=id,numero,status,previsao,loja_id,tipo_lente,cliente:clientes(nome),lente:venda_itens!os_lente_item_id_fkey(descricao)&status=not.in.(entregue,cancelada)${filtroLoja('&')}&order=previsao.asc`);
+    const cols = STATUS.filter(s => !['entregue','cancelada'].includes(s[0]));
+    $('quadro').innerHTML = `<div class="quadro">${cols.map(([k,n]) => { const l = os.filter(o => o.status === k); return `<div class="col"><h3><span>${n}</span><span>${l.length}</span></h3>${l.map(cardOS).join('')}</div>`; }).join('')}</div>`;
+  }catch(e){ $('quadro').innerHTML = `<div class="msg erro">${esc(e.message)}</div>`; }
+}
+async function viewListaOS(m){
+  m.innerHTML = `<h1>Lista de OS</h1><div class="row"><input id="os-busca" placeholder="Número da OS ou nome do cliente" style="flex:1;min-width:200px"><button class="btn p" onclick="buscarOS()">Buscar</button></div><div class="lista" id="os-res" style="margin-top:12px">Carregando…</div>`;
+  $('os-busca').addEventListener('keydown', e => { if(e.key==='Enter') buscarOS(); });
+  buscarOS();
+}
+async function buscarOS(){
+  const t = ($('os-busca').value||'').trim(); const el = $('os-res');
+  try{
+    let q = `select=id,numero,status,previsao,loja_id,criado_em,cliente:clientes(nome),lente:venda_itens!os_lente_item_id_fkey(descricao)${filtroLoja('&')}&order=criado_em.desc&limit=50`;
+    if(t && /^\d+$/.test(t)) q += `&numero=eq.${t}`;
+    let os = await get('os', q);
+    if(t && !/^\d+$/.test(t)) os = os.filter(o => (o.cliente && o.cliente.nome || '').toUpperCase().includes(t.toUpperCase()));
+    el.innerHTML = os.length ? os.map(o => `<div class="item" onclick="abrirOS(${o.id})"><div><b>OS ${o.numero} · ${esc(o.cliente?o.cliente.nome:'')}</b><small>${esc(o.lente?o.lente.descricao:'')} · ${dataBR(o.criado_em)} · previsão ${dataBR(o.previsao)}</small></div><span class="tag ${o.status==='entregue'?'ok':''}">${statusNome(o.status)}</span></div>`).join('') : '<div class="panel" style="color:var(--muted)">Nenhuma OS.</div>';
+  }catch(e){ el.innerHTML = `<div class="msg erro">${esc(e.message)}</div>`; }
+}
+async function abrirOS(id){
+  try{ const r = await get('os', `select=*,cliente:clientes(id,nome,telefone),lente:venda_itens!os_lente_item_id_fkey(descricao,preco_vendido),armacao:venda_itens!os_armacao_item_id_fkey(descricao,encomenda),receita:receitas(*)&id=eq.${id}`); S.os = r[0]; go('osdet'); }catch(e){ alertaErro(e.message); }
+}
+async function viewOS(m){
+  const o = S.os; if(!o) return go('quadro');
+  const r = o.receita || {}; const med = o.medidas || {};
+  m.innerHTML = `${S.osAviso ? `<div class="msg ok">${esc(S.osAviso)}</div>` : ''}
+    <div class="row" style="justify-content:space-between"><div><h1>OS ${o.numero}</h1><p class="sub">${esc(nomeLoja(o.loja_id))} · criada em ${dataBR(o.criado_em)} · <span class="tag">${statusNome(o.status)}</span></p></div>
+      <div class="row"><select id="os-status">${STATUS.map(([k,n]) => `<option value="${k}" ${k===o.status?'selected':''}>${n}</option>`).join('')}</select><button class="btn p" onclick="moverOS()">Mover</button></div></div>
+    <div class="grid g2">
+      <div class="panel"><h2 style="margin-top:0">Cliente</h2><a href="#" onclick="abrirCliente(${o.cliente?o.cliente.id:0});return false"><b>${esc(o.cliente?o.cliente.nome:'')}</b></a><div>${esc(o.cliente?o.cliente.telefone||'':'')}</div>
+        <h2>Lente</h2><div>${esc(o.lente?o.lente.descricao:'')}</div><h2>Armação</h2><div>${esc(o.armacao?o.armacao.descricao:'')} ${o.armacao&&o.armacao.encomenda?'<span class="tag warn">encomenda</span>':''}</div>
+        <h2>Prazo</h2><div>${o.tipo_lente||''} · mínimo ${o.prazo_dias||'?'} dias · previsão <b>${dataBR(o.previsao)}</b></div>${o.obs?`<h2>Observação</h2><div>${esc(o.obs)}</div>`:''}</div>
+      <div class="panel"><h2 style="margin-top:0">Receita</h2>${r.id ? `<div><b>OD</b> ${grau(r.od_esf)} ${grau(r.od_cil)} ${r.od_eixo!=null?r.od_eixo+'°':''}</div><div><b>OE</b> ${grau(r.oe_esf)} ${grau(r.oe_cil)} ${r.oe_eixo!=null?r.oe_eixo+'°':''}</div>${r.adicao?`<div>Adição ${grau(r.adicao)}</div>`:''}<div style="color:var(--muted);font-size:14px">${dataBR(r.data)} · ${esc(r.medico||'')}</div>` : '<div class="pend">Sem receita ligada.</div>'}
+        <h2>Medidas</h2><div>DNP ${med.dnp_od||'?'} / ${med.dnp_oe||'?'} · Altura ${med.altura_od||'?'} / ${med.altura_oe||'?'}${med.aro?' · Aro '+med.aro:''}${med.ponte?' · Ponte '+med.ponte:''}${med.diagonal?' · Diag. '+med.diagonal:''}</div>
+        <h2>Linha do tempo</h2><div class="tl" id="os-tl">Carregando…</div></div>
+    </div><div class="msg" id="os-msg"></div>`;
+  S.osAviso = '';
+  try{
+    const ev = await get('os_eventos', `select=*&os_id=eq.${o.id}&order=em.asc`);
+    $('os-tl').innerHTML = ev.map(e => `<div><b>${statusNome(e.para_status)}</b>${e.manual?' <span class="tag warn">à mão</span>':''}<small>${new Date(e.em).toLocaleString('pt-BR')}${e.motivo?' · '+esc(e.motivo):''}</small></div>`).join('') || '<div>Sem eventos.</div>';
+  }catch(e){ $('os-tl').innerHTML = esc(e.message); }
+}
+async function moverOS(){
+  const novo = $('os-status').value; const o = S.os; if(novo === o.status) return;
+  const motivo = await perguntar(`Mover a OS ${o.numero} para "${statusNome(novo)}"?`, novo === 'cancelada' ? 'Motivo do cancelamento (obrigatório)' : 'Motivo (opcional)');
+  if(motivo === null) return;
+  if(novo === 'cancelada' && !motivo.trim()) return msg($('os-msg'), 'erro', 'Cancelar precisa de motivo.');
+  try{
+    const body = { status: novo }; if(novo === 'entregue') body.retirado_por = (await perguntar('Quem retirou?', 'Nome de quem buscou o óculos')) || null;
+    await patch('os', 'id=eq.' + o.id, body);
+    if(motivo && motivo.trim()){ try{ await patch('os_eventos', `os_id=eq.${o.id}&para_status=eq.${novo}&motivo=is.null`, { manual:true, motivo:motivo.trim() }); }catch(e){} }
+    abrirOS(o.id);
+  }catch(e){ msg($('os-msg'), 'erro', e.message); }
+}
+
+/* ---------- ajuda ---------- */
+function viewAjuda(m){
+  m.innerHTML = `<h1>Ajuda</h1><p class="sub">Versão ${APP_VERSAO}. Dúvida? Fala com o gestor.</p>
+    <div class="panel"><h2 style="margin-top:0">Como fazer uma OS</h2><ol><li>Em <b>Clientes</b>, busca pelo nome ou telefone. Se não existir, <b>Novo cliente</b> com endereço completo.</li><li>Na ficha do cliente, <b>Nova receita</b>: grau dos dois olhos, adição se tiver, médico, e a foto da receita se der.</li><li><b>Nova OS</b>: escolhe a receita, a lente pelo nome, escreve a armação como está na haste, DNP e altura, e confere a previsão. O sistema não deixa prometer antes do prazo mínimo.</li></ol></div>
+    <div class="panel"><h2 style="margin-top:0">Quadro de OS</h2><p>Cada coluna é uma etapa. Vermelho = atrasada, laranja = vence hoje. Para mover, abre a OS, escolhe a etapa e clica Mover. Mover à mão fica registrado com seu nome.</p></div>
+    <div class="panel"><h2 style="margin-top:0">O que ainda vem</h2><p>Venda com pagamento e comprovante, armação lendo a etiqueta, leitura da receita por foto, e o pedido indo sozinho para o laboratório.</p></div>`;
+}
+
+/* ---------- diálogos (sem alert/confirm) ---------- */
+function modal(html){ const d = document.createElement('div'); d.className = 'modal'; d.innerHTML = `<div class="box">${html}<div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn p" id="m-ok">Fechar</button></div></div>`; document.body.appendChild(d); $('m-ok').onclick = () => d.remove(); d.addEventListener('click', e => { if(e.target === d) d.remove(); }); }
+function alertaErro(t){ modal(`<div class="msg erro" style="display:block">${esc(t)}</div>`); }
+function perguntar(titulo, rotulo){
+  return new Promise(res => {
+    const d = document.createElement('div'); d.className = 'modal';
+    d.innerHTML = `<div class="box"><h2 style="margin-top:0">${esc(titulo)}</h2><label>${esc(rotulo)}</label><input id="p-txt"><div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn" id="p-nao">Voltar</button><button class="btn p" id="p-sim">Confirmar</button></div></div>`;
+    document.body.appendChild(d); $('p-txt').focus();
+    $('p-sim').onclick = () => { const v = $('p-txt').value; d.remove(); res(v); };
+    $('p-nao').onclick = () => { d.remove(); res(null); };
+  });
+}
+
+/* ---------- início ---------- */
+(async function(){
+  for(let i=0;i<100 && !window.__configPronto;i++) await new Promise(r=>setTimeout(r,50));
+  lerConfig();
+  if(!URL || !KEY){ $('carregando').textContent = 'Falta o arquivo config.js. Fala com o gestor.'; return; }
+  S.sessao = await sessaoValida();
+  if(!S.sessao){ location.replace('/'); return; }
+  try{
+    const p = await get('perfis', 'select=*&id=eq.' + S.sessao.user.id, 'public'); S.perfil = p[0];
+    if(!S.perfil || !S.perfil.ativo){ $('carregando').textContent = 'Seu acesso ainda não foi liberado. Fala com o gestor.'; return; }
+    const mods = (S.perfil.modulos && S.perfil.modulos.length) ? S.perfil.modulos : (['gerente','vendedor'].includes(S.perfil.papel) ? ['loja'] : []);
+    if(!mods.includes('loja') && S.perfil.papel !== 'dono'){ $('carregando').innerHTML = 'Você não tem o módulo Loja. <a href="/?modulos">Voltar aos módulos</a>'; return; }
+    S.lojas = await get('lojas', 'select=id,nome,modulo,ordem&arquivada=is.false&order=ordem.asc', 'public');
+    if(!S.perfil.loja_id){ const l8 = S.lojas.find(l => l.id === 8); S.loja = l8 ? 8 : (S.lojas[0]||{}).id; }
+    ls.set('nt_ultimo_modulo', 'loja');
+    $('fab').onclick = () => go('ajuda');
+    render();
+  }catch(e){ $('carregando').innerHTML = 'Não consegui abrir a Loja: ' + esc(e.message) + '. <a href="/">Voltar</a>'; }
+})();
+</script>
+</body>
+</html>

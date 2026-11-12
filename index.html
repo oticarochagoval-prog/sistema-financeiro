@@ -75,6 +75,16 @@ input,select{width:100%;padding:12px 14px;border:1px solid var(--line);border-ra
   </form>
 </div>
 
+<div id="trocar" class="wrap" style="display:none">
+  <form class="card" id="form-senha">
+    <div class="marca"><div class="n">N</div><div><h1>Crie sua senha</h1><small>Primeiro acesso: troque a senha provisória</small></div></div>
+    <label for="s1">Nova senha (8 ou mais)</label><input id="s1" type="password" autocomplete="new-password">
+    <label for="s2">Repita a senha</label><input id="s2" type="password" autocomplete="new-password">
+    <button class="btn" id="btn-senha" type="submit">Salvar e entrar</button>
+    <div class="erro" id="erro-senha"></div>
+    <div class="ajuda">Dúvida? Fala com o gestor.</div>
+  </form>
+</div>
 <div id="modulos" style="display:none">
   <div class="top">
     <a class="marca" href="/?modulos"><div class="n">N</div><h1>Nítido</h1></a>
@@ -92,8 +102,8 @@ input,select{width:100%;padding:12px 14px;border:1px solid var(--line);border-ra
    Regras da casa: esta página é do chat do Nítido. Os módulos moram em pastas próprias
    (/financeiro/ = Fluxo, /loja/ = balcão). A sessão fica guardada no navegador no mesmo
    formato que o supabase-js usa, por isso os módulos abrem sem pedir senha de novo. */
-const APP_VERSAO = '1.1';
-const APP_DATA   = '10/11/2026';
+const APP_VERSAO = '1.2';
+const APP_DATA   = '12/11/2026';
 const DOMINIO_LOGIN = 'caixarocha.com';            // igual ao Fluxo: nome escolhido vira nome@caixarocha.com
 let URL = '', KEY = '', REF = '', CHAVE_SESSAO = '';
 function lerConfig(){
@@ -120,8 +130,8 @@ const ls = {
 };
 
 function mostrar(id){
-  ['carregando','login','modulos'].forEach(x => $(x).style.display = 'none');
-  $(id).style.display = id === 'login' ? 'flex' : 'block';
+  ['carregando','login','trocar','modulos'].forEach(x => $(x).style.display = 'none');
+  $(id).style.display = (id === 'login' || id === 'trocar') ? 'flex' : 'block';
 }
 
 /* ---------- sessão ---------- */
@@ -219,11 +229,34 @@ async function sair(){
   location.replace('/');
 }
 
+/* ---------- primeiro acesso: trocar a senha provisória ---------- */
+function montarSenha(s, perfil, acabouDeEntrar){
+  mostrar('trocar'); $('s1').focus();
+  $('form-senha').onsubmit = async ev => {
+    ev.preventDefault(); const e = $('erro-senha'); e.style.display = 'none';
+    const a = $('s1').value, b = $('s2').value;
+    if(a.length < 8){ e.textContent = 'A senha precisa ter 8 ou mais caracteres.'; e.style.display = 'block'; return; }
+    if(a !== b){ e.textContent = 'As duas senhas não são iguais.'; e.style.display = 'block'; return; }
+    $('btn-senha').disabled = true; $('btn-senha').textContent = 'Salvando…';
+    try {
+      const r = await fetch(URL + '/auth/v1/user', { method:'PUT', headers:{ 'Content-Type':'application/json', apikey:KEY, Authorization:'Bearer ' + s.access_token }, body: JSON.stringify({ password: a }) });
+      if(!r.ok){ let j=null; try{ j = await r.json(); }catch(x){} throw new Error((j && (j.msg||j.message)) || 'Não consegui salvar a senha'); }
+      const r2 = await fetch(URL + '/rest/v1/rpc/nitido_senha_trocada', { method:'POST', headers:{ 'Content-Type':'application/json', apikey:KEY, Authorization:'Bearer ' + s.access_token }, body:'{}' });
+      if(!r2.ok) throw new Error('Senha salva, mas não consegui registrar a troca. Fala com o gestor.');
+      perfil.trocar_senha = false;
+      const mods = modulosDe(perfil);
+      if(mods.length === 1) return irPara(mods[0]);
+      montarModulos(perfil, mods);
+    } catch(err){ e.textContent = err.message; e.style.display = 'block'; $('btn-senha').disabled = false; $('btn-senha').textContent = 'Salvar e entrar'; }
+  };
+}
+
 /* ---------- módulos ---------- */
 function irPara(m){ ls.set(CHAVE_ULTIMO, m); location.replace(MODULOS[m].url); }
 
 async function depoisDoLogin(s, acabouDeEntrar){
   const perfil = await meuPerfil(s);
+  if(perfil && perfil.trocar_senha) return montarSenha(s, perfil, acabouDeEntrar);
   const mods = modulosDe(perfil);
   const pediuTela = new URLSearchParams(location.search).has('modulos');
   if(mods.length === 1 && !pediuTela) return irPara(mods[0]);
